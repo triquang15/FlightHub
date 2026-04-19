@@ -15,7 +15,7 @@
     <packaging>pom</packaging>
 
     <name>airline-microservice</name>
-    <description>Airline Booking Platform - Spring Boot 4</description>
+    <description>Airline Booking Platform Services</description>
 
     <!-- ============================================== -->
     <!-- MODULES                                        -->
