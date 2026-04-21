@@ -1,0 +1,500 @@
+{
+  "info": {
+    "_postman_id": "16107bbf-2e69-4262-9166-21c3d3c5948b",
+    "name": "FlightHub",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "API City",
+      "item": [
+        {
+          "name": "CREATE CITY",
+          "id": "9c6fa983-3322-4df8-99f5-68e021d0e59a",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Da Nang\",\n  \"cityCode\": \"DAD\",\n  \"countryCode\": \"VN\",\n  \"countryName\": \"Vietnam\",\n  \"regionCode\": \"DN\",\n  \"timeZoneOffset\": \"+07:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/cities",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "BULK CREATE DATA CITY",
+          "id": "fb3911e8-8239-4dc7-a56e-be95470b8ff1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"Can Tho\",\n    \"cityCode\": \"VCA\",\n    \"countryCode\": \"VN\",\n    \"countryName\": \"Vietnam\",\n    \"regionCode\": \"CT\",\n    \"timeZoneOffset\": \"+07:00\"\n  },\n  {\n    \"name\": \"Hai Phong\",\n    \"cityCode\": \"HPH\",\n    \"countryCode\": \"VN\",\n    \"countryName\": \"Vietnam\",\n    \"regionCode\": \"HP\",\n    \"timeZoneOffset\": \"+07:00\"\n  },\n  {\n    \"name\": \"Osaka\",\n    \"cityCode\": \"OSA\",\n    \"countryCode\": \"JP\",\n    \"countryName\": \"Japan\",\n    \"regionCode\": \"OS\",\n    \"timeZoneOffset\": \"+09:00\"\n  },\n  {\n    \"name\": \"Bangkok\",\n    \"cityCode\": \"BKK\",\n    \"countryCode\": \"TH\",\n    \"countryName\": \"Thailand\",\n    \"regionCode\": \"BK\",\n    \"timeZoneOffset\": \"+07:00\"\n  },\n  {\n    \"name\": \"Singapore\",\n    \"cityCode\": \"SIN\",\n    \"countryCode\": \"SG\",\n    \"countryName\": \"Singapore\",\n    \"regionCode\": \"SG\",\n    \"timeZoneOffset\": \"+08:00\"\n  },\n  {\n    \"name\": \"Seoul\",\n    \"cityCode\": \"SEL\",\n    \"countryCode\": \"KR\",\n    \"countryName\": \"South Korea\",\n    \"regionCode\": \"SL\",\n    \"timeZoneOffset\": \"+09:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/cities/bulk",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "bulk"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET CITY BY ID",
+          "id": "ae20ea2e-af18-4bde-a496-ccf05d2883ee",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Da Nang\",\n  \"cityCode\": \"DAD\",\n  \"countryCode\": \"VN\",\n  \"countryName\": \"Vietnam\",\n  \"regionCode\": \"DN\",\n  \"timeZoneOffset\": \"+07:00\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/cities/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UPDATE CITY",
+          "id": "242dab42-18e1-4bbf-844a-a547d668a211",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hue update\",\n  \"cityCode\": \"HU1\",\n  \"countryCode\": \"VN\",\n  \"countryName\": \"Vietnam\",\n  \"regionCode\": \"HU\",\n  \"timeZoneOffset\": \"+07:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/cities/11",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "11"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE CITY",
+          "id": "32980878-000c-4ec8-baa5-fcf36412194c",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hue update\",\n  \"cityCode\": \"HU1\",\n  \"countryCode\": \"VN\",\n  \"countryName\": \"Vietnam\",\n  \"regionCode\": \"HU\",\n  \"timeZoneOffset\": \"+07:00\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/cities/11",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "11"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET ALL + PAGING",
+          "id": "bfa24e2b-b3f7-4336-ade6-dee7849d7bcc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/cities?page=0&size=5&sortBy=name&sortDirection=asc",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "name"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SEARCH CITY",
+          "id": "b4bd3131-ff69-4ba9-ac5f-e07e10748a40",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/cities/search?keyword=ho&page=0&size=10",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "ho"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET CITY BY COUNTRY",
+          "id": "0aa35e2a-92b4-4282-8271-f791b039da63",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/cities/country/VN?page=0&size=10",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "country",
+                "VN"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CHECK EXISTS",
+          "id": "c8c2d5be-ea87-4a59-9169-748de76a77a0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/cities/exists/HCM",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "cities",
+                "exists",
+                "HCM"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "1b016ec8-d555-44a4-b9e2-29239e7aea5b"
+    },
+    {
+      "name": "API Airport",
+      "item": [
+        {
+          "name": "CREATE AIRPORTS",
+          "id": "a48cc8b7-7eba-4f42-8903-f6a5b0b8a59e",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"SGN\",\n  \"name\": \"Tan Son Nhat International Airport\",\n  \"timeZone\": \"Asia/Ho_Chi_Minh\",\n  \"cityId\": 1,\n  \"address\": {\n    \"street\": \"Truong Son Street\",\n    \"district\": \"Tan Binh\",\n    \"state\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"zipCode\": \"700000\"\n  },\n  \"geoCode\": {\n    \"latitude\": 10.8188,\n    \"longitude\": 106.6519\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "BULK CREATE AIRPORTS",
+          "id": "4bb22100-76e0-4802-8f31-69df41e6bbab",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"iataCode\": \"HAN\",\n    \"name\": \"Noi Bai International Airport\",\n    \"timeZone\": \"Asia/Ho_Chi_Minh\",\n    \"cityId\": 2\n  },\n  {\n    \"iataCode\": \"DAD\",\n    \"name\": \"Da Nang International Airport\",\n    \"timeZone\": \"Asia/Ho_Chi_Minh\",\n    \"cityId\": 3\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports/bulk",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports",
+                "bulk"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET AIRPORT BY ID",
+          "id": "0d185c2c-c055-4e92-b8ef-79892c800fdd",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"SGN\",\n  \"name\": \"Tan Son Nhat International Airport\",\n  \"timeZone\": \"Asia/Ho_Chi_Minh\",\n  \"cityId\": 1,\n  \"address\": {\n    \"street\": \"Truong Son Street\",\n    \"district\": \"Tan Binh\",\n    \"state\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"zipCode\": \"700000\"\n  },\n  \"geoCode\": {\n    \"latitude\": 10.8188,\n    \"longitude\": 106.6519\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET ALL AIRPORTS",
+          "id": "c308f4d3-1079-4555-a558-87dfd18cac00",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"SGN\",\n  \"name\": \"Tan Son Nhat International Airport\",\n  \"timeZone\": \"Asia/Ho_Chi_Minh\",\n  \"cityId\": 1,\n  \"address\": {\n    \"street\": \"Truong Son Street\",\n    \"district\": \"Tan Binh\",\n    \"state\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"zipCode\": \"700000\"\n  },\n  \"geoCode\": {\n    \"latitude\": 10.8188,\n    \"longitude\": 106.6519\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET AIRPORTS BY CITY ID",
+          "id": "c96e2a9f-6b88-4746-9ffc-df4a2a49e493",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"SGN\",\n  \"name\": \"Tan Son Nhat International Airport\",\n  \"timeZone\": \"Asia/Ho_Chi_Minh\",\n  \"cityId\": 1,\n  \"address\": {\n    \"street\": \"Truong Son Street\",\n    \"district\": \"Tan Binh\",\n    \"state\": \"Ho Chi Minh\",\n    \"country\": \"Vietnam\",\n    \"zipCode\": \"700000\"\n  },\n  \"geoCode\": {\n    \"latitude\": 10.8188,\n    \"longitude\": 106.6519\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports/city/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports",
+                "city",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Airport ID",
+          "id": "137356d5-5fdc-4149-955c-3ead31d9e8a3",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"DAD\",\n  \"name\": \"Da Nang International Airport Updated\",\n  \"timeZone\": \"Asia/Ho_Chi_Minh\",\n  \"cityId\": 3,\n  \"address\": {\n    \"street\": \"Hai Chau Updated\",\n    \"postalCode\": \"550000\"\n  },\n  \"geoCode\": {\n    \"latitude\": 16.0445,\n    \"longitude\": 108.2001\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/airports/3",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports",
+                "3"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE AIRPORT",
+          "id": "29ab3832-4973-4a17-a068-e2509694e927",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/airports/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "airports",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "b1c50301-c3dd-4087-9066-a0d4f4ec9fdd"
+    }
+  ]
+}
