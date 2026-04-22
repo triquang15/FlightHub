@@ -6,7 +6,7 @@ spring:
     name: location-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/location_db
+    url: jdbc:postgresql://localhost:5432/flight_hub_location
     username: postgres
     password: 12345678
     driver-class-name: org.postgresql.Driver
