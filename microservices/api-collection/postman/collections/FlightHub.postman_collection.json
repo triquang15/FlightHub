@@ -495,6 +495,105 @@
         }
       ],
       "id": "b1c50301-c3dd-4087-9066-a0d4f4ec9fdd"
+    },
+    {
+      "name": "API User",
+      "item": [
+        {
+          "name": "1. Signup API",
+          "id": "e177efae-b963-4f5c-a3fd-0374a461105e",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"triquang@gmail.com\",\n  \"password\": \"123456\",\n  \"fullName\": \"Normal User\",\n  \"phone\": \"0987654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/auth/signup",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Login API",
+          "id": "a9ccc083-ed3d-46ce-bc41-10c452cf085b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"triquang@gmail.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Refresh Token",
+          "id": "60f78913-e68e-4b47-9c77-0ad9ff7f978b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJqdGkiOiIzYzk3NGY0Yy1mMjFiLTRjY2UtYTg2Mi1kZjc4NzgwYjk3M2UiLCJzdWIiOiJ0cmlxdWFuZ0BnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzY5NTI0MTAsImV4cCI6MTc3NzU1NzIxMCwidXNlcklkIjozLCJ0eXBlIjoiUkVGUkVTSCJ9.xgcAl8_9Keo6Q3pI4posfXH3Ke2-HNBHoyie-bqI2yJmazhVjT-fepLDMc55AZy6\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/auth/refresh",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "7a6a16f6-ad13-442d-92be-8af027037334"
     }
   ]
 }
