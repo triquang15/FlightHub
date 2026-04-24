@@ -1,109 +1,168 @@
 package com.triquang.controller;
 
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import com.triquang.exception.OperationNotPermittedException;
-import com.triquang.exception.ResourceNotFoundException;
 import com.triquang.payload.request.CityRequest;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.CityResponse;
 import com.triquang.service.CityService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import jakarta.validation.Valid;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/cities")
 @RequiredArgsConstructor
-@Slf4j
 public class CityController {
 
-	private final CityService cityService;
+    private final CityService cityService;
 
-	// ---------- CREATE ----------
+    // =========================
+    // CREATE CITY
+    // =========================
+    @PostMapping
+    public ResponseEntity<ApiResponse<CityResponse>> createCity(
+            @Valid @RequestBody CityRequest request) {
 
-	@PostMapping
-	public ResponseEntity<CityResponse> createCity(@Valid @RequestBody CityRequest request)
-			throws OperationNotPermittedException {
-		
-		var response = cityService.createCity(request);
-		return ResponseEntity.status(HttpStatus.CREATED).body(response);
-	}
+        CityResponse response = cityService.createCity(request);
 
-	@PostMapping("/bulk")
-	public ResponseEntity<List<CityResponse>> createBulkCities(@Valid @RequestBody List<CityRequest> requests)
-			throws OperationNotPermittedException {
-		
-		var responses = cityService.createBulkCities(requests);
-		return ResponseEntity.status(HttpStatus.CREATED).body(responses);
-	}
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "City created successfully"));
+    }
 
-	// ---------- READ ----------
+    // =========================
+    // BULK CREATE
+    // =========================
+    @PostMapping("/bulk")
+    public ResponseEntity<ApiResponse<List<CityResponse>>> createBulkCities(
+            @RequestBody List<CityRequest> requests) {
 
-	@GetMapping("/{id}")
-	public ResponseEntity<CityResponse> getCityById(@PathVariable Long id) throws ResourceNotFoundException {
-		return ResponseEntity.ok(cityService.getCityById(id));
-	}
+        List<CityResponse> response = cityService.createBulkCities(requests);
 
-	@GetMapping
-	public ResponseEntity<Page<CityResponse>> getAllCities(@RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "20") int size, @RequestParam(defaultValue = "name") String sortBy,
-			@RequestParam(defaultValue = "asc") String sortDirection) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Bulk cities created successfully"));
+    }
 
-		Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
-		Pageable pageable = PageRequest.of(page, size, sort);
-		return ResponseEntity.ok(cityService.getAllCities(pageable));
-	}
+    // =========================
+    // GET BY ID
+    // =========================
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<CityResponse>> getCityById(@PathVariable Long id) {
 
-	// ---------- UPDATE ----------
+        CityResponse response = cityService.getCityById(id);
 
-	@PutMapping("/{id}")
-	public ResponseEntity<CityResponse> updateCity(@PathVariable Long id, @Valid @RequestBody CityRequest request)
-			throws ResourceNotFoundException, OperationNotPermittedException {
-		return ResponseEntity.ok(cityService.updateCity(id, request));
-	}
+        return ResponseEntity.ok(
+                ApiResponse.success(response, null)
+        );
+    }
 
-	// ---------- DELETE ----------
+    // =========================
+    // GET ALL (PAGINATION)
+    // =========================
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<CityResponse>>> getAllCities(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection) {
 
-	@DeleteMapping("/{id}")
-	public ResponseEntity<ApiResponse<Void>> deleteCity(@PathVariable Long id) throws ResourceNotFoundException {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.fromString(sortDirection),
+                        sortBy
+                )
+        );
 
-		cityService.deleteCity(id);
+        Page<CityResponse> response = cityService.getAllCities(pageable);
 
-		return ResponseEntity.ok(new ApiResponse<>(200, true, "City deleted successfully", null, Instant.now()));
-	}
+        return ResponseEntity.ok(
+                ApiResponse.success(response, null)
+        );
+    }
 
-	// ---------- SEARCH & QUERY ----------
+    // =========================
+    // UPDATE
+    // =========================
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<CityResponse>> updateCity(
+            @PathVariable Long id,
+            @Valid @RequestBody CityRequest request) {
 
-	@GetMapping("/search")
-	public ResponseEntity<Page<CityResponse>> searchCities(@RequestParam String keyword,
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        CityResponse response = cityService.updateCity(id, request);
 
-		Pageable pageable = PageRequest.of(page, size);
-		return ResponseEntity.ok(cityService.searchCities(keyword, pageable));
-	}
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "City updated successfully")
+        );
+    }
 
-	@GetMapping("/country/{countryCode}")
-	public ResponseEntity<Page<CityResponse>> getCitiesByCountryCode(@PathVariable String countryCode,
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+    // =========================
+    // DELETE
+    // =========================
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteCity(@PathVariable Long id) {
 
-		Pageable pageable = PageRequest.of(page, size);
-		return ResponseEntity.ok(cityService.getCitiesByCountryCode(countryCode.toUpperCase(), pageable));
-	}
+        cityService.deleteCity(id);
 
-	// ---------- VALIDATION ----------
+        return ResponseEntity.ok(
+                ApiResponse.success(null, "City deleted successfully")
+        );
+    }
 
-	@GetMapping("/exists/{cityCode}")
-	public ResponseEntity<Boolean> checkCityExists(@PathVariable String cityCode) {
-		return ResponseEntity.ok(cityService.cityExists(cityCode.toUpperCase()));
-	}
+    // =========================
+    // SEARCH
+    // =========================
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<CityResponse>>> searchCities(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<CityResponse> response = cityService.searchCities(keyword, pageable);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, null)
+        );
+    }
+
+    // =========================
+    // BY COUNTRY
+    // =========================
+    @GetMapping("/country/{countryCode}")
+    public ResponseEntity<ApiResponse<Page<CityResponse>>> getByCountry(
+            @PathVariable String countryCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<CityResponse> response =
+                cityService.getCitiesByCountryCode(countryCode.toUpperCase(), pageable);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, null)
+        );
+    }
+
+    // =========================
+    // EXISTS CHECK
+    // =========================
+    @GetMapping("/exists/{cityCode}")
+    public ResponseEntity<ApiResponse<Boolean>> cityExists(@PathVariable String cityCode) {
+
+        boolean exists = cityService.cityExists(cityCode.toUpperCase());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(exists, null)
+        );
+    }
 }

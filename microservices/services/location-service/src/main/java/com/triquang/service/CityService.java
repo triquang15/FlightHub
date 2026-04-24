@@ -1,27 +1,25 @@
 package com.triquang.service;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import com.triquang.exception.OperationNotPermittedException;
-import com.triquang.exception.ResourceNotFoundException;
 import com.triquang.payload.request.CityRequest;
 import com.triquang.payload.response.CityResponse;
-
-import java.util.List;
 
 public interface CityService {
 
 	// ---------- Core CRUD ----------
-	CityResponse createCity(CityRequest request) throws OperationNotPermittedException;
+	CityResponse createCity(CityRequest request);
 
-	List<CityResponse> createBulkCities(List<CityRequest> requests) throws OperationNotPermittedException;
+	List<CityResponse> createBulkCities(List<CityRequest> requests);
 
-	CityResponse getCityById(Long id) throws ResourceNotFoundException;
+	CityResponse getCityById(Long id);
 
-	CityResponse updateCity(Long id, CityRequest request) throws ResourceNotFoundException, OperationNotPermittedException;
+	CityResponse updateCity(Long id, CityRequest request);
 
-	void deleteCity(Long id) throws ResourceNotFoundException;
+	void deleteCity(Long id);
 
 	Page<CityResponse> getAllCities(Pageable pageable);
 
@@ -33,5 +31,4 @@ public interface CityService {
 	// ---------- Validation ----------
 	boolean cityExists(String cityCode);
 
-	boolean validateCityCode(String cityCode);
 }

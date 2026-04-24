@@ -1,9 +1,11 @@
 package com.triquang.exception;
 
-public class CityException extends Exception {
+import com.triquang.enums.ErrorCode;
+
+public class CityException extends BaseException {
     private static final long serialVersionUID = 1L;
 
-	public CityException(String message) {
-        super(message);
+	public CityException(ErrorCode errorCode) {
+        super(errorCode);
     }
 }

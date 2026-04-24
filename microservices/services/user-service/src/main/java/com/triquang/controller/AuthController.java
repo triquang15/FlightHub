@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.triquang.exception.UserException;
 import com.triquang.payload.request.LoginRequest;
 import com.triquang.payload.request.RefreshTokenRequest;
 import com.triquang.payload.request.SignupRequest;
@@ -24,17 +23,17 @@ public class AuthController {
 	private final AuthService authService;
 
 	@PostMapping("/signup")
-	public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest req) throws UserException {
+	public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest req) {
 	    return ResponseEntity.ok(authService.signup(req));
 	}
 
 	@PostMapping("/login")
-	public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest req) throws UserException {
+	public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest req) {
 	    return ResponseEntity.ok(authService.login(req.getEmail(), req.getPassword()));
 	}
 
 	@PostMapping("/refresh")
-	public ResponseEntity<AuthResponse> refresh(@RequestBody @Valid RefreshTokenRequest req) throws UserException {
+	public ResponseEntity<AuthResponse> refresh(@RequestBody @Valid RefreshTokenRequest req) {
 	    return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
 	}
 }

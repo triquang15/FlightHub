@@ -1,9 +1,11 @@
 package com.triquang.exception;
 
-public class AirportException extends Exception {
+import com.triquang.enums.ErrorCode;
+
+public class AirportException extends BaseException {
 	private static final long serialVersionUID = 1L;
 
-	public AirportException(String message) {
-		super(message);
-	}
+	public AirportException(ErrorCode errorCode) {
+        super(errorCode);
+    }
 }

@@ -2,14 +2,15 @@ package com.triquang.service.impl;
 
 import java.time.LocalDateTime;
 
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.triquang.config.JwtProvider;
+import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.UserException;
 import com.triquang.mapper.UserMapper;
@@ -20,116 +21,147 @@ import com.triquang.repository.UserRepository;
 import com.triquang.service.AuthService;
 
 import lombok.RequiredArgsConstructor;
-
+import lombok.extern.slf4j.Slf4j;
 /**
- * Implementation of the AuthService interface for user authentication and registration.
+ * AuthServiceImpl handles user authentication and registration logic.
+ * It uses Spring Security for authentication and JWT for token management.
  * 
  * @author Tri Quang
  */
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
-	private final UserRepository userRepository;
-	private final PasswordEncoder passwordEncoder;
-	private final JwtProvider jwtProvider;
-	private final CustomUserDetailsService customUserDetailsService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final AuthenticationManager authenticationManager;
 
-	@Override
-	public AuthResponse signup(SignupRequest req) throws UserException {
+    // =========================
+    // SIGNUP
+    // =========================
+    @Override
+    public AuthResponse signup(SignupRequest req) {
 
-	    if (userRepository.findByEmail(req.getEmail()) != null) {
-	        throw new UserException("Email already registered");
-	    }
+        validateSignup(req);
 
-	    User user = new User();
-	    user.setEmail(req.getEmail());
-	    user.setPassword(passwordEncoder.encode(req.getPassword()));
-	    user.setFullName(req.getFullName());
-	    user.setPhone(req.getPhone());
-	    user.setRole(UserRole.ROLE_CUSTOMER);
-	    user.setLastLogin(LocalDateTime.now());
+        if (userRepository.findByEmail(req.getEmail()).isPresent()) {
+            throw new UserException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
 
-	    user = userRepository.save(user);
+        User user = new User();
+        user.setEmail(req.getEmail());
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setFullName(req.getFullName());
+        user.setPhone(req.getPhone());
+        user.setRole(UserRole.ROLE_CUSTOMER);
 
-	    return buildAuthResponse(user);
-	}
-	
-	@Override
-	public AuthResponse login(String email, String password) throws UserException {
+        // signup is NOT login → no lastLogin here
+        user.setLastLogin(null);
 
-	    Authentication authentication = authenticate(email, password);
-	    SecurityContextHolder.getContext().setAuthentication(authentication);
+        user = userRepository.save(user);
 
-	    User user = userRepository.findByEmail(email);
-	    if (user == null) throw new UserException("User not found");
+        log.info("User registered: {}", user.getEmail());
 
-	    user.setLastLogin(LocalDateTime.now());
-	    userRepository.save(user);
+        return buildAuthResponse(user);
+    }
 
-	    return buildAuthResponse(user);
-	}
+    // =========================
+    // LOGIN
+    // =========================
+    @Override
+    public AuthResponse login(String email, String password) {
 
-	@Override
-	public AuthResponse refreshToken(String refreshToken) throws UserException {
+        try {
+            Authentication authentication =
+                    authenticationManager.authenticate(
+                            new UsernamePasswordAuthenticationToken(email, password)
+                    );
 
-	    if (!jwtProvider.validateToken(refreshToken)) {
-	        throw new UserException("Invalid token");
-	    }
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
 
-	    if (!jwtProvider.isRefreshToken(refreshToken)) {
-	        throw new UserException("Not refresh token");
-	    }
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user);
 
-	    String email = jwtProvider.getUsername(refreshToken);
+            log.info("User logged in: {}", email);
 
-	    User user = userRepository.findByEmail(email);
-	    if (user == null) throw new UserException("User not found");
+            return buildAuthResponse(user);
 
-	    return buildAuthResponse(user);
-	}
+        } catch (Exception ex) {
+            // IMPORTANT: convert all auth failures
+            throw new UserException(ErrorCode.INVALID_CREDENTIALS);
+        }
+    }
 
-	private AuthResponse buildAuthResponse(User user) {
+    // =========================
+    // REFRESH TOKEN
+    // =========================
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
 
-	    UserDetails userDetails =
-	            customUserDetailsService.loadUserByUsername(user.getEmail());
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new UserException(ErrorCode.INVALID_TOKEN);
+        }
 
-	    Authentication authentication =
-	            new UsernamePasswordAuthenticationToken(
-	                    userDetails,
-	                    null,
-	                    userDetails.getAuthorities()
-	            );
+        if (!jwtProvider.isRefreshToken(refreshToken)) {
+            throw new UserException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
 
-	    String accessToken =
-	            jwtProvider.generateAccessToken(authentication, user.getId());
+        String email = jwtProvider.getUsername(refreshToken);
 
-	    String refreshToken =
-	            jwtProvider.generateRefreshToken(authentication, user.getId());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
 
-	    return new AuthResponse(
-	            accessToken,
-	            refreshToken,
-	            "Success",
-	            "OK",
-	            UserMapper.toDTO(user)
-	    );
-	}
-	
-	private Authentication authenticate(String email, String password) throws UserException {
+        log.info("Token refreshed for user: {}", email);
 
-	    UserDetails userDetails =
-	            customUserDetailsService.loadUserByUsername(email);
+        return buildAuthResponse(user);
+    }
 
-	    if (!passwordEncoder.matches(password, userDetails.getPassword())) {
-	        throw new UserException("Invalid credentials");
-	    }
+    // =========================
+    // AUTH RESPONSE BUILDER
+    // =========================
+    private AuthResponse buildAuthResponse(User user) {
 
-	    return new UsernamePasswordAuthenticationToken(
-	            userDetails,
-	            null,
-	            userDetails.getAuthorities()
-	    );
-	}
+        UserDetails userDetails =
+                customUserDetailsService.loadUserByUsername(user.getEmail());
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+
+        String accessToken =
+                jwtProvider.generateAccessToken(authentication, user.getId());
+
+        String refreshToken =
+                jwtProvider.generateRefreshToken(authentication, user.getId());
+
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                "Success",
+                "OK",
+                UserMapper.toDTO(user)
+        );
+    }
+
+    // =========================
+    // VALIDATION
+    // =========================
+    private void validateSignup(SignupRequest req) {
+
+        if (req.getEmail() == null || req.getEmail().isBlank()) {
+            throw new UserException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (req.getPassword() == null || req.getPassword().length() < 6) {
+            throw new UserException(ErrorCode.INVALID_INPUT);
+        }
+    }
 }

@@ -1,38 +1,61 @@
 package com.triquang.service.impl;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
+import com.triquang.dto.UserDTO;
+import com.triquang.enums.ErrorCode;
 import com.triquang.exception.UserException;
+import com.triquang.mapper.UserMapper;
 import com.triquang.model.User;
 import com.triquang.repository.UserRepository;
 import com.triquang.service.UserService;
-
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-	private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
-	@Override
-	public User getUserByEmail(String email) throws UserException {
-		User user = userRepository.findByEmail(email);
-		if (user == null) {
-			throw new UserException("User not found with email: " + email);
-		}
-		return user;
-	}
+    @Override
+    public UserDTO getUserProfile(String email) {
 
-	@Override
-	public User getUserById(Long id) throws UserException {
-		return userRepository.findById(id).orElseThrow(() -> new UserException("User not found with id: " + id));
-	}
+        if (email == null || email.isBlank()) {
+            throw new UserException(ErrorCode.INVALID_USER_INPUT);
+        }
 
-	@Override
-	public List<User> getUsers() throws UserException {
-		return userRepository.findAll();
-	}
+        log.info("Fetching user profile for email={}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+
+        return UserMapper.toDTO(user);
+    }
+
+    @Override
+    public UserDTO getUserById(Long id) {
+
+        if (id == null || id <= 0) {
+            throw new UserException(ErrorCode.INVALID_USER_INPUT);
+        }
+
+        log.info("Fetching user by id={}", id);
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+
+        return UserMapper.toDTO(user);
+    }
+
+    @Override
+    public Page<UserDTO> getUsers(Pageable pageable) {
+
+        log.info("Fetching users with pageable={}", pageable);
+
+        return userRepository.findAll(pageable)
+                .map(UserMapper::toDTO);
+    }
 }

@@ -1,15 +1,11 @@
 package com.triquang.repository;
 
-import java.util.Set;
-
+import com.triquang.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.triquang.enums.UserRole;
-import com.triquang.model.User;
+import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    User findByEmail(String email);
-
-    Set<User> findByRole(UserRole role);
+    Optional<User> findByEmail(String email);
 }

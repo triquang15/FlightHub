@@ -1,184 +1,205 @@
 package com.triquang.service.impl;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-
-import com.triquang.exception.OperationNotPermittedException;
-import com.triquang.exception.ResourceNotFoundException;
+import com.triquang.enums.ErrorCode;
+import com.triquang.exception.CityException;
 import com.triquang.mapper.CityMapper;
 import com.triquang.model.City;
 import com.triquang.payload.request.CityRequest;
 import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.CityRepository;
 import com.triquang.service.CityService;
-
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
-/**
- * Service implementation for managing cities.
- * Handles business logic for creating, retrieving, updating, and deleting city records.
- * Also includes validation and caching mechanisms for performance optimization.
- * 
- * @author Tri Quang
- */
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class CityServiceImpl implements CityService {
 
-	private final CityRepository cityRepository;
+    private final CityRepository cityRepository;
 
-	// ---------- Core CRUD ----------
+    // =========================
+    // CREATE CITY
+    // =========================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cities", allEntries = true),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public CityResponse createCity(CityRequest request) {
 
-	@Override
-	public CityResponse createCity(CityRequest request) throws OperationNotPermittedException {
-		validateCityRequest(request);
+        validate(request);
 
-		if (cityRepository.existsByCityCode(request.getCityCode())) {
-			throw new OperationNotPermittedException("City with code " + request.getCityCode() + " already exists");
-		}
+        if (cityRepository.existsByCityCode(request.getCityCode())) {
+            throw new CityException(ErrorCode.CITY_ALREADY_EXISTS);
+        }
 
-		City city = CityMapper.toEntity(request);
-		
-		City savedCity = cityRepository.save(city);
+        City city = CityMapper.toEntity(request);
+        City saved = cityRepository.save(city);
 
-		log.info("City created: {} ({})", savedCity.getName(), savedCity.getCityCode());
-		
-		return CityMapper.toResponse(savedCity);
-	}
+        log.info("City created: {}", saved.getCityCode());
 
-	@Override
-	public List<CityResponse> createBulkCities(List<CityRequest> requests) throws OperationNotPermittedException {
-		List<CityResponse> createdCities = new ArrayList<>();
-		List<String> skippedCodes = new ArrayList<>();
+        return CityMapper.toResponse(saved);
+    }
 
-		for (CityRequest request : requests) {
-			try {
-				validateCityRequest(request);
-			} catch (IllegalArgumentException e) {
-				skippedCodes.add(request.getCityCode() + " (invalid: " + e.getMessage() + ")");
-				continue;
-			}
+    // =========================
+    // BULK CREATE (SAFE VERSION)
+    // =========================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cities", allEntries = true),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public List<CityResponse> createBulkCities(List<CityRequest> requests) {
 
-			if (cityRepository.existsByCityCode(request.getCityCode())) {
-				skippedCodes.add(request.getCityCode() + " (already exists)");
-				continue;
-			}
+        return requests.stream()
+                .filter(req -> {
+                    if (cityRepository.existsByCityCode(req.getCityCode())) {
+                        log.warn("Skip existing city: {}", req.getCityCode());
+                        return false;
+                    }
+                    return true;
+                })
+                .map(req -> {
+                    validate(req);
 
-			var city = CityMapper.toEntity(request);
-			
-			var savedCity = cityRepository.save(city);
-			
-			createdCities.add(CityMapper.toResponse(savedCity));
-		}
+                    City city = CityMapper.toEntity(req);
+                    return CityMapper.toResponse(cityRepository.save(city));
+                })
+                .collect(Collectors.toList());
+    }
 
-		if (!skippedCodes.isEmpty()) {
-			log.info("Bulk city creation - skipped: {}", skippedCodes);
-		}
-		
-		log.info("Bulk city creation - created {} out of {} cities", createdCities.size(), requests.size());
+    // =========================
+    // GET BY ID (CACHE)
+    // =========================
+    @Override
+    @Cacheable(cacheNames = "cities", key = "#id")
+    public CityResponse getCityById(Long id) {
 
-		return createdCities;
-	}
+        validateId(id);
 
-	@Override
-	@Cacheable(cacheNames = "cities", key = "#id")
-	public CityResponse getCityById(Long id) throws ResourceNotFoundException {
-		City city = cityRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("City not found with id: " + id));
-		return CityMapper.toResponse(city);
-	}
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new CityException(ErrorCode.CITY_NOT_FOUND));
 
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", key = "#id"),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public CityResponse updateCity(Long id, CityRequest request)
-			throws ResourceNotFoundException, OperationNotPermittedException {
-		City city = cityRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("City not found with id: " + id));
+        return CityMapper.toResponse(city);
+    }
 
-		validateCityRequest(request, id);
+    // =========================
+    // UPDATE
+    // =========================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cities", key = "#id"),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public CityResponse updateCity(Long id, CityRequest request) {
 
-		if (cityRepository.existsByCityCodeAndIdNot(request.getCityCode(), id)) {
-			throw new OperationNotPermittedException("City with code " + request.getCityCode() + " already exists");
-		}
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new CityException(ErrorCode.CITY_NOT_FOUND));
 
-		City updatedCity = cityRepository.save(CityMapper.updateEntity(city, request));
+        validate(request);
 
-		log.info("City updated: {} ({})", updatedCity.getName(), updatedCity.getCityCode());
-		
-		return CityMapper.toResponse(updatedCity);
-	}
+        if (cityRepository.existsByCityCodeAndIdNot(request.getCityCode(), id)) {
+            throw new CityException(ErrorCode.CITY_ALREADY_EXISTS);
+        }
 
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", key = "#id"),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public void deleteCity(Long id) throws ResourceNotFoundException {
-		City city = cityRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("City not found with id: " + id));
-		
-		cityRepository.delete(city);
-		
-		log.info("City deleted: {} ({})", city.getName(), city.getCityCode());
-	}
+        CityMapper.updateEntity(city, request);
 
-	@Override
-	public Page<CityResponse> getAllCities(Pageable pageable) {
-		return cityRepository.findAll(pageable).map(CityMapper::toResponse);
-	}
+        City updated = cityRepository.save(city);
 
-	// ---------- Search & Query ----------
+        log.info("City updated: {}", updated.getCityCode());
 
-	@Override
-	public Page<CityResponse> searchCities(String keyword, Pageable pageable) {
-		return cityRepository.searchByKeyword(keyword, pageable).map(CityMapper::toResponse);
-	}
+        return CityMapper.toResponse(updated);
+    }
 
-	@Override
-	public Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable) {
-		return cityRepository.findByCountryCodeIgnoreCase(countryCode, pageable).map(CityMapper::toResponse);
-	}
+    // =========================
+    // DELETE
+    // =========================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cities", key = "#id"),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public void deleteCity(Long id) {
 
-	// ---------- Validation ----------
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new CityException(ErrorCode.CITY_NOT_FOUND));
 
-	@Override
-	public boolean cityExists(String cityCode) {
-		return cityRepository.existsByCityCode(cityCode);
-	}
+        cityRepository.delete(city);
 
-	@Override
-	public boolean validateCityCode(String cityCode) {
-		return cityCode != null && cityCode.length() <= 10 && cityCode.matches("[A-Z0-9]{2,10}");
-	}
+        log.info("City deleted: {}", city.getCityCode());
+    }
 
-	// ---------- Private Helpers ----------
+    // =========================
+    // LIST
+    // =========================
+    @Override
+    public Page<CityResponse> getAllCities(Pageable pageable) {
+        return cityRepository.findAll(pageable)
+                .map(CityMapper::toResponse);
+    }
 
-	private void validateCityRequest(CityRequest request) {
-		validateCityRequest(request, null);
-	}
+    // =========================
+    // SEARCH
+    // =========================
+    @Override
+    public Page<CityResponse> searchCities(String keyword, Pageable pageable) {
+        return cityRepository.searchByKeyword(keyword, pageable)
+                .map(CityMapper::toResponse);
+    }
 
-	private void validateCityRequest(CityRequest request, Long excludeId) {
-		if (!validateCityCode(request.getCityCode())) {
-			throw new IllegalArgumentException("Invalid city code format. Must be 2-10 alphanumeric characters.");
-		}
+    // =========================
+    // BY COUNTRY
+    // =========================
+    @Override
+    public Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable) {
+        return cityRepository.findByCountryCodeIgnoreCase(countryCode, pageable)
+                .map(CityMapper::toResponse);
+    }
 
-		if (request.getCountryCode() == null || !request.getCountryCode().matches("[A-Z]{2,5}")) {
-			throw new IllegalArgumentException("Country code must be 2-5 uppercase letters");
-		}
+    // =========================
+    // EXISTS
+    // =========================
+    @Override
+    public boolean cityExists(String cityCode) {
+        return cityRepository.existsByCityCode(cityCode);
+    }
 
-		if (request.getTimeZoneOffset() != null && !request.getTimeZoneOffset().matches("[+-]\\d{2}:\\d{2}")) {
-			throw new IllegalArgumentException("Time zone offset must be in format ±HH:MM");
-		}
-	}
+    // =========================
+    // VALIDATION (SENIOR VERSION)
+    // =========================
+    private void validate(CityRequest request) {
+
+        if (request.getCityCode() == null ||
+                !request.getCityCode().matches("^[A-Z0-9]{2,10}$")) {
+            throw new CityException(ErrorCode.INVALID_CITY_CODE);
+        }
+
+        if (request.getCountryCode() == null ||
+                !request.getCountryCode().matches("^[A-Z]{2,5}$")) {
+            throw new CityException(ErrorCode.INVALID_COUNTRY_CODE);
+        }
+
+        if (request.getTimeZoneOffset() != null) {
+
+            String tz = request.getTimeZoneOffset().trim();
+
+            if (!tz.matches("^[+-](0[0-9]|1[0-4]):[0-5][0-9]$")) {
+                throw new CityException(ErrorCode.INVALID_TIMEZONE_OFFSET);
+            }
+        }
+    }
+
+    private void validateId(Long id) {
+        if (id == null || id <= 0) {
+            throw new CityException(ErrorCode.INVALID_INPUT);
+        }
+    }
 }

@@ -1,14 +1,15 @@
 package com.triquang.service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import com.triquang.exception.UserException;
-import com.triquang.model.User;
+import com.triquang.dto.UserDTO;
 
 public interface UserService {
-	User getUserByEmail(String email) throws UserException;
 
-	User getUserById(Long id) throws UserException;
+    UserDTO getUserProfile(String email);
 
-	List<User> getUsers() throws UserException;
+    UserDTO getUserById(Long id);
+
+    Page<UserDTO> getUsers(Pageable pageable);
 }

@@ -1,42 +1,37 @@
 package com.triquang.controller;
 
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.triquang.dto.UserDTO;
-import com.triquang.exception.UserException;
-import com.triquang.mapper.UserMapper;
-import com.triquang.model.User;
 import com.triquang.service.UserService;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
-	private final UserService userService;
+    private final UserService userService;
 
-	@GetMapping("/api/users/profile")
-	public ResponseEntity<UserDTO> getUserProfile(@RequestHeader("X-User-Email") String email) throws UserException {
-		User user = userService.getUserByEmail(email);
-		return ResponseEntity.ok(UserMapper.toDTO(user));
-	}
+    // GET current user 
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getMyProfile(
+            @RequestHeader("X-User-Email") String email) {
 
-	@GetMapping("/api/users/{userId}")
-	public ResponseEntity<UserDTO> getUserById(@PathVariable Long userId) throws UserException {
-		User user = userService.getUserById(userId);
-		return ResponseEntity.ok(UserMapper.toDTO(user));
-	}
+        return ResponseEntity.ok(userService.getUserProfile(email));
+    }
 
-	@GetMapping("/api/users")
-	public ResponseEntity<List<UserDTO>> getUsers() throws UserException {
-		List<User> users = userService.getUsers();
-		return ResponseEntity.ok(UserMapper.toDTOList(users));
-	}
+    // GET by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    // GET all (pagination)
+    @GetMapping
+    public ResponseEntity<Page<UserDTO>> getUsers(Pageable pageable) {
+        return ResponseEntity.ok(userService.getUsers(pageable));
+    }
 }

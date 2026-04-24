@@ -1,9 +1,11 @@
 package com.triquang.exception;
 
-public class UserException extends Exception {
+import com.triquang.enums.ErrorCode;
+
+public class UserException extends BaseException {
     private static final long serialVersionUID = 1L;
 
-	public UserException(String message) {
-        super(message);
+	public UserException(ErrorCode errorCode) {
+        super(errorCode);
     }
 }

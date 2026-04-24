@@ -1,17 +1,15 @@
 package com.triquang.controller;
 
-import jakarta.validation.Valid;
+import com.triquang.payload.request.AirportRequest;
+import com.triquang.payload.response.AirportResponse;
+import com.triquang.payload.response.ApiResponse;
+import com.triquang.service.AirportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.triquang.exception.AirportException;
-import com.triquang.exception.CityException;
-import com.triquang.payload.request.AirportRequest;
-import com.triquang.payload.response.AirportResponse;
-import com.triquang.payload.response.ApiResponse;
-import com.triquang.service.AirportService;
+import jakarta.validation.Valid;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,47 +21,96 @@ public class AirportController {
 
     private final AirportService airportService;
 
+    // =========================
+    // CREATE
+    // =========================
     @PostMapping
-    public ResponseEntity<AirportResponse> createAirport(@Valid @RequestBody AirportRequest request)
-            throws AirportException, CityException {
-        return ResponseEntity.status(HttpStatus.CREATED).body(airportService.createAirport(request));
+    public ResponseEntity<ApiResponse<AirportResponse>> createAirport(
+            @Valid @RequestBody AirportRequest request) {
+
+        AirportResponse response = airportService.createAirport(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, null));
     }
 
+    // =========================
+    // BULK CREATE
+    // =========================
     @PostMapping("/bulk")
-    public ResponseEntity<List<AirportResponse>> createBulkAirports(
-            @Valid @RequestBody List<AirportRequest> requests)
-            throws AirportException, CityException {
-        return ResponseEntity.status(HttpStatus.CREATED).body(airportService.createBulkAirports(requests));
+    public ResponseEntity<ApiResponse<List<AirportResponse>>> createBulkAirports(
+            @Valid @RequestBody List<AirportRequest> requests) {
+
+        List<AirportResponse> response = airportService.createBulkAirports(requests);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, null));
     }
 
+    // =========================
+    // GET BY ID
+    // =========================
     @GetMapping("/{id}")
-    public ResponseEntity<AirportResponse> getAirportById(@PathVariable Long id) throws AirportException {
-        return ResponseEntity.ok(airportService.getAirportById(id));
+    public ResponseEntity<ApiResponse<AirportResponse>> getAirportById(@PathVariable Long id) {
+
+        AirportResponse response = airportService.getAirportById(id);
+
+        return ResponseEntity.ok(ApiResponse.success(response, null));
     }
 
-
+    // =========================
+    // GET ALL
+    // =========================
     @GetMapping
-    public ResponseEntity<List<AirportResponse>> getAllAirports() {
-        return ResponseEntity.ok(airportService.getAllAirports());
+    public ResponseEntity<ApiResponse<List<AirportResponse>>> getAllAirports() {
+
+        List<AirportResponse> response = airportService.getAllAirports();
+
+        return ResponseEntity.ok(ApiResponse.success(response, null));
     }
 
+    // =========================
+    // GET BY CITY
+    // =========================
     @GetMapping("/city/{cityId}")
-    public ResponseEntity<List<AirportResponse>> getAirportsByCityId(@PathVariable Long cityId) {
-        return ResponseEntity.ok(airportService.getAirportsByCityId(cityId));
+    public ResponseEntity<ApiResponse<List<AirportResponse>>> getAirportsByCityId(
+            @PathVariable Long cityId) {
+
+        List<AirportResponse> response = airportService.getAirportsByCityId(cityId);
+
+        return ResponseEntity.ok(ApiResponse.success(response, null));
     }
 
+    // =========================
+    // UPDATE
+    // =========================
     @PutMapping("/{id}")
-    public ResponseEntity<AirportResponse> updateAirport(
+    public ResponseEntity<ApiResponse<AirportResponse>> updateAirport(
             @PathVariable Long id,
-            @Valid @RequestBody AirportRequest request) throws AirportException, CityException {
-        return ResponseEntity.ok(airportService.updateAirport(id, request));
+            @Valid @RequestBody AirportRequest request) {
+
+        AirportResponse response = airportService.updateAirport(id, request);
+
+        return ResponseEntity.ok(ApiResponse.success(response, null));
     }
 
-	@DeleteMapping("/{id}")
-	public ResponseEntity<ApiResponse<Void>> deleteAirport(@PathVariable Long id) throws AirportException {
+    // =========================
+    // DELETE
+    // =========================
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteAirport(@PathVariable Long id) {
 
-		airportService.deleteAirport(id);
+        airportService.deleteAirport(id);
 
-		return ResponseEntity.ok(new ApiResponse<>(200, true, "Airport deleted successfully", null, Instant.now()));
-	}
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        200,
+                        null,
+                        "Airport deleted successfully",
+                        null,
+                        null,
+                        Instant.now()
+                )
+        );
+    }
 }

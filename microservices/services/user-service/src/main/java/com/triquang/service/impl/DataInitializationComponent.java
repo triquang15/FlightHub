@@ -22,14 +22,15 @@ public class DataInitializationComponent implements CommandLineRunner {
 	}
 
 	private void initializeAdminUser() {
-		String adminUsername = "flight_hub@gmail.com";
+		String adminUsername = "admin@gmail.com";
 		if (userRepository.findByEmail(adminUsername) == null) {
 			User adminUser = new User();
 
 			adminUser.setPassword(passwordEncoder.encode("admin123"));
-			adminUser.setFullName("zosh");
+			adminUser.setFullName("Admin System");
 			adminUser.setEmail(adminUsername);
 			adminUser.setRole(UserRole.ROLE_SYSTEM_ADMIN);
+			adminUser.setPhone("0123456789");
 
 			User admin = userRepository.save(adminUser);
 			System.out.println("Admin user created: " + admin.getEmail());

@@ -1,6 +1,7 @@
 package com.triquang.service.impl;
 
-import lombok.RequiredArgsConstructor;
+import java.util.Collections;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,8 +12,7 @@ import org.springframework.stereotype.Service;
 import com.triquang.model.User;
 import com.triquang.repository.UserRepository;
 
-import java.util.Collection;
-import java.util.Collections;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Custom implementation of UserDetailsService to load user details from the database.
@@ -28,18 +28,18 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email);
 
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found with email: " + email);
-        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found with email: " + email));
 
-        GrantedAuthority authority = new SimpleGrantedAuthority(user.getRole().toString());
-        Collection<GrantedAuthority> authorities = Collections
-                .singletonList(authority);
+        GrantedAuthority authority =
+                new SimpleGrantedAuthority(user.getRole().name());
 
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(), user.getPassword(), authorities
+                user.getEmail(),
+                user.getPassword(),
+                Collections.singletonList(authority)
         );
     }
 }
