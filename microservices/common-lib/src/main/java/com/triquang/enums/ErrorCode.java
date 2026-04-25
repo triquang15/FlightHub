@@ -43,10 +43,17 @@ public enum ErrorCode {
     INVALID_TIMEZONE_OFFSET("CITY_005", "Invalid timezone offset format (expected ±HH:MM)", HttpStatus.BAD_REQUEST),
 
     // =========================
-    // PAYMENT
+    // AIRLINE
     // =========================
-    PAYMENT_FAILED("PAY_001", "Payment failed", HttpStatus.PAYMENT_REQUIRED);
-
+    AIRLINE_NOT_FOUND("ALN_001", "Airline not found", HttpStatus.NOT_FOUND),
+    
+    // =========================
+    // AIRCRAFT
+    // =========================
+    AIRCRAFT_NOT_FOUND("ACF_001", "Aircraft not found", HttpStatus.NOT_FOUND),
+    AIRCRAFT_ALREADY_EXISTS("ACF_002", "Aircraft already exists", HttpStatus.BAD_REQUEST),
+    INVALID_AIRCRAFT_DATA("ACF_003", "Invalid aircraft data", HttpStatus.BAD_REQUEST);
+	
     private final String code;
     private final String message;
     private final HttpStatus status;

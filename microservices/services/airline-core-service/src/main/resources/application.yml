@@ -1,12 +1,12 @@
 server:
-  port: 8082
+  port: 8083
 
 spring:
   application:
-    name: user-service
+    name: airline-core-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/flight_hub_user
+    url: jdbc:postgresql://localhost:5432/flight_hub_airline
     username: postgres
     password: 12345678
     driver-class-name: org.postgresql.Driver
