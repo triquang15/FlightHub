@@ -676,6 +676,246 @@
         }
       ],
       "id": "7a6a16f6-ad13-442d-92be-8af027037334"
+    },
+    {
+      "name": "API AIRLINE",
+      "item": [
+        {
+          "name": "1. CREATE AIRLINE",
+          "id": "7c73afe1-cad3-4623-9c61-c7c0b5e7931a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "4",
+                "type": "text",
+                "uuid": "7042d63b-5f0c-4ca2-9f11-e56b232cef59"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"EK\",\n  \"icaoCode\": \"UAE\",\n  \"name\": \"Emirates\",\n  \"alias\": \"Emirates Airline\",\n  \"country\": \"UAE\",\n  \"logoUrl\": \"https://logo.emirates.com/ek.png\",\n  \"website\": \"https://www.emirates.com\",\n  \"status\": \"ACTIVE\",\n  \"alliance\": null,\n  \"headquartersCityId\": 4,\n  \"supportEmail\": \"support@emirates.com\",\n  \"supportPhone\": \"+971 600 555555\",\n  \"supportHours\": \"24/7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/airlines",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. GET AIRLINE BY OWNER",
+          "id": "2c715b3c-160d-405a-bd5c-6e001a01b7f1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "4",
+                "type": "text",
+                "uuid": "67120508-01c2-4b12-b90c-b8a073b47730"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/my",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "my"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. GET AIRLINE BY ID",
+          "id": "f869129c-0a00-4cd6-8f25-c46e1ef31603",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "",
+                "value": "",
+                "type": "text",
+                "uuid": "67120508-01c2-4b12-b90c-b8a073b47730"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. GET ALL AIRLINES (PAGINATION)",
+          "id": "ab505f32-37ea-4142-b1f8-7ccd12c930b1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "",
+                "value": "",
+                "type": "text",
+                "uuid": "67120508-01c2-4b12-b90c-b8a073b47730"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines?page=0&size=10",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. DROPDOWN (ACTIVE AIRLINES)",
+          "id": "4d9cb789-56fe-491f-bb7a-8d9d3a190353",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "",
+                "value": "",
+                "type": "text",
+                "uuid": "67120508-01c2-4b12-b90c-b8a073b47730"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/dropdown",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "dropdown"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. UPDATE AIRLINE",
+          "id": "a8ddc2d0-93c2-43f7-b819-ced3c812173d",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "4",
+                "type": "text",
+                "uuid": "7042d63b-5f0c-4ca2-9f11-e56b232cef59"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iataCode\": \"QR\",\n  \"icaoCode\": \"QTR\",\n  \"name\": \"Qatar Airways Update\",\n  \"alias\": \"Qatar\",\n  \"country\": \"Qatar\",\n  \"logoUrl\": \"https://logo.clearbit.com/qatarairways.com\",\n  \"website\": \"https://www.qatarairways.com\",\n  \"status\": \"ACTIVE\",\n  \"alliance\": \"Oneworld\",\n  \"headquartersCityId\": 4,\n  \"supportEmail\": \"support@qatarairways.com\",\n  \"supportPhone\": \"+974-4023-0000\",\n  \"supportHours\": \"24/7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/8",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "8"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. DELETE AIRLINE",
+          "id": "52163652-4ab0-45c4-8ec2-b6b392ce805a",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "4",
+                "type": "text",
+                "uuid": "e0ae6964-6c2a-4fa9-b8ff-8a8840fd4f48"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/8",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "8"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "bcc2ac87-840e-4001-8f29-aa36c7952c5b"
+    },
+    {
+      "name": "New Folder",
+      "item": [],
+      "id": "8c9eff44-adaa-4a24-ad96-aaa0f4938138"
     }
   ]
 }

@@ -50,9 +50,10 @@ public enum ErrorCode {
     // =========================
     // AIRCRAFT
     // =========================
-    AIRCRAFT_NOT_FOUND("ACF_001", "Aircraft not found", HttpStatus.NOT_FOUND),
-    AIRCRAFT_ALREADY_EXISTS("ACF_002", "Aircraft already exists", HttpStatus.BAD_REQUEST),
-    INVALID_AIRCRAFT_DATA("ACF_003", "Invalid aircraft data", HttpStatus.BAD_REQUEST);
+    AIRCRAFT_NOT_FOUND("AIR_001", "Aircraft not found", HttpStatus.NOT_FOUND),
+    AIRCRAFT_ALREADY_EXISTS("AIR_002", "Aircraft already exists", HttpStatus.BAD_REQUEST),
+    INVALID_AIRCRAFT_DATA("AIR_003", "Invalid aircraft data", HttpStatus.BAD_REQUEST),
+    FORBIDDEN("AUTH_003", "Access denied", HttpStatus.FORBIDDEN);
 	
     private final String code;
     private final String message;

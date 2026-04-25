@@ -1,19 +1,18 @@
 package com.triquang.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.triquang.payload.request.LoginRequest;
 import com.triquang.payload.request.RefreshTokenRequest;
 import com.triquang.payload.request.SignupRequest;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.AuthResponse;
 import com.triquang.service.AuthService;
+import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -22,18 +21,24 @@ public class AuthController {
 
 	private final AuthService authService;
 
+	// ---------- SIGNUP ----------
 	@PostMapping("/signup")
-	public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest req) {
-	    return ResponseEntity.ok(authService.signup(req));
+	public ResponseEntity<ApiResponse<AuthResponse>> signup(@Valid @RequestBody SignupRequest req) {
+
+		return ResponseUtil.created(authService.signup(req));
 	}
 
+	// ---------- LOGIN ----------
 	@PostMapping("/login")
-	public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest req) {
-	    return ResponseEntity.ok(authService.login(req.getEmail(), req.getPassword()));
+	public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest req) {
+
+		return ResponseUtil.ok(authService.login(req.getEmail(), req.getPassword()));
 	}
 
+	// ---------- REFRESH ----------
 	@PostMapping("/refresh")
-	public ResponseEntity<AuthResponse> refresh(@RequestBody @Valid RefreshTokenRequest req) {
-	    return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
+	public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest req) {
+
+		return ResponseUtil.ok(authService.refreshToken(req.getRefreshToken()));
 	}
 }

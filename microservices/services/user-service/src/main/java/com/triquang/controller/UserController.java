@@ -1,8 +1,12 @@
 package com.triquang.controller;
 
 import com.triquang.dto.UserDTO;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.UserService;
+import com.triquang.utils.ResponseUtil;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -13,25 +17,26 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+	private final UserService userService;
 
-    // GET current user 
-    @GetMapping("/me")
-    public ResponseEntity<UserDTO> getMyProfile(
-            @RequestHeader("X-User-Email") String email) {
+	// ---------- GET MY PROFILE ----------
+	@GetMapping("/me")
+	public ResponseEntity<ApiResponse<UserDTO>> getMyProfile(@RequestHeader("X-User-Email") String email) {
 
-        return ResponseEntity.ok(userService.getUserProfile(email));
-    }
+		return ResponseUtil.ok(userService.getUserProfile(email));
+	}
 
-    // GET by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserById(id));
-    }
+	// ---------- GET BY ID ----------
+	@GetMapping("/{id}")
+	public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
 
-    // GET all (pagination)
-    @GetMapping
-    public ResponseEntity<Page<UserDTO>> getUsers(Pageable pageable) {
-        return ResponseEntity.ok(userService.getUsers(pageable));
-    }
+		return ResponseUtil.ok(userService.getUserById(id));
+	}
+
+	// ---------- GET ALL ----------
+	@GetMapping
+	public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
+
+		return ResponseUtil.ok(userService.getUsers(pageable));
+	}
 }

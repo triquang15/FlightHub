@@ -15,5 +15,5 @@ public interface AircraftService {
 
 	AircraftResponse updateAircraft(Long id, AircraftRequest request, Long ownerId);
 
-	void deleteAircraft(Long id);
+	void deleteAircraft(Long id, Long ownerId);
 }

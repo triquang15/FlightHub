@@ -2,6 +2,8 @@ package com.triquang.service.impl;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class AircraftServiceImpl implements AircraftService {
 
     private final AircraftRepository aircraftRepository;
@@ -43,13 +46,15 @@ public class AircraftServiceImpl implements AircraftService {
         Airline airline = airlineRepository.findByOwnerId(ownerId)
                 .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
 
-        Aircraft aircraft = AircraftMapper.toEntity(request, airline);
-
-        if (aircraftRepository.existsByCode(aircraft.getCode())) {
+        if (aircraftRepository.existsByCode(request.getCode())) {
             throw new AircraftException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
         }
 
+        Aircraft aircraft = AircraftMapper.toEntity(request, airline);
+
         validateAircraftData(aircraft);
+
+        log.info("Create aircraft code={} owner={}", aircraft.getCode(), ownerId);
 
         return AircraftMapper.toResponse(aircraftRepository.save(aircraft));
     }
@@ -88,6 +93,11 @@ public class AircraftServiceImpl implements AircraftService {
         Aircraft aircraft = aircraftRepository.findById(id)
                 .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
 
+        // SECURITY CHECK
+        if (!aircraft.getAirline().getId().equals(airline.getId())) {
+            throw new AircraftException(ErrorCode.FORBIDDEN);
+        }
+
         String oldCode = aircraft.getCode();
 
         AircraftMapper.updateEntity(aircraft, request, airline);
@@ -99,16 +109,28 @@ public class AircraftServiceImpl implements AircraftService {
 
         validateAircraftData(aircraft);
 
+        log.info("Update aircraft id={} owner={}", id, ownerId);
+
         return AircraftMapper.toResponse(aircraftRepository.save(aircraft));
     }
 
     // ---------- DELETE ----------
     @Override
     @CacheEvict(cacheNames = "aircrafts", key = "#id")
-    public void deleteAircraft(Long id) {
+    public void deleteAircraft(Long id, Long ownerId) {
+
+        Airline airline = airlineRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
 
         Aircraft aircraft = aircraftRepository.findById(id)
                 .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
+
+        // SECURITY CHECK
+        if (!aircraft.getAirline().getId().equals(airline.getId())) {
+            throw new AircraftException(ErrorCode.FORBIDDEN);
+        }
+
+        log.warn("Delete aircraft id={} owner={}", id, ownerId);
 
         aircraftRepository.delete(aircraft);
     }
@@ -121,10 +143,10 @@ public class AircraftServiceImpl implements AircraftService {
         }
 
         int totalSeats =
-                (aircraft.getEconomySeats() != null ? aircraft.getEconomySeats() : 0) +
-                (aircraft.getPremiumEconomySeats() != null ? aircraft.getPremiumEconomySeats() : 0) +
-                (aircraft.getBusinessSeats() != null ? aircraft.getBusinessSeats() : 0) +
-                (aircraft.getFirstClassSeats() != null ? aircraft.getFirstClassSeats() : 0);
+                safe(aircraft.getEconomySeats()) +
+                safe(aircraft.getPremiumEconomySeats()) +
+                safe(aircraft.getBusinessSeats()) +
+                safe(aircraft.getFirstClassSeats());
 
         if (totalSeats > aircraft.getSeatingCapacity()) {
             throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
@@ -137,5 +159,9 @@ public class AircraftServiceImpl implements AircraftService {
                 || aircraft.getYearOfManufacture() > currentYear) {
             throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
+    }
+
+    private int safe(Integer val) {
+        return val == null ? 0 : val;
     }
 }

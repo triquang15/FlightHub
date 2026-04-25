@@ -1,116 +1,97 @@
 package com.triquang.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.triquang.payload.request.AirportRequest;
 import com.triquang.payload.response.AirportResponse;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AirportService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
-
-import java.time.Instant;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/airports")
 @RequiredArgsConstructor
 public class AirportController {
 
-    private final AirportService airportService;
+	private final AirportService airportService;
 
-    // =========================
-    // CREATE
-    // =========================
-    @PostMapping
-    public ResponseEntity<ApiResponse<AirportResponse>> createAirport(
-            @Valid @RequestBody AirportRequest request) {
+	// =========================
+	// CREATE
+	// =========================
+	@PostMapping
+	public ResponseEntity<ApiResponse<AirportResponse>> createAirport(@Valid @RequestBody AirportRequest request) {
 
-        AirportResponse response = airportService.createAirport(request);
+		return ResponseUtil.created(airportService.createAirport(request));
+	}
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, null));
-    }
+	// =========================
+	// BULK CREATE
+	// =========================
+	@PostMapping("/bulk")
+	public ResponseEntity<ApiResponse<List<AirportResponse>>> createBulkAirports(
+			@Valid @RequestBody List<AirportRequest> requests) {
 
-    // =========================
-    // BULK CREATE
-    // =========================
-    @PostMapping("/bulk")
-    public ResponseEntity<ApiResponse<List<AirportResponse>>> createBulkAirports(
-            @Valid @RequestBody List<AirportRequest> requests) {
+		return ResponseUtil.created(airportService.createBulkAirports(requests));
+	}
 
-        List<AirportResponse> response = airportService.createBulkAirports(requests);
+	// =========================
+	// GET BY ID
+	// =========================
+	@GetMapping("/{id}")
+	public ResponseEntity<ApiResponse<AirportResponse>> getAirportById(@PathVariable Long id) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, null));
-    }
+		return ResponseUtil.ok(airportService.getAirportById(id));
+	}
 
-    // =========================
-    // GET BY ID
-    // =========================
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<AirportResponse>> getAirportById(@PathVariable Long id) {
+	// =========================
+	// GET ALL
+	// =========================
+	@GetMapping
+	public ResponseEntity<ApiResponse<List<AirportResponse>>> getAllAirports() {
 
-        AirportResponse response = airportService.getAirportById(id);
+		return ResponseUtil.ok(airportService.getAllAirports());
+	}
 
-        return ResponseEntity.ok(ApiResponse.success(response, null));
-    }
+	// =========================
+	// GET BY CITY
+	// =========================
+	@GetMapping("/city/{cityId}")
+	public ResponseEntity<ApiResponse<List<AirportResponse>>> getAirportsByCityId(@PathVariable Long cityId) {
 
-    // =========================
-    // GET ALL
-    // =========================
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<AirportResponse>>> getAllAirports() {
+		return ResponseUtil.ok(airportService.getAirportsByCityId(cityId));
+	}
 
-        List<AirportResponse> response = airportService.getAllAirports();
+	// =========================
+	// UPDATE
+	// =========================
+	@PutMapping("/{id}")
+	public ResponseEntity<ApiResponse<AirportResponse>> updateAirport(@PathVariable Long id,
+			@Valid @RequestBody AirportRequest request) {
 
-        return ResponseEntity.ok(ApiResponse.success(response, null));
-    }
+		return ResponseUtil.ok(airportService.updateAirport(id, request));
+	}
 
-    // =========================
-    // GET BY CITY
-    // =========================
-    @GetMapping("/city/{cityId}")
-    public ResponseEntity<ApiResponse<List<AirportResponse>>> getAirportsByCityId(
-            @PathVariable Long cityId) {
+	// =========================
+	// DELETE
+	// =========================
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteAirport(@PathVariable Long id) {
 
-        List<AirportResponse> response = airportService.getAirportsByCityId(cityId);
+	    airportService.deleteAirport(id);
 
-        return ResponseEntity.ok(ApiResponse.success(response, null));
-    }
-
-    // =========================
-    // UPDATE
-    // =========================
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AirportResponse>> updateAirport(
-            @PathVariable Long id,
-            @Valid @RequestBody AirportRequest request) {
-
-        AirportResponse response = airportService.updateAirport(id, request);
-
-        return ResponseEntity.ok(ApiResponse.success(response, null));
-    }
-
-    // =========================
-    // DELETE
-    // =========================
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteAirport(@PathVariable Long id) {
-
-        airportService.deleteAirport(id);
-
-        return ResponseEntity.ok(
-                new ApiResponse<>(
-                        200,
-                        null,
-                        "Airport deleted successfully",
-                        null,
-                        null,
-                        Instant.now()
-                )
-        );
-    }
+	    return ResponseUtil.noContent();
+	}
 }

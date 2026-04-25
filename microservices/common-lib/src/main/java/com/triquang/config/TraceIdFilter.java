@@ -3,48 +3,52 @@ package com.triquang.config;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * TraceId filter for request tracking
+ * Filter to generate and propagate a trace ID for each request. This allows for
+ * better logging and tracing across microservices.
+ * 
+ * @author Tri Quang
  */
+
+@Slf4j
 @Component
 public class TraceIdFilter implements Filter {
 
-    private static final Logger log = LoggerFactory.getLogger(TraceIdFilter.class);
+	public static final String TRACE_ID = "traceId";
+	public static final String HEADER_TRACE_ID = "X-Trace-Id";
 
-    public static final String TRACE_ID = "traceId";
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+			throws IOException, ServletException {
 
-    @Override
-    public void doFilter(ServletRequest request,
-                         ServletResponse response,
-                         FilterChain chain)
-            throws IOException, ServletException {
+		HttpServletRequest req = (HttpServletRequest) request;
+		HttpServletResponse res = (HttpServletResponse) response;
 
-        String traceId = UUID.randomUUID().toString();
+		String traceId = req.getHeader(HEADER_TRACE_ID);
 
-        MDC.put(TRACE_ID, traceId);
+		if (traceId == null || traceId.isBlank()) {
+			traceId = UUID.randomUUID().toString();
+		}
 
-        // LOG WHEN FILTER STARTS
-        log.info("=== TraceIdFilter START | traceId={} ===", traceId);
+		MDC.put(TRACE_ID, traceId);
+		res.setHeader(HEADER_TRACE_ID, traceId);
 
-        try {
-            chain.doFilter(request, response);
-        } finally {
+		log.info("Incoming request {} {} | traceId={}", req.getMethod(), req.getRequestURI(), traceId);
 
-            // LOG WHEN FILTER ENDS
-            log.info("=== TraceIdFilter END | traceId={} ===", traceId);
+		try {
+			chain.doFilter(request, response);
+		} finally {
+			log.info("Completed request {} {} | traceId={}", req.getMethod(), req.getRequestURI(), traceId);
 
-            MDC.clear();
-        }
-    }
+			MDC.remove(TRACE_ID);
+		}
+	}
 }

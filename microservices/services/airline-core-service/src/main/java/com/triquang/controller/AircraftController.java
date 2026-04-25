@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.*;
 
 import com.triquang.payload.request.AircraftRequest;
 import com.triquang.payload.response.AircraftResponse;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AircraftService;
+import com.triquang.utils.ResponseUtil;
+
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -17,31 +21,44 @@ public class AircraftController {
 
 	private final AircraftService aircraftService;
 
+	// ---------- CREATE ----------
 	@PostMapping
-	public ResponseEntity<AircraftResponse> createAircraft(@RequestBody AircraftRequest request,
+	public ResponseEntity<ApiResponse<AircraftResponse>> createAircraft(@Valid @RequestBody AircraftRequest request,
 			@RequestHeader("X-User-Id") Long userId) {
-		return ResponseEntity.ok(aircraftService.createAircraft(request, userId));
+
+		return ResponseUtil.created(aircraftService.createAircraft(request, userId));
 	}
 
+	// ---------- GET BY ID ----------
 	@GetMapping("/{id}")
-	public ResponseEntity<AircraftResponse> getAircraftById(@PathVariable Long id) {
-		return ResponseEntity.ok(aircraftService.getAircraftById(id));
+	public ResponseEntity<ApiResponse<AircraftResponse>> getAircraftById(@PathVariable Long id) {
+
+		return ResponseUtil.ok(aircraftService.getAircraftById(id));
 	}
 
+	// ---------- GET MY AIRCRAFTS ----------
 	@GetMapping
-	public ResponseEntity<List<AircraftResponse>> listAllAircrafts(@RequestHeader("X-User-Id") Long userId) {
-		return ResponseEntity.ok(aircraftService.listAllAircraftsByOwner(userId));
-	}
-
-	@PutMapping("/{id}")
-	public ResponseEntity<AircraftResponse> updateAircraft(@PathVariable Long id, @RequestBody AircraftRequest request,
+	public ResponseEntity<ApiResponse<List<AircraftResponse>>> listMyAircrafts(
 			@RequestHeader("X-User-Id") Long userId) {
-		return ResponseEntity.ok(aircraftService.updateAircraft(id, request, userId));
+
+		return ResponseUtil.ok(aircraftService.listAllAircraftsByOwner(userId));
 	}
 
+	// ---------- UPDATE ----------
+	@PutMapping("/{id}")
+	public ResponseEntity<ApiResponse<AircraftResponse>> updateAircraft(@PathVariable Long id,
+			@Valid @RequestBody AircraftRequest request, @RequestHeader("X-User-Id") Long userId) {
+
+		return ResponseUtil.ok(aircraftService.updateAircraft(id, request, userId));
+	}
+
+	// ---------- DELETE ----------
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteAircraft(@PathVariable Long id) {
-		aircraftService.deleteAircraft(id);
-		return ResponseEntity.noContent().build();
+	public ResponseEntity<ApiResponse<Void>> deleteAircraft(@PathVariable Long id,
+			@RequestHeader("X-User-Id") Long userId) {
+
+		aircraftService.deleteAircraft(id, userId);
+
+		return ResponseUtil.ok(null);
 	}
 }

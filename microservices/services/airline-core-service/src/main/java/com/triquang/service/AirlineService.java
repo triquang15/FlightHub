@@ -15,18 +15,18 @@ public interface AirlineService {
 	// ----- CRUD -----
 	AirlineResponse createAirline(AirlineRequest request, Long ownerId);
 
-	AirlineResponse getAirlineByOwner(Long ownerId);
-
 	AirlineResponse getAirlineById(Long id);
 
 	Page<AirlineResponse> getAllAirlines(Pageable pageable);
-
-	AirlineResponse updateAirline(AirlineRequest request, Long ownerId);
-
-	void deleteAirline(Long id, Long ownerId);
 
 	AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status);
 
 	// ----- Dropdown -----
 	List<AirlineDropdownItem> getAirlinesForDropdown();
+
+	List<AirlineResponse> getAirlinesByOwner(Long ownerId);
+
+	AirlineResponse updateAirline(Long id, AirlineRequest request, Long ownerId);
+
+	void deleteAirline(Long id, Long ownerId);
 }

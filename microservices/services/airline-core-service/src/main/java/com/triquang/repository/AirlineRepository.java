@@ -1,5 +1,9 @@
 package com.triquang.repository;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,13 +12,9 @@ import org.springframework.data.jpa.repository.Query;
 import com.triquang.enums.AirlineStatus;
 import com.triquang.model.Airline;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-
 public interface AirlineRepository extends JpaRepository<Airline, Long> {
 
-    Optional<Airline> findByOwnerId(Long ownerId);
+	List<Airline> findAllByOwnerId(Long ownerId);
 
     Optional<Airline> findByIataCode(String code);
 
@@ -42,4 +42,6 @@ public interface AirlineRepository extends JpaRepository<Airline, Long> {
 
     /** Used for flight search: find all airlines belonging to a given alliance. */
     List<Airline> findAllByAllianceIgnoreCase(String alliance);
+
+    Optional<Airline> findByOwnerId(Long ownerId);
 }
