@@ -3,6 +3,7 @@ package com.triquang.payload.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -24,17 +25,17 @@ public class AircraftRequest {
     @NotNull(message = "Seating capacity is required")
     @Positive(message = "Seating capacity must be positive")
     private Integer seatingCapacity;
-
-    @Positive(message = "Economy seats must be positive")
+    
+    @PositiveOrZero(message = "Economy seats must be >= 0")
     private Integer economySeats;
 
-    @Positive(message = "Premium economy seats must be positive")
+    @PositiveOrZero(message = "Premium economy seats must be >= 0")
     private Integer premiumEconomySeats;
 
-    @Positive(message = "Business seats must be positive")
+    @PositiveOrZero(message = "Business seats must be >= 0")
     private Integer businessSeats;
 
-    @Positive(message = "First class seats must be positive")
+    @PositiveOrZero(message = "First class seats must be >= 0")
     private Integer firstClassSeats;
 
     @Positive(message = "Range must be positive")

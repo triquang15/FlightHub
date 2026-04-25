@@ -6,10 +6,17 @@ spring:
     name: airline-core-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/flight_hub_airline
-    username: postgres
-    password: 12345678
+    # NEON POSTGRESQL (PRODUCTION / CLOUD)
+    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech/flight_hub_airline?sslmode=require
+    username: neondb_owner
+    password: npg_FDqZpbe3Oml7
     driver-class-name: org.postgresql.Driver
+
+    # LOCAL POSTGRES (DEV)
+    # url: jdbc:postgresql://localhost:5432/flight_hub_airline
+    # username: postgres
+    # password: 12345678
+    # driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:

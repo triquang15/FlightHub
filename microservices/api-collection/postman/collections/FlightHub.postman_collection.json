@@ -507,7 +507,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"triquang@gmail.com\",\n  \"password\": \"123456\",\n  \"fullName\": \"Normal User\",\n  \"phone\": \"0987654321\"\n}",
+              "raw": "{\n  \"email\": \"david.wilson@gmail.com\",\n  \"password\": \"123456\",\n  \"fullName\": \"David Wilson\",\n  \"phone\": \"0905556677\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -688,14 +688,14 @@
             "header": [
               {
                 "key": "X-User-Id",
-                "value": "4",
+                "value": "1",
                 "type": "text",
                 "uuid": "7042d63b-5f0c-4ca2-9f11-e56b232cef59"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"iataCode\": \"EK\",\n  \"icaoCode\": \"UAE\",\n  \"name\": \"Emirates\",\n  \"alias\": \"Emirates Airline\",\n  \"country\": \"UAE\",\n  \"logoUrl\": \"https://logo.emirates.com/ek.png\",\n  \"website\": \"https://www.emirates.com\",\n  \"status\": \"ACTIVE\",\n  \"alliance\": null,\n  \"headquartersCityId\": 4,\n  \"supportEmail\": \"support@emirates.com\",\n  \"supportPhone\": \"+971 600 555555\",\n  \"supportHours\": \"24/7\"\n}",
+              "raw": "{\n  \"iataCode\": \"JL\",\n  \"icaoCode\": \"JAL\",\n  \"name\": \"Japan Airlines\",\n  \"alias\": \"JAL\",\n  \"country\": \"Japan\",\n  \"logoUrl\": \"https://logo.clearbit.com/jal.co.jp\",\n  \"website\": \"https://www.jal.co.jp\",\n  \"status\": \"ACTIVE\",\n  \"alliance\": \"Oneworld\",\n  \"headquartersCityId\": 8,\n  \"supportEmail\": \"support@jal.com\",\n  \"supportPhone\": \"+81-3-5460-1111\",\n  \"supportHours\": \"24/7\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -908,13 +908,237 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "8. Approve Airline",
+          "id": "3bcbb8e3-7cce-443b-96e0-f1354024ed25",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/1/approve",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "1",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Suspend Airline",
+          "id": "a262c5e6-09fa-4092-982d-2916ea2a72ea",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/1/suspend",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "1",
+                "suspend"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10. Ban Airline",
+          "id": "178fa088-482a-440b-8361-cd2dc12f8580",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/airlines/2/ban",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "airlines",
+                "2",
+                "ban"
+              ]
+            }
+          },
+          "response": []
         }
       ],
       "id": "bcc2ac87-840e-4001-8f29-aa36c7952c5b"
     },
     {
-      "name": "New Folder",
-      "item": [],
+      "name": "API AIRCRAFT",
+      "item": [
+        {
+          "name": "1. CREATE AIRCRAFT",
+          "id": "0aafee89-6a56-42e4-af35-d75c9baadffe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "1",
+                "type": "text",
+                "uuid": "aab02f57-ccac-4408-a11c-c9aae87d5093"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"A320-001\",\n  \"model\": \"Airbus A320\",\n  \"manufacturer\": \"Airbus\",\n  \"seatingCapacity\": 180,\n  \"economySeats\": 150,\n  \"premiumEconomySeats\": 20,\n  \"businessSeats\": 10,\n  \"firstClassSeats\": 0,\n  \"rangeKm\": 6100,\n  \"cruisingSpeedKmh\": 828,\n  \"maxAltitudeFt\": 39000,\n  \"yearOfManufacture\": 2020,\n  \"registrationDate\": \"2022-01-01\",\n  \"nextMaintenanceDate\": \"2026-06-01\",\n  \"status\": \"ACTIVE\",\n  \"isAvailable\": true,\n  \"currentAirportId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/aircrafts",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "aircrafts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. GET AIRCRAFT BY ID",
+          "id": "5fd9da5e-080c-4a6c-a44d-e6f73007a69d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/aircrafts/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "aircrafts",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. LIST MY AIRCRAFTS (BY OWNER)",
+          "id": "ae7d02be-2761-4795-bdaa-5c15c87f3411",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "1",
+                "type": "text",
+                "uuid": "cbb50bdb-bef3-43c3-ba39-5f820b3921a1"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/aircrafts",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "aircrafts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. UPDATE AIRCRAFT",
+          "id": "503180bd-4202-487a-97a7-3898ea35ccca",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "1",
+                "type": "text",
+                "uuid": "29ee7775-ce42-4352-8b18-2c10c8218275"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"A320-001\",\n  \"model\": \"Airbus A320\",\n  \"manufacturer\": \"Airbus update\",\n  \"seatingCapacity\": 180,\n  \"economySeats\": 150,\n  \"premiumEconomySeats\": 20,\n  \"businessSeats\": 10,\n  \"firstClassSeats\": 0,\n  \"rangeKm\": 6100,\n  \"cruisingSpeedKmh\": 828,\n  \"maxAltitudeFt\": 39000,\n  \"yearOfManufacture\": 2020,\n  \"registrationDate\": \"2022-01-01\",\n  \"nextMaintenanceDate\": \"2026-06-01\",\n  \"status\": \"ACTIVE\",\n  \"isAvailable\": true,\n  \"currentAirportId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/aircrafts/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "aircrafts",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. DELETE AIRCRAFT",
+          "id": "6f245afd-b498-4915-9d31-f48710d01a0c",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "1",
+                "type": "text",
+                "uuid": "12583935-8bbc-45d3-b8da-510bb90e03d4"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/api/aircrafts/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "aircrafts",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
       "id": "8c9eff44-adaa-4a24-ad96-aaa0f4938138"
     }
   ]

@@ -17,7 +17,7 @@ public class JwtProperties {
      * Put in ENV:
      * JWT_SECRET=very-long-random-secret-key-256-bit-minimum
      */
-    private String secret;
+    private String secret = "d8fcdec7fe36737159d6c2648c8b62b97438efb82423e92969d11bcbd44bb072";
 
     /**
      * 15 minutes

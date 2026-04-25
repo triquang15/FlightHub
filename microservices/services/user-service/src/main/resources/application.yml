@@ -6,10 +6,25 @@ spring:
     name: user-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/flight_hub_user
-    username: postgres
-    password: 12345678
+    # =========================
+    # NEON DATABASE (ACTIVE)
+    # =========================
+    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_user?sslmode=require
+    username: neondb_owner
+    password: npg_FDqZpbe3Oml7
     driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+      connection-timeout: 30000
+
+    # =========================
+    # LOCAL DATABASE (DISABLED)
+    # =========================
+    # url: jdbc:postgresql://localhost:5432/flight_hub_user
+    # username: postgres
+    # password: 12345678
 
   jpa:
     hibernate:

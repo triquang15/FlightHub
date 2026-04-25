@@ -43,8 +43,7 @@ public class AircraftServiceImpl implements AircraftService {
     @Override
     public AircraftResponse createAircraft(AircraftRequest request, Long ownerId) {
 
-        Airline airline = airlineRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
+        Airline airline = getAirlineByOwner(ownerId);
 
         if (aircraftRepository.existsByCode(request.getCode())) {
             throw new AircraftException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
@@ -54,9 +53,11 @@ public class AircraftServiceImpl implements AircraftService {
 
         validateAircraftData(aircraft);
 
-        log.info("Create aircraft code={} owner={}", aircraft.getCode(), ownerId);
+        log.info("CREATE aircraft code={} ownerId={}", aircraft.getCode(), ownerId);
 
-        return AircraftMapper.toResponse(aircraftRepository.save(aircraft));
+        return AircraftMapper.toResponse(
+                aircraftRepository.save(aircraft)
+        );
     }
 
     // ---------- READ ----------
@@ -64,8 +65,7 @@ public class AircraftServiceImpl implements AircraftService {
     @Cacheable(cacheNames = "aircrafts", key = "#id")
     public AircraftResponse getAircraftById(Long id) {
 
-        Aircraft aircraft = aircraftRepository.findById(id)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
+        Aircraft aircraft = getAircraft(id);
 
         return AircraftMapper.toResponse(aircraft);
     }
@@ -73,8 +73,7 @@ public class AircraftServiceImpl implements AircraftService {
     @Override
     public List<AircraftResponse> listAllAircraftsByOwner(Long ownerId) {
 
-        Airline airline = airlineRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
+        Airline airline = getAirlineByOwner(ownerId);
 
         return aircraftRepository.findByAirline(airline)
                 .stream()
@@ -84,19 +83,13 @@ public class AircraftServiceImpl implements AircraftService {
 
     // ---------- UPDATE ----------
     @Override
-    @CacheEvict(cacheNames = "aircrafts", key = "#id")
+    @CacheEvict(cacheNames = "aircrafts", allEntries = true)
     public AircraftResponse updateAircraft(Long id, AircraftRequest request, Long ownerId) {
 
-        Airline airline = airlineRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
+        Airline airline = getAirlineByOwner(ownerId);
+        Aircraft aircraft = getAircraft(id);
 
-        Aircraft aircraft = aircraftRepository.findById(id)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
-
-        // SECURITY CHECK
-        if (!aircraft.getAirline().getId().equals(airline.getId())) {
-            throw new AircraftException(ErrorCode.FORBIDDEN);
-        }
+        validateOwnership(aircraft, airline);
 
         String oldCode = aircraft.getCode();
 
@@ -109,33 +102,29 @@ public class AircraftServiceImpl implements AircraftService {
 
         validateAircraftData(aircraft);
 
-        log.info("Update aircraft id={} owner={}", id, ownerId);
+        log.info("UPDATE aircraft id={} ownerId={}", id, ownerId);
 
-        return AircraftMapper.toResponse(aircraftRepository.save(aircraft));
+        return AircraftMapper.toResponse(
+                aircraftRepository.save(aircraft)
+        );
     }
 
     // ---------- DELETE ----------
     @Override
-    @CacheEvict(cacheNames = "aircrafts", key = "#id")
+    @CacheEvict(cacheNames = "aircrafts", allEntries = true)
     public void deleteAircraft(Long id, Long ownerId) {
 
-        Airline airline = airlineRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRLINE_NOT_FOUND));
+        Airline airline = getAirlineByOwner(ownerId);
+        Aircraft aircraft = getAircraft(id);
 
-        Aircraft aircraft = aircraftRepository.findById(id)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
+        validateOwnership(aircraft, airline);
 
-        // SECURITY CHECK
-        if (!aircraft.getAirline().getId().equals(airline.getId())) {
-            throw new AircraftException(ErrorCode.FORBIDDEN);
-        }
-
-        log.warn("Delete aircraft id={} owner={}", id, ownerId);
+        log.warn("DELETE aircraft id={} ownerId={}", id, ownerId);
 
         aircraftRepository.delete(aircraft);
     }
 
-    // ---------- VALIDATION ----------
+    // ---------- BUSINESS VALIDATION ----------
     private void validateAircraftData(Aircraft aircraft) {
 
         if (aircraft.getSeatingCapacity() == null || aircraft.getSeatingCapacity() <= 0) {
@@ -155,9 +144,40 @@ public class AircraftServiceImpl implements AircraftService {
         int currentYear = LocalDate.now().getYear();
 
         if (aircraft.getYearOfManufacture() == null
-                || aircraft.getYearOfManufacture() < 1900
+                || aircraft.getYearOfManufacture() < 1950
                 || aircraft.getYearOfManufacture() > currentYear) {
             throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+        }
+
+        if (aircraft.getRangeKm() != null && aircraft.getRangeKm() <= 0) {
+            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+        }
+
+        if (aircraft.getCruisingSpeedKmh() != null && aircraft.getCruisingSpeedKmh() <= 0) {
+            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+        }
+    }
+
+    // ---------- HELPERS ----------  
+    private Airline getAirlineByOwner(Long ownerId) {
+
+        List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
+
+        if (airlines.isEmpty()) {
+            throw new AircraftException(ErrorCode.AIRLINE_NOT_FOUND);
+        }
+
+        return airlines.get(0);
+    }
+
+    private Aircraft getAircraft(Long id) {
+        return aircraftRepository.findById(id)
+                .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
+    }
+
+    private void validateOwnership(Aircraft aircraft, Airline airline) {
+        if (!aircraft.getAirline().getId().equals(airline.getId())) {
+            throw new AircraftException(ErrorCode.FORBIDDEN);
         }
     }
 
