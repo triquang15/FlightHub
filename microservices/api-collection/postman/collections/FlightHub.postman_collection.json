@@ -538,7 +538,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"triquang@gmail.com\",\n  \"password\": \"123456\"\n}",
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"admin123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -587,6 +587,88 @@
                 "api",
                 "auth",
                 "refresh"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. GET MY PROFILE (/me)",
+          "id": "1821e2de-f176-4912-85b2-129e6efab98e",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Email",
+                "value": "admin@gmail.com",
+                "type": "text",
+                "uuid": "9df421a4-61d3-4b7d-abd4-15eb9194f6ea"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8082/api/users/me",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. GET USER BY ID",
+          "id": "5fbe488c-e171-4cc7-8ae8-d1b264a4460d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/users/4",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "users",
+                "4"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. GET ALL USERS (PAGINATION)",
+          "id": "a38f628c-f8be-42e0-9bc2-890dd6ee60eb",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/users?page=0&size=10",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
               ]
             }
           },
