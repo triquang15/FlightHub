@@ -1,6 +1,7 @@
 package com.triquang.utils;
 
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.triquang.config.TraceIdFilter;
@@ -31,13 +32,14 @@ public class ResponseUtil {
     }
 
     public static <T> ResponseEntity<ApiResponse<T>> created(T data) {
-        return ResponseEntity.status(201).body(
-                ApiResponse.success(data, traceId())
-        );
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(data, traceId()));
     }
 
-    public static ResponseEntity<Void> noContent() {
-        return ResponseEntity.noContent().build();
+    public static ResponseEntity<ApiResponse<Void>> noContent() {
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.noContent(traceId()));
     }
 
     public static ResponseEntity<ApiResponse<Void>> error(ErrorCode errorCode) {

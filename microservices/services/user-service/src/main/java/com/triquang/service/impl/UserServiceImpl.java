@@ -24,7 +24,7 @@ public class UserServiceImpl implements UserService {
     public UserDTO getUserProfile(String email) {
 
         if (email == null || email.isBlank()) {
-            throw new UserException(ErrorCode.INVALID_USER_INPUT);
+            throw new UserException(ErrorCode.INVALID_INPUT);
         }
 
         log.info("Fetching user profile for email={}", email);
@@ -39,7 +39,7 @@ public class UserServiceImpl implements UserService {
     public UserDTO getUserById(Long id) {
 
         if (id == null || id <= 0) {
-            throw new UserException(ErrorCode.INVALID_USER_INPUT);
+            throw new UserException(ErrorCode.INVALID_INPUT);
         }
 
         log.info("Fetching user by id={}", id);

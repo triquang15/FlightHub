@@ -999,7 +999,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"A320-001\",\n  \"model\": \"Airbus A320\",\n  \"manufacturer\": \"Airbus\",\n  \"seatingCapacity\": 180,\n  \"economySeats\": 150,\n  \"premiumEconomySeats\": 20,\n  \"businessSeats\": 10,\n  \"firstClassSeats\": 0,\n  \"rangeKm\": 6100,\n  \"cruisingSpeedKmh\": 828,\n  \"maxAltitudeFt\": 39000,\n  \"yearOfManufacture\": 2020,\n  \"registrationDate\": \"2022-01-01\",\n  \"nextMaintenanceDate\": \"2026-06-01\",\n  \"status\": \"ACTIVE\",\n  \"isAvailable\": true,\n  \"currentAirportId\": 1\n}",
+              "raw": "{\n  \"code\": \"A330-300-005\",\n  \"model\": \"Airbus A330-300\",\n  \"manufacturer\": \"Airbus\",\n  \"seatingCapacity\": 277,\n  \"economySeats\": 220,\n  \"premiumEconomySeats\": 30,\n  \"businessSeats\": 27,\n  \"firstClassSeats\": 0,\n  \"rangeKm\": 11750,\n  \"cruisingSpeedKmh\": 871,\n  \"maxAltitudeFt\": 42000,\n  \"yearOfManufacture\": 2018,\n  \"registrationDate\": \"2019-07-18\",\n  \"nextMaintenanceDate\": \"2026-05-01\",\n  \"status\": \"MAINTENANCE\",\n  \"isAvailable\": false,\n  \"currentAirportId\": 2\n}",
               "options": {
                 "raw": {
                   "language": "json"

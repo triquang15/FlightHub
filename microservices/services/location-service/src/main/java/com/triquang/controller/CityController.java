@@ -74,11 +74,11 @@ public class CityController {
 	// DELETE
 	// =========================
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteCity(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse<Void>> deleteCity(@PathVariable Long id) {
 
-		cityService.deleteCity(id);
+	    cityService.deleteCity(id);
 
-		return ResponseUtil.noContent(); // 204 chuẩn
+	    return ResponseUtil.noContent();
 	}
 
 	// =========================

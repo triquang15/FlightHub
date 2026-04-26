@@ -76,7 +76,8 @@ public class AirlineController {
 
 	// ---------- DELETE ----------
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteAirline(@PathVariable Long id, @RequestHeader("X-User-Id") Long userId) {
+	public ResponseEntity<ApiResponse<Void>> deleteAirline(@PathVariable Long id,
+			@RequestHeader("X-User-Id") Long userId) {
 
 		airlineService.deleteAirline(id, userId);
 
