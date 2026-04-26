@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.enums.AirlineStatus;
 import com.triquang.enums.ErrorCode;
-import com.triquang.exception.AirlineException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.AirlineMapper;
 import com.triquang.model.Airline;
 import com.triquang.payload.request.AirlineRequest;
@@ -58,7 +58,7 @@ public class AirlineServiceImpl implements AirlineService {
 		List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
 
 		if (airlines.isEmpty()) {
-			throw new AirlineException(ErrorCode.AIRLINE_NOT_FOUND);
+			throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 		}
 
 		return airlines.stream().map(AirlineMapper::toResponse).toList();
@@ -69,7 +69,7 @@ public class AirlineServiceImpl implements AirlineService {
 	public AirlineResponse getAirlineById(Long id) {
 
 		Airline airline = airlineRepository.findById(id)
-				.orElseThrow(() -> new AirlineException(ErrorCode.AIRLINE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
 		return AirlineMapper.toResponse(airline);
 	}
@@ -89,11 +89,11 @@ public class AirlineServiceImpl implements AirlineService {
 		validateRequest(request);
 
 		Airline airline = airlineRepository.findById(id)
-				.orElseThrow(() -> new AirlineException(ErrorCode.AIRLINE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
 		// ownership check
 		if (!airline.getOwnerId().equals(ownerId)) {
-			throw new AirlineException(ErrorCode.INVALID_INPUT);
+			throw new BaseException(ErrorCode.INVALID_INPUT);
 		}
 
 		AirlineMapper.updateEntity(airline, request);
@@ -110,10 +110,10 @@ public class AirlineServiceImpl implements AirlineService {
 	public void deleteAirline(Long id, Long ownerId) {
 
 	    Airline airline = airlineRepository.findById(id)
-	            .orElseThrow(() -> new AirlineException(ErrorCode.AIRLINE_NOT_FOUND));
+	            .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
 	    if (!airline.getOwnerId().equals(ownerId)) {
-	        throw new AirlineException(ErrorCode.INVALID_INPUT);
+	        throw new BaseException(ErrorCode.INVALID_INPUT);
 	    }
 
 	    airlineRepository.delete(airline);
@@ -126,7 +126,7 @@ public class AirlineServiceImpl implements AirlineService {
 	public AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status) {
 
 		Airline airline = airlineRepository.findById(airlineId)
-				.orElseThrow(() -> new AirlineException(ErrorCode.AIRLINE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
 		airline.setStatus(status);
 
@@ -148,15 +148,15 @@ public class AirlineServiceImpl implements AirlineService {
 	private void validateRequest(AirlineRequest request) {
 
 		if (request.getName() == null || request.getName().isBlank()) {
-			throw new AirlineException(ErrorCode.INVALID_INPUT);
+			throw new BaseException(ErrorCode.INVALID_INPUT);
 		}
 
 		if (request.getIataCode() != null && request.getIataCode().length() != 2) {
-			throw new AirlineException(ErrorCode.INVALID_INPUT);
+			throw new BaseException(ErrorCode.INVALID_INPUT);
 		}
 
 		if (request.getIcaoCode() != null && request.getIcaoCode().length() != 3) {
-			throw new AirlineException(ErrorCode.INVALID_INPUT);
+			throw new BaseException(ErrorCode.INVALID_INPUT);
 		}
 	}
 }

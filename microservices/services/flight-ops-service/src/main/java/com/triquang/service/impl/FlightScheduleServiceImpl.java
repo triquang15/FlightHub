@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.triquang.client.LocationClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.FlightStatus;
-import com.triquang.exception.FlightException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.FlightScheduleMapper;
 import com.triquang.model.Flight;
 import com.triquang.model.FlightSchedule;
@@ -44,10 +44,10 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	public FlightScheduleResponse createFlightSchedule(Long userId, FlightScheduleRequest request) {
 
 		Flight flight = flightRepository.findById(request.getFlightId())
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		if (request.getEndDate().isBefore(request.getStartDate())) {
-			throw new FlightException(ErrorCode.INVALID_INPUT);
+			throw new BaseException(ErrorCode.INVALID_INPUT);
 		}
 
 		FlightSchedule schedule = FlightScheduleMapper.toEntity(request, flight);
@@ -88,7 +88,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	public FlightScheduleResponse getFlightScheduleById(Long id) {
 
 		var schedule = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		return getFlightScheduleResponse(schedule);
 	}
@@ -107,7 +107,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 					try {
 						return getFlightScheduleResponse(schedule);
 					} catch (Exception e) {
-						throw new FlightException(ErrorCode.INTERNAL_ERROR);
+						throw new BaseException(ErrorCode.INTERNAL_ERROR);
 					}
 				})
 				.collect(Collectors.toList());
@@ -118,7 +118,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	public FlightScheduleResponse updateFlightSchedule(Long id, FlightScheduleRequest request) {
 
 		var existing = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		FlightScheduleMapper.updateEntity(request, existing);
 
@@ -132,7 +132,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	public void deleteFlightSchedule(Long id) {
 
 		FlightSchedule schedule = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		flightScheduleRepository.delete(schedule);
 	}

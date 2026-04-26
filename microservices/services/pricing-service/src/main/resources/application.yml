@@ -1,15 +1,15 @@
 server:
-  port: 8081
+  port: 8085
 
 spring:
   application:
-    name: location-service
+    name: pricing-service
 
   datasource:
     # =========================
     # NEON DATABASE (ACTIVE)
     # =========================
-    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_location?sslmode=require
+    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_pricing?sslmode=require
     username: neondb_owner
     password: npg_FDqZpbe3Oml7
     driver-class-name: org.postgresql.Driver
@@ -22,7 +22,7 @@ spring:
     # =========================
     # LOCAL DATABASE (DISABLED)
     # =========================
-    # url: jdbc:postgresql://localhost:5432/flight_hub_location
+    # url: jdbc:postgresql://localhost:5432/flight_hub_pricing
     # username: postgres
     # password: 12345678
 

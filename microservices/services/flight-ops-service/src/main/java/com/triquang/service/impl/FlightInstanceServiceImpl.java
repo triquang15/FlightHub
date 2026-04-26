@@ -18,8 +18,7 @@ import com.triquang.client.LocationClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.event.FlightInstanceCreatedEvent;
 import com.triquang.event.FlightInstanceEventProducer;
-import com.triquang.exception.AirportException;
-import com.triquang.exception.FlightException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.FlightInstanceMapper;
 import com.triquang.model.Flight;
 import com.triquang.model.FlightInstance;
@@ -62,7 +61,7 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 		Long airlineId = getAirlineForUser(userId);
 
 		Flight flight = flightRepository.findById(request.getFlightId())
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		AircraftResponse aircraft = getAircraftById(flight.getAircraftId());
 
@@ -91,7 +90,7 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 		return flightInstanceRepository.findAll().stream().map(fi -> {
 			try {
 				return getFlightInstance(fi);
-			} catch (AirportException e) {
+			} catch (BaseException e) {
 				throw new RuntimeException(e);
 			}
 		}).toList();
@@ -100,9 +99,9 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	@Override
 	@Transactional(readOnly = true)
 	@Cacheable(cacheNames = "flightInstances", key = "#id")
-	public FlightInstanceResponse getFlightInstanceById(Long id) throws AirportException {
+	public FlightInstanceResponse getFlightInstanceById(Long id) throws BaseException {
 		FlightInstance fi = flightInstanceRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
 
 		return getFlightInstance(fi);
 	}
@@ -119,7 +118,7 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 				flightId, start, end, pageable).map(fi -> {
 					try {
 						return getFlightInstance(fi);
-					} catch (AirportException e) {
+					} catch (BaseException e) {
 						throw new RuntimeException(e);
 					}
 				});
@@ -127,9 +126,9 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 	@Override
 	@CacheEvict(cacheNames = "flightInstances", key = "#id")
-	public FlightInstanceResponse updateFlightInstance(Long id, FlightInstanceRequest request) throws AirportException {
+	public FlightInstanceResponse updateFlightInstance(Long id, FlightInstanceRequest request) throws BaseException {
 		FlightInstance existing = flightInstanceRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
 
 		FlightInstanceMapper.updateEntity(request, existing);
 		return getFlightInstance(flightInstanceRepository.save(existing));
@@ -139,7 +138,7 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	@CacheEvict(cacheNames = "flightInstances", key = "#id")
 	public void deleteFlightInstance(Long id) {
 		var fi = flightInstanceRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
 		flightInstanceRepository.delete(fi);
 	}
 
@@ -172,9 +171,9 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	    try {
 	        return airlineClient.getAircraftById(aircraftId);
 	    } catch (FeignException.NotFound e) {
-	        throw new FlightException(ErrorCode.AIRCRAFT_NOT_FOUND);
+	        throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
 	    } catch (FeignException e) {
-	        throw new FlightException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+	        throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 	    }
 	}
 
@@ -183,9 +182,9 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	        AirlineResponse airline = airlineClient.getAirlineByOwner(userId);
 	        return airline.getId();
 	    } catch (FeignException.NotFound e) {
-	        throw new FlightException(ErrorCode.AIRLINE_NOT_FOUND);
+	        throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 	    } catch (FeignException e) {
-	        throw new FlightException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+	        throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 	    }
 	}
 

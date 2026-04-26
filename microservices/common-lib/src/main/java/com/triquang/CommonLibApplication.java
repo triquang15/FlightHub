@@ -1,13 +1,22 @@
 package com.triquang;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class CommonLibApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(CommonLibApplication.class, args);
-	}
-
-}
+/**
+ * Marker class for the common-lib module.
+ *
+ * WHY this is NOT a @SpringBootApplication:
+ * This module is a shared LIBRARY (DTOs, enums, utils), not a runnable service.
+ * Libraries should not have:
+ *   - @SpringBootApplication (starts an embedded web server — pointless for a library)
+ *   - A main() method (nothing to "run")
+ *   - spring-boot-maven-plugin (repackages JAR to executable format, breaking library usage)
+ *
+ * Other modules import this as a plain dependency:
+ *   <dependency>
+ *       <groupId>com.triquang</groupId>
+ *       <artifactId>common-lib</artifactId>
+ *   </dependency>
+ *
+ * You can delete this class entirely once you add real shared classes
+ * (DTOs, enums, exceptions, etc.) to this package.
+ */
+public class CommonLibApplication {}

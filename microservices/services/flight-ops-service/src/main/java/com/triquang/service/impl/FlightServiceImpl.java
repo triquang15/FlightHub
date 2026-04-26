@@ -16,7 +16,7 @@ import com.triquang.client.AirlineClient;
 import com.triquang.client.LocationClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.FlightStatus;
-import com.triquang.exception.FlightException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.FlightMapper;
 import com.triquang.model.Flight;
 import com.triquang.payload.request.FlightRequest;
@@ -46,7 +46,7 @@ public class FlightServiceImpl implements FlightService {
 	public FlightResponse createFlight(Long userId, FlightRequest request) {
 
 		if (flightRepository.existsByFlightNumber(request.getFlightNumber())) {
-			throw new FlightException(ErrorCode.FLIGHT_ALREADY_EXISTS);
+			throw new BaseException(ErrorCode.FLIGHT_ALREADY_EXISTS);
 		}
 
 		Long airlineId = getAirlineForUser(userId);
@@ -131,7 +131,7 @@ public class FlightServiceImpl implements FlightService {
 	public FlightResponse getFlightById(Long id) {
 
 		Flight flight = flightRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		return getFlightResponse(flight);
 	}
@@ -144,7 +144,7 @@ public class FlightServiceImpl implements FlightService {
 	public FlightResponse getFlightByNumber(String flightNumber) {
 
 		Flight flight = flightRepository.findByFlightNumber(flightNumber)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		return getFlightResponse(flight);
 	}
@@ -171,11 +171,11 @@ public class FlightServiceImpl implements FlightService {
 	public FlightResponse updateFlight(Long id, FlightRequest request) {
 
 		Flight existing = flightRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		if (request.getFlightNumber() != null
 				&& flightRepository.existsByFlightNumberAndIdNot(request.getFlightNumber(), id)) {
-			throw new FlightException(ErrorCode.FLIGHT_ALREADY_EXISTS);
+			throw new BaseException(ErrorCode.FLIGHT_ALREADY_EXISTS);
 		}
 
 		FlightMapper.updateEntity(request, existing);
@@ -192,7 +192,7 @@ public class FlightServiceImpl implements FlightService {
 	public FlightResponse changeStatus(Long id, FlightStatus status) {
 
 		Flight flight = flightRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		flight.setStatus(status);
 
@@ -206,7 +206,7 @@ public class FlightServiceImpl implements FlightService {
 	public void deleteFlight(Long id) {
 
 		Flight flight = flightRepository.findById(id)
-				.orElseThrow(() -> new FlightException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
 
 		flightRepository.delete(flight);
 	}
@@ -271,9 +271,9 @@ public class FlightServiceImpl implements FlightService {
 			AirlineResponse airline = airlineClient.getAirlineByOwner(userId);
 			return airline.getId();
 		} catch (FeignException.NotFound e) {
-			throw new FlightException(ErrorCode.AIRLINE_NOT_FOUND);
+			throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 		} catch (FeignException e) {
-			throw new FlightException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 		}
 	}
 
@@ -281,9 +281,9 @@ public class FlightServiceImpl implements FlightService {
 		try {
 			airlineClient.getAircraftById(aircraftId);
 		} catch (FeignException.NotFound e) {
-			throw new FlightException(ErrorCode.AIRCRAFT_NOT_FOUND);
+			throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
 		} catch (FeignException e) {
-			throw new FlightException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 		}
 	}
 

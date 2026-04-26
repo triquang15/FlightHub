@@ -2,7 +2,7 @@ package com.triquang.service.impl;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
-import com.triquang.exception.UserException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.UserMapper;
 import com.triquang.model.User;
 import com.triquang.repository.UserRepository;
@@ -18,44 +18,42 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
+	private final UserRepository userRepository;
 
-    @Override
-    public UserDTO getUserProfile(String email) {
+	@Override
+	public UserDTO getUserProfile(String email) {
 
-        if (email == null || email.isBlank()) {
-            throw new UserException(ErrorCode.INVALID_INPUT);
-        }
+		if (email == null || email.isBlank()) {
+			throw new BaseException(ErrorCode.INVALID_INPUT);
+		}
 
-        log.info("Fetching user profile for email={}", email);
+		log.info("Fetching user profile for email={}", email);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        return UserMapper.toDTO(user);
-    }
+		return UserMapper.toDTO(user);
+	}
 
-    @Override
-    public UserDTO getUserById(Long id) {
+	@Override
+	public UserDTO getUserById(Long id) {
 
-        if (id == null || id <= 0) {
-            throw new UserException(ErrorCode.INVALID_INPUT);
-        }
+		if (id == null || id <= 0) {
+			throw new BaseException(ErrorCode.INVALID_INPUT);
+		}
 
-        log.info("Fetching user by id={}", id);
+		log.info("Fetching user by id={}", id);
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+		User user = userRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        return UserMapper.toDTO(user);
-    }
+		return UserMapper.toDTO(user);
+	}
 
-    @Override
-    public Page<UserDTO> getUsers(Pageable pageable) {
+	@Override
+	public Page<UserDTO> getUsers(Pageable pageable) {
 
-        log.info("Fetching users with pageable={}", pageable);
+		log.info("Fetching users with pageable={}", pageable);
 
-        return userRepository.findAll(pageable)
-                .map(UserMapper::toDTO);
-    }
+		return userRepository.findAll(pageable).map(UserMapper::toDTO);
+	}
 }

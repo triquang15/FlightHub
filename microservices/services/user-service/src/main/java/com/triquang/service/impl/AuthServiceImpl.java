@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import com.triquang.config.JwtProvider;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
-import com.triquang.exception.UserException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.UserMapper;
 import com.triquang.model.User;
 import com.triquang.payload.request.SignupRequest;
@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
         validateSignup(req);
 
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
-            throw new UserException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         User user = new User();
@@ -82,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
                     );
 
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+                    .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
@@ -93,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
 
         } catch (Exception ex) {
             // IMPORTANT: convert all auth failures
-            throw new UserException(ErrorCode.INVALID_CREDENTIALS);
+            throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
@@ -104,17 +104,17 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(String refreshToken) {
 
         if (!jwtProvider.validateToken(refreshToken)) {
-            throw new UserException(ErrorCode.INVALID_TOKEN);
+            throw new BaseException(ErrorCode.INVALID_TOKEN);
         }
 
         if (!jwtProvider.isRefreshToken(refreshToken)) {
-            throw new UserException(ErrorCode.INVALID_REFRESH_TOKEN);
+            throw new BaseException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         String email = jwtProvider.getUsername(refreshToken);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
         log.info("Token refreshed for user: {}", email);
 
@@ -157,11 +157,11 @@ public class AuthServiceImpl implements AuthService {
     private void validateSignup(SignupRequest req) {
 
         if (req.getEmail() == null || req.getEmail().isBlank()) {
-            throw new UserException(ErrorCode.INVALID_INPUT);
+            throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
         if (req.getPassword() == null || req.getPassword().length() < 6) {
-            throw new UserException(ErrorCode.INVALID_INPUT);
+            throw new BaseException(ErrorCode.INVALID_INPUT);
         }
     }
 }

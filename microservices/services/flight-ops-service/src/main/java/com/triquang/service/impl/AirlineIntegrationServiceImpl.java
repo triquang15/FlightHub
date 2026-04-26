@@ -1,14 +1,15 @@
 package com.triquang.service.impl;
 
-import feign.FeignException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.triquang.client.AirlineClient;
 import com.triquang.enums.ErrorCode;
-import com.triquang.exception.FlightException;
+import com.triquang.exception.BaseException;
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.service.AirlineIntegrationService;
+
+import feign.FeignException;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +24,10 @@ public class AirlineIntegrationServiceImpl implements AirlineIntegrationService 
             return airlineClient.getAirlineByOwner(userId).getId();
 
         } catch (FeignException.NotFound e) {
-            throw new FlightException(ErrorCode.AIRLINE_NOT_FOUND);
+            throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 
         } catch (FeignException e) {
-            throw new FlightException(ErrorCode.AIRLINE_SERVICE_UNAVAILABLE);
+            throw new BaseException(ErrorCode.AIRLINE_SERVICE_UNAVAILABLE);
         }
     }
 
@@ -37,10 +38,10 @@ public class AirlineIntegrationServiceImpl implements AirlineIntegrationService 
             return airlineClient.getAircraftById(aircraftId);
 
         } catch (FeignException.NotFound e) {
-            throw new FlightException(ErrorCode.AIRCRAFT_NOT_FOUND);
+            throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
 
         } catch (FeignException e) {
-            throw new FlightException(ErrorCode.AIRCRAFT_SERVICE_UNAVAILABLE);
+            throw new BaseException(ErrorCode.AIRCRAFT_SERVICE_UNAVAILABLE);
         }
     }
 }

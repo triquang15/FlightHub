@@ -1,15 +1,14 @@
 package com.triquang.service.impl;
 
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.triquang.enums.ErrorCode;
-import com.triquang.exception.AircraftException;
+import com.triquang.exception.BaseException;
 import com.triquang.mapper.AircraftMapper;
 import com.triquang.model.Aircraft;
 import com.triquang.model.Airline;
@@ -19,8 +18,9 @@ import com.triquang.repository.AircraftRepository;
 import com.triquang.repository.AirlineRepository;
 import com.triquang.service.AircraftService;
 
-import java.time.LocalDate;
-import java.util.List;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AircraftServiceImpl is the implementation of the AircraftService interface.
@@ -46,7 +46,7 @@ public class AircraftServiceImpl implements AircraftService {
         Airline airline = getAirlineByOwner(ownerId);
 
         if (aircraftRepository.existsByCode(request.getCode())) {
-            throw new AircraftException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
+            throw new BaseException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
         }
 
         Aircraft aircraft = AircraftMapper.toEntity(request, airline);
@@ -97,7 +97,7 @@ public class AircraftServiceImpl implements AircraftService {
 
         if (!oldCode.equals(request.getCode())
                 && aircraftRepository.existsByCode(request.getCode())) {
-            throw new AircraftException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
+            throw new BaseException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
         }
 
         validateAircraftData(aircraft);
@@ -128,7 +128,7 @@ public class AircraftServiceImpl implements AircraftService {
     private void validateAircraftData(Aircraft aircraft) {
 
         if (aircraft.getSeatingCapacity() == null || aircraft.getSeatingCapacity() <= 0) {
-            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+            throw new BaseException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
 
         int totalSeats =
@@ -138,7 +138,7 @@ public class AircraftServiceImpl implements AircraftService {
                 safe(aircraft.getFirstClassSeats());
 
         if (totalSeats > aircraft.getSeatingCapacity()) {
-            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+            throw new BaseException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
 
         int currentYear = LocalDate.now().getYear();
@@ -146,15 +146,15 @@ public class AircraftServiceImpl implements AircraftService {
         if (aircraft.getYearOfManufacture() == null
                 || aircraft.getYearOfManufacture() < 1950
                 || aircraft.getYearOfManufacture() > currentYear) {
-            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+            throw new BaseException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
 
         if (aircraft.getRangeKm() != null && aircraft.getRangeKm() <= 0) {
-            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+            throw new BaseException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
 
         if (aircraft.getCruisingSpeedKmh() != null && aircraft.getCruisingSpeedKmh() <= 0) {
-            throw new AircraftException(ErrorCode.INVALID_AIRCRAFT_DATA);
+            throw new BaseException(ErrorCode.INVALID_AIRCRAFT_DATA);
         }
     }
 
@@ -164,7 +164,7 @@ public class AircraftServiceImpl implements AircraftService {
         List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
 
         if (airlines.isEmpty()) {
-            throw new AircraftException(ErrorCode.AIRLINE_NOT_FOUND);
+            throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
         }
 
         return airlines.get(0);
@@ -172,12 +172,12 @@ public class AircraftServiceImpl implements AircraftService {
 
     private Aircraft getAircraft(Long id) {
         return aircraftRepository.findById(id)
-                .orElseThrow(() -> new AircraftException(ErrorCode.AIRCRAFT_NOT_FOUND));
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND));
     }
 
     private void validateOwnership(Aircraft aircraft, Airline airline) {
         if (!aircraft.getAirline().getId().equals(airline.getId())) {
-            throw new AircraftException(ErrorCode.FORBIDDEN);
+            throw new BaseException(ErrorCode.FORBIDDEN);
         }
     }
 
