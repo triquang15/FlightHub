@@ -142,6 +142,18 @@ public enum ErrorCode {
 	// FLIGHT INSTANCE CABIN
 	// =========================
 	FLIGHT_INSTANCE_CABIN_NOT_FOUND("FIC_001", "FLIGHT_INSTANCE_CABIN_NOT_FOUND", HttpStatus.NOT_FOUND),
+	
+	// =========================
+	// BOOKING
+	// =========================
+	BOOKING_NOT_FOUND("BKG_001", "BOOKING_NOT_FOUND", HttpStatus.NOT_FOUND),
+	BOOKING_ALREADY_EXISTS("BKG_002", "BOOKING_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
+	
+	// =========================
+	// TICKET
+	// =========================
+	TICKET_NOT_FOUND("TKT_001", "TICKET_NOT_FOUND", HttpStatus.NOT_FOUND),
+	TICKET_ALREADY_EXISTS("TKT_002", "TICKET_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
 
 	// =========================
 	// SECURITY
