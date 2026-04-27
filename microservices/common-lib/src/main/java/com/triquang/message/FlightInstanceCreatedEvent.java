@@ -1,4 +1,4 @@
-package com.triquang.event;
+package com.triquang.message;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

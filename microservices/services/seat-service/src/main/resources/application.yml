@@ -1,0 +1,45 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: seat-service
+
+  datasource:
+    # =========================
+    # NEON DATABASE (ACTIVE)
+    # =========================
+    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_seat?sslmode=require
+    username: neondb_owner
+    password: npg_FDqZpbe3Oml7
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+      connection-timeout: 30000
+
+    # =========================
+    # LOCAL DATABASE (DISABLED)
+    # =========================
+    # url: jdbc:postgresql://localhost:5432/flight_hub_seat
+    # username: postgres
+    # password: 12345678
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # create / create-drop / validate / update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
