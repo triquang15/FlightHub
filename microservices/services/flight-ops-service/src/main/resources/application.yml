@@ -6,9 +6,7 @@ spring:
     name: flight-ops-service
 
   datasource:
-    # =========================
     # NEON DATABASE (ACTIVE)
-    # =========================
     url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_ops?sslmode=require
     username: neondb_owner
     password: npg_FDqZpbe3Oml7
@@ -19,9 +17,7 @@ spring:
       minimum-idle: 1
       connection-timeout: 30000
 
-    # =========================
-    # LOCAL DATABASE (DISABLED)
-    # =========================
+    # LOCAL DATABASE (DEV)
     # url: jdbc:postgresql://localhost:5432/flight_hub_ops
     # username: postgres
     # password: 12345678
@@ -39,6 +35,23 @@ spring:
     init:
       mode: always
 
+# =========================
+# EUREKA CONFIG
+# =========================
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# =========================
+# LOGGING
+# =========================
 logging:
   level:
     org.hibernate.SQL: DEBUG
