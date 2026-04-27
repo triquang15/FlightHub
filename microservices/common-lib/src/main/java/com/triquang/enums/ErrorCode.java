@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
  * HTTP status.
  * 
  * @author Tri Quang
+ * @since 2024-04
  */
 
 @Getter
@@ -93,6 +94,34 @@ public enum ErrorCode {
 	// =========================
 	BAGGAGE_POLICY_NOT_FOUND("BAG_001", "BAGGAGE_POLICY_NOT_FOUND", HttpStatus.NOT_FOUND),
 	BAGGAGE_POLICY_ALREADY_EXISTS("BAG_002", "BAGGAGE_POLICY_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
+	
+	// =========================
+	// ANCILLARY
+	// =========================
+	ANCILLARY_NOT_FOUND("ANC_001", "ANCILLARY_NOT_FOUND", HttpStatus.NOT_FOUND),
+	
+	// =========================
+	// FLIGHT CABIN ANCILLARY
+	// =========================
+	FLIGHT_CABIN_ANCILLARY_NOT_FOUND("FCA_001", "FLIGHT_CABIN_ANCILLARY_NOT_FOUND", HttpStatus.NOT_FOUND),
+	
+	// =========================
+	// MEAL
+	// =========================
+	MEAL_NOT_FOUND("MEA_001", "MEAL_NOT_FOUND", HttpStatus.NOT_FOUND),
+	MEAL_ALREADY_EXISTS("MEA_002", "MEAL_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
+
+	// =========================
+	// FLIGHT MEAL
+	// =========================
+	FLIGHT_MEAL_NOT_FOUND("FML_001", "FLIGHT_MEAL_NOT_FOUND", HttpStatus.NOT_FOUND),
+	FLIGHT_MEAL_ALREADY_EXISTS("FML_002", "FLIGHT_MEAL_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
+	
+	// =========================
+	// INSURANCE COVERAGE
+	// =========================
+	INSURANCE_COVERAGE_NOT_FOUND("INS_001", "INSURANCE_COVERAGE_NOT_FOUND", HttpStatus.NOT_FOUND),
+	INSURANCE_COVERAGE_INVALID_REQUEST("INS_002", "INSURANCE_COVERAGE_INVALID_REQUEST", HttpStatus.BAD_REQUEST),
 
 	// =========================
 	// SECURITY

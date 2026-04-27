@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class GlobalExceptionHandler {
 
 	private String traceId() {
-		return MDC.get("traceId");
+	    return MDC.get("traceId") != null ? MDC.get("traceId") : "N/A";
 	}
 
 	// BUSINESS
