@@ -12,36 +12,42 @@ spring:
           uri: https://github.com/triquang15/flight-hub-config-server
           clone-on-start: true
           default-label: master
-          timeout: 5
+          timeout: 5000
           force-pull: true
-
-# Register with Eureka
+          
+# Register this config server with Eureka so microservices can discover it
+# via service name ("config-server") instead of hardcoding localhost:8888.
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
-    fetch-registry: false
-
+    fetch-registry: false   # config-server registers so others can discover it, but does not need the registry itself
   instance:
     prefer-ip-address: true
-    instance-id: ${spring.application.name}:${random.value}
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
-# Metadata for service discovery and monitoring
 info:
   app:
     name: ${spring.application.name}
-    description: Centralized configuration server
+    description: Centralized configuration server for all microservices
     version: 1.0.0
     environment: development
 
-# Actuator (monitoring)
 management:
   endpoints:
     web:
       exposure:
         include: health, info
-
   endpoint:
     health:
       show-details: always
+    info:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true

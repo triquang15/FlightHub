@@ -5,9 +5,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
 
 /**
- * The ServiceRegistryApplication class is the entry point for the Service Registry microservice.
- * It is annotated with @SpringBootApplication to indicate that it is a Spring Boot application,
- * and @EnableEurekaServer to enable Eureka Server functionality for service discovery.
+ * Eureka Service Registry — the "phone book" of your microservice architecture.
+ *
+ * @EnableEurekaServer turns this app into a Eureka Server that:
+ *   1. Accepts registrations from microservices (they send heartbeats every 30s)
+ *   2. Maintains a registry of all running service instances and their addresses
+ *   3. Provides a REST API + dashboard (http://localhost:8761) to view registered services
+ *
+ * Other services use @EnableDiscoveryClient (or Eureka Client starter) to register here.
+ * When service A needs to call service B, it asks Eureka: "where is service B?"
+ * and gets back the IP:port — no hardcoded URLs needed.
  */
 
 @SpringBootApplication

@@ -42,7 +42,11 @@
                 <version>3.5.1</version>
                 <configuration>
                     <to>
-                        <image>triquang15/gds-config-server:1.0.0</image>
+                        <image>triquang15/gds-config-server</image>
+                        <tags>
+                            <tag>${project.version}</tag>
+                            <tag>latest</tag>
+                        </tags>
                     </to>
                 </configuration>
             </plugin>
