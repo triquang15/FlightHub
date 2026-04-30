@@ -14,6 +14,15 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
+/**
+ * REST controller for managing aircrafts in the airline core service.
+ * <p>
+ * Provides endpoints for creating, retrieving, updating, and deleting aircraft records.
+ * All operations are secured and require the user ID to be passed in the request header.
+ * 
+ * @author Tri Quang
+ */
+
 @RestController
 @RequestMapping("/api/aircrafts")
 @RequiredArgsConstructor
@@ -59,6 +68,6 @@ public class AircraftController {
 
 		aircraftService.deleteAircraft(id, userId);
 
-		return ResponseUtil.ok(null);
+		return ResponseUtil.noContent();
 	}
 }

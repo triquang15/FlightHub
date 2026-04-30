@@ -5,6 +5,12 @@ import org.springframework.http.HttpStatus;
 
 /**
  * Centralized error codes for consistent error handling across the application.
+ * 
+ * Each error code includes a unique identifier, a user-friendly message, and an associated HTTP status.
+ * This enum is used throughout the application to standardize error responses and improve maintainability.
+ * 
+ * @author Tri Quang
+ * @since 2024-04
  */
 
 @Getter

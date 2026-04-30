@@ -2,6 +2,17 @@ package com.triquang.controller;
 
 import java.util.List;
 
+/**
+ * REST controller for managing airlines.
+ * <p>
+ * Provides endpoints for creating, retrieving, updating, and deleting airlines,
+ * as well as administrative actions like approving, suspending, and banning airlines.
+ * <p>
+ * All endpoints return a standardized ApiResponse wrapper for consistent API responses.
+ * 
+ * @author Tri Quang
+ */
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +53,8 @@ public class AirlineController {
 	}
 
 	// ---------- MY AIRLINES ----------
-	@GetMapping("/my")
-	public ResponseEntity<ApiResponse<List<AirlineResponse>>> getMyAirlines(@RequestHeader("X-User-Id") Long userId) {
+	@GetMapping("/admin")
+	public ResponseEntity<ApiResponse<List<AirlineResponse>>> getAirlineByOwner(@RequestHeader("X-User-Id") Long userId) {
 		return ResponseUtil.ok(airlineService.getAirlinesByOwner(userId));
 	}
 

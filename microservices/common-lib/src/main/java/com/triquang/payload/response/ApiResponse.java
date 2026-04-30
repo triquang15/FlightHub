@@ -4,6 +4,16 @@ import java.time.Instant;
 
 import com.triquang.enums.ErrorCode;
 
+/**
+ * Standardized API response structure for all endpoints.
+ * <p>
+ * This class provides factory methods to create consistent responses for success and error cases.
+ * Each response includes a trace ID for better logging and debugging.
+ *
+ * @param <T> The type of the data payload in the response.
+ * @author Tri Quang
+ */
+
 public record ApiResponse<T>(
         int status,
         String errorCode,
@@ -54,7 +64,7 @@ public record ApiResponse<T>(
         return new ApiResponse<>(
                 204,
                 null,
-                "NO_CONTENT",
+                "NO CONTENT",
                 null,
                 traceId,
                 Instant.now()
