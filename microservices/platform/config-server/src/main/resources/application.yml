@@ -1,0 +1,47 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/triquang15/flight-hub-config-server
+          clone-on-start: true
+          default-label: master
+          timeout: 5
+          force-pull: true
+
+# Register with Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: false
+
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# Metadata for service discovery and monitoring
+info:
+  app:
+    name: ${spring.application.name}
+    description: Centralized configuration server
+    version: 1.0.0
+    environment: development
+
+# Actuator (monitoring)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+  endpoint:
+    health:
+      show-details: always

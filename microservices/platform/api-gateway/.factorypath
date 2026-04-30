@@ -159,5 +159,4 @@
     <factorypathentry kind="VARJAR" id="M2_REPO/org/springframework/spring-context-support/7.0.6/spring-context-support-7.0.6.jar" enabled="true" runInBatchMode="false"/>
     <factorypathentry kind="VARJAR" id="M2_REPO/org/springframework/boot/spring-boot-netty/4.0.5/spring-boot-netty-4.0.5.jar" enabled="true" runInBatchMode="false"/>
     <factorypathentry kind="VARJAR" id="M2_REPO/org/projectlombok/lombok/1.18.44/lombok-1.18.44.jar" enabled="true" runInBatchMode="false"/>
-    <factorypathentry kind="PLUGIN" id="org.eclipse.jst.ws.annotations.core" enabled="false" runInBatchMode="false"/>
 </factorypath>

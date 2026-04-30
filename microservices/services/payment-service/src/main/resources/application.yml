@@ -36,11 +36,11 @@ spring:
 
 payment:
   stripe:
-    secret-key: sk_test_xxx
+    secret-key: YOU_STRIPE_SECRET_KEY
 
   paypal:
-    client-id: YOUR_PAYPAL_CLIENT_ID
-    client-secret: YOUR_PAYPAL_SECRET
+    client-id: YOU_PAYPAL_CLIENT_ID
+    client-secret: YOU_PAYPAL_CLIENT_SECRET
     base-url: https://api-m.sandbox.paypal.com
 
 logging:

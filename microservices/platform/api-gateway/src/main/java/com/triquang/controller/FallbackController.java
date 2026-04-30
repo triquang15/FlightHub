@@ -1,24 +1,32 @@
 package com.triquang.controller;
 
-import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.Map;
+import com.triquang.enums.ErrorCode;
+import com.triquang.utils.ResponseUtil;
 
+/**
+ * Client → Gateway → Service A → Service B (fail - e.g. timeout)
+                              ↓
+                        fallback("/fallback")
+ 
+ * @author Tri Quang
+ * @since 2024-04
+ */
 @RestController
 public class FallbackController {
 
+    private static final Logger log = LoggerFactory.getLogger(FallbackController.class);
+
     @RequestMapping("/fallback")
-    public ResponseEntity<Map<String, Object>> fallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "status", 503,
-                        "error", "Service Unavailable",
-                        "message", "The service is temporarily unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now().toString()
-                ));
+    public ResponseEntity<?> fallback(Throwable ex) {
+
+        log.error("Fallback triggered - downstream service unavailable", ex);
+
+        return ResponseUtil.error(ErrorCode.SERVICE_UNAVAILABLE);
     }
 }

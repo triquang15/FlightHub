@@ -61,12 +61,24 @@ public record ApiResponse<T>(
         );
     }
 
-    // ---------- ERROR ----------
+ // ---------- ERROR (DEFAULT MESSAGE) ----------
     public static <T> ApiResponse<T> error(ErrorCode errorCode, String traceId) {
         return new ApiResponse<>(
                 errorCode.getStatus().value(),
                 errorCode.getCode(),
                 errorCode.getMessage(),
+                null,
+                traceId,
+                Instant.now()
+        );
+    }
+
+    // ---------- ERROR (CUSTOM MESSAGE) ----------
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String message, String traceId) {
+        return new ApiResponse<>(
+                errorCode.getStatus().value(),
+                errorCode.getCode(),
+                message,
                 null,
                 traceId,
                 Instant.now()

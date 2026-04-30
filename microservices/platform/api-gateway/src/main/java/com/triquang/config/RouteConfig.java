@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
@@ -30,27 +31,31 @@ public class RouteConfig {
         this.blacklistService = blacklistService;
     }
 
-    // ==================== Public routes (no JWT) ====================
+    // ==================== COMMON BUILDER ====================
+
+    private RouterFunctions.Builder routeBuilder(String routeName, String serviceName, String cbName) {
+        return GatewayRouterFunctions.route(routeName)
+                .filter(LoadBalancerFilterFunctions.lb(serviceName))
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(cbName, URI.create("forward:/fallback")));
+    }
+
+    // ==================== Public routes ====================
 
     @Bean
     public RouterFunction<ServerResponse> authRoutes() {
-        return GatewayRouterFunctions.route("auth-routes")
+        return routeBuilder("auth-routes", "user-service", "user-service-cb")
                 .route(RequestPredicates.path("/auth/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("user-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("user-service-cb", URI.create("forward:/fallback")))
                 .build();
     }
 
-    // ==================== Admin-only routes (JWT + ROLE_SYSTEM_ADMIN) ====================
+    // ==================== Admin-only routes ====================
 
     @Bean
     @Order(1)
     public RouterFunction<ServerResponse> adminLocationServiceRoutes() {
-        return GatewayRouterFunctions.route("admin-location-routes")
+        return routeBuilder("admin-location-routes", "location-service", "location-service-cb")
                 .route(RequestPredicates.POST("/api/cities/**"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/airports/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("location-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("location-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .before(request -> requireRole(request, UserRole.ROLE_SYSTEM_ADMIN.toString()))
                 .build();
@@ -59,23 +64,19 @@ public class RouteConfig {
     @Bean
     @Order(1)
     public RouterFunction<ServerResponse> adminAirlineCoreServiceRoutes() {
-        return GatewayRouterFunctions.route("admin-airline-core-routes")
+        return routeBuilder("admin-airline-core-routes", "airline-core-service", "airline-core-service-cb")
                 .route(RequestPredicates.GET("/api/airlines"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("airline-core-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("airline-core-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .before(request -> requireRole(request, UserRole.ROLE_SYSTEM_ADMIN.toString()))
                 .build();
     }
 
-    // ==================== Protected routes (JWT required) ====================
+    // ==================== Protected routes ====================
 
     @Bean
     public RouterFunction<ServerResponse> userServiceRoutes() {
-        return GatewayRouterFunctions.route("user-service-routes")
+        return routeBuilder("user-service-routes", "user-service", "user-service-cb")
                 .route(RequestPredicates.path("/api/users/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("user-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("user-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
@@ -83,63 +84,53 @@ public class RouteConfig {
     @Bean
     @Order(2)
     public RouterFunction<ServerResponse> airlineCoreServiceRoutes() {
-        return GatewayRouterFunctions.route("airline-core-routes")
+        return routeBuilder("airline-core-routes", "airline-core-service", "airline-core-service-cb")
                 .route(RequestPredicates.path("/api/airlines/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/aircrafts/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("airline-core-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("airline-core-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
     public RouterFunction<ServerResponse> seatServiceRoutes() {
-        return GatewayRouterFunctions.route("seat-service-routes")
+        return routeBuilder("seat-service-routes", "seat-service", "seat-service-cb")
                 .route(RequestPredicates.path("/api/cabin-classes/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/seat-maps/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/seats/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/seat-instances/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/flight-instance-cabins/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("seat-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("seat-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
     public RouterFunction<ServerResponse> flightOpsServiceRoutes() {
-        return GatewayRouterFunctions.route("flight-ops-routes")
+        return routeBuilder("flight-ops-routes", "flight-ops-service", "flight-ops-service-cb")
                 .route(RequestPredicates.path("/api/flights/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/flight-instances/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/flight-schedules/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("flight-ops-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("flight-ops-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
     public RouterFunction<ServerResponse> pricingServiceRoutes() {
-        return GatewayRouterFunctions.route("pricing-service-routes")
+        return routeBuilder("pricing-service-routes", "pricing-service", "pricing-service-cb")
                 .route(RequestPredicates.path("/api/fares/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/fare-rules/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/baggage-policies/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("pricing-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("pricing-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
-    public RouterFunction<ServerResponse> AncillaryServiceRoutes() {
-        return GatewayRouterFunctions.route("ancillary-service-routes")
+    public RouterFunction<ServerResponse> ancillaryServiceRoutes() {
+        return routeBuilder("ancillary-service-routes", "ancillary-service", "ancillary-service-cb")
                 .route(RequestPredicates.path("/api/meals/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/ancillaries/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/insurance-coverages/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/flight-meals/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("ancillary-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("ancillary-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
@@ -147,31 +138,25 @@ public class RouteConfig {
     @Bean
     @Order(2)
     public RouterFunction<ServerResponse> locationServiceRoutes() {
-        return GatewayRouterFunctions.route("location-service-routes")
+        return routeBuilder("location-service-routes", "location-service", "location-service-cb")
                 .route(RequestPredicates.path("/api/cities/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/airports/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("location-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("location-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
     public RouterFunction<ServerResponse> bookingServiceRoutes() {
-        return GatewayRouterFunctions.route("booking-service-routes")
+        return routeBuilder("booking-service-routes", "booking-service", "booking-service-cb")
                 .route(RequestPredicates.path("/api/bookings/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("booking-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("booking-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
 
     @Bean
     public RouterFunction<ServerResponse> paymentServiceRoutes() {
-        return GatewayRouterFunctions.route("payment-service-routes")
+        return routeBuilder("payment-service-routes", "payment-service", "payment-service-cb")
                 .route(RequestPredicates.path("/api/payments/**"), HandlerFunctions.http())
-                .filter(LoadBalancerFilterFunctions.lb("payment-service"))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker("payment-service-cb", URI.create("forward:/fallback")))
                 .before(this::jwtAuthFilter)
                 .build();
     }
