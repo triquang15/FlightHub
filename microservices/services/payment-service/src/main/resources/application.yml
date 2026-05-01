@@ -27,7 +27,7 @@ payment:
   paypal:
     client-id: ${PAYPAL_CLIENT_ID}
     client-secret: ${PAYPAL_CLIENT_SECRET}
-    base-url: https://api-m.sandbox.paypal.com
+    base-url: ${PAYPAL_BASE_URL}
 
 # =========================
 # RESILIENCE4J
