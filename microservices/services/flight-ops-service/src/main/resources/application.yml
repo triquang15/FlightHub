@@ -1,42 +1,77 @@
-server:
-  port: 8084
+# Application configuration for Flight Operations Service
 
 spring:
   application:
     name: flight-ops-service
 
-  datasource:
-    # NEON DATABASE (ACTIVE)
-    url: jdbc:postgresql://ep-silent-darkness-aoh21u1p-pooler.c-2.ap-southeast-1.aws.neon.tech:5432/flight_hub_ops?sslmode=require
-    username: neondb_owner
-    password: npg_FDqZpbe3Oml7
-    driver-class-name: org.postgresql.Driver
+  config:
+    import: optional:configserver:http://localhost:8888
 
-    hikari:
-      maximum-pool-size: 3
-      minimum-idle: 1
-      connection-timeout: 30000
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
 
-    # LOCAL DATABASE (DEV)
-    # url: jdbc:postgresql://localhost:5432/flight_hub_ops
-    # username: postgres
-    # password: 12345678
+  cache:
+    type: redis
 
   jpa:
     hibernate:
-      ddl-auto: update   # create / create-drop / validate / update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+      ddl-auto: update
 
-  sql:
-    init:
-      mode: always
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+        group:
+          enabled: true
 
 # =========================
-# EUREKA CONFIG
+# RESILIENCE4J
+# =========================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 80
+        slow-call-duration-threshold: 3000ms
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - feign.FeignException
+
+    instances:
+      AirlineClient:
+        base-config: default
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 20s
+
+      LocationClient:
+        base-config: default
+        wait-duration-in-open-state: 20s
+
+      PricingClient:
+        base-config: default
+
+      SeatClient:
+        base-config: default
+
+# =========================
+# EUREKA
 # =========================
 eureka:
   instance:
@@ -46,13 +81,40 @@ eureka:
   client:
     register-with-eureka: true
     fetch-registry: true
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
 
 # =========================
-# LOGGING
+# ACTUATOR
 # =========================
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, circuitbreakers, circuitbreakerevents
+
+  endpoint:
+    health:
+      show-details: always
+    info:
+      enabled: true
+
+  health:
+    circuitbreakers:
+      enabled: true
+
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# =========================
+# INFO
+# =========================
+info:
+  app:
+    name: ${spring.application.name}
+    description: Manages flight schedules, instances, and real-time flight operations
+    version: 1.0.0
+    environment: development
