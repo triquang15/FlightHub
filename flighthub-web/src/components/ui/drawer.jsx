@@ -80,6 +80,18 @@ function DrawerHeader({
   );
 }
 
+function DrawerBody({
+  className,
+  ...props
+}) {
+  return (
+    <div
+      data-slot="drawer-body"
+      className={cn("flex-1 overflow-y-auto px-4 py-2", className)}
+      {...props} />
+  );
+}
+
 function DrawerFooter({
   className,
   ...props
@@ -124,6 +136,7 @@ export {
   DrawerClose,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerFooter,
   DrawerTitle,
   DrawerDescription,
