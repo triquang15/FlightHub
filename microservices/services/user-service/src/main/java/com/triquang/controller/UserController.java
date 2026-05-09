@@ -1,6 +1,9 @@
 package com.triquang.controller;
 
 import com.triquang.dto.UserDTO;
+import com.triquang.payload.request.ChangePasswordRequest;
+import com.triquang.payload.request.ForgotPasswordRequest;
+import com.triquang.payload.request.ResetPasswordRequest;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.UserService;
 import com.triquang.utils.ResponseUtil;
@@ -38,5 +41,30 @@ public class UserController {
 	public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
 
 		return ResponseUtil.ok(userService.getUsers(pageable));
+	}
+	
+	@PostMapping("/change-password")
+	public ResponseEntity<ApiResponse<String>> changePassword(
+	        @RequestHeader("X-User-Email") String email,
+	        @RequestBody ChangePasswordRequest request) {
+
+	    userService.changePassword(email, request);
+	    return ResponseUtil.ok("Password changed successfully");
+	}
+
+	@PostMapping("/forgot-password")
+	public ResponseEntity<ApiResponse<String>> forgotPassword(
+	        @RequestBody ForgotPasswordRequest request) {
+
+	    userService.forgotPassword(request.getEmail());
+	    return ResponseUtil.ok("Reset password email sent");
+	}
+
+	@PostMapping("/reset-password")
+	public ResponseEntity<ApiResponse<String>> resetPassword(
+	        @RequestBody ResetPasswordRequest request) {
+
+	    userService.resetPassword(request);
+	    return ResponseUtil.ok("Password reset successfully");
 	}
 }

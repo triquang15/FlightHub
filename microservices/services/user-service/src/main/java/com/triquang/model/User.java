@@ -64,6 +64,12 @@ public class User {
     private Boolean verified = false;
 
     private LocalDateTime lastLogin;
+    
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
 
 
 }

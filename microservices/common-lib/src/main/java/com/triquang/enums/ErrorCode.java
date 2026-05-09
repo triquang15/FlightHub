@@ -28,6 +28,7 @@ public enum ErrorCode {
     USER_NOT_FOUND("USR_001", "User not found", HttpStatus.NOT_FOUND),
     EMAIL_ALREADY_EXISTS("USR_002", "Email already exists", HttpStatus.BAD_REQUEST),
     INVALID_CREDENTIALS("USR_003", "Invalid email or password", HttpStatus.UNAUTHORIZED),
+    INVALID_PASSWORD("USR_004", "Invalid password", HttpStatus.BAD_REQUEST),
 
     // =========================
     // AUTH
@@ -35,6 +36,7 @@ public enum ErrorCode {
     INVALID_TOKEN("AUTH_001", "Invalid token", HttpStatus.UNAUTHORIZED),
     INVALID_REFRESH_TOKEN("AUTH_002", "Invalid refresh token", HttpStatus.UNAUTHORIZED),
     ACCESS_DENIED("AUTH_003", "Access denied", HttpStatus.FORBIDDEN),
+    TOKEN_EXPIRED("AUTH_004", "Token Expired", HttpStatus.UNAUTHORIZED),
 
     // =========================
     // CITY
