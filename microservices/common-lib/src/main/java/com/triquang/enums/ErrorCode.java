@@ -162,6 +162,7 @@ public enum ErrorCode {
     UNSUPPORTED_PAYMENT_GATEWAY("PAY_002", "Unsupported payment gateway", HttpStatus.BAD_REQUEST),
     PAYMENT_VERIFICATION_FAILED("PAY_003", "Payment verification failed", HttpStatus.BAD_REQUEST),
     PAYMENT_NOT_FOUND("PAY_004", "Payment not found", HttpStatus.NOT_FOUND),
+    PAYMENT_SERVICE_DOWN("PAY_005", "Payment service ", HttpStatus.SERVICE_UNAVAILABLE),
 
     // =========================
     // EXTERNAL SERVICE (Fallback)

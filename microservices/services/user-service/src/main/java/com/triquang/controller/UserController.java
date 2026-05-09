@@ -20,7 +20,7 @@ public class UserController {
 	private final UserService userService;
 
 	// ---------- GET MY PROFILE ----------
-	@GetMapping("/me")
+	@GetMapping("/profile")
 	public ResponseEntity<ApiResponse<UserDTO>> getMyProfile(@RequestHeader("X-User-Email") String email) {
 
 		return ResponseUtil.ok(userService.getUserProfile(email));

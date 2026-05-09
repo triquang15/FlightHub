@@ -6,9 +6,11 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtUtil {
@@ -16,9 +18,12 @@ public class JwtUtil {
     private final SecretKey key;
 
     public JwtUtil() {
-        this.key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
+        this.key = Keys.hmacShaKeyFor(
+                JwtConstant.SECRET_KEY.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
+    // ===================== CORE =====================
     public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(key)
@@ -27,18 +32,32 @@ public class JwtUtil {
                 .getPayload();
     }
 
+    // ===================== FIXED METHODS =====================
     public String extractEmail(String token) {
-        return extractAllClaims(token).get("email", String.class);
+        return extractAllClaims(token).getSubject();
     }
 
     public String extractAuthorities(String token) {
-        return extractAllClaims(token).get("authorities", String.class);
+        Object roles = extractAllClaims(token).get("roles");
+
+        if (roles instanceof List<?> list) {
+            return String.join(",",
+                    list.stream().map(String::valueOf).toList());
+        }
+
+        return "";
     }
 
     public Long extractUserId(String token) {
-        return extractAllClaims(token).get("userId", Long.class);
+        Object value = extractAllClaims(token).get("userId");
+
+        if (value instanceof Integer i) return i.longValue();
+        if (value instanceof Long l) return l;
+
+        return Long.parseLong(String.valueOf(value));
     }
 
+    // ===================== VALIDATION =====================
     public boolean isTokenValid(String token) {
         try {
             extractAllClaims(token);
@@ -48,7 +67,6 @@ public class JwtUtil {
         }
     }
 
-    /** Returns how long until the token expires (may be negative if already expired). */
     public Duration getRemainingValidity(String token) {
         Date expiration = extractAllClaims(token).getExpiration();
         return Duration.between(Instant.now(), expiration.toInstant());

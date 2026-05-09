@@ -1,6 +1,7 @@
 package com.triquang.config;
 
 import java.net.URI;
+import java.util.UUID;
 
 import org.springframework.cloud.gateway.server.mvc.filter.CircuitBreakerFilterFunctions;
 import org.springframework.cloud.gateway.server.mvc.filter.LoadBalancerFilterFunctions;
@@ -25,181 +26,170 @@ public class RouteConfig {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService blacklistService;
+    private final RedisRateLimitFilter redisRateLimitFilter;
 
-    public RouteConfig(JwtUtil jwtUtil, TokenBlacklistService blacklistService) {
+    public RouteConfig(
+            JwtUtil jwtUtil,
+            TokenBlacklistService blacklistService,
+            RedisRateLimitFilter redisRateLimitFilter
+    ) {
         this.jwtUtil = jwtUtil;
         this.blacklistService = blacklistService;
+        this.redisRateLimitFilter = redisRateLimitFilter;
     }
 
-    // ==================== COMMON BUILDER ====================
+    // ==================== BUILDER ====================
 
-    private RouterFunctions.Builder routeBuilder(String routeName, String serviceName, String cbName) {
+    private RouterFunctions.Builder routeWithCB(
+            String routeName,
+            String serviceName,
+            String cbName,
+            String fallbackUri
+    ) {
         return GatewayRouterFunctions.route(routeName)
                 .filter(LoadBalancerFilterFunctions.lb(serviceName))
-                .filter(CircuitBreakerFilterFunctions.circuitBreaker(cbName, URI.create("forward:/fallback")));
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(
+                        cbName,
+                        URI.create(fallbackUri)
+                ));
     }
 
-    // ==================== Public routes ====================
+    private RouterFunctions.Builder routeWithoutCB(
+            String routeName,
+            String serviceName
+    ) {
+        return GatewayRouterFunctions.route(routeName)
+                .filter(LoadBalancerFilterFunctions.lb(serviceName));
+    }
+
+    // ==================== PUBLIC (NO RATE LIMIT) ====================
 
     @Bean
     public RouterFunction<ServerResponse> authRoutes() {
-        return routeBuilder("auth-routes", "user-service", "user-service-cb")
-                .route(RequestPredicates.path("/auth/**"), HandlerFunctions.http())
+        return routeWithoutCB("auth-routes", "user-service")
+                .route(RequestPredicates.path("/api/auth/**"), HandlerFunctions.http())
                 .build();
     }
 
-    // ==================== Admin-only routes ====================
-
-    @Bean
-    @Order(1)
-    public RouterFunction<ServerResponse> adminLocationServiceRoutes() {
-        return routeBuilder("admin-location-routes", "location-service", "location-service-cb")
-                .route(RequestPredicates.POST("/api/cities/**"), HandlerFunctions.http())
-                .route(RequestPredicates.POST("/api/airports/**"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .before(request -> requireRole(request, UserRole.ROLE_SYSTEM_ADMIN.toString()))
-                .build();
-    }
-
-    @Bean
-    @Order(1)
-    public RouterFunction<ServerResponse> adminAirlineCoreServiceRoutes() {
-        return routeBuilder("admin-airline-core-routes", "airline-core-service", "airline-core-service-cb")
-                .route(RequestPredicates.GET("/api/airlines"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .before(request -> requireRole(request, UserRole.ROLE_SYSTEM_ADMIN.toString()))
-                .build();
-    }
-
-    // ==================== Protected routes ====================
+    // ==================== CORE ====================
 
     @Bean
     public RouterFunction<ServerResponse> userServiceRoutes() {
-        return routeBuilder("user-service-routes", "user-service", "user-service-cb")
+        return routeWithoutCB("user-service", "user-service")
                 .route(RequestPredicates.path("/api/users/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
                 .build();
     }
 
     @Bean
     @Order(2)
     public RouterFunction<ServerResponse> airlineCoreServiceRoutes() {
-        return routeBuilder("airline-core-routes", "airline-core-service", "airline-core-service-cb")
+        return routeWithoutCB("airline-core", "airline-core-service")
                 .route(RequestPredicates.path("/api/airlines/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/aircrafts/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
                 .build();
     }
 
-    @Bean
-    public RouterFunction<ServerResponse> seatServiceRoutes() {
-        return routeBuilder("seat-service-routes", "seat-service", "seat-service-cb")
-                .route(RequestPredicates.path("/api/cabin-classes/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/seat-maps/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/seats/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/seat-instances/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/flight-instance-cabins/**"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .build();
-    }
+    // ==================== OPTIONAL SERVICES ====================
 
     @Bean
-    public RouterFunction<ServerResponse> flightOpsServiceRoutes() {
-        return routeBuilder("flight-ops-routes", "flight-ops-service", "flight-ops-service-cb")
-                .route(RequestPredicates.path("/api/flights/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/flight-instances/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/flight-schedules/**"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .build();
-    }
-
-    @Bean
-    public RouterFunction<ServerResponse> pricingServiceRoutes() {
-        return routeBuilder("pricing-service-routes", "pricing-service", "pricing-service-cb")
-                .route(RequestPredicates.path("/api/fares/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/fare-rules/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/baggage-policies/**"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .build();
-    }
-
-    @Bean
-    public RouterFunction<ServerResponse> ancillaryServiceRoutes() {
-        return routeBuilder("ancillary-service-routes", "ancillary-service", "ancillary-service-cb")
-                .route(RequestPredicates.path("/api/meals/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/ancillaries/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/insurance-coverages/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/flight-meals/**"), HandlerFunctions.http())
-                .route(RequestPredicates.path("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
-                .before(this::jwtAuthFilter)
-                .build();
-    }
-
-    @Bean
-    @Order(2)
-    public RouterFunction<ServerResponse> locationServiceRoutes() {
-        return routeBuilder("location-service-routes", "location-service", "location-service-cb")
-                .route(RequestPredicates.path("/api/cities/**"), HandlerFunctions.http())
+    public RouterFunction<ServerResponse> locationRoutes() {
+        return routeWithCB("location", "location-service", "location-cb", "forward:/fallback/location")
                 .route(RequestPredicates.path("/api/airports/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/cities/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
                 .build();
     }
 
     @Bean
-    public RouterFunction<ServerResponse> bookingServiceRoutes() {
-        return routeBuilder("booking-service-routes", "booking-service", "booking-service-cb")
-                .route(RequestPredicates.path("/api/bookings/**"), HandlerFunctions.http())
+    public RouterFunction<ServerResponse> seatRoutes() {
+        return routeWithCB("seat", "seat-service", "seat-cb", "forward:/fallback/seat")
+                .route(RequestPredicates.path("/api/seats/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
                 .build();
     }
 
     @Bean
-    public RouterFunction<ServerResponse> paymentServiceRoutes() {
-        return routeBuilder("payment-service-routes", "payment-service", "payment-service-cb")
+    public RouterFunction<ServerResponse> flightRoutes() {
+        return routeWithCB("flight", "flight-ops-service", "flight-cb", "forward:/fallback/flight")
+                .route(RequestPredicates.path("/api/flights/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
+                .build();
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> ancillaryRoutes() {
+        return routeWithCB("ancillary", "ancillary-service", "ancillary-cb", "forward:/fallback/ancillary")
+                .route(RequestPredicates.path("/api/ancillaries/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
+                .build();
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> paymentRoutes() {
+        return routeWithCB("payment", "payment-service", "payment-cb", "forward:/fallback/payment")
                 .route(RequestPredicates.path("/api/payments/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
                 .build();
     }
 
-    // ==================== JWT filter ====================
+    // ==================== ADMIN ====================
+
+    @Bean
+    @Order(1)
+    public RouterFunction<ServerResponse> adminRoutes() {
+        return routeWithoutCB("admin", "location-service")
+                .route(RequestPredicates.POST("/api/cities/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/airports/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter) 
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .build();
+    }
+
+    // ==================== JWT FILTER ====================
 
     private ServerRequest jwtAuthFilter(ServerRequest request) {
+
         String authHeader = request.headers().firstHeader(JwtConstant.JWT_HEADER);
 
         if (authHeader == null || !authHeader.startsWith(JwtConstant.TOKEN_PREFIX)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Missing or invalid Authorization header");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing Authorization");
         }
 
         String token = authHeader.substring(JwtConstant.TOKEN_PREFIX.length());
 
         if (!jwtUtil.isTokenValid(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Invalid or expired JWT token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
         }
 
         if (blacklistService.isBlacklisted(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Token has been revoked. Please log in again.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token revoked");
         }
 
-        String email = jwtUtil.extractEmail(token);
-        String authorities = jwtUtil.extractAuthorities(token);
-        Long userId = jwtUtil.extractUserId(token);
-
         return ServerRequest.from(request)
-                .header("X-User-Id", String.valueOf(userId))
-                .header("X-User-Email", email)
-                .header("X-User-Roles", authorities)
+                .header("X-User-Email", jwtUtil.extractEmail(token))
+                .header("X-User-Id", String.valueOf(jwtUtil.extractUserId(token)))
+                .header("X-User-Roles", jwtUtil.extractAuthorities(token))
+                .header("X-Trace-Id", UUID.randomUUID().toString())
                 .build();
     }
 
     private ServerRequest requireRole(ServerRequest request, String role) {
         String roles = request.headers().firstHeader("X-User-Roles");
+
         if (roles == null || !roles.contains(role)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied. Required role: " + role);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
+
         return request;
     }
 }

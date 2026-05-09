@@ -4,27 +4,38 @@ server:
 spring:
   application:
     name: api-gateway
+
   config:
     import: optional:configserver:http://localhost:8888
 
-
+  # ================= REDIS =================
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
-      timeout: 2000ms
+      timeout: 5000ms
 
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: 2000ms
+
+# ================= RESILIENCE4J =================
 resilience4j:
   timelimiter:
     configs:
       default:
         timeout-duration: 5s
         cancel-running-future: true
+
     instances:
       booking-service-cb:
         timeout-duration: 8s
       payment-service-cb:
         timeout-duration: 10s
+
   circuitbreaker:
     configs:
       gateway-default:
@@ -35,15 +46,18 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
         automatic-transition-from-open-to-half-open-enabled: true
         register-health-indicator: true
+
     instances:
       booking-service-cb:
         base-config: gateway-default
         failure-rate-threshold: 40
         wait-duration-in-open-state: 45s
+
       payment-service-cb:
         base-config: gateway-default
         failure-rate-threshold: 30
         wait-duration-in-open-state: 60s
+
       flight-ops-service-cb:
         base-config: gateway-default
       seat-service-cb:
@@ -59,38 +73,55 @@ resilience4j:
       user-service-cb:
         base-config: gateway-default
 
+# ================= EUREKA =================
 eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
   client:
     register-with-eureka: true
     fetch-registry: true
 
+# ================= ACTUATOR + TRACING =================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, circuitbreakers, circuitbreakerevents, metrics
+
+  endpoint:
+    health:
+      show-details: always
+    info:
+      enabled: true
+
+  health:
+    circuitbreakers:
+      enabled: true
+
+  tracing:
+    sampling:
+      probability: 1.0
+
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+
+# ================= LOGGING =================
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    com.triquang: DEBUG
+
+  pattern:
+    level: "%5p [${spring.application.name},traceId=%X{traceId}]"
+
+# ================= APP INFO =================
 info:
   app:
     name: ${spring.application.name}
     description: API Gateway - routes and load balances all incoming requests across microservices
     version: 1.0.0
     environment: development
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, circuitbreakers, circuitbreakerevents
-  endpoint:
-    health:
-      show-details: always
-    info:
-      enabled: true
-  info:
-    env:
-      enabled: true
-    java:
-      enabled: true
-    os:
-      enabled: true
-  health:
-    circuitbreakers:
-      enabled: true
