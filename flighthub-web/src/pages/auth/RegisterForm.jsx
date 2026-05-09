@@ -22,9 +22,9 @@ const validationSchema = Yup.object().shape({
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters')
     .matches(/^(?=.*[A-Za-z])(?=.*\d)/, 'Password must contain both letters and numbers'),
-  mobile: Yup.string()
-    .required('Mobile number is required')
-    .matches(/^\d{10,15}$/, 'Mobile number must be between 10 and 15 digits'),
+  phone: Yup.string()
+    .required('Phone number is required')
+    .matches(/^\d{10,15}$/, 'Phone number must be between 10 and 15 digits'),
 });
 
 const Register = () => {
@@ -36,7 +36,7 @@ const Register = () => {
     fullName: '',
     email: '',
     password: '',
-    mobile: ''
+    phone: ''
   };
 
   const handleSubmit = async (values,  setSubmitting ) => {
@@ -104,11 +104,11 @@ const Register = () => {
               placeholder="Create a password"
             />
 
-            {/* Mobile Number */}
+            {/* phone Number */}
             <InputField
-              label="Mobile Number"
-              name="mobile"
-              placeholder="Enter your mobile number"
+              label="Phone Number"
+              name="phone"
+              placeholder="Enter your phone number"
               type="tel"
             />
 

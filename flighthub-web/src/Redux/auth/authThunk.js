@@ -2,41 +2,53 @@ import api from "@/utils/api";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 
-// ✅ Signup
 export const signup = createAsyncThunk(
   "auth/signup",
   async (userData, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/signup", userData);
-      // AuthResponse structure: { jwt, message, title, user }
-      const authResponse = res.data;
-      localStorage.setItem("jwt", authResponse.jwt);
+      const res = await api.post("/api/auth/signup", userData);
+
+      const authResponse = res.data.data;
+
+      // save tokens
+      localStorage.setItem("accessToken", authResponse.accessToken);
+      localStorage.setItem("refreshToken", authResponse.refreshToken);
+
       console.log("Signup success:", authResponse);
+
       return authResponse;
     } catch (err) {
       console.error("Signup error:", err);
-      return rejectWithValue(err.response?.data?.message || "Signup failed");
+
+      return rejectWithValue(
+        err.response?.data?.message || "Signup failed"
+      );
     }
   }
 );
 
-// ✅ Login
 export const login = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
-
     console.log("Credentials:", credentials);
+
     try {
-      const res = await api.post("/auth/login", credentials);
-      // AuthResponse structure: { jwt, message, title, user }
-      const authResponse = res.data;
+      const res = await api.post("/api/auth/login", credentials);
+
+      const authResponse = res.data.data;
+
       console.log("Login success:", authResponse);
-      localStorage.setItem("jwt", authResponse.jwt);
+
+      localStorage.setItem("accessToken", authResponse.accessToken);
+      localStorage.setItem("refreshToken", authResponse.refreshToken);
 
       return authResponse;
     } catch (err) {
       console.error("Login error:", err);
-      return rejectWithValue(err.response?.data?.message || "Login failed");
+
+      return rejectWithValue(
+        err.response?.data?.message || "Login failed"
+      );
     }
   }
 );
