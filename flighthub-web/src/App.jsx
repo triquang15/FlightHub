@@ -7,12 +7,13 @@ import {
 } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider.jsx";
 import { Toaster } from "./components/ui/sonner.jsx";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { useEffect } from "react";
+
 import LandingPage from "./pages/Landing/LandingPage.jsx";
 import Header from "./pages/traveler/Home/Header.jsx";
 import HomePage from "./pages/traveler/Home/HomePage.jsx";
 import SearchResults from "./pages/traveler/FlightList/SearchResults.jsx";
-
 import PaymentPage from "./pages/traveler/Payment/PaymentPage.jsx";
 import BookingHistory from "./pages/traveler/BookingHistory/BookingHistory.jsx";
 import BookingSuccess from "./pages/traveler/BookingSuccess/BookingSuccess.jsx";
@@ -22,41 +23,42 @@ import UserProfile from "./pages/traveler/Profile/UserProfile.jsx";
 import AirlineDashboard from "./pages/airline/Dashboard/AirlineDashboard.jsx";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard/SuperAdminDashboard.jsx";
 
-
 import ForgotPassword from "./pages/auth/ForgotPassword.jsx";
 import ResetPassword from "./pages/auth/ResetPassword.jsx";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { getUserProfile } from "./Redux/user/userThunks.js";
 import Auth from "./pages/auth/Auth.jsx";
+
 import BookingReview from "./pages/traveler/BookingReview/BookingReview.jsx";
 import AirlineOnboardingWizard from "./pages/Onboarding/AirlineOnboardingWizard";
 
+import { getUserProfile } from "./Redux/user/userThunks.js";
+
 function App() {
-  // Role-based redirection logic
+
   function RoleRedirect() {
     const navigate = useNavigate();
-    const { isAuthenticated, user } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
-    
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
+
     useEffect(() => {
-      dispatch(getUserProfile(localStorage.getItem("jwt")));
-    }, []);
+      const token = localStorage.getItem("accessToken");
 
-
-    console.log("Auth State:", { isAuthenticated, user });
+      if (token) {
+        dispatch(getUserProfile());
+      }
+    }, [dispatch]);
 
     useEffect(() => {
       if (isAuthenticated && user) {
-        // Redirect based on user role
         switch (user.role) {
           case "ROLE_SYSTEM_ADMIN":
             navigate("/super-admin");
             break;
+
           case "ROLE_AIRLINE_OWNER":
             navigate("/airline");
             break;
-          case "ROLE_USER":
+
+          case "ROLE_CUSTOMER":
           default:
             navigate("/traveler");
             break;
@@ -67,27 +69,28 @@ function App() {
     return null;
   }
 
-  // Protected route component for authentication pages
   function AuthProtected({ children }) {
     const { isAuthenticated } = useSelector((state) => state.auth);
     const navigate = useNavigate();
 
     useEffect(() => {
       if (isAuthenticated) {
-        // If user is already logged in, redirect them away from auth pages
         navigate("/");
       }
     }, [isAuthenticated, navigate]);
 
     return children;
   }
+
   return (
     <ThemeProvider>
       <Router>
         <div className="min-h-screen bg-background transition-colors">
           <Toaster />
+
           <Routes>
-            {/* Authentication Routes - Protected for unauthenticated users only */}
+
+            {/* AUTH */}
             <Route
               path="/register"
               element={
@@ -96,6 +99,7 @@ function App() {
                 </AuthProtected>
               }
             />
+
             <Route
               path="/login"
               element={
@@ -104,6 +108,7 @@ function App() {
                 </AuthProtected>
               }
             />
+
             <Route
               path="/forgot-password"
               element={
@@ -112,6 +117,7 @@ function App() {
                 </AuthProtected>
               }
             />
+
             <Route
               path="/reset-password/:token"
               element={
@@ -120,16 +126,8 @@ function App() {
                 </AuthProtected>
               }
             />
-            <Route
-              path="/reset-password"
-              element={
-                <AuthProtected>
-                  <ResetPassword />
-                </AuthProtected>
-              }
-            />
 
-            {/* Landing Page - With role-based redirection for logged in users */}
+            {/* LANDING */}
             <Route
               path="/"
               element={
@@ -139,111 +137,125 @@ function App() {
                 </>
               }
             />
-            {/* <Route path="/onboarding" element={<OnboardingPage />} /> */}
-            <Route path="/airline-onboarding" element={<AirlineOnboardingWizard />} />
 
-            {/* Traveler Routes */}
+            {/* ONBOARDING */}
+            <Route
+              path="/airline-onboarding"
+              element={<AirlineOnboardingWizard />}
+            />
+
+            {/* TRAVELER */}
             <Route
               path="/traveler"
               element={
-                <div>
+                <>
                   <Header />
                   <HomePage />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/search"
               element={
-                <div>
+                <>
                   <Header />
                   <SearchResults />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/search-results"
               element={
-                <div>
+                <>
                   <Header />
                   <SearchResults />
-                </div>
+                </>
               }
             />
-            
+
             <Route
               path="/booking-review"
               element={
-                <div>
+                <>
                   <Header />
                   <BookingReview />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/payment"
               element={
-                <div>
+                <>
                   <Header />
                   <PaymentPage />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/bookings"
               element={
-                <div>
+                <>
                   <Header />
                   <BookingHistory />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/booking-success/:bookingId"
               element={<BookingSuccess />}
             />
+
             <Route
               path="/view-ticket/:bookingId"
               element={
-                <div>
+                <>
                   <Header />
                   <Ticket />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/ticket/:pnr"
               element={
-                <div>
+                <>
                   <Header />
                   <ETicket />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/ticket"
               element={
-                <div>
+                <>
                   <Header />
                   <ETicket />
-                </div>
+                </>
               }
             />
+
             <Route
               path="/profile"
               element={
-                <div>
+                <>
                   <Header />
                   <UserProfile />
-                </div>
+                </>
               }
             />
 
-            {/* Airline Dashboard Routes */}
+            {/* AIRLINE */}
             <Route path="/airline/*" element={<AirlineDashboard />} />
 
-            {/* Super Admin Dashboard Routes */}
+            {/* ADMIN */}
             <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
+
           </Routes>
         </div>
       </Router>

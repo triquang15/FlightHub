@@ -7,16 +7,34 @@ export const getUserProfile = createAsyncThunk(
   "user/getProfile",
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem("accessToken");
+
+      if (!token) {
+        return rejectWithValue("Please login to continue");
+      }
+
       const res = await api.get("/api/users/profile", {
-        headers: getHeaders(),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-      const user = res.data.data;
+      const user = res.data?.data;
 
       console.log("Get user profile success:", user);
       return user;
+
     } catch (err) {
       console.error("Get user profile error:", err);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+
+        // optional: redirect login
+        window.location.href = "/login";
+      }
+
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch profile"
       );
@@ -68,19 +86,38 @@ export const getUserById = createAsyncThunk(
   }
 );
 
-// 🔹 Logout
 export const logout = createAsyncThunk(
   "user/logout",
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem("accessToken");
+
+      // CALL BACKEND
+      if (token) {
+        await api.post("/auth/logout", null, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+
+      // ALWAYS clear FE
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
 
-      console.log("User logged out successfully");
+      console.log("Logout success (FE + BE)");
       return true;
+
     } catch (err) {
       console.error("Logout error:", err);
-      return rejectWithValue(err.message || "Failed to logout");
+
+      // Clear FE (fail-safe)
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+
+      return rejectWithValue(
+        err.response?.data?.message || "Logout failed"
+      );
     }
   }
 );
