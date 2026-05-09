@@ -1,7 +1,12 @@
 package com.triquang.config;
+
+import com.triquang.enums.ErrorCode;
+import com.triquang.payload.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.function.*;
 
@@ -14,20 +19,20 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
 
     private final StringRedisTemplate redisTemplate;
 
-    private static final int CAPACITY = 20;   // max request
-    private static final long WINDOW = 60;    // seconds
+    private static final int CAPACITY = 20;
+    private static final long WINDOW = 60;
 
     @Override
     public ServerResponse filter(ServerRequest request, HandlerFunction<ServerResponse> next) throws Exception {
 
         String path = request.path();
 
-        // 🔥 1. SKIP AUTH APIs
+        // 1. Skip auth
         if (path.startsWith("/api/auth")) {
             return next.handle(request);
         }
 
-        // 🔥 2. KEY DESIGN
+        // 2. Key
         String userId = request.headers().firstHeader("X-User-Id");
         String ip = request.servletRequest().getRemoteAddr();
 
@@ -36,38 +41,38 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
         Long current;
 
         try {
-            // 3. INCREMENT COUNTER
             current = redisTemplate.opsForValue().increment(key);
 
-            // 4. SET TTL ONLY FIRST TIME
             if (current != null && current == 1) {
                 redisTemplate.expire(key, Duration.ofSeconds(WINDOW));
             }
 
         } catch (Exception ex) {
-            // 5. REDIS DOWN → ALLOW REQUEST
             log.error("Redis unavailable, skipping rate limit", ex);
             return next.handle(request);
         }
 
-        // 6. CHECK LIMIT
+        // 3. Limit check
         if (current != null && current > CAPACITY) {
 
             log.warn("Rate limit exceeded key={}", key);
 
-            return ServerResponse.status(429)
+            String traceId = MDC.get(TraceIdFilter.TRACE_ID);
+            if (traceId == null) traceId = "N/A";
+
+            ApiResponse<Void> response = ApiResponse.error(
+                    ErrorCode.TOO_MANY_REQUESTS,
+                    traceId
+            );
+
+            return ServerResponse.status(ErrorCode.TOO_MANY_REQUESTS.getStatus())
                     .header("X-RateLimit-Limit", String.valueOf(CAPACITY))
                     .header("X-RateLimit-Remaining", "0")
                     .header("X-RateLimit-Reset", String.valueOf(WINDOW))
-                    .body("""
-                        {
-                          "status": 429,
-                          "message": "Too many requests"
-                        }
-                    """);
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response);
         }
 
-        // 7. PASS REQUEST
         return next.handle(request);
     }
 }

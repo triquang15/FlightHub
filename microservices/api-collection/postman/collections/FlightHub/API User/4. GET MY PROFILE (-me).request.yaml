@@ -1,0 +1,13 @@
+$kind: http-request
+name: 4. GET MY PROFILE (/me)
+url: http://localhost:8080/api/users/profile
+method: GET
+headers:
+  - key: ""
+    value: ""
+    disabled: true
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI1NWZhMzYxNi0zNDg5LTQzMDUtYTJlMy1hZTMxMzk2N2MxYjUiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzgyNTM5MDEsImV4cCI6MTc3ODI1NDgwMSwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIn0.wRGUUunJtgHXdvJzhYdIjuKgtwWCTsNXVJQ1KvjgdFqSrFb6WOp4S-pU_umZzp-5__huFov1remCAtmwVTNlZA
+order: 4000

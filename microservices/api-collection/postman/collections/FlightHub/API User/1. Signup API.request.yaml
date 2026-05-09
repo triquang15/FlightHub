@@ -1,0 +1,14 @@
+$kind: http-request
+name: 1. Signup API
+url: http://localhost:8080/api/auth/signup
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "email": "david.wilson@gmail.com",
+      "password": "123456",
+      "fullName": "David Wilson",
+      "phone": "0905556677"
+    }
+order: 1000
