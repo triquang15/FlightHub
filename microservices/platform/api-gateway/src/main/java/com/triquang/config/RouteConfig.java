@@ -21,6 +21,8 @@ import org.springframework.web.servlet.function.ServerResponse;
 import com.triquang.enums.UserRole;
 import com.triquang.service.TokenBlacklistService;
 
+import io.jsonwebtoken.Claims;
+
 @Configuration
 public class RouteConfig {
 
@@ -167,18 +169,40 @@ public class RouteConfig {
 
         String token = authHeader.substring(JwtConstant.TOKEN_PREFIX.length());
 
-        if (!jwtUtil.isTokenValid(token)) {
+        // =========================
+        // PARSE TOKEN (ONCE)
+        // =========================
+        Claims claims = jwtUtil.safeExtractClaims(token);
+
+        if (claims == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
         }
 
+        // =========================
+        // CHECK BLACKLIST
+        // =========================
         if (blacklistService.isBlacklisted(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token revoked");
         }
 
+        // =========================
+        // CHECK EXPIRED
+        // =========================
+        if (jwtUtil.isTokenExpired(claims)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token expired");
+        }
+
+        // =========================
+        // EXTRACT USER INFO
+        // =========================
+        String email = jwtUtil.extractEmail(claims);
+        String roles = jwtUtil.extractAuthorities(claims);
+        Long userId = jwtUtil.extractUserId(claims);
+
         return ServerRequest.from(request)
-                .header("X-User-Email", jwtUtil.extractEmail(token))
-                .header("X-User-Id", String.valueOf(jwtUtil.extractUserId(token)))
-                .header("X-User-Roles", jwtUtil.extractAuthorities(token))
+                .header("X-User-Email", email)
+                .header("X-User-Id", String.valueOf(userId))
+                .header("X-User-Roles", roles)
                 .header("X-Trace-Id", UUID.randomUUID().toString())
                 .build();
     }

@@ -1,8 +1,10 @@
 package com.triquang.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -13,6 +15,7 @@ import java.util.Date;
 import java.util.List;
 
 @Component
+@Slf4j
 public class JwtUtil {
 
     private final SecretKey key;
@@ -32,24 +35,33 @@ public class JwtUtil {
                 .getPayload();
     }
 
-    // ===================== FIXED METHODS =====================
-    public String extractEmail(String token) {
-        return extractAllClaims(token).getSubject();
+    public Claims safeExtractClaims(String token) {
+        try {
+            return extractAllClaims(token);
+        } catch (JwtException e) {
+            log.warn("Invalid JWT token received");
+            return null;
+        }
     }
 
-    public String extractAuthorities(String token) {
-        Object roles = extractAllClaims(token).get("roles");
+    // ===================== CLAIM HELPERS =====================
+
+    public String extractEmail(Claims claims) {
+        return claims.getSubject();
+    }
+
+    public String extractAuthorities(Claims claims) {
+        Object roles = claims.get("roles");
 
         if (roles instanceof List<?> list) {
-            return String.join(",",
-                    list.stream().map(String::valueOf).toList());
+            return String.join(",", list.stream().map(String::valueOf).toList());
         }
 
         return "";
     }
 
-    public Long extractUserId(String token) {
-        Object value = extractAllClaims(token).get("userId");
+    public Long extractUserId(Claims claims) {
+        Object value = claims.get("userId");
 
         if (value instanceof Integer i) return i.longValue();
         if (value instanceof Long l) return l;
@@ -58,17 +70,23 @@ public class JwtUtil {
     }
 
     // ===================== VALIDATION =====================
-    public boolean isTokenValid(String token) {
-        try {
-            extractAllClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+
+    public boolean isTokenExpired(Claims claims) {
+        return claims.getExpiration().before(new Date());
     }
 
-    public Duration getRemainingValidity(String token) {
-        Date expiration = extractAllClaims(token).getExpiration();
-        return Duration.between(Instant.now(), expiration.toInstant());
+    public boolean isTokenValid(Claims claims) {
+        return !isTokenExpired(claims);
+    }
+
+    // ===================== TTL =====================
+
+    public Duration getRemainingValidity(Claims claims) {
+        Duration duration = Duration.between(
+                Instant.now(),
+                claims.getExpiration().toInstant()
+        );
+
+        return duration.isNegative() ? Duration.ZERO : duration;
     }
 }

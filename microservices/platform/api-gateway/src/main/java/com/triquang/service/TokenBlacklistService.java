@@ -5,15 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.Base64;
 
-/**
- * Manages blacklisted JWTs (e.g. after user logout) using Redis for storage.
- * Tokens are stored with a TTL equal to their remaining validity, so Redis auto-cleans expired tokens.
- * If Redis is unavailable, blacklisting is effectively disabled (tokens are treated as valid).
- * 
- * @author Tri Quang
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,34 +19,62 @@ public class TokenBlacklistService {
 
     private final StringRedisTemplate redisTemplate;
 
-    /**
-     * Adds a token to the blacklist with a TTL so Redis auto-cleans expired tokens.
-     *
-     * @param token raw JWT (without "Bearer " prefix)
-     * @param ttl time until the token naturally expires
-     */
+    // =========================
+    // PUBLIC API
+    // =========================
+
     public void blacklist(String token, Duration ttl) {
-        if (ttl.isNegative() || ttl.isZero()) {
-            return;
-        }
+
+        String key = resolveKey(token, ttl);
+        if (key == null) return;
+
         try {
-            redisTemplate.opsForValue().set(PREFIX + token, "1", ttl);
-            log.debug("Token blacklisted for {}s", ttl.toSeconds());
+            redisTemplate.opsForValue().set(key, "1", ttl);
+            log.info("Token blacklisted (ttl={}s)", ttl.toSeconds());
         } catch (Exception e) {
-            log.warn("Redis unavailable — token blacklisting skipped: {}", e.getMessage());
+            log.error("Redis error during blacklist", e);
         }
     }
 
-    /**
-     * Returns {@code true} if the token has been revoked (i.e. the user logged out).
-     * Returns {@code false} when Redis is unavailable — token is treated as valid.
-     */
     public boolean isBlacklisted(String token) {
+
+        String key = resolveKey(token, null);
+        if (key == null) return false;
+
         try {
-            return Boolean.TRUE.equals(redisTemplate.hasKey(PREFIX + token));
+            return redisTemplate.opsForValue().get(key) != null;
         } catch (Exception e) {
-            log.warn("Redis unavailable for blacklist check — treating token as valid: {}", e.getMessage());
+            log.error("Redis error during blacklist check", e);
             return false;
+        }
+    }
+
+    // =========================
+    // INTERNAL
+    // =========================
+
+    private String resolveKey(String token, Duration ttl) {
+
+        if (token == null || token.isBlank()) {
+            log.warn("Skip blacklist: token is null/blank");
+            return null;
+        }
+
+        if (ttl != null && (ttl.isZero() || ttl.isNegative())) {
+            log.warn("Skip blacklist: invalid TTL");
+            return null;
+        }
+
+        return PREFIX + hash(token);
+    }
+
+    private String hash(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to hash token", e);
         }
     }
 }

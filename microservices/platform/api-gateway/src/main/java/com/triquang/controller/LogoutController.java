@@ -12,48 +12,62 @@ import com.triquang.enums.ErrorCode;
 import com.triquang.service.TokenBlacklistService;
 import com.triquang.utils.ResponseUtil;
 
+import io.jsonwebtoken.Claims;
+
 import java.time.Duration;
 
-/**
- * Handles logout by revoking the JWT token in Redis.
- */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class LogoutController {
 
-	private final JwtUtil jwtUtil;
-	private final TokenBlacklistService blacklistService;
+    private final JwtUtil jwtUtil;
+    private final TokenBlacklistService blacklistService;
 
-	@PostMapping("/logout")
-	public ResponseEntity<?> logout(
-			@RequestHeader(value = JwtConstant.JWT_HEADER, required = false) String authHeader) {
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            @RequestHeader(value = JwtConstant.JWT_HEADER, required = false) String authHeader) {
 
-		// =========================
-		// 1. CHECK HEADER
-		// =========================
-		if (authHeader == null || !authHeader.startsWith(JwtConstant.TOKEN_PREFIX)) {
-			return ResponseUtil.error(ErrorCode.UNAUTHORIZED);
-		}
+        // 1. HEADER
+        if (authHeader == null || !authHeader.startsWith(JwtConstant.TOKEN_PREFIX)) {
+            log.warn("Logout failed: invalid Authorization header");
+            return ResponseUtil.error(ErrorCode.UNAUTHORIZED);
+        }
 
-		String token = authHeader.substring(JwtConstant.TOKEN_PREFIX.length());
+        String token = authHeader.substring(JwtConstant.TOKEN_PREFIX.length());
 
-		// =========================
-		// 2. TOKEN INVALID
-		// =========================
-		if (!jwtUtil.isTokenValid(token)) {
-			return ResponseUtil.ok("Token already invalid");
-		}
+        // 2. PARSE TOKEN (ONCE)
+        Claims claims = jwtUtil.safeExtractClaims(token);
 
-		// =========================
-		// 3. BLACKLIST TOKEN
-		// =========================
-		Duration ttl = jwtUtil.getRemainingValidity(token);
-		blacklistService.blacklist(token, ttl);
+        if (claims == null) {
+            log.warn("Logout skipped: invalid token");
+            return ResponseUtil.ok("Token already invalid");
+        }
 
-		log.info("User logged out — token blacklisted for {}s", ttl.toSeconds());
+        // 3. EXPIRED
+        if (jwtUtil.isTokenExpired(claims)) {
+            log.info("Logout skipped: token already expired");
+            return ResponseUtil.ok("Token already expired");
+        }
 
-		return ResponseUtil.ok("Logged out successfully");
-	}
+        // 4. TTL
+        Duration ttl = jwtUtil.getRemainingValidity(claims);
+
+        if (ttl.isZero() || ttl.isNegative()) {
+            log.warn("Skip blacklist: TTL <= 0");
+            return ResponseUtil.ok("Token already expired");
+        }
+
+        // 5. BLACKLIST
+        try {
+            blacklistService.blacklist(token, ttl);
+            log.info("Logout success - token blacklisted (ttl={}s)", ttl.toSeconds());
+        } catch (Exception e) {
+            log.error("Redis error during logout", e);
+        }
+
+        // 6. RESPONSE
+        return ResponseUtil.ok("Logged out successfully");
+    }
 }
