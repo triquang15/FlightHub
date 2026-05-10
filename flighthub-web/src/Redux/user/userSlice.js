@@ -1,39 +1,38 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 import {
   getUserProfile,
- 
   getAllUsers,
   getUserById,
   logout
-} from './userThunks';
+} from "./userThunks";
 
 const initialState = {
   userProfile: null,
   users: [],
-  customers: [],
-  cashiers: [],
   selectedUser: null,
-  usersLoading: false,
   loading: false,
+  usersLoading: false,
   error: null,
 };
 
 const userSlice = createSlice({
-  name: 'user',
+  name: "user",
   initialState,
   reducers: {
     clearUserState: (state) => {
       state.userProfile = null;
-      state.selectedUser = null;
       state.users = [];
-      state.customers = [];
-      state.cashiers = [];
+      state.selectedUser = null;
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(getUserProfile.pending, (state) => { state.loading = true; })
+
+      // ================= PROFILE =================
+      .addCase(getUserProfile.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(getUserProfile.fulfilled, (state, action) => {
         state.loading = false;
         state.userProfile = action.payload;
@@ -43,9 +42,10 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
 
-      
-
-      .addCase(getAllUsers.pending, (state) => { state.usersLoading = true; })
+      // ================= USERS =================
+      .addCase(getAllUsers.pending, (state) => {
+        state.usersLoading = true;
+      })
       .addCase(getAllUsers.fulfilled, (state, action) => {
         state.usersLoading = false;
         state.users = action.payload;
@@ -55,21 +55,18 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
 
+      // ================= USER BY ID =================
       .addCase(getUserById.fulfilled, (state, action) => {
         state.selectedUser = action.payload;
       })
+
+      // ================= LOGOUT =================
       .addCase(logout.fulfilled, (state) => {
         state.userProfile = null;
         state.selectedUser = null;
+        state.users = [];
         state.error = null;
-      })
-
-      .addMatcher(
-        (action) => action.type.startsWith('user/') && action.type.endsWith('/rejected'),
-        (state, action) => {
-          state.error = action.payload;
-        }
-      );
+      });
   },
 });
 

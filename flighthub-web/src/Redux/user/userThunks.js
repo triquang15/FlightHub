@@ -1,40 +1,18 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
+import { clearUserState } from "./userSlice";
+import { logoutLocal } from "../auth/authSlice";
 
-// 🔹 Get user profile
+// ============================
+// GET PROFILE
+// ============================
 export const getUserProfile = createAsyncThunk(
   "user/getProfile",
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem("accessToken");
-
-      if (!token) {
-        return rejectWithValue("Please login to continue");
-      }
-
-      const res = await api.get("/api/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const user = res.data?.data;
-
-      console.log("Get user profile success:", user);
-      return user;
-
+      const res = await api.get("/api/users/profile");
+      return res.data?.data;
     } catch (err) {
-      console.error("Get user profile error:", err);
-
-      if (err.response?.status === 401) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-
-        // optional: redirect login
-        window.location.href = "/login";
-      }
-
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch profile"
       );
@@ -42,21 +20,16 @@ export const getUserProfile = createAsyncThunk(
   }
 );
 
-// 🔹 Get all users
+// ============================
+// GET ALL USERS
+// ============================
 export const getAllUsers = createAsyncThunk(
   "user/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/users", {
-        headers: getHeaders(),
-      });
-
-      const users = res.data.data;
-
-      console.log("Get all users success:", users);
-      return users;
+      const res = await api.get("/api/users");
+      return res.data?.data;
     } catch (err) {
-      console.error("Get all users error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch users"
       );
@@ -64,21 +37,16 @@ export const getAllUsers = createAsyncThunk(
   }
 );
 
-// 🔹 Get user by ID
+// ============================
+// GET USER BY ID
+// ============================
 export const getUserById = createAsyncThunk(
   "user/getById",
   async (userId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/users/${userId}`, {
-        headers: getHeaders(),
-      });
-
-      const user = res.data.data;
-
-      console.log("Get user by ID success:", user);
-      return user;
+      const res = await api.get(`/api/users/${userId}`);
+      return res.data?.data;
     } catch (err) {
-      console.error("Get user by ID error:", err);
       return rejectWithValue(
         err.response?.data?.message || "User not found"
       );
@@ -86,34 +54,35 @@ export const getUserById = createAsyncThunk(
   }
 );
 
+// ============================
+// LOGOUT
+// ============================
 export const logout = createAsyncThunk(
   "user/logout",
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue }) => {
     try {
       const token = localStorage.getItem("accessToken");
 
-      // CALL BACKEND
       if (token) {
-        await api.post("/auth/logout", null, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        await api.post("/auth/logout");
       }
 
-      // ALWAYS clear FE
+      // clear storage
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
 
-      console.log("Logout success (FE + BE)");
+      // clear redux
+      dispatch(clearUserState());
+      dispatch(logoutLocal());
+
       return true;
 
     } catch (err) {
-      console.error("Logout error:", err);
-
-      // Clear FE (fail-safe)
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+
+      dispatch(clearUserState());
+      dispatch(logoutLocal());
 
       return rejectWithValue(
         err.response?.data?.message || "Logout failed"

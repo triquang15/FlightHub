@@ -1,22 +1,45 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { jwtDecode } from "jwt-decode";
 import { login, signup, forgotPassword, resetPassword } from "./authThunk";
 import { getUserProfile, logout } from "../user/userThunks";
 
-// ✅ Auth Slice
+// ================= INIT USER =================
+const getInitialUser = () => {
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) return null;
+
+  try {
+    const decoded = jwtDecode(token);
+
+    return {
+      email: decoded.sub,
+      role: decoded.roles?.[0],
+      id: decoded.userId,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const initialState = {
+  user: getInitialUser(),
+  isAuthenticated: !!localStorage.getItem("accessToken"),
+  loading: false,
+  error: null,
+
+  forgotPasswordLoading: false,
+  forgotPasswordError: null,
+  forgotPasswordSuccess: false,
+
+  resetPasswordLoading: false,
+  resetPasswordError: null,
+  resetPasswordSuccess: false,
+};
+
 const authSlice = createSlice({
   name: "auth",
-  initialState: {
-    user: null,
-    loading: false,
-    error: null,
-    isAuthenticated: false,
-    forgotPasswordLoading: false,
-    forgotPasswordError: null,
-    forgotPasswordSuccess: false,
-    resetPasswordLoading: false,
-    resetPasswordError: null,
-    resetPasswordSuccess: false,
-  },
+  initialState,
   reducers: {
     clearForgotPasswordState: (state) => {
       state.forgotPasswordLoading = false;
@@ -28,86 +51,54 @@ const authSlice = createSlice({
       state.resetPasswordError = null;
       state.resetPasswordSuccess = false;
     },
+    logoutLocal: (state) => {
+      state.user = null;
+      state.isAuthenticated = false;
+    },
   },
   extraReducers: (builder) => {
     builder
+
+      // ================= SIGNUP =================
       .addCase(signup.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(signup.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
         state.isAuthenticated = true;
+        state.error = null;
       })
       .addCase(signup.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
+      // ================= LOGIN =================
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user; // Extract user from AuthResponse
+        state.user = action.payload.user;
         state.isAuthenticated = true;
+        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Forgot Password cases
-      .addCase(forgotPassword.pending, (state) => {
-        state.loading = true;
-        state.forgotPasswordLoading = true;
-        state.forgotPasswordError = null;
-        state.forgotPasswordSuccess = false;
-      })
-      .addCase(forgotPassword.fulfilled, (state) => {
-        state.loading = false;
-        state.forgotPasswordLoading = false;
-        state.forgotPasswordSuccess = true;
-        state.forgotPasswordError = null;
-      })
-      .addCase(forgotPassword.rejected, (state, action) => {
-        state.loading = false;
-        state.forgotPasswordLoading = false;
-        state.forgotPasswordError = action.payload;
-        state.forgotPasswordSuccess = false;
-        state.error = action.payload;
-      })
-
-      // Reset Password cases
-      .addCase(resetPassword.pending, (state) => {
-        state.loading = true;
-        state.resetPasswordLoading = true;
-        state.resetPasswordError = null;
-        state.resetPasswordSuccess = false;
-      })
-      .addCase(resetPassword.fulfilled, (state) => {
-        state.loading = false;
-        state.resetPasswordLoading = false;
-        state.resetPasswordSuccess = true;
-        state.resetPasswordError = null;
-      })
-      .addCase(resetPassword.rejected, (state, action) => {
-        state.loading = false;
-        state.resetPasswordLoading = false;
-        state.resetPasswordError = action.payload;
-        state.resetPasswordSuccess = false;
-        state.error = action.payload;
-      })
-      // Get User Profile to maintain auth state
+      // ================= PROFILE =================
       .addCase(getUserProfile.pending, (state) => {
-        state.isAuthenticated = false;
+        state.loading = true;
       })
       .addCase(getUserProfile.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
         state.user = action.payload;
+        state.isAuthenticated = true;
       })
       .addCase(getUserProfile.rejected, (state, action) => {
         state.loading = false;
@@ -115,6 +106,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
       })
 
+      // ================= LOGOUT =================
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.isAuthenticated = false;
@@ -123,6 +115,10 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearForgotPasswordState, clearResetPasswordState } =
-  authSlice.actions;
+export const {
+  clearForgotPasswordState,
+  clearResetPasswordState,
+  logoutLocal,
+} = authSlice.actions;
+
 export default authSlice.reducer;
