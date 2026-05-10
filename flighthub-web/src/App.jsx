@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useNavigate,
+  Navigate,
 } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider.jsx";
 import { Toaster } from "./components/ui/sonner.jsx";
@@ -20,6 +21,7 @@ import BookingSuccess from "./pages/traveler/BookingSuccess/BookingSuccess.jsx";
 import ETicket from "./pages/traveler/Ticket/ETicket.jsx";
 import Ticket from "./pages/traveler/Ticket/Ticket.jsx";
 import UserProfile from "./pages/traveler/Profile/UserProfile.jsx";
+
 import AirlineDashboard from "./pages/airline/Dashboard/AirlineDashboard.jsx";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard/SuperAdminDashboard.jsx";
 
@@ -32,56 +34,46 @@ import AirlineOnboardingWizard from "./pages/Onboarding/AirlineOnboardingWizard"
 
 import { getUserProfile } from "./Redux/user/userThunks.js";
 
+import AuthRequired from "./components/auth/AuthRequired.jsx";
+import GuestOnly from "./components/auth/GuestOnly.jsx";
+
+// ============================
+// ROLE REDIRECT
+// ============================
+function RoleRedirect() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      dispatch(getUserProfile());
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      switch (user.role) {
+        case "ROLE_SYSTEM_ADMIN":
+          navigate("/super-admin");
+          break;
+        case "ROLE_AIRLINE_OWNER":
+          navigate("/airline");
+          break;
+        default:
+          navigate("/traveler");
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  return null;
+}
+
+// ============================
+// APP
+// ============================
 function App() {
-
-  function RoleRedirect() {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const { isAuthenticated, user } = useSelector((state) => state.auth);
-
-    useEffect(() => {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        dispatch(getUserProfile());
-      }
-    }, [dispatch]);
-
-    useEffect(() => {
-      if (isAuthenticated && user) {
-        switch (user.role) {
-          case "ROLE_SYSTEM_ADMIN":
-            navigate("/super-admin");
-            break;
-
-          case "ROLE_AIRLINE_OWNER":
-            navigate("/airline");
-            break;
-
-          case "ROLE_CUSTOMER":
-          default:
-            navigate("/traveler");
-            break;
-        }
-      }
-    }, [isAuthenticated, user, navigate]);
-
-    return null;
-  }
-
-  function AuthProtected({ children }) {
-    const { isAuthenticated } = useSelector((state) => state.auth);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-      if (isAuthenticated) {
-        navigate("/");
-      }
-    }, [isAuthenticated, navigate]);
-
-    return children;
-  }
-
   return (
     <ThemeProvider>
       <Router>
@@ -89,45 +81,44 @@ function App() {
           <Toaster />
 
           <Routes>
-
-            {/* AUTH */}
+            {/* ================= AUTH ================= */}
             <Route
-              path="/register"
+              path="/login"
               element={
-                <AuthProtected>
-                  <Auth isLogin={false} />
-                </AuthProtected>
+                <GuestOnly>
+                  <Auth isLogin={true} />
+                </GuestOnly>
               }
             />
 
             <Route
-              path="/login"
+              path="/register"
               element={
-                <AuthProtected>
-                  <Auth isLogin={true} />
-                </AuthProtected>
+                <GuestOnly>
+                  <Auth isLogin={false} />
+                </GuestOnly>
               }
             />
 
             <Route
               path="/forgot-password"
               element={
-                <AuthProtected>
+                <GuestOnly>
                   <ForgotPassword />
-                </AuthProtected>
+                </GuestOnly>
               }
             />
 
             <Route
               path="/reset-password/:token"
               element={
-                <AuthProtected>
+                <GuestOnly>
                   <ResetPassword />
-                </AuthProtected>
+                </GuestOnly>
               }
             />
 
-            {/* LANDING */}
+            {/* ================= LANDING ================= */}
             <Route
               path="/"
               element={
@@ -138,124 +129,124 @@ function App() {
               }
             />
 
-            {/* ONBOARDING */}
+            {/* ================= ONBOARDING ================= */}
             <Route
               path="/airline-onboarding"
               element={<AirlineOnboardingWizard />}
             />
 
-            {/* TRAVELER */}
+            {/* ================= TRAVELER ================= */}
             <Route
               path="/traveler"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <HomePage />
-                </>
+                </AuthRequired>
               }
             />
 
             <Route
               path="/search"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <SearchResults />
-                </>
-              }
-            />
-
-            <Route
-              path="/search-results"
-              element={
-                <>
-                  <Header />
-                  <SearchResults />
-                </>
+                </AuthRequired>
               }
             />
 
             <Route
               path="/booking-review"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <BookingReview />
-                </>
+                </AuthRequired>
               }
             />
 
             <Route
               path="/payment"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <PaymentPage />
-                </>
+                </AuthRequired>
               }
             />
 
             <Route
               path="/bookings"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <BookingHistory />
-                </>
-              }
-            />
-
-            <Route
-              path="/booking-success/:bookingId"
-              element={<BookingSuccess />}
-            />
-
-            <Route
-              path="/view-ticket/:bookingId"
-              element={
-                <>
-                  <Header />
-                  <Ticket />
-                </>
-              }
-            />
-
-            <Route
-              path="/ticket/:pnr"
-              element={
-                <>
-                  <Header />
-                  <ETicket />
-                </>
-              }
-            />
-
-            <Route
-              path="/ticket"
-              element={
-                <>
-                  <Header />
-                  <ETicket />
-                </>
+                </AuthRequired>
               }
             />
 
             <Route
               path="/profile"
               element={
-                <>
+                <AuthRequired>
                   <Header />
                   <UserProfile />
-                </>
+                </AuthRequired>
               }
             />
 
-            {/* AIRLINE */}
-            <Route path="/airline/*" element={<AirlineDashboard />} />
+            <Route
+              path="/booking-success/:bookingId"
+              element={
+                <AuthRequired>
+                  <BookingSuccess />
+                </AuthRequired>
+              }
+            />
 
-            {/* ADMIN */}
-            <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
+            <Route
+              path="/view-ticket/:bookingId"
+              element={
+                <AuthRequired>
+                  <Header />
+                  <Ticket />
+                </AuthRequired>
+              }
+            />
 
+            <Route
+              path="/ticket/:pnr"
+              element={
+                <AuthRequired>
+                  <Header />
+                  <ETicket />
+                </AuthRequired>
+              }
+            />
+
+            {/* ================= AIRLINE ================= */}
+            <Route
+              path="/airline/*"
+              element={
+                <AuthRequired>
+                  <AirlineDashboard />
+                </AuthRequired>
+              }
+            />
+
+            {/* ================= ADMIN ================= */}
+            <Route
+              path="/super-admin/*"
+              element={
+                <AuthRequired>
+                  <SuperAdminDashboard />
+                </AuthRequired>
+              }
+            />
+
+            {/* ================= FALLBACK ================= */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </Router>
