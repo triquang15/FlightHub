@@ -200,6 +200,12 @@ public class RouteConfig {
         Long userId = jwtUtil.extractUserId(claims);
 
         return ServerRequest.from(request)
+                .headers(headers -> {
+                    headers.remove("X-User-Email");
+                    headers.remove("X-User-Id");
+                    headers.remove("X-User-Roles");
+                    headers.remove("X-Trace-Id");
+                })
                 .header("X-User-Email", email)
                 .header("X-User-Id", String.valueOf(userId))
                 .header("X-User-Roles", roles)

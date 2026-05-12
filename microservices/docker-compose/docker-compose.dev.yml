@@ -4,8 +4,8 @@
 # Use this when running services locally (not in Docker).
 #
 # Usage:
-#   docker compose -f docker-compose/docker-compose.dev.yml up -d
-#   docker compose -f docker-compose/docker-compose.dev.yml down
+#   docker compose -f docker-compose.dev.yml up -d
+#   docker compose -f docker-compose.dev.yml down
 # =============================================================================
 
 services:

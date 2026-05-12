@@ -1,0 +1,20 @@
+$kind: http-request
+name: CREATE CITY
+url: http://localhost:8080/api/cities
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "name": "Da Nang",
+      "cityCode": "DAD",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "regionCode": "DN",
+      "timeZoneOffset": "+07:00"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3YTExOWQ3Ny1mZWFjLTQ5NTMtYjc3Yy0wZDFlNzk5MTBmNzUiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3Nzg0MTUzNDksImV4cCI6MTc3ODQxNjI0OSwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIn0.y6p8OS6twAqPqIMRS7QKyTfoHzdMBufjeQQUbz__5gm6nN4OddpeyIgrDfaGRAZqWI8xjrzlRG_cRhMKc8fiUQ
+order: 1000

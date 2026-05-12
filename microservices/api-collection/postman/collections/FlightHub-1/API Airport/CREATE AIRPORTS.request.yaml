@@ -1,0 +1,29 @@
+$kind: http-request
+name: CREATE AIRPORTS
+url: http://localhost:8080/api/airports
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "iataCode": "SGN",
+      "name": "Tan Son Nhat International Airport",
+      "timeZone": "Asia/Ho_Chi_Minh",
+      "cityId": 1,
+      "address": {
+        "street": "Truong Son Street",
+        "district": "Tan Binh",
+        "state": "Ho Chi Minh",
+        "country": "Vietnam",
+        "zipCode": "700000"
+      },
+      "geoCode": {
+        "latitude": 10.8188,
+        "longitude": 106.6519
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3YTExOWQ3Ny1mZWFjLTQ5NTMtYjc3Yy0wZDFlNzk5MTBmNzUiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3Nzg0MTUzNDksImV4cCI6MTc3ODQxNjI0OSwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIn0.y6p8OS6twAqPqIMRS7QKyTfoHzdMBufjeQQUbz__5gm6nN4OddpeyIgrDfaGRAZqWI8xjrzlRG_cRhMKc8fiUQ
+order: 1000

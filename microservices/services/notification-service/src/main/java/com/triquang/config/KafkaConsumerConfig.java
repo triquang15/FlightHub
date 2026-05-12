@@ -1,19 +1,22 @@
 package com.triquang.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.*;
+
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.FixedBackOff;
-
-import com.triquang.message.BookingConfirmedEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,39 +28,66 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    // ================= CONSUMER FACTORY =================
     @Bean
-    public ConsumerFactory<String, BookingConfirmedEvent> bookingConfirmedConsumerFactory() {
-        JsonDeserializer<BookingConfirmedEvent> deserializer =
-                new JsonDeserializer<>(BookingConfirmedEvent.class);
-        deserializer.setRemoveTypeHeaders(false);
+    public ConsumerFactory<String, Object> consumerFactory() {
+
+        JsonDeserializer<Object> deserializer = new JsonDeserializer<>();
         deserializer.addTrustedPackages("com.triquang.message");
-        deserializer.setUseTypeMapperForKey(true);
+        deserializer.setUseTypeMapperForKey(false);
 
         Map<String, Object> props = new HashMap<>();
+
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service-group");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
-        // For resilience: don't commit until message is fully processed
+
+        // 🔥 QUAN TRỌNG
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                deserializer
+        );
     }
 
+    // ================= ERROR HANDLER (RETRY + DLQ) =================
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, BookingConfirmedEvent>
-    bookingConfirmedKafkaListenerContainerFactory() {
+    public DefaultErrorHandler errorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
 
-        ConcurrentKafkaListenerContainerFactory<String, BookingConfirmedEvent> factory =
+        // retry 3 lần, mỗi lần 2s
+        FixedBackOff backOff = new FixedBackOff(2000L, 3);
+
+        DeadLetterPublishingRecoverer recoverer =
+                new DeadLetterPublishingRecoverer(
+                        kafkaTemplate,
+                        (record, ex) -> new TopicPartition(
+                                record.topic() + ".DLQ",
+                                record.partition()
+                        )
+                );
+
+        return new DefaultErrorHandler(recoverer, backOff);
+    }
+
+    // ================= LISTENER FACTORY =================
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
+            ConsumerFactory<String, Object> consumerFactory,
+            DefaultErrorHandler errorHandler) {
+
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(bookingConfirmedConsumerFactory());
-        factory.setConcurrency(3);  // 3 parallel consumer threads
 
-        // Retry twice with 5-second interval before sending to error handler
-        factory.setCommonErrorHandler(
-                new DefaultErrorHandler(new FixedBackOff(5_000L, 2L))
-        );
+        factory.setConsumerFactory(consumerFactory);
+        factory.setCommonErrorHandler(errorHandler);
+
+        factory.setConcurrency(3); // scale
+
         return factory;
     }
 }

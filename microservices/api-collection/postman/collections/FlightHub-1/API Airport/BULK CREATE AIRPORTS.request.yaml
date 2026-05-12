@@ -1,0 +1,21 @@
+$kind: http-request
+url: http://localhost:8081/api/airports/bulk
+method: POST
+body:
+  type: json
+  content: |-
+    [
+      {
+        "iataCode": "HAN",
+        "name": "Noi Bai International Airport",
+        "timeZone": "Asia/Ho_Chi_Minh",
+        "cityId": 2
+      },
+      {
+        "iataCode": "DAD",
+        "name": "Da Nang International Airport",
+        "timeZone": "Asia/Ho_Chi_Minh",
+        "cityId": 3
+      }
+    ]
+order: 2000

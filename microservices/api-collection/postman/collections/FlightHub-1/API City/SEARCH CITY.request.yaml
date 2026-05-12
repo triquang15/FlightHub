@@ -1,0 +1,8 @@
+$kind: http-request
+url: http://localhost:8081/api/cities/search?keyword=ho&page=0&size=10
+method: GET
+queryParams:
+  keyword: ho
+  page: "0"
+  size: "10"
+order: 7000

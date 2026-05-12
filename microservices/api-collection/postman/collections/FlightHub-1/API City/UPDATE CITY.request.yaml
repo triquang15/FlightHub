@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8081/api/cities/11
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "name": "Hue update",
+      "cityCode": "HU1",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "regionCode": "HU",
+      "timeZoneOffset": "+07:00"
+    }
+order: 4000

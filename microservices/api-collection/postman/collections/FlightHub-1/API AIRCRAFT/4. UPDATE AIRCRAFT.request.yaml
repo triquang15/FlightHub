@@ -1,0 +1,28 @@
+$kind: http-request
+url: http://localhost:8083/api/aircrafts/1
+method: PUT
+headers:
+  X-User-Id: "1"
+body:
+  type: json
+  content: |-
+    {
+      "code": "A320-001",
+      "model": "Airbus A320",
+      "manufacturer": "Airbus update",
+      "seatingCapacity": 180,
+      "economySeats": 150,
+      "premiumEconomySeats": 20,
+      "businessSeats": 10,
+      "firstClassSeats": 0,
+      "rangeKm": 6100,
+      "cruisingSpeedKmh": 828,
+      "maxAltitudeFt": 39000,
+      "yearOfManufacture": 2020,
+      "registrationDate": "2022-01-01",
+      "nextMaintenanceDate": "2026-06-01",
+      "status": "ACTIVE",
+      "isAvailable": true,
+      "currentAirportId": 1
+    }
+order: 4000

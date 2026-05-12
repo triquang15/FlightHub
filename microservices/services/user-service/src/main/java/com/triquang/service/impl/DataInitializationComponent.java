@@ -1,15 +1,16 @@
 package com.triquang.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.triquang.enums.UserRole;
 import com.triquang.model.User;
 import com.triquang.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
@@ -18,11 +19,20 @@ public class DataInitializationComponent implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final Environment env;
 
     @Override
     public void run(String... args) {
         log.info("=== Data Initialization START ===");
-        initializeAdminUser();
+
+        String profile = env.getProperty("spring.profiles.active", "default");
+
+        if ("dev".equals(profile) || "local".equals(profile)) {
+            initializeAdminUser();
+        } else {
+            log.info("Skip admin initialization in profile: {}", profile);
+        }
+
         log.info("=== Data Initialization END ===");
     }
 
@@ -30,23 +40,35 @@ public class DataInitializationComponent implements CommandLineRunner {
 
         String email = "admin@gmail.com";
 
-        boolean exists = userRepository.findByEmail(email).isPresent();
+        userRepository.findByEmail(email).ifPresentOrElse(
+            user -> log.info("Admin already exists: {}", email),
+            () -> createAdmin(email)
+        );
+    }
 
-        if (!exists) {
+    private void createAdmin(String email) {
 
-            User adminUser = new User();
-            adminUser.setEmail(email);
-            adminUser.setPassword(passwordEncoder.encode("admin123"));
-            adminUser.setFullName("Admin System");
-            adminUser.setRole(UserRole.ROLE_SYSTEM_ADMIN);
-            adminUser.setPhone("0123456789");
+        String rawPassword = env.getProperty("app.admin.password");
 
-            userRepository.save(adminUser);
-
-            log.info("Admin user created: {}", email);
-
-        } else {
-            log.info("Admin user already exists: {}", email);
+        if (rawPassword == null || rawPassword.isBlank()) {
+            log.warn("Admin password not set in environment → skip creation");
+            return;
         }
+
+        User admin = User.builder()
+                .email(email)
+                .password(passwordEncoder.encode(rawPassword))
+                .fullName("System Admin")
+                .phone(null)
+                .role(UserRole.ROLE_SYSTEM_ADMIN)
+
+                .verified(true)
+                .active(true)
+                .tokenVersion(0)
+                .build();
+
+        userRepository.save(admin);
+
+        log.info("Admin user created: {}", email);
     }
 }

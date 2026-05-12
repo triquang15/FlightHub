@@ -7,72 +7,68 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.triquang.enums.UserRole;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
-@Table(name = "users")
-@EqualsAndHashCode
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(
+    name = "users",
+    indexes = {
+        @Index(name = "idx_user_email", columnList = "email")
+    }
+)
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "fullName is mandatory")
+    @Column(nullable = false)
     private String fullName;
 
+    @Column(nullable = false)
     private String password;
 
     @Column(nullable = false, unique = true)
-    @NotBlank(message = "Email is mandatory")
-    @Email(message = "Email should be valid")
     private String email;
 
     private String phone;
 
-
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @NotNull(message = "Role is mandatory")
     private UserRole role;
 
-    @Column(nullable = false, updatable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
+    // ===== STATUS =====
+    @Builder.Default
     @Column(nullable = false)
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    private boolean verified = false;
 
+    @Builder.Default
     @Column(nullable = false)
-    private Boolean verified = false;
+    private boolean active = true;
+
+    // ===== TOKEN VERSION =====
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer tokenVersion = 0;
 
     private LocalDateTime lastLogin;
-    
-    @Column(name = "reset_token")
-    private String resetToken;
 
-    @Column(name = "reset_token_expiry")
+    // ===== PASSWORD RESET (HASH ONLY) =====
+    private String resetTokenHash;
+
     private LocalDateTime resetTokenExpiry;
 
+    // ===== AUDIT =====
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }
-
-
-

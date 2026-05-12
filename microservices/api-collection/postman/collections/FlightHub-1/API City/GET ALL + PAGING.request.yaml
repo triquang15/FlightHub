@@ -1,0 +1,14 @@
+$kind: http-request
+name: GET ALL + PAGING
+url: http://localhost:8080/api/cities?page=0&size=5&sortBy=name&sortDirection=asc
+method: GET
+queryParams:
+  page: "0"
+  size: "5"
+  sortBy: name
+  sortDirection: asc
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MGZmN2Q5Zi0yZjI4LTQ1NDEtOTQ1Yi0zYjdkNGRhODJhMmIiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3Nzg0MTY1MjEsImV4cCI6MTc3ODQxNzQyMSwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIn0.JZQhP97e_Pe5KLCnR0GpIbgsQrhD9s7Sf0ZvOiJ76t_VxkPqx7qypoewtL97GwswUTzxUzpDNBAi6S5LlDVGzA
+order: 6000

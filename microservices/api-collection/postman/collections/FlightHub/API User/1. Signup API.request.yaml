@@ -6,9 +6,10 @@ body:
   type: json
   content: |-
     {
-      "email": "david.wilson@gmail.com",
-      "password": "123456",
-      "fullName": "David Wilson",
-      "phone": "0905556677"
+      "email": "john.doe@gmail.com",
+      "password": "Str0ngP@ssw0rd!",
+      "fullName": "John Doe",
+      "phone": "+84912345678",
+      "deviceId": "web-uuid-001"
     }
 order: 1000

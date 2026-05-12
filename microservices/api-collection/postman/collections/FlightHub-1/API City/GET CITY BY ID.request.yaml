@@ -1,0 +1,16 @@
+$kind: http-request
+name: GET CITY BY ID
+url: http://localhost:8080/api/cities/1
+method: GET
+body:
+  type: text
+  content: |-
+    {
+      "name": "Da Nang",
+      "cityCode": "DAD",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "regionCode": "DN",
+      "timeZoneOffset": "+07:00"
+    }
+order: 3000

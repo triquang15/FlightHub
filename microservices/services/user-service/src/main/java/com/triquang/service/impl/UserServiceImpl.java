@@ -7,8 +7,12 @@ import com.triquang.mapper.UserMapper;
 import com.triquang.model.User;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
+import com.triquang.repository.RefreshTokenRepository;
+import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
 import com.triquang.service.UserService;
+import com.triquang.utils.TokenHashUtil;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,97 +29,118 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-	private final UserRepository userRepository;
-	private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-	@Override
-	public UserDTO getUserProfile(String email) {
+    private final RefreshTokenRepository refreshTokenRepo;
+    private final SessionRepository sessionRepo;
+    private final TokenHashUtil tokenHashUtil;
 
-		if (email == null || email.isBlank()) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+    // ================= PROFILE =================
+    @Override
+    public UserDTO getUserProfile(String email) {
 
-		log.info("Fetching user profile for email={}", email);
+        if (email == null || email.isBlank()) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
 
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-		return UserMapper.toDTO(user);
-	}
+        return UserMapper.toDTO(user);
+    }
 
-	@Override
-	public UserDTO getUserById(Long id) {
+    @Override
+    public UserDTO getUserById(Long id) {
 
-		if (id == null || id <= 0) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+        if (id == null || id <= 0) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
 
-		log.info("Fetching user by id={}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-		User user = userRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+        return UserMapper.toDTO(user);
+    }
 
-		return UserMapper.toDTO(user);
-	}
-	
-	@Override
-	public void changePassword(String email, ChangePasswordRequest request) {
+    @Override
+    public Page<UserDTO> getUsers(Pageable pageable) {
+        return userRepository.findAll(pageable).map(UserMapper::toDTO);
+    }
 
-	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+    // ================= CHANGE PASSWORD =================
+    @Override
+    public void changePassword(String email, ChangePasswordRequest request) {
 
-	    if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-	        throw new BaseException(ErrorCode.INVALID_PASSWORD);
-	    }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-	    user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BaseException(ErrorCode.INVALID_PASSWORD);
+        }
 
-	    userRepository.save(user);
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
-	    log.info("Password changed for {}", email);
-	}
+        // 🔥 invalidate all sessions + tokens
+        invalidateUserSessions(user.getId());
 
-	@Override
-	public Page<UserDTO> getUsers(Pageable pageable) {
+        userRepository.save(user);
 
-		log.info("Fetching users with pageable={}", pageable);
+        log.info("Password changed for {}", email);
+    }
 
-		return userRepository.findAll(pageable).map(UserMapper::toDTO);
-	}
+    // ================= FORGOT PASSWORD =================
+    @Override
+    public void forgotPassword(String email) {
 
-	@Override
-	public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+        String rawToken = UUID.randomUUID().toString();
 
-	    String token = UUID.randomUUID().toString();
+        String hash = tokenHashUtil.hash(rawToken);
 
-	    user.setResetToken(token);
-	    user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        user.setResetTokenHash(hash);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
 
-	    userRepository.save(user);
+        userRepository.save(user);
 
-	    // TODO: send email
-	    log.info("Reset token for {} = {}", email, token);
-	}
+        // TODO: send email with rawToken (NOT hash)
+        log.info("Reset password token generated for {}", email);
+    }
 
-	@Override
-	public void resetPassword(ResetPasswordRequest request) {
+    // ================= RESET PASSWORD =================
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
 
-	    User user = userRepository.findByResetToken(request.getToken())
-	            .orElseThrow(() -> new BaseException(ErrorCode.INVALID_TOKEN));
+        String hash = tokenHashUtil.hash(request.getToken());
 
-	    if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-	        throw new BaseException(ErrorCode.TOKEN_EXPIRED);
-	    }
+        User user = userRepository.findByResetTokenHash(hash)
+                .orElseThrow(() -> new BaseException(ErrorCode.INVALID_TOKEN));
 
-	    user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        if (user.getResetTokenExpiry() == null ||
+            user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new BaseException(ErrorCode.TOKEN_EXPIRED);
+        }
 
-	    user.setResetToken(null);
-	    user.setResetTokenExpiry(null);
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
-	    userRepository.save(user);
+        // 🔥 clear token
+        user.setResetTokenHash(null);
+        user.setResetTokenExpiry(null);
 
-	    log.info("Password reset success for {}", user.getEmail());
-	}
+        // 🔥 revoke all sessions
+        invalidateUserSessions(user.getId());
+
+        userRepository.save(user);
+
+        log.info("Password reset success for {}", user.getEmail());
+    }
+
+    // ================= HELPER =================
+    private void invalidateUserSessions(Long userId) {
+
+        refreshTokenRepo.revokeAllByUserId(userId);
+        sessionRepo.deleteByUserId(userId);
+    }
 }

@@ -1,0 +1,6 @@
+$kind: http-request
+url: http://localhost:8083/api/airlines/my
+method: GET
+headers:
+  X-User-Id: "4"
+order: 2000

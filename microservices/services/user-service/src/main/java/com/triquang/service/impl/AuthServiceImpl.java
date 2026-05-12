@@ -8,139 +8,219 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.config.JwtProvider;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.UserMapper;
+import com.triquang.model.LoginAudit;
+import com.triquang.model.RefreshToken;
+import com.triquang.model.Session;
 import com.triquang.model.User;
 import com.triquang.payload.request.SignupRequest;
 import com.triquang.payload.response.AuthResponse;
+import com.triquang.repository.LoginAuditRepository;
+import com.triquang.repository.RefreshTokenRepository;
+import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
 import com.triquang.service.AuthService;
+import com.triquang.service.SuspiciousLoginService;
+import com.triquang.utils.TokenHashUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-/**
- * AuthServiceImpl handles user authentication and registration logic.
- * It uses Spring Security for authentication and JWT for token management.
- * 
- * @author Tri Quang
- */
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepo;
+    private final SessionRepository sessionRepo;
+    private final LoginAuditRepository loginAuditRepo;
+
     private final JwtProvider jwtProvider;
-    private final CustomUserDetailsService customUserDetailsService;
     private final AuthenticationManager authenticationManager;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final TokenHashUtil tokenHashUtil;
+    private final SuspiciousLoginService suspiciousLoginService;
+    private final PasswordEncoder passwordEncoder;
 
-    // =========================
-    // SIGNUP
-    // =========================
+    // ================= CONFIG =================
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int BLOCK_MINUTES = 5;
+
+    // ================= SIGNUP =================
     @Override
-    public AuthResponse signup(SignupRequest req) {
-
-        validateSignup(req);
+    public AuthResponse signup(SignupRequest req, String ip, String agent) {
 
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
             throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        User user = new User();
-        user.setEmail(req.getEmail());
-        user.setPassword(passwordEncoder.encode(req.getPassword()));
-        user.setFullName(req.getFullName());
-        user.setPhone(req.getPhone());
-        user.setRole(UserRole.ROLE_CUSTOMER);
+        String deviceId = normalizeDeviceId(req.getDeviceId());
 
-        // signup is NOT login → no lastLogin here
-        user.setLastLogin(null);
+        User user = User.builder()
+                .email(req.getEmail())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .fullName(req.getFullName())
+                .phone(req.getPhone())
+                .role(UserRole.ROLE_CUSTOMER)
+                .verified(true)
+                .active(true)
+                .lastLogin(LocalDateTime.now())
+                .build();
 
-        user = userRepository.save(user);
+        userRepository.save(user);
 
-        log.info("User registered: {}", user.getEmail());
+        saveLoginAudit(req.getEmail(), true, ip, agent);
 
-        return buildAuthResponse(user);
+        upsertSession(user, deviceId, ip, agent);
+
+        return buildAuthResponse(user, deviceId, ip, agent);
     }
 
-    // =========================
-    // LOGIN
-    // =========================
+    // ================= LOGIN =================
     @Override
-    public AuthResponse login(String email, String password) {
+    public AuthResponse login(String email, String password,
+                             String deviceId, String ip, String agent) {
+
+        String normalizedDeviceId = normalizeDeviceId(deviceId);
+
+        checkBruteForce(email);
 
         try {
-            Authentication authentication =
-                    authenticationManager.authenticate(
-                            new UsernamePasswordAuthenticationToken(email, password)
-                    );
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
 
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
+            if (!user.isActive()) throw new BaseException(ErrorCode.ACCOUNT_DISABLED);
+            if (!user.isVerified()) throw new BaseException(ErrorCode.EMAIL_NOT_VERIFIED);
+
+            boolean suspicious = suspiciousLoginService.isSuspicious(
+                    user.getId(), email, normalizedDeviceId, ip
+            );
+
+            if (suspicious) {
+                suspiciousLoginService.handleSuspicious(
+                        user.getId(), email, normalizedDeviceId, ip
+                );
+            }
+
             user.setLastLogin(LocalDateTime.now());
-            userRepository.save(user);
 
-            log.info("User logged in: {}", email);
+            saveLoginAudit(email, true, ip, agent);
 
-            return buildAuthResponse(user);
+            upsertSession(user, normalizedDeviceId, ip, agent);
+
+            return buildAuthResponse(user, normalizedDeviceId, ip, agent);
+
+        } catch (BaseException ex) {
+
+            saveLoginAudit(email, false, ip, agent);
+            throw ex;
 
         } catch (Exception ex) {
-            // IMPORTANT: convert all auth failures
+
+            saveLoginAudit(email, false, ip, agent);
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
-    // =========================
-    // REFRESH TOKEN
-    // =========================
+    // ================= REFRESH =================
     @Override
-    public AuthResponse refreshToken(String refreshToken) {
+    public AuthResponse refreshToken(String refreshToken,
+                                     String deviceId, String ip, String agent) {
 
         if (!jwtProvider.validateToken(refreshToken)) {
             throw new BaseException(ErrorCode.INVALID_TOKEN);
         }
 
-        if (!jwtProvider.isRefreshToken(refreshToken)) {
-            throw new BaseException(ErrorCode.INVALID_REFRESH_TOKEN);
+        String normalizedDeviceId = normalizeDeviceId(deviceId);
+        String hash = tokenHashUtil.hash(refreshToken);
+
+        RefreshToken token = refreshTokenRepo.findByTokenHash(hash)
+                .orElseThrow(() -> new BaseException(ErrorCode.TOKEN_NOT_FOUND));
+
+        // 🔥 DEVICE BINDING
+        if (!token.getDeviceId().equals(normalizedDeviceId)) {
+            throw new BaseException(ErrorCode.INVALID_DEVICE);
         }
 
-        String email = jwtProvider.getUsername(refreshToken);
+        // 🔥 REUSE DETECT
+        if (token.isRevoked()) {
+            token.setReused(true);
+            revokeAllRefreshTokens(token.getUser().getId());
+            throw new BaseException(ErrorCode.TOKEN_REUSED);
+        }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BaseException(ErrorCode.TOKEN_EXPIRED);
+        }
 
-        log.info("Token refreshed for user: {}", email);
+        // 🔥 ROTATE
+        token.setRevoked(true);
 
-        return buildAuthResponse(user);
+        return buildAuthResponse(token.getUser(), normalizedDeviceId, ip, agent);
     }
 
-    // =========================
-    // AUTH RESPONSE BUILDER
-    // =========================
-    private AuthResponse buildAuthResponse(User user) {
+    // ================= LOGOUT =================
+    @Override
+    public void revokeRefreshToken(String rawToken, String deviceId, Long userId) {
+
+        String normalizedDeviceId = normalizeDeviceId(deviceId);
+        String hash = tokenHashUtil.hash(rawToken);
+
+        RefreshToken token = refreshTokenRepo.findByTokenHash(hash)
+                .orElseThrow(() -> new BaseException(ErrorCode.TOKEN_NOT_FOUND));
+
+        if (!token.getUser().getId().equals(userId)) {
+            throw new BaseException(ErrorCode.UNAUTHORIZED);
+        }
+
+        token.setRevoked(true);
+
+        sessionRepo.deleteByUserIdAndDeviceId(userId, normalizedDeviceId);
+    }
+
+    // ================= LOGOUT ALL =================
+    @Override
+    public void revokeAllRefreshTokens(Long userId) {
+        refreshTokenRepo.revokeAllByUserId(userId);
+        sessionRepo.deleteByUserId(userId);
+    }
+
+    // ================= CORE =================
+    private AuthResponse buildAuthResponse(User user,
+                                           String deviceId,
+                                           String ip,
+                                           String agent) {
 
         UserDetails userDetails =
                 customUserDetailsService.loadUserByUsername(user.getEmail());
 
         Authentication authentication =
                 new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
+                        userDetails, null, userDetails.getAuthorities());
 
-        String accessToken =
-                jwtProvider.generateAccessToken(authentication, user.getId());
+        String accessToken = jwtProvider.generateAccessToken(authentication, user.getId());
+        String refreshToken = jwtProvider.generateRefreshToken(authentication, user.getId());
 
-        String refreshToken =
-                jwtProvider.generateRefreshToken(authentication, user.getId());
+        refreshTokenRepo.save(RefreshToken.builder()
+                .user(user)
+                .tokenHash(tokenHashUtil.hash(refreshToken))
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .deviceId(deviceId)
+                .ipAddress(ip)
+                .userAgent(agent)
+                .build());
 
         return new AuthResponse(
                 accessToken,
@@ -151,17 +231,52 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    // =========================
-    // VALIDATION
-    // =========================
-    private void validateSignup(SignupRequest req) {
-
-        if (req.getEmail() == null || req.getEmail().isBlank()) {
-            throw new BaseException(ErrorCode.INVALID_INPUT);
+    // ================= HELPERS =================
+    private String normalizeDeviceId(String deviceId) {
+        if (deviceId == null || deviceId.isBlank()) {
+            return "unknown-device";
         }
+        return deviceId.trim().toLowerCase();
+    }
 
-        if (req.getPassword() == null || req.getPassword().length() < 6) {
-            throw new BaseException(ErrorCode.INVALID_INPUT);
+    private void checkBruteForce(String email) {
+
+        long failCount = loginAuditRepo.countByEmailAndSuccessFalseAndCreatedAtAfter(
+                email,
+                LocalDateTime.now().minusMinutes(BLOCK_MINUTES)
+        );
+
+        if (failCount >= MAX_FAILED_ATTEMPTS) {
+            throw new BaseException(ErrorCode.TOO_MANY_ATTEMPTS);
         }
+    }
+
+    private void saveLoginAudit(String email, boolean success, String ip, String agent) {
+
+        loginAuditRepo.save(LoginAudit.builder()
+                .email(email)
+                .success(success)
+                .ipAddress(ip)
+                .userAgent(agent)
+                .build());
+    }
+
+    private void upsertSession(User user, String deviceId, String ip, String agent) {
+
+        sessionRepo.findByUserIdAndDeviceId(user.getId(), deviceId)
+                .ifPresentOrElse(
+                        session -> {
+                            session.setLastActive(LocalDateTime.now());
+                            session.setIpAddress(ip);
+                            session.setUserAgent(agent);
+                        },
+                        () -> sessionRepo.save(Session.builder()
+                                .user(user)
+                                .deviceId(deviceId)
+                                .ipAddress(ip)
+                                .userAgent(agent)
+                                .lastActive(LocalDateTime.now())
+                                .build())
+                );
     }
 }

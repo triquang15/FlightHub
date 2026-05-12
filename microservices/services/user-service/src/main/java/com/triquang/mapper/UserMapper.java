@@ -1,37 +1,55 @@
 package com.triquang.mapper;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.model.User;
 
-public class UserMapper {
+public final class UserMapper {
 
     private UserMapper() {}
 
+    // ================= SINGLE =================
     public static UserDTO toDTO(User user) {
-        UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
-        dto.setEmail(user.getEmail());
-        dto.setFullName(user.getFullName());
-        dto.setPhone(user.getPhone());
-        dto.setRole(user.getRole());
-        dto.setLastLogin(user.getLastLogin());
-        return dto;
+
+        if (user == null) return null;
+
+        return UserDTO.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .lastLogin(user.getLastLogin())
+                .verified(user.isVerified())   // 🔥 boolean primitive
+                .active(user.isActive())       // 🔥 boolean primitive
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 
-    public static List<UserDTO> toDTOList(List<User> users) {
+    // ================= LIST =================
+    public static List<UserDTO> toDTOList(Collection<User> users) {
+
+        if (users == null || users.isEmpty()) {
+            return List.of();
+        }
+
         return users.stream()
                 .map(UserMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList(); // 🔥 Java 16+
     }
 
-    public static Set<UserDTO> toDTOSet(Set<User> users) {
+    // ================= SET =================
+    public static Set<UserDTO> toDTOSet(Collection<User> users) {
+
+        if (users == null || users.isEmpty()) {
+            return Set.of();
+        }
+
         return users.stream()
                 .map(UserMapper::toDTO)
-                .collect(Collectors.toSet());
+                .collect(java.util.stream.Collectors.toSet());
     }
 }
-

@@ -1,0 +1,24 @@
+$kind: http-request
+url: http://localhost:8083/api/airlines/8
+method: PUT
+headers:
+  X-User-Id: "4"
+body:
+  type: json
+  content: |-
+    {
+      "iataCode": "QR",
+      "icaoCode": "QTR",
+      "name": "Qatar Airways Update",
+      "alias": "Qatar",
+      "country": "Qatar",
+      "logoUrl": "https://logo.clearbit.com/qatarairways.com",
+      "website": "https://www.qatarairways.com",
+      "status": "ACTIVE",
+      "alliance": "Oneworld",
+      "headquartersCityId": 4,
+      "supportEmail": "support@qatarairways.com",
+      "supportPhone": "+974-4023-0000",
+      "supportHours": "24/7"
+    }
+order: 6000

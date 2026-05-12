@@ -37,7 +37,13 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN("AUTH_002", "Invalid refresh token", HttpStatus.UNAUTHORIZED),
     ACCESS_DENIED("AUTH_003", "Access denied", HttpStatus.FORBIDDEN),
     TOKEN_EXPIRED("AUTH_004", "Token Expired", HttpStatus.UNAUTHORIZED),
+    TOKEN_NOT_FOUND("AUTH_005", "Token not found", HttpStatus.NOT_FOUND),
+    TOKEN_REVOKED("AUTH_004", "Token revoked", HttpStatus.UNAUTHORIZED),
+    TOKEN_REUSED("AUTH_005", "Token reuse detected", HttpStatus.UNAUTHORIZED),
 
+    ACCOUNT_DISABLED("AUTH_401", "Account is disabled", HttpStatus.FORBIDDEN),
+    EMAIL_NOT_VERIFIED("AUTH_402", "Email is not verified", HttpStatus.FORBIDDEN),
+    
     // =========================
     // CITY
     // =========================
@@ -180,8 +186,10 @@ public enum ErrorCode {
     // =========================
     FORBIDDEN("SEC_001", "Access denied", HttpStatus.FORBIDDEN),
     UNAUTHORIZED("SEC_002", "Unauthorized", HttpStatus.UNAUTHORIZED),
-    TOO_MANY_REQUESTS("SEC_003", "Too many requests. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
-    NOT_FOUND("SEC_004", "Resource not found", HttpStatus.NOT_FOUND);
+    INVALID_DEVICE("SEC_003", "Invalid evice", HttpStatus.UNAUTHORIZED),
+    TOO_MANY_REQUESTS("SEC_004", "Too many requests. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
+    TOO_MANY_ATTEMPTS("SEC_005", "Too many login attempts. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
+    NOT_FOUND("SEC_006", "Resource not found", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

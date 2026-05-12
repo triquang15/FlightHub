@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8083/api/airlines/2/ban
+method: POST
+order: 10000

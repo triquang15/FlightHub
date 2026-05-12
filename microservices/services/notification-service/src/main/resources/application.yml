@@ -1,7 +1,9 @@
-# ── Server ─────────────────────────────────────────────────────────────────────
+# =============================================================================
+# NOTIFICATION SERVICE — Local Configuration
+# =============================================================================
+
 server:
   port: 8091
-
 
 spring:
   application:
@@ -10,25 +12,40 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
-  # ── Kafka Consumer ──────────────────────────────────────────────────────────
+  # ================= KAFKA CONSUMER =================
   kafka:
     bootstrap-servers: localhost:9092
+
     consumer:
       group-id: notification-service-group
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.triquang.message"
-        spring.json.use.type.headers: false
-        spring.json.value.default.type: com.triquang.message.BookingConfirmedEvent
+      enable-auto-commit: false
 
-  # ── Email (Gmail SMTP) ──────────────────────────────────────────────────────
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        # 🔥 MULTI-EVENT SUPPORT
+        spring.json.trusted.packages: "com.triquang.message"
+        spring.json.use.type.headers: true   # 🔥 QUAN TRỌNG
+
+        # ❌ KHÔNG dùng default.type (tránh lỗi deserialize sai event)
+
+        # 🔥 STABILITY
+        max.poll.interval.ms: 300000
+        session.timeout.ms: 15000
+
+    listener:
+      ack-mode: record
+      concurrency: 3
+
+  # ================= EMAIL (SMTP) =================
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:your email}
-    password: ${MAIL_APP_PASSWORD:your gmail app password}
+    username: ${MAIL_USERNAME:your_email@gmail.com}
+    password: ${MAIL_APP_PASSWORD:your_app_password}
+
     properties:
       mail:
         smtp:
@@ -36,49 +53,60 @@ spring:
           starttls:
             enable: true
             required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
         debug: false
 
-  # ── Thymeleaf ───────────────────────────────────────────────────────────────
+  # ================= THYMELEAF =================
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
     mode: HTML
     encoding: UTF-8
-    cache: false   # set to true in production
+    cache: false   # 👉 production: true
 
-# ── Eureka ─────────────────────────────────────────────────────────────────────
+# ================= EUREKA =================
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
+
   instance:
     prefer-ip-address: true
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    instance-id: ${spring.application.name}:${random.value}
 
-
-
-# ── Twilio SMS ─────────────────────────────────────────────────────────────────
+# ================= TWILIO =================
 twilio:
   account-sid: ${TWILIO_ACCOUNT_SID:}
   auth-token: ${TWILIO_AUTH_TOKEN:}
   from-number: ${TWILIO_FROM_NUMBER:}
   enabled: ${TWILIO_ENABLED:false}
 
-# ── Notification Settings ──────────────────────────────────────────────────────
+# ================= NOTIFICATION =================
 notification:
   from-email: ${MAIL_FROM:flight_hub@gmail.com}
   from-name: "Flight Hub Notifications"
-  support-email: MAIL_FROM:flight_hub@gmail.com
+  support-email: ${MAIL_FROM:flight_hub@gmail.com}
   support-phone: "1800-123-5678"
-  checkin-url: localhost:3000
-  manage-booking-url: localhost:3000
-# ── Actuator ───────────────────────────────────────────────────────────────────
+
+  frontend-base-url: http://localhost:3000
+  checkin-url: ${notification.frontend-base-url}/checkin
+  manage-booking-url: ${notification.frontend-base-url}/booking
+
+# ================= LOGGING =================
+logging:
+  level:
+    org.springframework.kafka: INFO
+    org.apache.kafka: WARN
+
+# ================= ACTUATOR =================
 info:
   app:
     name: ${spring.application.name}
-    description: Sends email and SMS notifications for booking confirmations and alerts
+    description: Notification service for security alerts and booking events
     version: 1.0.0
     environment: development
 
@@ -87,11 +115,13 @@ management:
     web:
       exposure:
         include: health, info
+
   endpoint:
     health:
       show-details: always
     info:
       enabled: true
+
   info:
     env:
       enabled: true

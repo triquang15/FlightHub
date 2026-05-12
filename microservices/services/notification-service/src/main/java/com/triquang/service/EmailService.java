@@ -136,4 +136,10 @@ public class EmailService {
             default                -> cabinClass;
         };
     }
+
+	public void send(String to, String subject, String content) {
+		log.warn("📧 EMAIL → to={}, subject={}, content={}", to, subject, content);
+
+		// TODO: SMTP / SendGrid / SES
+	}
 }

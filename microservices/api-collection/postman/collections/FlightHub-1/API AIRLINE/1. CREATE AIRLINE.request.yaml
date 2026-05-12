@@ -1,0 +1,24 @@
+$kind: http-request
+url: http://localhost:8083/api/airlines
+method: POST
+headers:
+  X-User-Id: "1"
+body:
+  type: json
+  content: |-
+    {
+      "iataCode": "JL",
+      "icaoCode": "JAL",
+      "name": "Japan Airlines",
+      "alias": "JAL",
+      "country": "Japan",
+      "logoUrl": "https://logo.clearbit.com/jal.co.jp",
+      "website": "https://www.jal.co.jp",
+      "status": "ACTIVE",
+      "alliance": "Oneworld",
+      "headquartersCityId": 8,
+      "supportEmail": "support@jal.com",
+      "supportPhone": "+81-3-5460-1111",
+      "supportHours": "24/7"
+    }
+order: 1000

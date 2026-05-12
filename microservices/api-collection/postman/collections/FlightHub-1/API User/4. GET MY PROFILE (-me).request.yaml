@@ -1,0 +1,7 @@
+$kind: http-request
+name: 4. GET MY PROFILE (/me)
+url: http://localhost:8082/api/users/me
+method: GET
+headers:
+  X-User-Email: admin@gmail.com
+order: 4000
