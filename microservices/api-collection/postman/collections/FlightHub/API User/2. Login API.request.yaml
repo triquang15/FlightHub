@@ -2,11 +2,13 @@ $kind: http-request
 name: 2. Login API
 url: http://localhost:8080/api/auth/login
 method: POST
+headers:
+  X-Device-Id: web-chrome-3f5a9c8d1e2b4a7f9c0d123456789abc
 body:
   type: json
   content: |-
     {
-      "email": "admin@gmail.com",
-      "password": "admin123"
+      "email": "alex.muller@gmail.com",
+      "password": "Password@123"
     }
 order: 2000

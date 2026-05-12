@@ -31,7 +31,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<AuthResponse>> signup(
             @Valid @RequestBody SignupRequest req,
-            @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
+            @RequestHeader(value = "X-Device-Id", required = true) String deviceId,
             HttpServletRequest request
     ) {
 

@@ -15,7 +15,6 @@ import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.UserMapper;
-import com.triquang.model.LoginAudit;
 import com.triquang.model.RefreshToken;
 import com.triquang.model.Session;
 import com.triquang.model.User;
@@ -50,7 +49,8 @@ public class AuthServiceImpl implements AuthService {
     private final SuspiciousLoginService suspiciousLoginService;
     private final PasswordEncoder passwordEncoder;
 
-    // ================= CONFIG =================
+    private final AuditService auditService;
+
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int BLOCK_MINUTES = 5;
 
@@ -72,12 +72,9 @@ public class AuthServiceImpl implements AuthService {
                 .role(UserRole.ROLE_CUSTOMER)
                 .verified(true)
                 .active(true)
-                .lastLogin(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
-
-        saveLoginAudit(req.getEmail(), true, ip, agent);
 
         upsertSession(user, deviceId, ip, agent);
 
@@ -91,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
 
         String normalizedDeviceId = normalizeDeviceId(deviceId);
 
+        // 🔥 check trước
         checkBruteForce(email);
 
         try {
@@ -116,20 +114,18 @@ public class AuthServiceImpl implements AuthService {
 
             user.setLastLogin(LocalDateTime.now());
 
-            saveLoginAudit(email, true, ip, agent);
+            auditService.saveLoginAudit(email, true, ip, agent);
 
             upsertSession(user, normalizedDeviceId, ip, agent);
 
             return buildAuthResponse(user, normalizedDeviceId, ip, agent);
 
-        } catch (BaseException ex) {
-
-            saveLoginAudit(email, false, ip, agent);
-            throw ex;
-
         } catch (Exception ex) {
 
-            saveLoginAudit(email, false, ip, agent);
+            auditService.saveLoginAudit(email, false, ip, agent);
+
+            checkBruteForce(email);
+
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
     }
@@ -149,12 +145,10 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken token = refreshTokenRepo.findByTokenHash(hash)
                 .orElseThrow(() -> new BaseException(ErrorCode.TOKEN_NOT_FOUND));
 
-        // 🔥 DEVICE BINDING
         if (!token.getDeviceId().equals(normalizedDeviceId)) {
             throw new BaseException(ErrorCode.INVALID_DEVICE);
         }
 
-        // 🔥 REUSE DETECT
         if (token.isRevoked()) {
             token.setReused(true);
             revokeAllRefreshTokens(token.getUser().getId());
@@ -165,7 +159,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BaseException(ErrorCode.TOKEN_EXPIRED);
         }
 
-        // 🔥 ROTATE
         token.setRevoked(true);
 
         return buildAuthResponse(token.getUser(), normalizedDeviceId, ip, agent);
@@ -190,7 +183,6 @@ public class AuthServiceImpl implements AuthService {
         sessionRepo.deleteByUserIdAndDeviceId(userId, normalizedDeviceId);
     }
 
-    // ================= LOGOUT ALL =================
     @Override
     public void revokeAllRefreshTokens(Long userId) {
         refreshTokenRepo.revokeAllByUserId(userId);
@@ -249,16 +241,6 @@ public class AuthServiceImpl implements AuthService {
         if (failCount >= MAX_FAILED_ATTEMPTS) {
             throw new BaseException(ErrorCode.TOO_MANY_ATTEMPTS);
         }
-    }
-
-    private void saveLoginAudit(String email, boolean success, String ip, String agent) {
-
-        loginAuditRepo.save(LoginAudit.builder()
-                .email(email)
-                .success(success)
-                .ipAddress(ip)
-                .userAgent(agent)
-                .build());
     }
 
     private void upsertSession(User user, String deviceId, String ip, String agent) {
