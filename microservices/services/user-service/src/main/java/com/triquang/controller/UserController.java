@@ -1,70 +1,122 @@
 package com.triquang.controller;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.triquang.dto.UserDTO;
+import com.triquang.payload.SessionDTO;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ForgotPasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
+import com.triquang.payload.request.UpdateProfileRequest;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.UserService;
 import com.triquang.utils.ResponseUtil;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
-	private final UserService userService;
+    private final UserService userService;
 
-	// ---------- GET MY PROFILE ----------
-	@GetMapping("/profile")
-	public ResponseEntity<ApiResponse<UserDTO>> getMyProfile(@RequestHeader("X-User-Email") String email) {
+    // ================= GET MY PROFILE =================
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserDTO>> getMyProfile(
+            @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(userService.getUserProfile(email));
-	}
+        return ResponseUtil.ok(userService.getUserById(userId));
+    }
 
-	// ---------- GET BY ID ----------
-	@GetMapping("/{id}")
-	public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
+    // ================= UPDATE PROFILE =================
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody UpdateProfileRequest request) {
 
-		return ResponseUtil.ok(userService.getUserById(id));
-	}
+        return ResponseUtil.ok(userService.updateProfile(userId, request));
+    }
 
-	// ---------- GET ALL ----------
-	@GetMapping
-	public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
+    // ================= GET BY ID =================
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
 
-		return ResponseUtil.ok(userService.getUsers(pageable));
-	}
-	
-	@PostMapping("/change-password")
-	public ResponseEntity<ApiResponse<String>> changePassword(
-	        @RequestHeader("X-User-Email") String email,
-	        @RequestBody ChangePasswordRequest request) {
+        return ResponseUtil.ok(userService.getUserById(id));
+    }
 
-	    userService.changePassword(email, request);
-	    return ResponseUtil.ok("Password changed successfully");
-	}
+    // ================= GET ALL =================
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
 
-	@PostMapping("/forgot-password")
-	public ResponseEntity<ApiResponse<String>> forgotPassword(
-	        @RequestBody ForgotPasswordRequest request) {
+        return ResponseUtil.ok(userService.getUsers(pageable));
+    }
 
-	    userService.forgotPassword(request.getEmail());
-	    return ResponseUtil.ok("Reset password email sent");
-	}
+    // ================= CHANGE PASSWORD =================
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody ChangePasswordRequest request) {
 
-	@PostMapping("/reset-password")
-	public ResponseEntity<ApiResponse<String>> resetPassword(
-	        @RequestBody ResetPasswordRequest request) {
+        userService.changePassword(userId, request);
+        return ResponseUtil.ok("Password changed successfully");
+    }
 
-	    userService.resetPassword(request);
-	    return ResponseUtil.ok("Password reset successfully");
-	}
+    // ================= FORGOT PASSWORD =================
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+
+        userService.forgotPassword(request.getEmail());
+        return ResponseUtil.ok("If email exists, reset link sent");
+    }
+
+    // ================= RESET PASSWORD =================
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+
+        userService.resetPassword(request);
+        return ResponseUtil.ok("Password reset successfully");
+    }
+
+    // ================= GET SESSIONS =================
+    @GetMapping("/sessions")
+    public ResponseEntity<ApiResponse<List<SessionDTO>>> getSessions(
+            @RequestHeader("X-User-Id") Long userId) {
+
+        return ResponseUtil.ok(userService.getUserSessions(userId));
+    }
+
+    // ================= LOGOUT DEVICE =================
+    @DeleteMapping("/sessions/{deviceId}")
+    public ResponseEntity<ApiResponse<String>> logoutDevice(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable String deviceId) {
+
+        userService.logoutDevice(userId, deviceId);
+        return ResponseUtil.ok("Device logged out");
+    }
+
+    // ================= LOGOUT ALL =================
+    @PostMapping("/logout-all")
+    public ResponseEntity<ApiResponse<String>> logoutAll(
+            @RequestHeader("X-User-Id") Long userId) {
+
+        userService.logoutAll(userId);
+        return ResponseUtil.ok("All sessions revoked");
+    }
 }

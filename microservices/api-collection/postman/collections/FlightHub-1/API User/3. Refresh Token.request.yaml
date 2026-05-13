@@ -1,10 +1,13 @@
 $kind: http-request
-url: http://localhost:8082/api/auth/refresh
+name: 3. Refresh Token
+url: http://localhost:8080/api/auth/refresh
 method: POST
+headers:
+  X-Device-Id: web-chrome-3f5a9c8d1e2b4a7f9c0d123456789abc
 body:
   type: json
   content: |-
     {
-      "refreshToken": "eyJhbGciOiJIUzM4NCJ9.eyJqdGkiOiIzYzk3NGY0Yy1mMjFiLTRjY2UtYTg2Mi1kZjc4NzgwYjk3M2UiLCJzdWIiOiJ0cmlxdWFuZ0BnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzY5NTI0MTAsImV4cCI6MTc3NzU1NzIxMCwidXNlcklkIjozLCJ0eXBlIjoiUkVGUkVTSCJ9.xgcAl8_9Keo6Q3pI4posfXH3Ke2-HNBHoyie-bqI2yJmazhVjT-fepLDMc55AZy6"
+      "refreshToken": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI1NWUyZjY3MC1kOTZiLTQ5NGEtOTU1Zi1kNTNiZWYxMWE0MjUiLCJzdWIiOiJhbGV4Lm11bGxlckBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3Nzg1OTQzNTEsImV4cCI6MTc3OTE5OTE1MSwidXNlcklkIjo2LCJ0eXBlIjoiUkVGUkVTSCJ9.8cV6vrstx6m_Z7zUMyasAm7eR9pOSyWQeDYj809nVyfGKJo0ODZDvhc3lgvX2iExdIgBpW1gZu7N6tcogGlZvw"
     }
 order: 3000

@@ -87,8 +87,7 @@ public class AuthServiceImpl implements AuthService {
                              String deviceId, String ip, String agent) {
 
         String normalizedDeviceId = normalizeDeviceId(deviceId);
-
-        // 🔥 check trước
+        
         checkBruteForce(email);
 
         try {
@@ -190,38 +189,27 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ================= CORE =================
-    private AuthResponse buildAuthResponse(User user,
-                                           String deviceId,
-                                           String ip,
-                                           String agent) {
+	private AuthResponse buildAuthResponse(User user, String deviceId, String ip, String agent) {
 
-        UserDetails userDetails =
-                customUserDetailsService.loadUserByUsername(user.getEmail());
+		UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
 
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+		Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null,
+				userDetails.getAuthorities());
 
-        String accessToken = jwtProvider.generateAccessToken(authentication, user.getId());
-        String refreshToken = jwtProvider.generateRefreshToken(authentication, user.getId());
+		String accessToken = jwtProvider.generateAccessToken(authentication, user.getId(), user.getTokenVersion());
 
-        refreshTokenRepo.save(RefreshToken.builder()
-                .user(user)
-                .tokenHash(tokenHashUtil.hash(refreshToken))
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .deviceId(deviceId)
-                .ipAddress(ip)
-                .userAgent(agent)
-                .build());
+		String refreshToken = jwtProvider.generateRefreshToken(authentication, user.getId());
 
-        return new AuthResponse(
-                accessToken,
-                refreshToken,
-                "Success",
-                "OK",
-                UserMapper.toDTO(user)
-        );
-    }
+		refreshTokenRepo.save(RefreshToken.builder()
+				.user(user)
+				.tokenHash(tokenHashUtil.hash(refreshToken))
+				.expiresAt(LocalDateTime.now().plusDays(7))
+				.deviceId(deviceId)
+				.ipAddress(ip)
+				.userAgent(agent).build());
+
+		return new AuthResponse(accessToken, refreshToken, "Success", "OK", UserMapper.toDTO(user));
+	}
 
     // ================= HELPERS =================
     private String normalizeDeviceId(String deviceId) {

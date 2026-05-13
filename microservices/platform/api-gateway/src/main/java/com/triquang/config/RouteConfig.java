@@ -18,26 +18,32 @@ import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
+import com.triquang.client.UserServiceClient;
 import com.triquang.enums.UserRole;
 import com.triquang.service.TokenBlacklistService;
 
 import io.jsonwebtoken.Claims;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
+@Slf4j
 public class RouteConfig {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService blacklistService;
     private final RedisRateLimitFilter redisRateLimitFilter;
+    private final UserServiceClient userServiceClient;
 
     public RouteConfig(
             JwtUtil jwtUtil,
             TokenBlacklistService blacklistService,
-            RedisRateLimitFilter redisRateLimitFilter
+            RedisRateLimitFilter redisRateLimitFilter,
+            UserServiceClient userServiceClient
     ) {
         this.jwtUtil = jwtUtil;
         this.blacklistService = blacklistService;
         this.redisRateLimitFilter = redisRateLimitFilter;
+        this.userServiceClient = userServiceClient;
     }
 
     // ==================== BUILDER ====================
@@ -198,7 +204,37 @@ public class RouteConfig {
         String email = jwtUtil.extractEmail(claims);
         String roles = jwtUtil.extractAuthorities(claims);
         Long userId = jwtUtil.extractUserId(claims);
+        Integer tokenVersion = jwtUtil.extractTokenVersion(claims);
 
+        // =========================
+        // CRITICAL SECURITY CHECK
+        // =========================
+        Integer currentVersion;
+
+        try {
+            currentVersion = userServiceClient.getTokenVersion(userId);
+        } catch (Exception ex) {
+            log.error("AUTH_FAIL type=USER_SERVICE_DOWN userId={} error={}", userId, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User service unavailable");
+        }
+
+        if (currentVersion == null || !currentVersion.equals(tokenVersion)) {
+
+            log.warn(
+                "AUTH_FAIL type=TOKEN_INVALIDATED userId={} tokenVersion={} currentVersion={} ip={} uri={}",
+                userId,
+                tokenVersion,
+                currentVersion,
+                request.servletRequest().getRemoteAddr(),
+                request.uri()
+            );
+
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token invalidated");
+        }
+
+        // =========================
+        // INJECT HEADERS (ANTI SPOOF)
+        // =========================
         return ServerRequest.from(request)
                 .headers(headers -> {
                     headers.remove("X-User-Email");

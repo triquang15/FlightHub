@@ -14,6 +14,7 @@ public final class JwtConstant {
 
     public static final String ACCESS_TOKEN = "ACCESS";
     public static final String REFRESH_TOKEN = "REFRESH";
+    public static final String CLAIM_TOKEN_VERSION = "tokenVersion";
 
     private JwtConstant() {
     }

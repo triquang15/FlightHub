@@ -30,7 +30,7 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.disable())
+            .cors(cors -> {})
 
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -38,14 +38,17 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
-                // 🔓 PUBLIC
+                // ================= PUBLIC =================
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // 🔒 SECURED
+                // INTERNAL API (FIX BUG 403)
+                .requestMatchers("/api/internal/**").permitAll()
+
+                // ================= SECURED =================
                 .anyRequest().authenticated()
             )
 
-            // 🔥 JWT FILTER
+            //  JWT FILTER
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

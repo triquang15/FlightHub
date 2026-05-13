@@ -69,6 +69,10 @@ public class JwtUtil {
         return Long.parseLong(String.valueOf(value));
     }
 
+    public Integer extractTokenVersion(Claims claims) {
+        return claims.get("tokenVersion", Integer.class);
+    }
+
     // ===================== VALIDATION =====================
 
     public boolean isTokenExpired(Claims claims) {

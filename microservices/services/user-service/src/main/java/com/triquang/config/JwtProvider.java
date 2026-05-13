@@ -29,7 +29,10 @@ public class JwtProvider {
     // TOKEN GENERATION
     // ===================================================
 
-    public String generateAccessToken(Authentication authentication, Long userId) {
+    // UPDATED: add tokenVersion
+    public String generateAccessToken(Authentication authentication,
+                                      Long userId,
+                                      Integer tokenVersion) {
 
         Date now = new Date();
         Date expiry = new Date(
@@ -38,15 +41,21 @@ public class JwtProvider {
 
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
-                .subject(authentication.getName()) // email / username
+                .subject(authentication.getName()) // email
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
+
+                // ================= CLAIMS =================
                 .claim(JwtConstant.CLAIM_USER_ID, userId)
                 .claim(JwtConstant.CLAIM_ROLES,
                         extractRoles(authentication.getAuthorities()))
                 .claim(JwtConstant.CLAIM_TOKEN_TYPE,
                         JwtConstant.ACCESS_TOKEN)
+
+                // CRITICAL FIX
+                .claim(JwtConstant.CLAIM_TOKEN_VERSION, tokenVersion)
+
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -64,9 +73,11 @@ public class JwtProvider {
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
+
                 .claim(JwtConstant.CLAIM_USER_ID, userId)
                 .claim(JwtConstant.CLAIM_TOKEN_TYPE,
                         JwtConstant.REFRESH_TOKEN)
+
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -93,18 +104,27 @@ public class JwtProvider {
     }
 
     public Long getUserId(String token) {
+
         Object value = parseClaims(token)
                 .get(JwtConstant.CLAIM_USER_ID);
 
-        if (value instanceof Integer i) {
-            return i.longValue();
-        }
-
-        if (value instanceof Long l) {
-            return l;
-        }
+        if (value instanceof Integer i) return i.longValue();
+        if (value instanceof Long l) return l;
 
         return Long.parseLong(String.valueOf(value));
+    }
+
+    public Integer getTokenVersion(String token) {
+
+        Object value = parseClaims(token)
+                .get(JwtConstant.CLAIM_TOKEN_VERSION);
+
+        if (value == null) return null;
+
+        if (value instanceof Integer i) return i;
+        if (value instanceof Long l) return l.intValue();
+
+        return Integer.parseInt(String.valueOf(value));
     }
 
     public String getTokenType(String token) {

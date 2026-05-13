@@ -1,0 +1,20 @@
+$kind: http-request
+name: 3. UPDATE PROFILE
+url: http://localhost:8080/api/users/me
+method: PUT
+headers:
+  - key: ""
+    value: ""
+    disabled: true
+body:
+  type: json
+  content: |-
+    {
+      "fullName": "John Updated",
+      "phone": "+84999999999"
+    }
+auth:
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIwNjc1MDQ0ZC1iOGRiLTRiMDctYmZhZC04MjUyYTkxMGViNzciLCJzdWIiOiJhbGV4Lm11bGxlckBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3Nzg2NzYyMjksImV4cCI6MTc3ODY3NzEyOSwidXNlcklkIjo2LCJyb2xlcyI6WyJST0xFX0NVU1RPTUVSIl0sInR5cGUiOiJBQ0NFU1MifQ.2g1Zs2yJqH61ZwoTNpIHQPXf361nLvkxSwLx6TEpmh87mZRL_wMAfLFfP8UNiBU6vmhJ-UhMDCO09nY069Pojw
+  type: bearer
+order: 3283306013525051

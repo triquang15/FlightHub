@@ -1,23 +1,33 @@
 package com.triquang.service;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.triquang.dto.UserDTO;
+import com.triquang.payload.SessionDTO;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
+import com.triquang.payload.request.UpdateProfileRequest;
 
 public interface UserService {
-
-    UserDTO getUserProfile(String email);
 
     UserDTO getUserById(Long id);
 
     Page<UserDTO> getUsers(Pageable pageable);
-    
-    void changePassword(String email, ChangePasswordRequest request);
+
+    UserDTO updateProfile(Long userId, UpdateProfileRequest request);
+
+    void changePassword(Long userId, ChangePasswordRequest request);
 
     void forgotPassword(String email);
 
     void resetPassword(ResetPasswordRequest request);
+
+    List<SessionDTO> getUserSessions(Long userId);
+
+    void logoutDevice(Long userId, String deviceId);
+
+    void logoutAll(Long userId);
 }

@@ -29,6 +29,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS("USR_002", "Email already exists", HttpStatus.BAD_REQUEST),
     INVALID_CREDENTIALS("USR_003", "Invalid email or password", HttpStatus.UNAUTHORIZED),
     INVALID_PASSWORD("USR_004", "Invalid password", HttpStatus.BAD_REQUEST),
+    SAME_PASSWORD("USR_005", "New password must be different from the current password", HttpStatus.BAD_REQUEST),
 
     // =========================
     // AUTH
