@@ -4,6 +4,12 @@ import { clearUserState } from "./userSlice";
 import { logoutLocal } from "../auth/authSlice";
 
 // ============================
+// HELPER
+// ============================
+const getError = (err) =>
+  err.response?.data?.message || "Unexpected error";
+
+// ============================
 // GET PROFILE
 // ============================
 export const getUserProfile = createAsyncThunk(
@@ -13,9 +19,7 @@ export const getUserProfile = createAsyncThunk(
       const res = await api.get("/api/users/profile");
       return res.data?.data;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch profile"
-      );
+      return rejectWithValue(getError(err));
     }
   }
 );
@@ -28,7 +32,9 @@ export const getAllUsers = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await api.get("/api/users");
-      return res.data?.data;
+
+      return res.data?.data?.content || [];
+
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch users"
@@ -47,9 +53,7 @@ export const getUserById = createAsyncThunk(
       const res = await api.get(`/api/users/${userId}`);
       return res.data?.data;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "User not found"
-      );
+      return rejectWithValue(getError(err));
     }
   }
 );
@@ -59,34 +63,18 @@ export const getUserById = createAsyncThunk(
 // ============================
 export const logout = createAsyncThunk(
   "user/logout",
-  async (_, { dispatch, rejectWithValue }) => {
+  async (_, { dispatch }) => {
     try {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        await api.post("/auth/logout");
-      }
-
-      // clear storage
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-
-      // clear redux
-      dispatch(clearUserState());
-      dispatch(logoutLocal());
-
-      return true;
-
+      await api.post("/auth/logout");
     } catch (err) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-
-      dispatch(clearUserState());
-      dispatch(logoutLocal());
-
-      return rejectWithValue(
-        err.response?.data?.message || "Logout failed"
-      );
+      console.warn("Logout API failed, fallback local logout");
     }
+
+    localStorage.clear();
+
+    dispatch(clearUserState());
+    dispatch(logoutLocal());
+
+    return true;
   }
 );

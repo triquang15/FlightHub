@@ -12,7 +12,8 @@ const initialState = {
   selectedUser: null,
   loading: false,
   usersLoading: false,
-  error: null,
+  profileError: null,
+  usersError: null,
 };
 
 const userSlice = createSlice({
@@ -23,7 +24,8 @@ const userSlice = createSlice({
       state.userProfile = null;
       state.users = [];
       state.selectedUser = null;
-      state.error = null;
+      state.profileError = null;
+      state.usersError = null;
     },
   },
   extraReducers: (builder) => {
@@ -32,6 +34,7 @@ const userSlice = createSlice({
       // ================= PROFILE =================
       .addCase(getUserProfile.pending, (state) => {
         state.loading = true;
+        state.profileError = null;
       })
       .addCase(getUserProfile.fulfilled, (state, action) => {
         state.loading = false;
@@ -39,12 +42,13 @@ const userSlice = createSlice({
       })
       .addCase(getUserProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.profileError = action.payload;
       })
 
       // ================= USERS =================
       .addCase(getAllUsers.pending, (state) => {
         state.usersLoading = true;
+        state.usersError = null;
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
         state.usersLoading = false;
@@ -52,7 +56,7 @@ const userSlice = createSlice({
       })
       .addCase(getAllUsers.rejected, (state, action) => {
         state.usersLoading = false;
-        state.error = action.payload;
+        state.usersError = action.payload;
       })
 
       // ================= USER BY ID =================
@@ -65,7 +69,8 @@ const userSlice = createSlice({
         state.userProfile = null;
         state.selectedUser = null;
         state.users = [];
-        state.error = null;
+        state.profileError = null;
+        state.usersError = null;
       });
   },
 });

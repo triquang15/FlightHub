@@ -15,16 +15,17 @@ import {
   Clock,
 } from "lucide-react";
 
-/* ─────────────────────── helpers ─────────────────────── */
-const ROLE_META = {
-  ROLE_SUPER_ADMIN: { label: "Super Admin", color: "bg-purple-100 text-purple-700" },
-  ROLE_AIRLINE_ADMIN: { label: "Airline Admin", color: "bg-blue-100 text-blue-700" },
-  ROLE_PASSENGER: { label: "Passenger", color: "bg-green-100 text-green-700" },
-  ROLE_CUSTOMER: { label: "Customer", color: "bg-teal-100 text-teal-700" },
-};
-
 function getRoleMeta(role) {
-  return ROLE_META[role] || { label: role || "Unknown", color: "bg-gray-100 text-gray-600" };
+  switch (role) {
+    case "ROLE_SYSTEM_ADMIN":
+      return { label: "System Admin", color: "bg-purple-100 text-purple-700" };
+    case "ROLE_AIRLINE_OWNER":
+      return { label: "Airline Owner", color: "bg-blue-100 text-blue-700" };
+    case "ROLE_CUSTOMER":
+      return { label: "Customer", color: "bg-teal-100 text-teal-700" };
+    default:
+      return { label: role, color: "bg-gray-100 text-gray-600" };
+  }
 }
 
 function formatDate(dateStr) {
@@ -84,6 +85,7 @@ function SortHeader({ label, field, sortField, sortDir, onSort }) {
 const UserManagement = () => {
   const dispatch = useDispatch();
   const { users, usersLoading, error } = useSelector((s) => s.user);
+  const safeUsers = Array.isArray(users) ? users : [];
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -106,10 +108,10 @@ const UserManagement = () => {
   /* stats derived from real data */
   const stats = useMemo(() => {
     const total = users.length;
-    const passengers = users.filter((u) => u.role === "ROLE_PASSENGER" || u.role === "ROLE_CUSTOMER").length;
-    const admins = users.filter((u) => u.role === "ROLE_AIRLINE_ADMIN").length;
-    const superAdmins = users.filter((u) => u.role === "ROLE_SUPER_ADMIN").length;
-    return { total, passengers, admins, superAdmins };
+    const customers = users.filter((u) => u.role === "ROLE_CUSTOMER").length;
+    const airlineOwners = users.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
+    const superAdmins = users.filter((u) => u.role === "ROLE_SYSTEM_ADMIN").length;
+    return { total, customers, airlineOwners, superAdmins };
   }, [users]);
 
   /* filtered + sorted list */
@@ -155,13 +157,21 @@ const UserManagement = () => {
       {/* header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="h-6 w-6 text-indigo-600" />
-            User Management
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            All registered users across the platform
-          </p>
+          <h1 className="
+          text-2xl font-bold 
+          text-gray-900 dark:text-gray-100
+          flex items-center gap-2
+        ">
+          <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+          User Management
+        </h1>
+
+        <p className="
+          text-sm mt-1
+          text-gray-600 dark:text-gray-400
+        ">
+          All registered users across the platform
+        </p>
         </div>
         <button
           onClick={() => dispatch(getAllUsers())}
@@ -176,27 +186,51 @@ const UserManagement = () => {
       {/* stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Total Users" value={stats.total} color="bg-indigo-100 text-indigo-700" />
-        <StatCard icon={User} label="Passengers" value={stats.passengers} color="bg-green-100 text-green-700" />
-        <StatCard icon={Plane} label="Airline Admins" value={stats.admins} color="bg-blue-100 text-blue-700" />
-        <StatCard icon={Shield} label="Super Admins" value={stats.superAdmins} color="bg-purple-100 text-purple-700" />
+        <StatCard icon={User} label="Customers" value={stats.customers} color="bg-green-100 text-green-700" />
+        <StatCard icon={Plane} label="Airline Owners" value={stats.airlineOwners} color="bg-blue-100 text-blue-700" />
+        <StatCard icon={Shield} label="System Admins" value={stats.superAdmins} color="bg-purple-100 text-purple-700" />
       </div>
 
       {/* filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, email or phone…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
-        </div>
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col sm:flex-row gap-3 shadow-sm">
+
+      {/* search */}
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+        
+        <input
+          type="text"
+          placeholder="Search by name, email or phone…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="
+            w-full pl-9 pr-4 py-2 text-sm rounded-lg
+            bg-gray-50 dark:bg-gray-800
+            border border-gray-200 dark:border-gray-600
+            text-gray-900 dark:text-gray-100
+            placeholder-gray-400 dark:placeholder-gray-500
+            focus:outline-none focus:ring-2 focus:ring-indigo-500
+            focus:border-transparent
+            transition
+          "
+        />
+      </div>
+
+      {/* role filter */}
+      <div className="relative min-w-[180px]">
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+          className="
+            w-full px-3 py-2 text-sm rounded-lg
+            bg-gray-50 dark:bg-gray-800
+            border border-gray-200 dark:border-gray-600
+            text-gray-900 dark:text-gray-100
+            focus:outline-none focus:ring-2 focus:ring-indigo-500
+            focus:border-transparent
+            transition
+            appearance-none
+          "
         >
           <option value="all">All Roles</option>
           {uniqueRoles.map((r) => (
@@ -205,98 +239,170 @@ const UserManagement = () => {
             </option>
           ))}
         </select>
+
+        {/* custom dropdown icon */}
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
       </div>
 
+    </div>
+
       {/* table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {usersLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
-            <p className="text-sm">Loading users…</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-20 text-red-400">
-            <p className="font-medium">Failed to load users</p>
-            <p className="text-sm mt-1">{error}</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <Users className="h-10 w-10 mb-3 opacity-40" />
-            <p className="font-medium">No users found</p>
-            <p className="text-sm mt-1">Try adjusting your search or filter</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    #
-                  </th>
-                  <SortHeader label="Name" field="fullName" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                  <SortHeader label="Email" field="email" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <SortHeader label="Last Login" field="lastLogin" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((user, idx) => {
-                  const roleMeta = getRoleMeta(user.role);
-                  return (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-xs flex-shrink-0">
-                            {(user.fullName || user.email || "?")[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{user.fullName || "—"}</p>
-                            {user.username && (
-                              <p className="text-xs text-gray-400">@{user.username}</p>
-                            )}
-                          </div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+
+      {usersLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+          <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
+          <p className="text-sm">Loading users…</p>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 text-red-400">
+          <p className="font-medium">Failed to load users</p>
+          <p className="text-sm mt-1 opacity-80">{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+          <Users className="h-10 w-10 mb-3 opacity-40" />
+          <p className="font-medium">No users found</p>
+          <p className="text-sm mt-1">Try adjusting your search or filter</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+
+            {/* header */}
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  #
+                </th>
+
+                <SortHeader
+                  label="Name"
+                  field="fullName"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+
+                <SortHeader
+                  label="Email"
+                  field="email"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Role
+                </th>
+
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Phone
+                </th>
+
+                <SortHeader
+                  label="Last Login"
+                  field="lastLogin"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              </tr>
+            </thead>
+
+            {/* body */}
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {filtered.map((user, idx) => {
+                const roleMeta = getRoleMeta(user.role);
+
+                return (
+                  <tr
+                    key={user.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                  >
+                    {/* index */}
+                    <td className="px-4 py-3 text-gray-400 text-xs">
+                      {idx + 1}
+                    </td>
+
+                    {/* name */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+
+                        {/* avatar */}
+                        <div
+                          className="
+                            h-9 w-9 rounded-full
+                            bg-gradient-to-br from-indigo-100 to-indigo-200
+                            dark:from-indigo-800 dark:to-indigo-700
+                            flex items-center justify-center
+                            text-indigo-600 dark:text-indigo-200
+                            font-semibold text-xs
+                            shadow-sm
+                          "
+                        >
+                          {(user.fullName || user.email || "?")[0].toUpperCase()}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1 text-gray-600">
-                          <Mail className="h-3.5 w-3.5 text-gray-400" />
-                          {user.email || "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleMeta.color}`}>
-                          {roleMeta.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1 text-gray-600">
-                          <Phone className="h-3.5 w-3.5 text-gray-400" />
-                          {user.phone || "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1 text-gray-500 text-xs">
-                          <Clock className="h-3.5 w-3.5 text-gray-400" />
-                          {formatDate(user.lastLogin)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 text-right">
-              Showing {filtered.length} of {users.length} users
-            </div>
+
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {user.fullName || "—"}
+                          </p>
+
+                          {user.username && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                              @{user.username}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* email */}
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                        <Mail className="h-3.5 w-3.5 text-gray-400" />
+                        {user.email || "—"}
+                      </span>
+                    </td>
+
+                    {/* role */}
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleMeta.color}`}
+                      >
+                        {roleMeta.label}
+                      </span>
+                    </td>
+
+                    {/* phone */}
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                        <Phone className="h-3.5 w-3.5 text-gray-400" />
+                        {user.phone || "—"}
+                      </span>
+                    </td>
+
+                    {/* last login */}
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
+                        <Clock className="h-3.5 w-3.5 text-gray-400" />
+                        {formatDate(user.lastLogin)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* footer */}
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500 text-right">
+            Showing {filtered.length} of {safeUsers.length} users
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 };
