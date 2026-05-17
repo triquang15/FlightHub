@@ -1,5 +1,13 @@
 import React from 'react';
-import { ChevronUp, ChevronDown, Edit, Trash2, MoreVertical } from 'lucide-react';
+import {
+  Edit,
+  Trash2,
+  MoreVertical,
+  MapPin,
+  Globe,
+  Clock
+} from 'lucide-react';
+
 import {
   Table,
   TableBody,
@@ -8,9 +16,10 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,154 +27,148 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 
-const SortableHeader = ({ field, sortField, sortDirection, onSort, children }) => (
-  <TableHead
-    className="cursor-pointer hover:bg-gray-50 transition-colors"
-    onClick={() => onSort(field)}
-  >
-    <div className="flex items-center gap-1">
-      {children}
-      {sortField === field && (
-        sortDirection === 'asc' ?
-          <ChevronUp className="w-4 h-4" /> :
-          <ChevronDown className="w-4 h-4" />
-      )}
-    </div>
-  </TableHead>
-);
-
 const CityTable = ({
-  cities,
-  selectedCities,
-  sortField,
-  sortDirection,
-  onSort,
-  onSelectAll,
-  onSelectCity,
+  cities = [],
   onEdit,
   onDelete,
   loading = false
 }) => {
-  const isAllSelected = cities.length > 0 && selectedCities.length === cities.length;
-  const isIndeterminate = selectedCities.length > 0 && selectedCities.length < cities.length;
 
-  console.log("Rendering CityTable with cities:", cities);
-
+  // ================= LOADING =================
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading cities...</div>
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-3" />
+        <p className="text-sm">Loading cities...</p>
       </div>
     );
   }
 
-  if (cities.length === 0) {
+  // ================= EMPTY =================
+  if (!cities || cities.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">No cities found</div>
-          <div className="text-sm text-gray-400">
-            Try adjusting your search criteria or add a new city
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+        <MapPin className="h-10 w-10 mb-3 opacity-40" />
+        <p className="font-medium">No cities found</p>
+        <p className="text-sm mt-1">Try adjusting your filters</p>
       </div>
     );
   }
 
   return (
-    <div className="">
-      <Table>
-        <TableHeader>
+    <div className="overflow-x-auto">
+      <Table className="w-full text-sm">
+        {/* ================= HEADER ================= */}
+        <TableHeader className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
           <TableRow>
-            
-            <SortableHeader
-              field="name"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
-              City Name
-            </SortableHeader>
-            <SortableHeader
-              field="cityCode"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
-              Code
-            </SortableHeader>
-            <SortableHeader
-              field="countryName"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              #
+            </TableHead>
+
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              City
+            </TableHead>
+
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               Country
-            </SortableHeader>
-            <SortableHeader
-              field="regionCode"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
+            </TableHead>
+
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               Region
-            </SortableHeader>
-            <SortableHeader
-              field="timezoneOffset"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
+            </TableHead>
+
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               Timezone
-            </SortableHeader>
-            <TableHead className="w-16">Actions</TableHead>
+            </TableHead>
+
+            <TableHead className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Actions
+            </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {cities.map((city) => (
-            <TableRow key={city.id} className="hover:bg-gray-50">
-             
-              <TableCell className="font-medium">
-                {city.name}
+
+        {/* ================= BODY ================= */}
+        <TableBody className="divide-y dark:divide-gray-700">
+          {cities.map((city, idx) => (
+            <TableRow
+              key={city.id}
+              className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              {/* INDEX */}
+              <TableCell className="px-4 py-3 text-xs text-gray-400">
+                {idx + 1}
               </TableCell>
-              <TableCell>
-                <Badge variant="secondary">{city.cityCode}</Badge>
+
+              {/* CITY */}
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-semibold text-xs">
+                    {(city.name || '?')[0].toUpperCase()}
+                  </div>
+
+                  {/* Info */}
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {city.name}
+                    </p>
+
+                    <p className="text-xs text-gray-400">
+                      {city.cityCode}
+                    </p>
+                  </div>
+                </div>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span>{city.countryName}</span>
-                  <Badge variant="outline" className="text-xs">
+
+              {/* COUNTRY */}
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                  <Globe className="h-3.5 w-3.5 text-gray-400" />
+                  {city.countryName}
+
+                  <Badge className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                     {city.countryCode}
                   </Badge>
                 </div>
               </TableCell>
-              <TableCell>
+
+              {/* REGION */}
+              <TableCell className="px-4 py-3">
                 {city.regionCode ? (
-                  <Badge variant="outline">{city.regionCode}</Badge>
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                    {city.regionCode}
+                  </Badge>
                 ) : (
-                  <span className="text-gray-400">-</span>
+                  <span className="text-gray-400">—</span>
                 )}
               </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {city.timezoneOffset || 'Not set'}
-                </Badge>
+
+              {/* TIMEZONE */}
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-1 text-gray-500 text-xs">
+                  <Clock className="h-3.5 w-3.5 text-gray-400" />
+                  {city.timeZoneOffset || '—'}
+                </div>
               </TableCell>
-              <TableCell>
+
+              {/* ACTION */}
+              <TableCell className="px-4 py-3 text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
-                      <MoreVertical className="w-4 h-4" />
+                      <MoreVertical className="h-4 w-4 text-gray-500" />
                     </Button>
                   </DropdownMenuTrigger>
+
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(city)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
+
                     <DropdownMenuItem
                       onClick={() => onDelete(city)}
-                      className="text-red-600"
+                      className="text-red-500"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
@@ -173,6 +176,7 @@ const CityTable = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
+
             </TableRow>
           ))}
         </TableBody>

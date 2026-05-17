@@ -1,8 +1,8 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Globe, Clock, MapPin, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+
 import {
   Select,
   SelectContent,
@@ -29,107 +29,117 @@ const CityFilters = ({
     });
   };
 
+  const activeFilters = Object.entries(filters).filter(([_, v]) => v);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <ChevronDown className="w-4 h-4" />
-            Advanced Filters
-          </span>
-          <Button variant="ghost" size="sm" onClick={onReset}>
-            Reset
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Country Filter */}
-          <div>
-            <Label>Country</Label>
-            <Select
-              value={filters.country || 'all'}
-              onValueChange={(value) => handleFilterChange('country', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All Countries" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Countries</SelectItem>
-                {countries.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
-                    {country.name} ({country.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-4">
 
-          {/* Timezone Filter */}
-          <div>
-            <Label>Timezone</Label>
-            <Select
-              value={filters.timezone || 'all'}
-              onValueChange={(value) => handleFilterChange('timezone', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All Timezones" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Timezones</SelectItem>
-                {timezones.map((timezone) => (
-                  <SelectItem key={timezone} value={timezone}>
-                    {timezone}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {/* 🔥 FILTER BAR */}
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
 
-          {/* Region Filter */}
-          <div>
-            <Label>Region</Label>
-            <Select
-              value={filters.region || 'all'}
-              onValueChange={(value) => handleFilterChange('region', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All Regions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Regions</SelectItem>
-                {regions.map((region) => (
-                  <SelectItem key={region} value={region}>
-                    {region}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* LEFT */}
+        <div className="flex flex-wrap gap-3">
+
+          {/* COUNTRY */}
+          <Select
+            value={filters.country || 'all'}
+            onValueChange={(value) => handleFilterChange('country', value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-gray-400" />
+                <SelectValue placeholder="Country" />
+              </div>
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="all">All Countries</SelectItem>
+              {countries.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.name} ({c.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* TIMEZONE */}
+          <Select
+            value={filters.timezone || 'all'}
+            onValueChange={(value) => handleFilterChange('timezone', value)}
+          >
+            <SelectTrigger className="w-[160px]">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <SelectValue placeholder="Timezone" />
+              </div>
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="all">All Timezones</SelectItem>
+              {timezones.map((tz) => (
+                <SelectItem key={tz} value={tz}>
+                  {tz}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* REGION */}
+          <Select
+            value={filters.region || 'all'}
+            onValueChange={(value) => handleFilterChange('region', value)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <SelectValue placeholder="Region" />
+              </div>
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="all">All Regions</SelectItem>
+              {regions.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
         </div>
 
-        {/* Filter Summary */}
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Active filters:</span>
-          {Object.entries(filters).filter(([key, value]) => value).length === 0 ? (
-            <span className="text-gray-400">None</span>
-          ) : (
-            <div className="flex gap-1">
-              {Object.entries(filters)
-                .filter(([key, value]) => value)
-                .map(([key, value]) => (
-                  <span
-                    key={key}
-                    className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
-                  >
-                    {key}: {value}
-                  </span>
-                ))}
-            </div>
+        {/* RIGHT */}
+        <div className="flex items-center gap-2">
+          {activeFilters.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={onReset}>
+              Reset Filters
+            </Button>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+      </div>
+
+      {/* 🔥 ACTIVE FILTER BADGES */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+
+          {activeFilters.map(([key, value]) => (
+            <Badge
+              key={key}
+              className="flex items-center gap-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"
+            >
+              {key}: {value}
+              <X
+                className="w-3 h-3 cursor-pointer"
+                onClick={() => handleFilterChange(key, 'all')}
+              />
+            </Badge>
+          ))}
+
+        </div>
+      )}
+
+    </div>
   );
 };
 

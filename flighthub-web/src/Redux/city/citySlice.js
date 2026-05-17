@@ -1,173 +1,188 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
+  getCitiesDropdown,
+  searchCities,
+  getAllCities,
+  getCityById,
   createCity,
   updateCity,
   deleteCity,
-  getAllCities,
-  searchCities,
-  getCitiesByCountryCode,
-  checkCityExists as cityExists,
-} from "./cityThunk.js";
+  getCitiesByCountry
+} from "./cityThunk";
 
 const initialState = {
+  // dropdown
   cities: [],
-  city: null,
+
+  // search
+  searchResults: [],
+
+  // main list (render UI)
+  cityList: [],
+  total: 0,
+
+  // selected
+  selectedCity: null,
+
+  // loading
   loading: false,
+  searchLoading: false,
+  actionLoading: false,
+
+  // error
   error: null,
-  pagination: {
-    totalElements: 0,
-    totalPages: 0,
-    page: 0,
-    size: 0,
-    last: false,
-    first: false
-  },
 };
 
 const citySlice = createSlice({
   name: "city",
   initialState,
+
   reducers: {
-    clearCityError: (state) => {
+    clearCityState: (state) => {
+      state.cities = [];
+      state.searchResults = [];
+      state.cityList = [];
+      state.selectedCity = null;
       state.error = null;
+      state.total = 0;
     },
+
+    setSelectedCity: (state, action) => {
+      state.selectedCity = action.payload;
+    },
+
+    // 🔥 QUAN TRỌNG: dùng cho client filter + pagination
+    setCityList: (state, action) => {
+      state.cityList = action.payload;
+    },
+
+    // 🔥 update total khi client filter
+    setTotal: (state, action) => {
+      state.total = action.payload;
+    }
   },
+
   extraReducers: (builder) => {
-    // ---------- CREATE ----------
-    builder.addCase(createCity.pending, (state) => {
-      console.log("⏳ createCity pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(createCity.fulfilled, (state, action) => {
-      console.log("✅ createCity fulfilled");
-      state.loading = false;
-      state.city = action.payload;
-      state.cities.push(action.payload);
-      state.pagination.totalElements += 1;
-    });
-    builder.addCase(createCity.rejected, (state, action) => {
-      console.log("❌ createCity rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+    builder
 
-    // ---------- UPDATE ----------
-    builder.addCase(updateCity.pending, (state) => {
-      console.log("⏳ updateCity pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(updateCity.fulfilled, (state, action) => {
-      console.log("✅ updateCity fulfilled");
-      state.loading = false;
-      state.city = action.payload;
-      state.cities = state.cities.map((c) =>
-        c.id === action.payload.id ? action.payload : c
-      );
-    });
-    builder.addCase(updateCity.rejected, (state, action) => {
-      console.log("❌ updateCity rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+      // =========================
+      // DROPDOWN
+      // =========================
+      .addCase(getCitiesDropdown.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getCitiesDropdown.fulfilled, (state, action) => {
+        state.loading = false;
+        state.cities = action.payload;
+      })
+      .addCase(getCitiesDropdown.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-    // ---------- DELETE ----------
-    builder.addCase(deleteCity.pending, (state) => {
-      console.log("⏳ deleteCity pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(deleteCity.fulfilled, (state, action) => {
-      console.log("✅ deleteCity fulfilled");
-      state.loading = false;
-      state.cities = state.cities.filter((c) => c.id !== action.payload);
-      if (state.city?.id === action.payload) state.city = null;
-    });
-    builder.addCase(deleteCity.rejected, (state, action) => {
-      console.log("❌ deleteCity rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+      // =========================
+      // SEARCH
+      // =========================
+      .addCase(searchCities.pending, (state) => {
+        state.searchLoading = true;
+      })
+      .addCase(searchCities.fulfilled, (state, action) => {
+        state.searchLoading = false;
+        state.searchResults = action.payload;
 
-    // ---------- GET ALL ----------
-    builder.addCase(getAllCities.pending, (state) => {
-      console.log("⏳ getAllCities pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(getAllCities.fulfilled, (state, action) => {
-      console.log("✅ getAllCities fulfilled");
-      state.loading = false;
-      state.loading = false;
-      state.cities = action.payload.content;
-      state.pagination = {
-        totalElements: action.payload.totalElements,
-        totalPages: action.payload.totalPages,
-        page: action.payload.number,
-        size: action.payload.size,
-        last: action.payload.last,
-        first: action.payload.first,
-      };
-    });
-    builder.addCase(getAllCities.rejected, (state, action) => {
-      console.log("❌ getAllCities rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+        // 🔥 optional: sync luôn UI
+        state.cityList = action.payload;
+        state.total = action.payload.length;
+      })
+      .addCase(searchCities.rejected, (state, action) => {
+        state.searchLoading = false;
+        state.error = action.payload;
+      })
 
-    // ---------- SEARCH ----------
-    builder.addCase(searchCities.pending, (state) => {
-      console.log("⏳ searchCities pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(searchCities.fulfilled, (state, action) => {
-      console.log("✅ searchCities fulfilled");
-      state.loading = false;
-      state.cities = action.payload;
-    });
-    builder.addCase(searchCities.rejected, (state, action) => {
-      console.log("❌ searchCities rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+      // =========================
+      // PAGINATION (SERVER)
+      // =========================
+      .addCase(getAllCities.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getAllCities.fulfilled, (state, action) => {
+        state.loading = false;
 
-    // ---------- GET BY COUNTRY CODE ----------
-    builder.addCase(getCitiesByCountryCode.pending, (state) => {
-      console.log("⏳ getCitiesByCountryCode pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(getCitiesByCountryCode.fulfilled, (state, action) => {
-      console.log("✅ getCitiesByCountryCode fulfilled");
-      state.loading = false;
-      state.cities = action.payload;
-    });
-    builder.addCase(getCitiesByCountryCode.rejected, (state, action) => {
-      console.log("❌ getCitiesByCountryCode rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+        state.cityList = action.payload.content;
+        state.total = action.payload.total;
+      })
+      .addCase(getAllCities.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-    // ---------- CHECK EXISTS ----------
-    builder.addCase(cityExists.pending, (state) => {
-      console.log("⏳ cityExists pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(cityExists.fulfilled, (state, action) => {
-      console.log("✅ cityExists fulfilled");
-      state.loading = false;
-      state.city = action.payload;
-    });
-    builder.addCase(cityExists.rejected, (state, action) => {
-      console.log("❌ cityExists rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
+      // =========================
+      // BY COUNTRY
+      // =========================
+      .addCase(getCitiesByCountry.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getCitiesByCountry.fulfilled, (state, action) => {
+        state.loading = false;
+
+        state.cityList = action.payload;
+        state.total = action.payload.length;
+      })
+      .addCase(getCitiesByCountry.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // =========================
+      // GET BY ID
+      // =========================
+      .addCase(getCityById.fulfilled, (state, action) => {
+        state.selectedCity = action.payload;
+      })
+
+      // =========================
+      // CREATE
+      // =========================
+      .addCase(createCity.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(createCity.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(createCity.rejected, (state) => {
+        state.actionLoading = false;
+      })
+
+      // =========================
+      // UPDATE
+      // =========================
+      .addCase(updateCity.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(updateCity.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(updateCity.rejected, (state) => {
+        state.actionLoading = false;
+      })
+
+      // =========================
+      // DELETE
+      // =========================
+      .addCase(deleteCity.fulfilled, (state, action) => {
+        state.cityList = state.cityList.filter(
+          (c) => c.id !== action.payload
+        );
+        state.total -= 1;
+      });
   },
 });
 
-export const { clearCityError } = citySlice.actions;
+export const {
+  clearCityState,
+  setSelectedCity,
+  setCityList,
+  setTotal
+} = citySlice.actions;
+
 export default citySlice.reducer;

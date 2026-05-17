@@ -21,6 +21,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // 🔥 attach device id
     config.headers["X-Device-Id"] = getDeviceId();
 
     return config;
@@ -51,18 +52,29 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
-    // ============================
-    // HANDLE 401
-    // ============================
-    if (status === 401 && !originalRequest._retry) {
+    // ❗ detect auth endpoints (IMPORTANT)
+    const isAuthEndpoint =
+      originalRequest?.url?.includes("/api/auth/login") ||
+      originalRequest?.url?.includes("/api/auth/signup");
 
-      // if refresh fail → logout always
+    // ============================
+    // HANDLE 401 (ONLY FOR NON-AUTH)
+    // ============================
+    if (
+      status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      // ❗ refresh endpoint failed → logout
       if (originalRequest.url.includes("/api/auth/refresh")) {
         localStorage.clear();
         window.location.href = "/login";
         return Promise.reject(error);
       }
 
+      // ============================
+      // QUEUE WHEN REFRESHING
+      // ============================
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -78,16 +90,26 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem("refreshToken");
 
+        // ❗ nếu không có refresh token → logout luôn
+        if (!refreshToken) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return Promise.reject(error);
+        }
+
         const res = await axios.post(`${BASE_URL}/api/auth/refresh`, {
           refreshToken,
         });
 
         const newAccessToken = res.data.data.accessToken;
 
+        // save token mới
         localStorage.setItem("accessToken", newAccessToken);
 
+        // release queue
         processQueue(null, newAccessToken);
 
+        // retry request
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
@@ -104,6 +126,9 @@ api.interceptors.response.use(
       }
     }
 
+    // ============================
+    // ❗ IMPORTANT: PASS RAW ERROR
+    // ============================
     return Promise.reject(error);
   }
 );
