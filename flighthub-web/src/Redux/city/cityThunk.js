@@ -2,54 +2,39 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
 // ============================
-// CREATE CITY
-// ============================
-export const createCity = createAsyncThunk(
-  "city/create",
-  async (payload, { rejectWithValue }) => {
-    try {
-      const res = await api.post("/api/cities", payload);
-      return res.data?.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Create city failed"
-      );
-    }
-  }
-);
-
-// ============================
-// GET BY ID
-// ============================
-export const getCityById = createAsyncThunk(
-  "city/getById",
-  async (id, { rejectWithValue }) => {
-    try {
-      const res = await api.get(`/api/cities/${id}`);
-      return res.data?.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "City not found"
-      );
-    }
-  }
-);
-
-// ============================
-// GET ALL (PAGINATION)
+// GET ALL (PAGINATION + FILTER + SEARCH)
 // ============================
 export const getAllCities = createAsyncThunk(
   "city/getAll",
-  async ({ page = 0, size = 20 }, { rejectWithValue }) => {
+  async (
+    {
+      page = 0,
+      size = 20,
+      sortBy = "name",
+      sortDirection = "asc",
+      keyword,
+      country,
+      timezone,
+      region
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const res = await api.get("/api/cities", {
-        params: { page, size },
+        params: {
+          page,
+          size,
+          sortBy,
+          sortDirection,
+          keyword,
+          country,
+          timezone,
+          region,
+        },
       });
 
-      return {
-        content: res.data?.data?.content || [],
-        total: res.data?.data?.totalElements || 0,
-      };
+      return res.data;
+
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Load cities failed"
@@ -59,57 +44,17 @@ export const getAllCities = createAsyncThunk(
 );
 
 // ============================
-// DROPDOWN (MAIN FE)
+// CREATE
 // ============================
-export const getCitiesDropdown = createAsyncThunk(
-  "city/getDropdown",
-  async (_, { rejectWithValue }) => {
+export const createCity = createAsyncThunk(
+  "city/create",
+  async (payload, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/cities/dropdown");
-      return res.data?.data || [];
+      const res = await api.post("/api/cities", payload);
+      return res.data;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Load dropdown failed"
-      );
-    }
-  }
-);
-
-// ============================
-// SEARCH
-// ============================
-export const searchCities = createAsyncThunk(
-  "city/search",
-  async ({ keyword = "", page = 0, size = 10 }, { rejectWithValue }) => {
-    try {
-      const res = await api.get("/api/cities/search", {
-        params: { keyword, page, size },
-      });
-
-      return res.data?.data?.content || [];
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Search failed"
-      );
-    }
-  }
-);
-
-// ============================
-// BY COUNTRY
-// ============================
-export const getCitiesByCountry = createAsyncThunk(
-  "city/byCountry",
-  async ({ countryCode, page = 0, size = 20 }, { rejectWithValue }) => {
-    try {
-      const res = await api.get(`/api/cities/country/${countryCode}`, {
-        params: { page, size },
-      });
-
-      return res.data?.data?.content || [];
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || "Load by country failed"
+        err.response?.data?.message || "Create failed"
       );
     }
   }
@@ -123,7 +68,7 @@ export const updateCity = createAsyncThunk(
   async ({ id, payload }, { rejectWithValue }) => {
     try {
       const res = await api.put(`/api/cities/${id}`, payload);
-      return res.data?.data;
+      return res.data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Update failed"

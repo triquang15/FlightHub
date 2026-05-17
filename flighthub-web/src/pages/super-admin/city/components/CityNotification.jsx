@@ -37,7 +37,11 @@ const CityNotification = ({ notification, onClose }) => {
       className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 transition-all duration-300 ${getNotificationStyles()}`}
     >
       {getIcon()}
-      <span className="flex-1">{message}</span>
+      <span className="flex-1">
+  {typeof message === "string"
+    ? message
+    : message?.message || "Something went wrong"}
+</span>
       <Button
         variant="ghost"
         size="sm"

@@ -9,9 +9,7 @@ import {
   createCity,
   updateCity,
   deleteCity,
-  getAllCities,
-  searchCities,
-  getCitiesByCountry,
+  getAllCities
 } from '@/Redux/city/cityThunk';
 
 // Components
@@ -27,6 +25,14 @@ import CityNotification from './components/CityNotification';
 // Utils
 import { exportCitiesToExcel, exportCitiesToPDF } from './utils/cityHelpers';
 
+const parseError = (err) => {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (err?.response?.data?.message) return err.response.data.message;
+  if (err?.message) return err.message;
+  return "Something went wrong";
+};
+
 const CityManagement = () => {
   const dispatch = useDispatch();
 
@@ -38,7 +44,7 @@ const CityManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const [showFilters, setShowFilters] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
@@ -99,103 +105,52 @@ const CityManagement = () => {
     };
   };
 
-  // ================= CLIENT FILTER =================
-const applyClientFilters = (data) => {
-  let result = [...data];
+  // ================= LOAD DATA =================
+  // ================= LOAD DATA =================
+  const loadCities = useCallback(async () => {
+    try {
+      const params = {
+        page: currentPage - 1,
+        size: itemsPerPage,
+        sortBy: "name",
+        sortDirection: "asc",
 
-  if (filters.timezone) {
-    result = result.filter(
-      (c) => c.timeZoneOffset === filters.timezone
-    );
-  }
+        keyword: searchQuery || undefined,
+        country: filters.country || undefined,
+        timezone: filters.timezone || undefined,
+        region: filters.region || undefined,
+      };
 
-  if (filters.region) {
-    result = result.filter(
-      (c) => c.regionCode === filters.region
-    );
-  }
+      const res = await dispatch(getAllCities(params)).unwrap();
 
-  return result;
-};
+      dispatch({
+        type: "city/setCityList",
+        payload: res.content,
+      });
 
-// ================= CLIENT PAGINATION =================
-const paginate = (data, page, size) => {
-  const start = page * size;
-  const end = start + size;
-  return data.slice(start, end);
-};
+      // 🔥 FIX đúng Page backend
+      setTotalItems(res.totalElements);
+      setTotalPages(res.totalPages);
 
-// ================= LOAD DATA =================
-const loadCities = useCallback(async () => {
-  try {
-    const params = {
-      page: currentPage - 1,
-      size: itemsPerPage,
-    };
-
-    let rawData = [];
-
-    // ================= SEARCH =================
-    if (searchQuery) {
-      const data = await dispatch(
-        searchCities({ keyword: searchQuery })
-      ).unwrap();
-
-      rawData = data;
-
-    // ================= COUNTRY =================
-    } else if (filters.country) {
-      const data = await dispatch(
-        getCitiesByCountry({
-          countryCode: filters.country,
-        })
-      ).unwrap();
-
-      rawData = data;
-
-    // ================= ALL =================
-    } else {
-      const data = await dispatch(getAllCities(params)).unwrap();
-
-      rawData = data.content;
+    } catch (err) {
+      console.error(err);
+      showNotification('error', err || 'Failed to load cities');
     }
-
-    // ================= APPLY CLIENT FILTER =================
-    const filtered = applyClientFilters(rawData);
-
-    // ================= PAGINATION =================
-    const paginated = paginate(filtered, params.page, params.size);
-
-    // ================= UPDATE STATE =================
-    setTotalItems(filtered.length);
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage));
-
-    dispatch({
-      type: "city/setCityList",
-      payload: paginated,
-    });
-
-  } catch (err) {
-    console.error(err);
-    showNotification('error', err || 'Failed to load cities');
-  }
-}, [
-  dispatch,
-  currentPage,
-  itemsPerPage,
-  searchQuery,
-  filters
-]);
+  }, [currentPage, itemsPerPage, searchQuery, filters]);
 
   // ================= CRUD =================
   const handleAddCity = async (cityData) => {
     try {
       await dispatch(createCity(cityData)).unwrap();
-      closeModals();
+
+      setShowAddModal(false);
+
       showNotification('success', `City "${cityData.name}" created`);
+
       loadCities();
-    } catch (e) {
-      showNotification('error', e);
+
+    } catch (err) {
+      showNotification('error', parseError(err));
     }
   };
 
@@ -205,24 +160,30 @@ const loadCities = useCallback(async () => {
         updateCity({ id: editingCity.id, payload: cityData })
       ).unwrap();
 
-      closeModals();
+      setShowEditModal(false);
+
+      setEditingCity(null);
+
       showNotification('success', `Updated "${cityData.name}"`);
+
       loadCities();
-    } catch (e) {
-      showNotification('error', e);
+
+    } catch (err) {
+      showNotification('error', parseError(err));
     }
   };
 
-  const handleDeleteCity = async (cityId) => {
+  const handleDelete = async () => {
     try {
-      await dispatch(deleteCity(cityId)).unwrap();
+      await dispatch(deleteCity(deletingCity.id)).unwrap();
 
-      closeModals();
-      setSelectedCities(prev => prev.filter(id => id !== cityId));
+      setShowDeleteModal(false);
       showNotification('success', 'Deleted successfully');
+
       loadCities();
-    } catch (e) {
-      showNotification('error', e);
+
+    } catch (err) {
+      showNotification('error', parseError(err));
     }
   };
 
@@ -263,33 +224,33 @@ const loadCities = useCallback(async () => {
 
       <CityNotification notification={notification} onClose={() => setNotification(null)} />
 
-     {/* HEADER */}
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-      {/* LEFT */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-          <span className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
-            <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-          </span>
-          City Directory
-        </h1>
+        {/* LEFT */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+            <span className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
+              <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+            </span>
+            City Directory
+          </h1>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Manage and organize global cities across your platform
-        </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage and organize global cities across your platform
+          </p>
+        </div>
+
+        {/* RIGHT */}
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add New City
+        </Button>
+
       </div>
-
-      {/* RIGHT */}
-      <Button
-        onClick={() => setShowAddModal(true)}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Add New City
-      </Button>
-
-    </div>
       <CityStatsCards statistics={getStatistics()} />
 
       <CityToolbar
@@ -382,7 +343,7 @@ const loadCities = useCallback(async () => {
       <CityDeleteModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onConfirm={() => handleDeleteCity(deletingCity?.id)}
+        onConfirm={() => handleDelete(deletingCity?.id)}
         city={deletingCity}
         isLoading={loading}
       />

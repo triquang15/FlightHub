@@ -43,7 +43,7 @@ const cityValidationSchema = Yup.object().shape({
       /^[A-Z0-9]*$/,
       "Region code must contain only uppercase letters and numbers"
     ),
-  timezoneOffset: Yup.string().matches(
+  timeZoneOffset: Yup.string().matches(
     /^(UTC[+-]\d{1,2}(:\d{2})?)?$/,
     "Invalid timezone format (e.g., UTC+5:30, UTC-5)"
   ),
@@ -65,7 +65,7 @@ const CityFormModal = ({
     countryName: city?.countryName || "",
     countryCode: city?.countryCode || "",
     regionCode: city?.regionCode || "",
-    timezoneOffset: city?.timezoneOffset || "",
+    timeZoneOffset: city?.timeZoneOffset || "",
   };
 
   const handleCityCodeValidation = async (cityCode, setFieldError) => {
@@ -285,23 +285,23 @@ const CityFormModal = ({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="timezoneOffset">Timezone Offset</Label>
+                  <Label htmlFor="timeZoneOffset">Timezone Offset</Label>
                   <Field
                     as={Input}
-                    id="timezoneOffset"
-                    name="timezoneOffset"
+                    id="timeZoneOffset"
+                    name="timeZoneOffset"
                     type="text"
                     placeholder="e.g., UTC+5:30, UTC-5"
                     className={
-                      errors.timezoneOffset && touched.timezoneOffset
+                      errors.timeZoneOffset && touched.timeZoneOffset
                         ? "border-red-500"
                         : ""
                     }
                     disabled={isLoading || isSubmitting}
                   />
-                  {errors.timezoneOffset && touched.timezoneOffset && (
+                  {errors.timeZoneOffset && touched.timeZoneOffset && (
                     <p className="text-sm text-red-600 mt-1">
-                      {errors.timezoneOffset}
+                      {errors.timeZoneOffset}
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
