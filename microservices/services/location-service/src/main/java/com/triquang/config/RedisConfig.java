@@ -15,20 +15,10 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.extern.slf4j.Slf4j;
-
-/**
- * Redis cache configuration for the Location Service.
- * Configures JSON serialization and cache TTLs for different cache names.
- * 
- * @author Tri Quang
- * @Since 2024-04
- */
 
 @Slf4j
 @Configuration
@@ -36,17 +26,22 @@ public class RedisConfig implements CachingConfigurer {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
+
+        // =========================
+        // OBJECT MAPPER
+        // =========================
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        mapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY
-        );
+
+        // 🔥 NOTE:
+        // ❌ bỏ activateDefaultTyping để tránh security risk
 
         GenericJackson2JsonRedisSerializer jsonSerializer =
                 new GenericJackson2JsonRedisSerializer(mapper);
 
+        // =========================
+        // DEFAULT CONFIG
+        // =========================
         RedisCacheConfiguration defaults = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
@@ -54,15 +49,27 @@ public class RedisConfig implements CachingConfigurer {
                         .fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
+        // =========================
+        // CACHE CONFIG PER USE-CASE
+        // =========================
         Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
-                // Airports change extremely rarely — long TTL
-                "airports", defaults.entryTtl(Duration.ofHours(6)),
+
+                // =========================
+                // CITY CACHE
+                // =========================
+                "cityById", defaults.entryTtl(Duration.ofHours(6)),
+                "cityDropdown", defaults.entryTtl(Duration.ofHours(6)),
+                "citiesByCode", defaults.entryTtl(Duration.ofHours(6)),
+
+                // =========================
+                // AIRPORT CACHE
+                // =========================
+                "airportById", defaults.entryTtl(Duration.ofHours(6)),
                 "airportsByIata", defaults.entryTtl(Duration.ofHours(6)),
                 "airportsByCity", defaults.entryTtl(Duration.ofHours(6)),
-                "allAirports", defaults.entryTtl(Duration.ofHours(2)),
-                // Cities also static reference data
-                "cities", defaults.entryTtl(Duration.ofHours(6)),
-                "citiesByCode", defaults.entryTtl(Duration.ofHours(6))
+
+                // 🔥 list lớn → TTL ngắn hơn
+                "allAirports", defaults.entryTtl(Duration.ofHours(2))
         );
 
         return RedisCacheManager.builder(factory)
@@ -71,26 +78,28 @@ public class RedisConfig implements CachingConfigurer {
                 .build();
     }
 
-    /**
-     * Silently log Redis cache errors instead of rethrowing them.
-     * This allows the service to function normally when Redis is unavailable —
-     * @Cacheable methods simply fall through to the real implementation.
-     */
+    // =========================
+    // ERROR HANDLER (KEEP SYSTEM ALIVE)
+    // =========================
     @Override
     public CacheErrorHandler errorHandler() {
         return new CacheErrorHandler() {
+
             @Override
             public void handleCacheGetError(RuntimeException e, Cache cache, Object key) {
                 log.warn("Cache GET failed [{}] key={}: {}", cache.getName(), key, e.getMessage());
             }
+
             @Override
             public void handleCachePutError(RuntimeException e, Cache cache, Object key, Object value) {
                 log.warn("Cache PUT failed [{}] key={}: {}", cache.getName(), key, e.getMessage());
             }
+
             @Override
             public void handleCacheEvictError(RuntimeException e, Cache cache, Object key) {
                 log.warn("Cache EVICT failed [{}] key={}: {}", cache.getName(), key, e.getMessage());
             }
+
             @Override
             public void handleCacheClearError(RuntimeException e, Cache cache) {
                 log.warn("Cache CLEAR failed [{}]: {}", cache.getName(), e.getMessage());

@@ -10,25 +10,19 @@ import com.triquang.payload.response.CityResponse;
 
 public interface CityService {
 
-	// ---------- Core CRUD ----------
-	CityResponse createCity(CityRequest request);
+    CityResponse createCity(CityRequest request);
 
-	List<CityResponse> createBulkCities(List<CityRequest> requests);
+    CityResponse getCityById(Long id);
 
-	CityResponse getCityById(Long id);
+    List<CityResponse> getCitiesDropdown();
 
-	CityResponse updateCity(Long id, CityRequest request);
+    Page<CityResponse> getAllCities(Pageable pageable);
 
-	void deleteCity(Long id);
+    Page<CityResponse> searchCities(String keyword, Pageable pageable);
 
-	Page<CityResponse> getAllCities(Pageable pageable);
+    Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable);
 
-	// ---------- Search & Query ----------
-	Page<CityResponse> searchCities(String keyword, Pageable pageable);
+    CityResponse updateCity(Long id, CityRequest request);
 
-	Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable);
-
-	// ---------- Validation ----------
-	boolean cityExists(String cityCode);
-
+    void deleteCity(Long id);
 }

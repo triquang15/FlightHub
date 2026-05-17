@@ -65,6 +65,7 @@ Refresh:
 Reuse detected:
 → revoke ALL tokens
 → security alert
+
 🧠 Security Features
 ✔ Refresh token hashing (no raw storage)
 ✔ Reuse detection (anti replay attack)
@@ -134,17 +135,20 @@ Change Password
 2. Store HASH only
 3. Expire in 15 mins
 4. Reset → invalidate all sessions
+
 🧱 4. DATABASE DESIGN
 Users
 ✔ email (unique)
 ✔ password (hashed)
 ✔ tokenVersion (JWT invalidation)
 ✔ verified / active
+
 Refresh Tokens
 ✔ tokenHash (NOT raw)
 ✔ revoked flag
 ✔ reused flag
 ✔ device binding
+
 Sessions
 ✔ deviceId
 ✔ IP
@@ -192,9 +196,9 @@ Authorization: Bearer token
 Change password
 POST /api/users/change-password
 Reuse old token
-→ 401 Unauthorized ✅
+→ 401 Unauthorized 
 
-🧠 9. ENGINEERING DECISIONS
+9. ENGINEERING DECISIONS
 Why tokenVersion instead of blacklist only?
 ✔ Stateless
 ✔ scalable
@@ -209,17 +213,10 @@ Why Gateway validation?
 ✔ consistent enforcement
 ✔ reduces duplication across services
 
-🚀 10. FUTURE IMPROVEMENTS
+10. FUTURE IMPROVEMENTS
 ✔ Redis cache for tokenVersion
 ✔ mTLS between services
 ✔ API key for internal endpoints
 ✔ Circuit breaker (Resilience4j)
 ✔ Centralized logging (ELK)
 ✔ Distributed tracing (OpenTelemetry)
-
-🎯 FINAL SUMMARY
-✔ Production-ready auth system
-✔ Strong security model (multi-layer)
-✔ Scalable microservices architecture
-✔ Handles real-world attack scenarios
-✔ Demonstrates Senior-level backend design

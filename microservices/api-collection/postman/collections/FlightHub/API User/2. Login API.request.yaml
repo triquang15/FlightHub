@@ -9,6 +9,6 @@ body:
   content: |-
     {
       "email": "alex.muller@gmail.com",
-      "password": "Password@123"
+      "password": "Password@456"
     }
 order: 2000

@@ -1,5 +1,15 @@
 package com.triquang.service.impl;
 
+import java.util.List;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.CityMapper;
@@ -8,179 +18,147 @@ import com.triquang.payload.request.CityRequest;
 import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.CityRepository;
 import com.triquang.service.CityService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CityServiceImpl implements CityService {
 
-	private final CityRepository cityRepository;
+    private final CityRepository cityRepository;
 
-	// =========================
-	// CREATE CITY
-	// =========================
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", allEntries = true),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public CityResponse createCity(CityRequest request) {
+    // CREATE
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cityDropdown", allEntries = true),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public CityResponse createCity(CityRequest request) {
 
-		validate(request);
+        normalize(request);
+        validate(request);
 
-		if (cityRepository.existsByCityCode(request.getCityCode())) {
-			throw new BaseException(ErrorCode.CITY_ALREADY_EXISTS);
-		}
+        if (cityRepository.existsByCityCode(request.getCityCode())) {
+            throw new BaseException(ErrorCode.CITY_ALREADY_EXISTS);
+        }
 
-		City city = CityMapper.toEntity(request);
-		City saved = cityRepository.save(city);
+        return CityMapper.toResponse(
+                cityRepository.save(CityMapper.toEntity(request))
+        );
+    }
 
-		log.info("City created: {}", saved.getCityCode());
+    // GET BY ID
+    @Override
+    @Cacheable(cacheNames = "cityById", key = "#id")
+    public CityResponse getCityById(Long id) {
 
-		return CityMapper.toResponse(saved);
-	}
+        validateId(id);
 
-	// =========================
-	// BULK CREATE (SAFE VERSION)
-	// =========================
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", allEntries = true),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public List<CityResponse> createBulkCities(List<CityRequest> requests) {
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
 
-		return requests.stream().filter(req -> {
-			if (cityRepository.existsByCityCode(req.getCityCode())) {
-				log.warn("Skip existing city: {}", req.getCityCode());
-				return false;
-			}
-			return true;
-		}).map(req -> {
-			validate(req);
+        return CityMapper.toResponse(city);
+    }
 
-			City city = CityMapper.toEntity(req);
-			return CityMapper.toResponse(cityRepository.save(city));
-		}).collect(Collectors.toList());
-	}
+    @Override
+    @Cacheable(cacheNames = "cityDropdown", key = "'all'")
+    public List<CityResponse> getCitiesDropdown() {
 
-	// =========================
-	// GET BY ID (CACHE)
-	// =========================
-	@Override
-	@Cacheable(cacheNames = "cities", key = "#id")
-	public CityResponse getCityById(Long id) {
+        return cityRepository.findAll(Sort.by("name")).stream()
+                .map(CityMapper::toResponse)
+                .toList();
+    }
 
-		validateId(id);
+    // PAGINATION
+    @Override
+    public Page<CityResponse> getAllCities(Pageable pageable) {
+        return cityRepository.findAll(pageable)
+                .map(CityMapper::toResponse);
+    }
 
-		City city = cityRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+    // SEARCH
+    @Override
+    public Page<CityResponse> searchCities(String keyword, Pageable pageable) {
 
-		return CityMapper.toResponse(city);
-	}
+        if (keyword == null || keyword.isBlank()) {
+            return getAllCities(pageable);
+        }
 
-	// =========================
-	// UPDATE
-	// =========================
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", key = "#id"),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public CityResponse updateCity(Long id, CityRequest request) {
+        return cityRepository.searchByKeyword(keyword.trim(), pageable)
+                .map(CityMapper::toResponse);
+    }
 
-		City city = cityRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+    // BY COUNTRY
+    @Override
+    public Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable) {
+        return cityRepository.findByCountryCodeIgnoreCase(countryCode, pageable)
+                .map(CityMapper::toResponse);
+    }
 
-		validate(request);
+    // UPDATE
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cityById", key = "#id"),
+            @CacheEvict(cacheNames = "cityDropdown", allEntries = true),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public CityResponse updateCity(Long id, CityRequest request) {
 
-		if (cityRepository.existsByCityCodeAndIdNot(request.getCityCode(), id)) {
-			throw new BaseException(ErrorCode.CITY_ALREADY_EXISTS);
-		}
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
 
-		CityMapper.updateEntity(city, request);
+        normalize(request);
+        validate(request);
 
-		City updated = cityRepository.save(city);
+        if (cityRepository.existsByCityCodeAndIdNot(request.getCityCode(), id)) {
+            throw new BaseException(ErrorCode.CITY_ALREADY_EXISTS);
+        }
 
-		log.info("City updated: {}", updated.getCityCode());
+        CityMapper.updateEntity(city, request);
 
-		return CityMapper.toResponse(updated);
-	}
+        return CityMapper.toResponse(cityRepository.save(city));
+    }
 
-	// =========================
-	// DELETE
-	// =========================
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "cities", key = "#id"),
-			@CacheEvict(cacheNames = "citiesByCode", allEntries = true) })
-	public void deleteCity(Long id) {
+    // DELETE
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "cityById", key = "#id"),
+            @CacheEvict(cacheNames = "cityDropdown", allEntries = true),
+            @CacheEvict(cacheNames = "citiesByCode", allEntries = true)
+    })
+    public void deleteCity(Long id) {
 
-		City city = cityRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+        City city = cityRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
 
-		cityRepository.delete(city);
+        cityRepository.delete(city);
+    }
 
-		log.info("City deleted: {}", city.getCityCode());
-	}
+    // =========================
+    // VALIDATION
+    // =========================
 
-	// =========================
-	// LIST
-	// =========================
-	@Override
-	public Page<CityResponse> getAllCities(Pageable pageable) {
-		return cityRepository.findAll(pageable).map(CityMapper::toResponse);
-	}
+    private void normalize(CityRequest request) {
+        request.setCityCode(request.getCityCode().trim().toUpperCase());
+        request.setCountryCode(request.getCountryCode().trim().toUpperCase());
+    }
 
-	// =========================
-	// SEARCH
-	// =========================
-	@Override
-	public Page<CityResponse> searchCities(String keyword, Pageable pageable) {
-		return cityRepository.searchByKeyword(keyword, pageable).map(CityMapper::toResponse);
-	}
+    private void validate(CityRequest request) {
 
-	// =========================
-	// BY COUNTRY
-	// =========================
-	@Override
-	public Page<CityResponse> getCitiesByCountryCode(String countryCode, Pageable pageable) {
-		return cityRepository.findByCountryCodeIgnoreCase(countryCode, pageable).map(CityMapper::toResponse);
-	}
+        if (!request.getCityCode().matches("^[A-Z0-9]{2,10}$")) {
+            throw new BaseException(ErrorCode.INVALID_CITY_CODE);
+        }
 
-	// =========================
-	// EXISTS
-	// =========================
-	@Override
-	public boolean cityExists(String cityCode) {
-		return cityRepository.existsByCityCode(cityCode);
-	}
+        if (!request.getCountryCode().matches("^[A-Z]{2,5}$")) {
+            throw new BaseException(ErrorCode.INVALID_COUNTRY_CODE);
+        }
+    }
 
-	// =========================
-	// VALIDATION (SENIOR VERSION)
-	// =========================
-	private void validate(CityRequest request) {
-
-		if (request.getCityCode() == null || !request.getCityCode().matches("^[A-Z0-9]{2,10}$")) {
-			throw new BaseException(ErrorCode.INVALID_CITY_CODE);
-		}
-
-		if (request.getCountryCode() == null || !request.getCountryCode().matches("^[A-Z]{2,5}$")) {
-			throw new BaseException(ErrorCode.INVALID_COUNTRY_CODE);
-		}
-
-		if (request.getTimeZoneOffset() != null) {
-
-			String tz = request.getTimeZoneOffset().trim();
-
-			if (!tz.matches("^[+-](0[0-9]|1[0-4]):[0-5][0-9]$")) {
-				throw new BaseException(ErrorCode.INVALID_TIMEZONE_OFFSET);
-			}
-		}
-	}
-
-	private void validateId(Long id) {
-		if (id == null || id <= 0) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
-	}
+    private void validateId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+    }
 }
