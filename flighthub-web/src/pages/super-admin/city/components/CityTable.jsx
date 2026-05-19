@@ -5,7 +5,8 @@ import {
   MoreVertical,
   MapPin,
   Globe,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 
 import {
@@ -38,7 +39,7 @@ const CityTable = ({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-3" />
+        <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
         <p className="text-sm">Loading cities...</p>
       </div>
     );

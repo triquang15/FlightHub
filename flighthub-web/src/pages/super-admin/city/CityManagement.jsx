@@ -36,7 +36,7 @@ const parseError = (err) => {
 const CityManagement = () => {
   const dispatch = useDispatch();
 
-  const { cityList, loading, error, total } = useSelector((state) => state.city);
+  const { cityList, loading, error, total, totalPages } = useSelector((state) => state.city);
   const cities = cityList || [];
 
   // ================= STATE =================
@@ -57,8 +57,7 @@ const CityManagement = () => {
   const [deletingCity, setDeletingCity] = useState(null);
 
   const [notification, setNotification] = useState(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
+
 
   // ================= NOTIFICATION =================
   const showNotification = useCallback((type, message) => {
@@ -73,7 +72,7 @@ const CityManagement = () => {
     }
 
     return {
-      totalCities: totalItems || cities.length,
+      totalCities: total || cities.length,
       totalCountries: new Set(cities.map(c => c.countryCode)).size,
       totalTimezones: new Set(cities.map(c => c.timeZoneOffset)).size,
       issues: 0
@@ -106,7 +105,6 @@ const CityManagement = () => {
   };
 
   // ================= LOAD DATA =================
-  // ================= LOAD DATA =================
   const loadCities = useCallback(async () => {
     try {
       const params = {
@@ -122,15 +120,6 @@ const CityManagement = () => {
       };
 
       const res = await dispatch(getAllCities(params)).unwrap();
-
-      dispatch({
-        type: "city/setCityList",
-        payload: res.content,
-      });
-
-      // 🔥 FIX đúng Page backend
-      setTotalItems(res.totalElements);
-      setTotalPages(res.totalPages);
 
     } catch (err) {
       console.error(err);
@@ -262,7 +251,6 @@ const CityManagement = () => {
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(!showFilters)}
 
-        // 🔥 NEW EXPORT
         onExportExcel={async () => {
           await exportCitiesToExcel(cities);
         }}
@@ -310,7 +298,7 @@ const CityManagement = () => {
             <CityPagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={totalItems}
+              totalItems={total}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
               onItemsPerPageChange={(n) => {
