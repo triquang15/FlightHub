@@ -93,3 +93,24 @@ export const deleteCity = createAsyncThunk(
     }
   }
 );
+
+// ============================
+// GET TIMEZONES
+// ============================
+export const getTimezones = createAsyncThunk(
+  "city/getTimezones",
+  async ({ keyword, region } = {}, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/api/cities/timezones", {
+        params: { keyword, region },
+      });
+
+      return res.data;
+
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Load timezones failed"
+      );
+    }
+  }
+);

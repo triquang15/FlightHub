@@ -1,7 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { Loader2 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+} from "@/components/ui/command";
+
 import {
   Dialog,
   DialogContent,
@@ -14,12 +22,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Validation schema
+import { getTimezones } from "@/redux/city/cityThunk";
+
+// ================= VALIDATION =================
 const cityValidationSchema = Yup.object().shape({
   name: Yup.string()
     .min(2, "City name must be at least 2 characters")
     .max(100, "City name must be less than 100 characters")
     .required("City name is required"),
+
   cityCode: Yup.string()
     .min(2, "City code must be at least 2 characters")
     .max(10, "City code must be less than 10 characters")
@@ -28,27 +39,30 @@ const cityValidationSchema = Yup.object().shape({
       "City code must contain only uppercase letters and numbers"
     )
     .required("City code is required"),
+
   countryName: Yup.string()
     .min(2, "Country name must be at least 2 characters")
     .max(100, "Country name must be less than 100 characters")
     .required("Country name is required"),
+
   countryCode: Yup.string()
     .min(2, "Country code must be at least 2 characters")
     .max(5, "Country code must be less than 5 characters")
     .matches(/^[A-Z]+$/, "Country code must contain only uppercase letters")
     .required("Country code is required"),
+
   regionCode: Yup.string()
     .max(10, "Region code must be less than 10 characters")
     .matches(
       /^[A-Z0-9]*$/,
       "Region code must contain only uppercase letters and numbers"
     ),
-  timeZoneOffset: Yup.string().matches(
-    /^(UTC[+-]\d{1,2}(:\d{2})?)?$/,
-    "Invalid timezone format (e.g., UTC+5:30, UTC-5)"
-  ),
+
+  // 🔥 FIX: dùng timezone thật
+  timeZone: Yup.string().required("Timezone is required"),
 });
 
+// ================= COMPONENT =================
 const CityFormModal = ({
   isOpen,
   onClose,
@@ -57,15 +71,30 @@ const CityFormModal = ({
   isLoading = false,
   checkCityCodeExists = null,
 }) => {
+
+  const dispatch = useDispatch();
+
+  const { timezones, timezoneLoading } = useSelector(
+    (state) => state.city
+  );
+
+  // 🔥 LOAD TIMEZONE
+  useEffect(() => {
+    if (!timezones.length) {
+      dispatch(getTimezones());
+    }
+  }, [dispatch, timezones.length]);
+
   const isEditing = Boolean(city);
 
+  // 🔥 FIX INITIAL VALUES
   const initialValues = {
     name: city?.name || "",
     cityCode: city?.cityCode || "",
     countryName: city?.countryName || "",
     countryCode: city?.countryCode || "",
     regionCode: city?.regionCode || "",
-    timeZoneOffset: city?.timeZoneOffset || "",
+    timeZone: city?.timeZone || "",
   };
 
   const handleCityCodeValidation = async (cityCode, setFieldError) => {
@@ -82,7 +111,7 @@ const CityFormModal = ({
         return true;
       } catch (error) {
         console.warn("Failed to check city code existence:", error);
-        return true; // Don't block submission on API error
+        return true;
       }
     }
     return true;
@@ -285,28 +314,26 @@ const CityFormModal = ({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="timeZoneOffset">Timezone Offset</Label>
-                  <Field
-                    as={Input}
-                    id="timeZoneOffset"
-                    name="timeZoneOffset"
-                    type="text"
-                    placeholder="e.g., UTC+5:30, UTC-5"
-                    className={
-                      errors.timeZoneOffset && touched.timeZoneOffset
-                        ? "border-red-500"
-                        : ""
-                    }
-                    disabled={isLoading || isSubmitting}
-                  />
-                  {errors.timeZoneOffset && touched.timeZoneOffset && (
-                    <p className="text-sm text-red-600 mt-1">
-                      {errors.timeZoneOffset}
-                    </p>
+                  <Label>Timezone *</Label>
+
+                  <Command className="border rounded">
+                    <CommandInput placeholder="Search timezone..." />
+
+                    <CommandList className="max-h-48 overflow-y-auto">
+                      {timezones.map((tz) => (
+                        <CommandItem
+                          key={tz.value}
+                          onSelect={() => setFieldValue("timeZone", tz.value)}
+                        >
+                          {tz.label}
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+
+                  {errors.timeZone && touched.timeZone && (
+                    <p className="text-sm text-red-600">{errors.timeZone}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Optional. Format: UTC±H or UTC±HH:MM
-                  </p>
                 </div>
 
                 <DialogFooter className="gap-2">
