@@ -1,15 +1,26 @@
 package com.triquang.repository;
 
+import com.triquang.model.Airport;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+public interface AirportRepository extends JpaRepository<Airport, Long>, JpaSpecificationExecutor<Airport> {
 
-import com.triquang.model.Airport;
+    Optional<Airport> findByIataCode(String iataCode);
 
-public interface AirportRepository extends JpaRepository<Airport, Long> {
+    boolean existsByIataCode(String iataCode);
 
-	Optional<Airport> findByIataCode(String iataCode);
+    @Query("SELECT a FROM Airport a JOIN FETCH a.city WHERE a.id = :id")
+    Optional<Airport> findByIdWithCity(@Param("id") Long id);
 
-	List<Airport> findByCityId(Long cityId);
+    @Query("SELECT a FROM Airport a JOIN FETCH a.city")
+    List<Airport> findAllWithCity();
+
+    List<Airport> findByCityId(Long cityId);
+
+    @Query("SELECT a FROM Airport a WHERE a.iataCode IN :codes")
+    List<Airport> findAllByIataCodeIn(@Param("codes") List<String> codes);
 }

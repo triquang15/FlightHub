@@ -1,21 +1,32 @@
 $kind: http-request
-url: http://localhost:8081/api/airports/bulk
+name: BULK CREATE AIRPORTS
+url: http://localhost:8080/api/airports/bulk
 method: POST
 body:
   type: json
   content: |-
     [
       {
-        "iataCode": "HAN",
-        "name": "Noi Bai International Airport",
-        "timeZone": "Asia/Ho_Chi_Minh",
-        "cityId": 2
+        "iataCode": "DAD",
+        "name": "Da Nang Airport",
+        "cityId": 3,
+        "geoCode": {
+          "latitude": 16.0544,
+          "longitude": 108.2022
+        }
       },
       {
-        "iataCode": "DAD",
-        "name": "Da Nang International Airport",
-        "timeZone": "Asia/Ho_Chi_Minh",
-        "cityId": 3
+        "iataCode": "CXR",
+        "name": "Cam Ranh Airport",
+        "cityId": 4,
+        "geoCode": {
+          "latitude": 11.9981,
+          "longitude": 109.2194
+        }
       }
     ]
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MzdjMTVkNy0xYjQ3LTQ5OTktOGQwOS02NWVhOTkyNTI1NWIiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzkyODE5MzgsImV4cCI6MTc3OTI4MjgzOCwidXNlcklkIjo1LCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIiwidG9rZW5WZXJzaW9uIjowfQ.Nq5HlNmxI5HLQLfnuhM3Y3IG-yoRy6vc8WcQPQBZ6Iq9T_qfSnR-r0zF0f7fs4_Jcz1-hRSXK01jqku3hfleTA
 order: 2000

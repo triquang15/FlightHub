@@ -181,6 +181,8 @@ public enum ErrorCode {
             "The service is temporarily unavailable. Please try again later.",
             HttpStatus.SERVICE_UNAVAILABLE
     ),
+    
+    INVALID_TIMEZONE("SYS_004", "Invalid timezone", HttpStatus.BAD_REQUEST),
 
     // =========================
     // SECURITY

@@ -1,8 +1,11 @@
 package com.triquang.payload.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -11,25 +14,20 @@ import lombok.*;
 @Builder
 public class CityRequest {
 
-	@NotBlank(message = "City name is required")
-	@Size(max = 100)
-	private String name;
+    @NotBlank
+    private String name;
 
-	@NotBlank(message = "City code is required")
-	@Size(max = 10)
-	private String cityCode;
+    @NotBlank
+    private String cityCode;
 
-	@NotBlank(message = "Country code is required")
-	@Size(max = 5)
-	private String countryCode;
+    @NotBlank
+    private String countryCode;
 
-	@NotBlank(message = "Country name is required")
-	@Size(max = 100)
-	private String countryName;
+    @NotBlank
+    private String countryName;
 
-	@Size(max = 10)
-	private String regionCode;
+    private String regionCode;
 
-	@Size(max = 10)
-	private String timeZoneOffset;
+    @NotBlank(message = "Timezone is required")
+    private String timeZone;   // Asia/Ho_Chi_Minh
 }

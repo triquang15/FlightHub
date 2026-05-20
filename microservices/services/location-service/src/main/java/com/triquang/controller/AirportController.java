@@ -1,97 +1,103 @@
 package com.triquang.controller;
 
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.triquang.payload.request.AirportRequest;
 import com.triquang.payload.response.AirportResponse;
-import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AirportService;
-import com.triquang.utils.ResponseUtil;
+import com.triquang.service.GeoTimezoneService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
+import org.springframework.data.domain.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/airports")
 @RequiredArgsConstructor
 public class AirportController {
 
-	private final AirportService airportService;
+    private final AirportService airportService;
+    private final GeoTimezoneService geoTimezoneService;
 
-	// =========================
-	// CREATE
-	// =========================
-	@PostMapping
-	public ResponseEntity<ApiResponse<AirportResponse>> createAirport(@Valid @RequestBody AirportRequest request) {
+    // ================= SEARCH =================
+    @GetMapping
+    public ResponseEntity<Page<AirportResponse>> getAirports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) Long cityId
+    ) {
 
-		return ResponseUtil.created(airportService.createAirport(request));
-	}
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.fromString(sortDirection), sortBy)
+        );
 
-	// =========================
-	// BULK CREATE
-	// =========================
-	@PostMapping("/bulk")
-	public ResponseEntity<ApiResponse<List<AirportResponse>>> createBulkAirports(
-			@Valid @RequestBody List<AirportRequest> requests) {
+        return ResponseEntity.ok(
+                airportService.searchAirports(keyword, country, cityId, pageable)
+        );
+    }
 
-		return ResponseUtil.created(airportService.createBulkAirports(requests));
-	}
+    // ================= CREATE =================
+    @PostMapping
+    public ResponseEntity<AirportResponse> createAirport(
+            @Valid @RequestBody AirportRequest request
+    ) {
+        return ResponseEntity.ok(airportService.createAirport(request));
+    }
 
-	// =========================
-	// GET BY ID
-	// =========================
-	@GetMapping("/{id}")
-	public ResponseEntity<ApiResponse<AirportResponse>> getAirportById(@PathVariable Long id) {
+    // ================= BULK =================
+    @PostMapping("/bulk")
+    public ResponseEntity<List<AirportResponse>> createBulkAirports(
+            @Valid @RequestBody List<AirportRequest> requests
+    ) {
+        return ResponseEntity.ok(
+                airportService.createBulkAirports(requests)
+        );
+    }
 
-		return ResponseUtil.ok(airportService.getAirportById(id));
-	}
+    // ================= GET BY ID =================
+    @GetMapping("/{id}")
+    public ResponseEntity<AirportResponse> getAirport(@PathVariable Long id) {
+        return ResponseEntity.ok(airportService.getAirportById(id));
+    }
 
-	// =========================
-	// GET ALL
-	// =========================
-	@GetMapping
-	public ResponseEntity<ApiResponse<List<AirportResponse>>> getAllAirports() {
+    // ================= UPDATE =================
+    @PutMapping("/{id}")
+    public ResponseEntity<AirportResponse> updateAirport(
+            @PathVariable Long id,
+            @Valid @RequestBody AirportRequest request
+    ) {
+        return ResponseEntity.ok(airportService.updateAirport(id, request));
+    }
 
-		return ResponseUtil.ok(airportService.getAllAirports());
-	}
+    // ================= DELETE =================
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAirport(@PathVariable Long id) {
+        airportService.deleteAirport(id);
+        return ResponseEntity.noContent().build();
+    }
 
-	// =========================
-	// GET BY CITY
-	// =========================
-	@GetMapping("/city/{cityId}")
-	public ResponseEntity<ApiResponse<List<AirportResponse>>> getAirportsByCityId(@PathVariable Long cityId) {
+    // ================= DETECT TIMEZONE =================
+    @GetMapping("/timezone/detect")
+    public ResponseEntity<?> detectTimezone(
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        String tz = geoTimezoneService.detect(lat, lng);
 
-		return ResponseUtil.ok(airportService.getAirportsByCityId(cityId));
-	}
+        if (tz == null) {
+            return ResponseEntity.badRequest()
+                    .body("Cannot detect timezone");
+        }
 
-	// =========================
-	// UPDATE
-	// =========================
-	@PutMapping("/{id}")
-	public ResponseEntity<ApiResponse<AirportResponse>> updateAirport(@PathVariable Long id,
-			@Valid @RequestBody AirportRequest request) {
-
-		return ResponseUtil.ok(airportService.updateAirport(id, request));
-	}
-
-	// =========================
-	// DELETE
-	// =========================
-	@DeleteMapping("/{id}")
-	public ResponseEntity<ApiResponse<Void>> deleteAirport(@PathVariable Long id) {
-
-	    airportService.deleteAirport(id);
-
-	    return ResponseUtil.noContent();
-	}
+        return ResponseEntity.ok(tz);
+    }
 }

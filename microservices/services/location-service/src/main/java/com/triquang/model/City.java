@@ -8,11 +8,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+
 @Entity
-@Table(name = "cities", indexes = { 
-		@Index(name = "idx_city_code", columnList = "cityCode"),
-		@Index(name = "idx_city_name", columnList = "name"),
-		@Index(name = "idx_country_code", columnList = "countryCode") })
+@Table(name = "cities", indexes = {
+        @Index(name = "idx_city_code", columnList = "cityCode"),
+        @Index(name = "idx_city_name", columnList = "name"),
+        @Index(name = "idx_country_code", columnList = "countryCode")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,73 +22,82 @@ import lombok.*;
 @Builder
 public class City {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@NotBlank(message = "City name is required")
-	@Size(max = 100)
-	@Column(nullable = false)
-	private String name;
+    @NotBlank
+    @Size(max = 100)
+    @Column(nullable = false)
+    private String name;
 
-	@NotBlank(message = "City code is required")
-	@Size(max = 10)
-	@Column(nullable = false, unique = true)
-	private String cityCode;
+    @NotBlank
+    @Size(max = 10)
+    @Column(nullable = false, unique = true)
+    private String cityCode;
 
-	@NotBlank(message = "Country code is required")
-	@Size(max = 5)
-	@Column(nullable = false)
-	private String countryCode;
+    @NotBlank
+    @Size(max = 5)
+    @Column(nullable = false)
+    private String countryCode;
 
-	@NotBlank(message = "Country name is required")
-	@Size(max = 100)
-	@Column(nullable = false)
-	private String countryName;
+    @NotBlank
+    @Size(max = 100)
+    @Column(nullable = false)
+    private String countryName;
 
-	@Size(max = 10)
-	private String regionCode;
+    @Size(max = 10)
+    private String regionCode;
 
-	@Column(name = "time_zone_id", length = 50)
-	private String timeZoneId;
+    @Column(name = "time_zone_id", length = 50)
+    private String timeZoneId;
 
-	@Transient
-	@com.fasterxml.jackson.annotation.JsonIgnore
-	public ZoneId getTimeZone() {
-		return timeZoneId != null ? ZoneId.of(timeZoneId) : null;
-	}
+    // ================= SAFE TIMEZONE =================
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public ZoneId getTimeZone() {
+        return TimeZoneUtil.safeZone(timeZoneId);
+    }
 
-	public void setTimeZone(ZoneId zoneId) {
-		this.timeZoneId = zoneId != null ? zoneId.getId() : null;
-	}
+    public void setTimeZone(ZoneId zoneId) {
+        this.timeZoneId = zoneId != null ? zoneId.getId() : null;
+    }
 
-	@Transient
-	@com.fasterxml.jackson.annotation.JsonIgnore
-	public String getCurrentUtcOffset() {
-		if (timeZoneId != null) {
-			ZoneId zone = ZoneId.of(timeZoneId);
-			return zone.getRules().getOffset(Instant.now()).toString();
-		}
-		return null;
-	}
+    // ================= OFFSET =================
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public String getCurrentUtcOffset() {
+        try {
+            ZoneId zone = TimeZoneUtil.safeZone(timeZoneId);
+            return zone != null
+                    ? zone.getRules().getOffset(Instant.now()).toString()
+                    : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
-	@Transient
-	@com.fasterxml.jackson.annotation.JsonIgnore
-	public String getStandardUtcOffset() {
-		if (timeZoneId != null) {
-			ZoneId zone = ZoneId.of(timeZoneId);
-			return zone.getRules().getStandardOffset(Instant.now()).toString();
-		}
-		return null;
-	}
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public String getStandardUtcOffset() {
+        try {
+            ZoneId zone = TimeZoneUtil.safeZone(timeZoneId);
+            return zone != null
+                    ? zone.getRules().getStandardOffset(Instant.now()).toString()
+                    : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
-	@Transient
-	@com.fasterxml.jackson.annotation.JsonIgnore
-	public boolean observesDaylightSaving() {
-		if (timeZoneId != null) {
-			ZoneId zone = ZoneId.of(timeZoneId);
-			return !zone.getRules().getTransitionRules().isEmpty();
-		}
-		return false;
-	}
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean observesDaylightSaving() {
+        try {
+            ZoneId zone = TimeZoneUtil.safeZone(timeZoneId);
+            return zone != null && !zone.getRules().getTransitionRules().isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

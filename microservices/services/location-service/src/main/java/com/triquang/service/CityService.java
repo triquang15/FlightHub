@@ -25,4 +25,6 @@ public interface CityService {
     CityResponse updateCity(Long id, CityRequest request);
 
     void deleteCity(Long id);
+
+	Page<CityResponse>  searchAdvanced(String keyword, String country, String timezone, String region, Pageable pageable);
 }

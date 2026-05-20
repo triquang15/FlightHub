@@ -1,23 +1,35 @@
 package com.triquang.service;
 
-import java.util.List;
-
 import com.triquang.payload.request.AirportRequest;
 import com.triquang.payload.response.AirportResponse;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+
 public interface AirportService {
 
-	AirportResponse createAirport(AirportRequest request);
+    // ================= SEARCH + PAGINATION =================
+    Page<AirportResponse> searchAirports(
+            String keyword,
+            String country,
+            Long cityId,
+            Pageable pageable
+    );
 
-	List<AirportResponse> createBulkAirports(List<AirportRequest> requests);
+    // ================= CREATE =================
+    AirportResponse createAirport(AirportRequest request);
 
-	AirportResponse getAirportById(Long id);
+    // ================= BULK CREATE =================
+    List<AirportResponse> createBulkAirports(List<AirportRequest> requests);
 
-	List<AirportResponse> getAllAirports();
+    // ================= GET BY ID =================
+    AirportResponse getAirportById(Long id);
 
-	AirportResponse updateAirport(Long id, AirportRequest request);
+    // ================= UPDATE =================
+    AirportResponse updateAirport(Long id, AirportRequest request);
 
-	void deleteAirport(Long id);
-
-	List<AirportResponse> getAirportsByCityId(Long cityId);
+    // ================= DELETE =================
+    void deleteAirport(Long id);
 }

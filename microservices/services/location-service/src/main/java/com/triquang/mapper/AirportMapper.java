@@ -6,18 +6,26 @@ import com.triquang.payload.response.AirportResponse;
 
 public class AirportMapper {
 
+    // ================= CREATE =================
     public static Airport toEntity(AirportRequest request) {
         if (request == null) return null;
 
         return Airport.builder()
-                .iataCode(request.getIataCode())
+                .iataCode(
+                        request.getIataCode() != null
+                                ? request.getIataCode().toUpperCase()
+                                : null
+                )
                 .name(request.getName())
-                .timeZoneId(request.getTimeZone() != null ? request.getTimeZone().getId() : null)
+
+                .timeZoneId(request.getTimeZone())
+
                 .address(request.getAddress())
                 .geoCode(request.getGeoCode())
                 .build();
     }
 
+    // ================= RESPONSE =================
     public static AirportResponse toResponse(Airport airport) {
         if (airport == null) return null;
 
@@ -26,29 +34,40 @@ public class AirportMapper {
                 .iataCode(airport.getIataCode())
                 .name(airport.getName())
                 .detailedName(airport.getDetailedName())
-                .timeZone(airport.getTimeZone())
+                .timeZone(airport.getTimeZoneId())
                 .address(airport.getAddress())
-                .city(CityMapper.toResponse(airport.getCity()))
+                .city(
+                        airport.getCity() != null
+                                ? CityMapper.toResponse(airport.getCity())
+                                : null
+                )
                 .geoCode(airport.getGeoCode())
                 .analytics(airport.getAnalytics())
                 .build();
     }
 
+    // ================= UPDATE =================
     public static void updateEntity(AirportRequest request, Airport existingAirport) {
         if (request == null || existingAirport == null) return;
 
         if (request.getIataCode() != null) {
-            existingAirport.setIataCode(request.getIataCode());
+            existingAirport.setIataCode(
+                    request.getIataCode().toUpperCase()
+            );
         }
+
         if (request.getName() != null) {
             existingAirport.setName(request.getName());
         }
+
         if (request.getTimeZone() != null) {
-            existingAirport.setTimeZone(request.getTimeZone());
+            existingAirport.setTimeZoneId(request.getTimeZone());
         }
+
         if (request.getAddress() != null) {
             existingAirport.setAddress(request.getAddress());
         }
+
         if (request.getGeoCode() != null) {
             existingAirport.setGeoCode(request.getGeoCode());
         }

@@ -1,16 +1,7 @@
 package com.triquang.service.impl;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
+import com.triquang.enums.ErrorCode;
 import com.triquang.mapper.AirportMapper;
 import com.triquang.model.Airport;
 import com.triquang.model.City;
@@ -19,165 +10,242 @@ import com.triquang.payload.response.AirportResponse;
 import com.triquang.repository.AirportRepository;
 import com.triquang.repository.CityRepository;
 import com.triquang.service.AirportService;
+import com.triquang.service.GeoTimezoneService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.cache.annotation.*;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@CacheConfig(cacheNames = "airports")
 public class AirportServiceImpl implements AirportService {
 
-	private final AirportRepository airportRepository;
-	private final CityRepository cityRepository;
+    private final AirportRepository airportRepository;
+    private final CityRepository cityRepository;
+    private final GeoTimezoneService geoTimezoneService;
 
-	// =========================
-	// CREATE SINGLE AIRPORT
-	// =========================
-	@Override
-	@Transactional
-	@Caching(evict = { @CacheEvict(cacheNames = "allAirports", allEntries = true),
-			@CacheEvict(cacheNames = "airportsByCity", allEntries = true) })
-	public AirportResponse createAirport(AirportRequest request) {
+    // ================= SEARCH =================
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(
+        cacheNames = "airports",
+        key = "#keyword + '-' + #country + '-' + #cityId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
+    )
+    public Page<AirportResponse> searchAirports(
+            String keyword,
+            String country,
+            Long cityId,
+            Pageable pageable
+    ) {
 
-		validateIata(request.getIataCode());
+        log.info("DB HIT - searchAirports | keyword={} country={} cityId={} page={}",
+                keyword, country, cityId, pageable.getPageNumber());
 
-		if (airportRepository.findByIataCode(request.getIataCode()).isPresent()) {
-			throw new BaseException(ErrorCode.AIRPORT_ALREADY_EXISTS);
-		}
+        Specification<Airport> spec = (root, query, cb) -> cb.conjunction();
 
-		City city = cityRepository.findById(request.getCityId())
-				.orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = "%" + keyword.toLowerCase() + "%";
 
-		Airport airport = AirportMapper.toEntity(request);
-		airport.setCity(city);
+            spec = spec.and((root, q, cb) ->
+                    cb.or(
+                            cb.like(cb.lower(root.get("name")), kw),
+                            cb.like(cb.lower(root.get("iataCode")), kw)
+                    )
+            );
+        }
 
-		return AirportMapper.toResponse(airportRepository.save(airport));
-	}
+        if (country != null && !country.isBlank()) {
+            spec = spec.and((root, q, cb) ->
+                    cb.equal(cb.upper(root.get("city").get("countryCode")), country.toUpperCase())
+            );
+        }
 
-	// =========================
-	// BULK CREATE
-	// =========================
-	@Override
-	@Transactional
-	@Caching(evict = { @CacheEvict(cacheNames = "allAirports", allEntries = true),
-			@CacheEvict(cacheNames = "airportsByCity", allEntries = true) })
-	public List<AirportResponse> createBulkAirports(List<AirportRequest> requests) {
+        if (cityId != null) {
+            spec = spec.and((root, q, cb) ->
+                    cb.equal(root.get("city").get("id"), cityId)
+            );
+        }
 
-		return requests.stream().filter(req -> {
-			boolean exists = airportRepository.findByIataCode(req.getIataCode()).isPresent();
-			if (exists) {
-				log.warn("Skip existing airport: {}", req.getIataCode());
-			}
-			return !exists;
-		}).map(req -> {
+        return airportRepository.findAll(spec, pageable)
+                .map(AirportMapper::toResponse);
+    }
 
-			City city = cityRepository.findById(req.getCityId())
-					.orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+    // ================= CREATE =================
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airports", allEntries = true),
+        @CacheEvict(cacheNames = "airportsByCity", key = "#request.cityId")
+    })
+    public AirportResponse createAirport(AirportRequest request) {
 
-			Airport airport = AirportMapper.toEntity(req);
-			airport.setCity(city);
+        log.info("CREATE airport | iata={} cityId={}", request.getIataCode(), request.getCityId());
 
-			return AirportMapper.toResponse(airportRepository.save(airport));
-		}).collect(Collectors.toList());
-	}
+        String iata = normalizeIata(request.getIataCode());
 
-	// =========================
-	// GET BY ID (CACHE)
-	// =========================
-	@Override
-	@Transactional(readOnly = true)
-	@Cacheable(cacheNames = "airports", key = "#id")
-	public AirportResponse getAirportById(Long id) {
+        if (airportRepository.existsByIataCode(iata)) {
+            throw new BaseException(ErrorCode.AIRPORT_ALREADY_EXISTS);
+        }
 
-		validateId(id);
+        // AUTO DETECT TIMEZONE
+        applyTimezoneIfMissing(request);
 
-		Airport airport = airportRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+        City city = cityRepository.findById(request.getCityId())
+                .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
 
-		return AirportMapper.toResponse(airport);
-	}
+        Airport airport = AirportMapper.toEntity(request);
+        airport.setIataCode(iata);
+        airport.setCity(city);
 
-	// =========================
-	// GET ALL
-	// =========================
-	@Override
-	@Transactional(readOnly = true)
-	@Cacheable(cacheNames = "allAirports")
-	public List<AirportResponse> getAllAirports() {
-		return airportRepository.findAll().stream().map(AirportMapper::toResponse).toList();
-	}
+        return AirportMapper.toResponse(airportRepository.save(airport));
+    }
 
-	// =========================
-	// UPDATE
-	// =========================
-	@Override
-	@Transactional
-	@Caching(evict = { @CacheEvict(cacheNames = "airports", key = "#id"),
-			@CacheEvict(cacheNames = "allAirports", allEntries = true),
-			@CacheEvict(cacheNames = "airportsByCity", allEntries = true) })
-	public AirportResponse updateAirport(Long id, AirportRequest request) {
+    // ================= BULK =================
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = "airports", allEntries = true)
+    public List<AirportResponse> createBulkAirports(List<AirportRequest> requests) {
 
-		Airport airport = airportRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+        List<String> iatas = requests.stream()
+                .map(r -> normalizeIata(r.getIataCode()))
+                .toList();
 
-		if (request.getIataCode() != null && !airport.getIataCode().equals(request.getIataCode())
-				&& airportRepository.findByIataCode(request.getIataCode()).isPresent()) {
+        Set<String> existing = airportRepository.findAllByIataCodeIn(iatas)
+                .stream()
+                .map(Airport::getIataCode)
+                .collect(Collectors.toSet());
 
-			throw new BaseException(ErrorCode.AIRPORT_ALREADY_EXISTS);
-		}
+        return requests.stream()
+                .filter(r -> !existing.contains(normalizeIata(r.getIataCode())))
+                .map(req -> {
 
-		if (request.getCityId() != null) {
-			City city = cityRepository.findById(request.getCityId())
-					.orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+                    // AUTO DETECT TIMEZONE
+                    applyTimezoneIfMissing(req);
 
-			airport.setCity(city);
-		}
+                    City city = cityRepository.findById(req.getCityId())
+                            .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
 
-		AirportMapper.updateEntity(request, airport);
+                    Airport airport = AirportMapper.toEntity(req);
+                    airport.setIataCode(normalizeIata(req.getIataCode()));
+                    airport.setCity(city);
 
-		return AirportMapper.toResponse(airportRepository.save(airport));
-	}
+                    return AirportMapper.toResponse(airportRepository.save(airport));
+                })
+                .toList();
+    }
 
-	// =========================
-	// DELETE
-	// =========================
-	@Override
-	@Transactional
-	@Caching(evict = { @CacheEvict(cacheNames = "airports", key = "#id"),
-			@CacheEvict(cacheNames = "allAirports", allEntries = true),
-			@CacheEvict(cacheNames = "airportsByCity", allEntries = true) })
-	public void deleteAirport(Long id) {
+    // ================= GET BY ID =================
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "airportById", key = "#id")
+    public AirportResponse getAirportById(Long id) {
 
-		Airport airport = airportRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+        log.info("DB HIT - getAirportById | id={}", id);
 
-		airportRepository.delete(airport);
-	}
+        Airport airport = airportRepository.findByIdWithCity(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
 
-	// =========================
-	// BY CITY (CACHE)
-	// =========================
-	@Override
-	@Transactional(readOnly = true)
-	@Cacheable(cacheNames = "airportsByCity", key = "#cityId")
-	public List<AirportResponse> getAirportsByCityId(Long cityId) {
+        return AirportMapper.toResponse(airport);
+    }
 
-		return airportRepository.findByCityId(cityId).stream().map(AirportMapper::toResponse).toList();
-	}
+    // ================= UPDATE =================
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airportById", key = "#id"),
+        @CacheEvict(cacheNames = "airports", allEntries = true),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
+    })
+    public AirportResponse updateAirport(Long id, AirportRequest request) {
 
-	// =========================
-	// VALIDATION
-	// =========================
-	private void validateId(Long id) {
-		if (id == null || id <= 0) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
-	}
+        log.info("UPDATE airport | id={}", id);
 
-	private void validateIata(String iata) {
-		if (iata == null || iata.isBlank()) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
-	}
+        Airport airport = airportRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+
+        if (request.getIataCode() != null) {
+            String newIata = normalizeIata(request.getIataCode());
+
+            if (!airport.getIataCode().equals(newIata)
+                    && airportRepository.existsByIataCode(newIata)) {
+                throw new BaseException(ErrorCode.AIRPORT_ALREADY_EXISTS);
+            }
+
+            airport.setIataCode(newIata);
+        }
+
+        if (request.getCityId() != null) {
+            City city = cityRepository.findById(request.getCityId())
+                    .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
+            airport.setCity(city);
+        }
+
+        
+        applyTimezoneIfMissing(request);
+
+        AirportMapper.updateEntity(request, airport);
+
+        return AirportMapper.toResponse(airportRepository.save(airport));
+    }
+
+    // ================= DELETE =================
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airportById", key = "#id"),
+        @CacheEvict(cacheNames = "airports", allEntries = true),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
+    })
+    public void deleteAirport(Long id) {
+
+        log.info("DELETE airport | id={}", id);
+
+        Airport airport = airportRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+
+        airportRepository.delete(airport);
+    }
+
+    // ================= HELPER =================
+    private void applyTimezoneIfMissing(AirportRequest request) {
+
+        if (request.getTimeZone() != null) return;
+        if (request.getGeoCode() == null) return;
+
+        var geo = request.getGeoCode();
+
+        if (geo.getLatitude() == null || geo.getLongitude() == null) {
+            log.warn("Missing lat/lng → skip timezone detect");
+            return;
+        }
+
+        String tz = geoTimezoneService.detect(
+                geo.getLatitude(),
+                geo.getLongitude()
+        );
+
+        if (tz != null) {
+            request.setTimeZone(tz);
+            log.info("Auto detected timezone: {}", tz);
+        } else {
+            log.warn("Cannot detect timezone");
+        }
+    }
+
+    private String normalizeIata(String iata) {
+        if (iata == null || !iata.matches("^[A-Za-z]{3}$")) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return iata.toUpperCase();
+    }
 }

@@ -1,15 +1,8 @@
 package com.triquang.payload.request;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.ZoneId;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import com.triquang.embeddable.Address;
 import com.triquang.embeddable.GeoCode;
@@ -21,13 +14,20 @@ import com.triquang.embeddable.GeoCode;
 public class AirportRequest {
 
     @NotBlank(message = "IATA code is mandatory")
-    @Size(min = 3, max = 3, message = "IATA code must be exactly 3 characters")
+    @Pattern(
+        regexp = "^[A-Za-z]{3}$",
+        message = "IATA code must be exactly 3 letters"
+    )
     private String iataCode;
 
     @NotBlank(message = "Airport name is mandatory")
     private String name;
 
-    private ZoneId timeZone;
+    @Pattern(
+        regexp = "^[A-Za-z]+/[A-Za-z_]+$",
+        message = "Invalid timezone format (e.g., Asia/Ho_Chi_Minh)"
+    )
+    private String timeZone;
 
     @Valid
     private Address address;

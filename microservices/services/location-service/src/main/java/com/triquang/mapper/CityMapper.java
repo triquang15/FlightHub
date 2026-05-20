@@ -11,11 +11,12 @@ public class CityMapper {
 
         return City.builder()
                 .name(request.getName())
-                .cityCode(request.getCityCode())
-                .countryCode(request.getCountryCode())
+                .cityCode(request.getCityCode().toUpperCase())
+                .countryCode(request.getCountryCode().toUpperCase())
                 .countryName(request.getCountryName())
                 .regionCode(request.getRegionCode())
-                .timeZoneId(request.getTimeZoneOffset())
+                .timeZoneId(request.getTimeZone())
+
                 .build();
     }
 
@@ -29,26 +30,36 @@ public class CityMapper {
                 .countryCode(city.getCountryCode())
                 .countryName(city.getCountryName())
                 .regionCode(city.getRegionCode())
-                .timeZoneOffset(city.getTimeZoneId())
+                .timeZone(city.getTimeZoneId())
+                .timeZoneOffset(city.getCurrentUtcOffset())
+
                 .build();
     }
 
-    public static City updateEntity(City city, CityRequest request) {
+    public static void updateEntity(City city, CityRequest request) {
+
         if (request.getName() != null) {
             city.setName(request.getName().trim());
         }
+
         if (request.getCityCode() != null) {
-            city.setCityCode(request.getCityCode().toUpperCase().trim());
+            city.setCityCode(request.getCityCode().toUpperCase());
         }
+
         if (request.getCountryCode() != null) {
-            city.setCountryCode(request.getCountryCode().toUpperCase().trim());
+            city.setCountryCode(request.getCountryCode().toUpperCase());
         }
+
         if (request.getCountryName() != null) {
-            city.setCountryName(request.getCountryName().trim());
+            city.setCountryName(request.getCountryName());
         }
+
         if (request.getRegionCode() != null) {
-            city.setRegionCode(request.getRegionCode().toUpperCase().trim());
+            city.setRegionCode(request.getRegionCode().toUpperCase());
         }
-        return city;
+
+        if (request.getTimeZone() != null) {
+            city.setTimeZoneId(request.getTimeZone());
+        }
     }
 }

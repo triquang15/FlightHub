@@ -5,8 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.ZoneId;
-
 import com.triquang.embeddable.Address;
 import com.triquang.embeddable.Analytics;
 import com.triquang.embeddable.GeoCode;
@@ -17,13 +15,15 @@ import com.triquang.embeddable.GeoCode;
 @AllArgsConstructor
 public class AirportResponse {
 
-	private Long id;
-	private String iataCode;
-	private String name;
-	private String detailedName;
-	private ZoneId timeZone;
-	private Address address;
-	private CityResponse city;
-	private GeoCode geoCode;
-	private Analytics analytics;
+    private Long id;
+    private String iataCode;
+    private String name;
+    private String detailedName;
+
+    private String timeZone;
+
+    private Address address;
+    private CityResponse city;
+    private GeoCode geoCode;
+    private Analytics analytics;
 }

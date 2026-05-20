@@ -84,6 +84,12 @@
 			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
 		</dependency>
 		
+		<dependency>
+		    <groupId>net.iakovlev</groupId>
+		    <artifactId>timeshape</artifactId>
+		    <version>2025b.26</version>
+		</dependency>
+			
 	</dependencies>
 
 	<build>

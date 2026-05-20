@@ -16,7 +16,6 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,10 +30,7 @@ public class RedisConfig implements CachingConfigurer {
         // OBJECT MAPPER
         // =========================
         ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
-        // 🔥 NOTE:
-        // ❌ bỏ activateDefaultTyping để tránh security risk
+        mapper.findAndRegisterModules();
 
         GenericJackson2JsonRedisSerializer jsonSerializer =
                 new GenericJackson2JsonRedisSerializer(mapper);
@@ -47,7 +43,8 @@ public class RedisConfig implements CachingConfigurer {
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(jsonSerializer))
-                .disableCachingNullValues();
+                .disableCachingNullValues()
+                .entryTtl(Duration.ofMinutes(30)); // 🔥 default TTL
 
         // =========================
         // CACHE CONFIG PER USE-CASE
@@ -55,31 +52,36 @@ public class RedisConfig implements CachingConfigurer {
         Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
 
                 // =========================
-                // CITY CACHE
+                // CITY CACHE (STABLE DATA)
                 // =========================
                 "cityById", defaults.entryTtl(Duration.ofHours(6)),
                 "cityDropdown", defaults.entryTtl(Duration.ofHours(6)),
-                "citiesByCode", defaults.entryTtl(Duration.ofHours(6)),
 
                 // =========================
-                // AIRPORT CACHE
+                // AIRPORT CACHE (READ HEAVY)
                 // =========================
                 "airportById", defaults.entryTtl(Duration.ofHours(6)),
-                "airportsByIata", defaults.entryTtl(Duration.ofHours(6)),
-                "airportsByCity", defaults.entryTtl(Duration.ofHours(6)),
+                "airportsByCity", defaults.entryTtl(Duration.ofHours(1)),
 
-                // 🔥 list lớn → TTL ngắn hơn
-                "allAirports", defaults.entryTtl(Duration.ofHours(2))
+                // =========================
+                // GEO TIMEZONE (STATIC)
+                // =========================
+                "geoTimezone", defaults.entryTtl(Duration.ofHours(24)),
+
+                // =========================
+                // TIMEZONE DROPDOWN (STATIC)
+                // =========================
+                "timezones", defaults.entryTtl(Duration.ofDays(1))
         );
 
         return RedisCacheManager.builder(factory)
-                .cacheDefaults(defaults.entryTtl(Duration.ofHours(6)))
+                .cacheDefaults(defaults)
                 .withInitialCacheConfigurations(cacheConfigs)
                 .build();
     }
 
     // =========================
-    // ERROR HANDLER (KEEP SYSTEM ALIVE)
+    // ERROR HANDLER (FAIL SAFE)
     // =========================
     @Override
     public CacheErrorHandler errorHandler() {
