@@ -145,12 +145,15 @@ const CityTable = ({
               </TableCell>
 
               {/* TIMEZONE */}
-              <TableCell className="px-4 py-3">
-                <div className="flex items-center gap-1 text-gray-500 text-xs">
-                  <Clock className="h-3.5 w-3.5 text-gray-400" />
-                  {city.timeZoneOffset || '—'}
-                </div>
-              </TableCell>
+             <TableCell className="px-4 py-3">
+              <div className="flex items-center gap-1 text-gray-500 text-xs">
+                <Clock className="h-3.5 w-3.5 text-gray-400" />
+
+                {city.timeZone
+                  ? `(UTC${city.timeZoneOffset}) ${city.timeZone.split('/')[1].replace('_', ' ')}`
+                  : '—'}
+              </div>
+            </TableCell>
 
               {/* ACTION */}
               <TableCell className="px-4 py-3 text-right">

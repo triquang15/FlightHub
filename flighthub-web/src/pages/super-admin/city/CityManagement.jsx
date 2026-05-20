@@ -74,7 +74,7 @@ const CityManagement = () => {
     return {
       totalCities: total || cities.length,
       totalCountries: new Set(cities.map(c => c.countryCode)).size,
-      totalTimezones: new Set(cities.map(c => c.timeZoneOffset)).size,
+      totalTimezones: new Set(cities.map(c => c.timeZone)).size,
       issues: 0
     };
   };
@@ -93,7 +93,7 @@ const CityManagement = () => {
       if (city.countryName && city.countryCode) {
         countries.add(JSON.stringify({ name: city.countryName, code: city.countryCode }));
       }
-      if (city.timeZoneOffset) timezones.add(city.timeZoneOffset);
+      if (city.timeZone) timezones.add(city.timeZone);
       if (city.regionCode) regions.add(city.regionCode);
     });
 
@@ -186,8 +186,8 @@ const CityManagement = () => {
 
   // ================= EFFECT =================
   useEffect(() => {
-    loadCities();
-  }, [currentPage, itemsPerPage]);
+  loadCities();
+  }, [currentPage, itemsPerPage, searchQuery, filters]);
 
   useEffect(() => {
     const t = setTimeout(loadCities, 300);
