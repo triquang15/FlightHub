@@ -7,26 +7,26 @@ body:
   content: |-
     [
       {
-        "iataCode": "DAD",
-        "name": "Da Nang Airport",
-        "cityId": 3,
-        "geoCode": {
-          "latitude": 16.0544,
-          "longitude": 108.2022
-        }
-      },
-      {
         "iataCode": "CXR",
         "name": "Cam Ranh Airport",
-        "cityId": 4,
+        "cityId": 22,
         "geoCode": {
           "latitude": 11.9981,
           "longitude": 109.2194
+        }
+      },
+      {
+        "iataCode": "HAN",
+        "name": "Noi Bai Airport",
+        "cityId": 21,
+        "geoCode": {
+          "latitude": 21.2212,
+          "longitude": 105.8072
         }
       }
     ]
 auth:
   type: bearer
   credentials:
-    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MzdjMTVkNy0xYjQ3LTQ5OTktOGQwOS02NWVhOTkyNTI1NWIiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzkyODE5MzgsImV4cCI6MTc3OTI4MjgzOCwidXNlcklkIjo1LCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIiwidG9rZW5WZXJzaW9uIjowfQ.Nq5HlNmxI5HLQLfnuhM3Y3IG-yoRy6vc8WcQPQBZ6Iq9T_qfSnR-r0zF0f7fs4_Jcz1-hRSXK01jqku3hfleTA
+    token: eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJhZjRhNWYxOC02MmUzLTRiMmMtYmJhYS1kNjEyNWJjNjYyZDIiLCJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJpc3MiOiJGbGlnaHRIdWIiLCJpYXQiOjE3NzkzNjcwMTUsImV4cCI6MTc3OTM2NzkxNSwidXNlcklkIjo1LCJyb2xlcyI6WyJST0xFX1NZU1RFTV9BRE1JTiJdLCJ0eXBlIjoiQUNDRVNTIiwidG9rZW5WZXJzaW9uIjowfQ.iGw_5iuf8w4b0TKo4GxfF249AytUPTGz554JgwmDx11hn3BYooHkUl864SJmUDaA1kwwh2gA_kww0_4D-tRmvQ
 order: 2000

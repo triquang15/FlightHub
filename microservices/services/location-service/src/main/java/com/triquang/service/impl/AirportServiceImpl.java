@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@CacheConfig(cacheNames = "airports")
 public class AirportServiceImpl implements AirportService {
 
     private final AirportRepository airportRepository;
@@ -37,10 +36,6 @@ public class AirportServiceImpl implements AirportService {
     // ================= SEARCH =================
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(
-        cacheNames = "airports",
-        key = "#keyword + '-' + #country + '-' + #cityId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
-    )
     public Page<AirportResponse> searchAirports(
             String keyword,
             String country,
@@ -84,8 +79,8 @@ public class AirportServiceImpl implements AirportService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(cacheNames = "airports", allEntries = true),
-        @CacheEvict(cacheNames = "airportsByCity", key = "#request.cityId")
+        @CacheEvict(cacheNames = "airportById", allEntries = true),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
     })
     public AirportResponse createAirport(AirportRequest request) {
 
@@ -97,8 +92,7 @@ public class AirportServiceImpl implements AirportService {
             throw new BaseException(ErrorCode.AIRPORT_ALREADY_EXISTS);
         }
 
-        // AUTO DETECT TIMEZONE
-        applyTimezoneIfMissing(request);
+        applyTimezone(request);
 
         City city = cityRepository.findById(request.getCityId())
                 .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
@@ -113,7 +107,10 @@ public class AirportServiceImpl implements AirportService {
     // ================= BULK =================
     @Override
     @Transactional
-    @CacheEvict(cacheNames = "airports", allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airportById", allEntries = true),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
+    })
     public List<AirportResponse> createBulkAirports(List<AirportRequest> requests) {
 
         List<String> iatas = requests.stream()
@@ -129,8 +126,7 @@ public class AirportServiceImpl implements AirportService {
                 .filter(r -> !existing.contains(normalizeIata(r.getIataCode())))
                 .map(req -> {
 
-                    // AUTO DETECT TIMEZONE
-                    applyTimezoneIfMissing(req);
+                    applyTimezone(req);
 
                     City city = cityRepository.findById(req.getCityId())
                             .orElseThrow(() -> new BaseException(ErrorCode.CITY_NOT_FOUND));
@@ -147,7 +143,11 @@ public class AirportServiceImpl implements AirportService {
     // ================= GET BY ID =================
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "airportById", key = "#id")
+    @Cacheable(
+        cacheNames = "airportById",
+        key = "#id",
+        unless = "#result == null"
+    )
     public AirportResponse getAirportById(Long id) {
 
         log.info("DB HIT - getAirportById | id={}", id);
@@ -163,12 +163,9 @@ public class AirportServiceImpl implements AirportService {
     @Transactional
     @Caching(evict = {
         @CacheEvict(cacheNames = "airportById", key = "#id"),
-        @CacheEvict(cacheNames = "airports", allEntries = true),
         @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
     })
     public AirportResponse updateAirport(Long id, AirportRequest request) {
-
-        log.info("UPDATE airport | id={}", id);
 
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
@@ -190,8 +187,7 @@ public class AirportServiceImpl implements AirportService {
             airport.setCity(city);
         }
 
-        
-        applyTimezoneIfMissing(request);
+        applyTimezone(request);
 
         AirportMapper.updateEntity(request, airport);
 
@@ -203,12 +199,9 @@ public class AirportServiceImpl implements AirportService {
     @Transactional
     @Caching(evict = {
         @CacheEvict(cacheNames = "airportById", key = "#id"),
-        @CacheEvict(cacheNames = "airports", allEntries = true),
         @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
     })
     public void deleteAirport(Long id) {
-
-        log.info("DELETE airport | id={}", id);
 
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
@@ -217,28 +210,31 @@ public class AirportServiceImpl implements AirportService {
     }
 
     // ================= HELPER =================
-    private void applyTimezoneIfMissing(AirportRequest request) {
+    private void applyTimezone(AirportRequest request) {
 
         if (request.getTimeZone() != null) return;
-        if (request.getGeoCode() == null) return;
 
-        var geo = request.getGeoCode();
+        // 1. GEO PRIORITY
+        if (request.getGeoCode() != null &&
+            request.getGeoCode().getLatitude() != null &&
+            request.getGeoCode().getLongitude() != null) {
 
-        if (geo.getLatitude() == null || geo.getLongitude() == null) {
-            log.warn("Missing lat/lng → skip timezone detect");
-            return;
+            String tz = geoTimezoneService.detect(
+                    request.getGeoCode().getLatitude(),
+                    request.getGeoCode().getLongitude()
+            );
+
+            if (tz != null) {
+                request.setTimeZone(tz);
+                return;
+            }
         }
 
-        String tz = geoTimezoneService.detect(
-                geo.getLatitude(),
-                geo.getLongitude()
-        );
-
-        if (tz != null) {
-            request.setTimeZone(tz);
-            log.info("Auto detected timezone: {}", tz);
-        } else {
-            log.warn("Cannot detect timezone");
+        // 2. FALLBACK CITY
+        if (request.getCityId() != null) {
+            cityRepository.findById(request.getCityId())
+                    .map(City::getTimeZoneId)
+                    .ifPresent(request::setTimeZone);
         }
     }
 

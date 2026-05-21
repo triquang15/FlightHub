@@ -1,9 +1,11 @@
 package com.triquang.controller;
 
 import com.triquang.payload.request.AirportRequest;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.AirportResponse;
 import com.triquang.service.AirportService;
 import com.triquang.service.GeoTimezoneService;
+import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,57 +49,62 @@ public class AirportController {
 
     // ================= CREATE =================
     @PostMapping
-    public ResponseEntity<AirportResponse> createAirport(
+    public ResponseEntity<ApiResponse<AirportResponse>> createAirport(
             @Valid @RequestBody AirportRequest request
     ) {
-        return ResponseEntity.ok(airportService.createAirport(request));
+        return ResponseUtil.created(
+                airportService.createAirport(request)
+        );
     }
 
     // ================= BULK =================
     @PostMapping("/bulk")
-    public ResponseEntity<List<AirportResponse>> createBulkAirports(
+    public ResponseEntity<ApiResponse<List<AirportResponse>>> createBulkAirports(
             @Valid @RequestBody List<AirportRequest> requests
     ) {
-        return ResponseEntity.ok(
+        return ResponseUtil.created(
                 airportService.createBulkAirports(requests)
         );
     }
 
     // ================= GET BY ID =================
     @GetMapping("/{id}")
-    public ResponseEntity<AirportResponse> getAirport(@PathVariable Long id) {
-        return ResponseEntity.ok(airportService.getAirportById(id));
+    public ResponseEntity<ApiResponse<AirportResponse>> getAirport(
+            @PathVariable Long id
+    ) {
+        return ResponseUtil.ok(
+                airportService.getAirportById(id)
+        );
     }
 
     // ================= UPDATE =================
     @PutMapping("/{id}")
-    public ResponseEntity<AirportResponse> updateAirport(
+    public ResponseEntity<ApiResponse<AirportResponse>> updateAirport(
             @PathVariable Long id,
             @Valid @RequestBody AirportRequest request
     ) {
-        return ResponseEntity.ok(airportService.updateAirport(id, request));
+        return ResponseUtil.ok(
+                airportService.updateAirport(id, request)
+        );
     }
 
     // ================= DELETE =================
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAirport(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteAirport(
+            @PathVariable Long id
+    ) {
         airportService.deleteAirport(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.noContent();
     }
 
     // ================= DETECT TIMEZONE =================
     @GetMapping("/timezone/detect")
-    public ResponseEntity<?> detectTimezone(
+    public ResponseEntity<ApiResponse<String>> detectTimezone(
             @RequestParam double lat,
             @RequestParam double lng
     ) {
-        String tz = geoTimezoneService.detect(lat, lng);
-
-        if (tz == null) {
-            return ResponseEntity.badRequest()
-                    .body("Cannot detect timezone");
-        }
-
-        return ResponseEntity.ok(tz);
+        return ResponseUtil.ok(
+                geoTimezoneService.detect(lat, lng)
+        );
     }
-}
+} 

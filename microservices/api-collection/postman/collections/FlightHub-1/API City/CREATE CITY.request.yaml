@@ -6,13 +6,13 @@ body:
   type: json
   content: |-
     {
-      "name": "Ho Chi Minh City",
-      "cityCode": "SGN",
-      "countryCode": "VN",
-      "countryName": "Vietnam",
-      "regionCode": "SG",
-      "timeZone": "Asia/Ho_Chi_Minh"
-    }
+        "name": "New York",
+        "cityCode": "NYC",
+        "countryCode": "US",
+        "countryName": "United States",
+        "regionCode": "NY",
+        "timeZone": "America/New_York"
+      }
 auth:
   type: bearer
   credentials:

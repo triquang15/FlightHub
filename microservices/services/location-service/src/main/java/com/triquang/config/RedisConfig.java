@@ -1,6 +1,7 @@
 package com.triquang.config;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.cache.Cache;
@@ -44,44 +45,34 @@ public class RedisConfig implements CachingConfigurer {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(jsonSerializer))
                 .disableCachingNullValues()
-                .entryTtl(Duration.ofMinutes(30)); // 🔥 default TTL
+                .entryTtl(Duration.ofMinutes(30));
 
         // =========================
-        // CACHE CONFIG PER USE-CASE
+        // CACHE CONFIG
         // =========================
-        Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
+        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
-                // =========================
-                // CITY CACHE (STABLE DATA)
-                // =========================
-                "cityById", defaults.entryTtl(Duration.ofHours(6)),
-                "cityDropdown", defaults.entryTtl(Duration.ofHours(6)),
+        cacheConfigs.put("cityById", defaults.entryTtl(Duration.ofHours(6)));
+        cacheConfigs.put("cityDropdown", defaults.entryTtl(Duration.ofHours(6)));
 
-                // =========================
-                // AIRPORT CACHE (READ HEAVY)
-                // =========================
-                "airportById", defaults.entryTtl(Duration.ofHours(6)),
-                "airportsByCity", defaults.entryTtl(Duration.ofHours(1)),
+        cacheConfigs.put("airportById", defaults.entryTtl(Duration.ofHours(6)));
+        cacheConfigs.put("airportsByCity", defaults.entryTtl(Duration.ofHours(1)));
 
-                // =========================
-                // GEO TIMEZONE (STATIC)
-                // =========================
-                "geoTimezone", defaults.entryTtl(Duration.ofHours(24)),
+        cacheConfigs.put("geoTimezone", defaults.entryTtl(Duration.ofHours(24)));
+        cacheConfigs.put("timezones", defaults.entryTtl(Duration.ofDays(1)));
 
-                // =========================
-                // TIMEZONE DROPDOWN (STATIC)
-                // =========================
-                "timezones", defaults.entryTtl(Duration.ofDays(1))
-        );
-
+        // =========================
+        // BUILD
+        // =========================
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaults)
                 .withInitialCacheConfigurations(cacheConfigs)
+                .transactionAware()
                 .build();
     }
 
     // =========================
-    // ERROR HANDLER (FAIL SAFE)
+    // FAIL SAFE
     // =========================
     @Override
     public CacheErrorHandler errorHandler() {
