@@ -1,114 +1,120 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { createAirport, deleteAirport, getAirportById, listAllAirports, updateAirport } from "./airportThunk";
+import {
+  createAirport,
+  deleteAirport,
+  getAirportById,
+  listAllAirports,
+  updateAirport,
+  detectTimezone
+} from "./airportThunk";
 
+const initialState = {
+  airports: [],
+  airport: null,
 
+  total: 0,
+  totalPages: 1,
 
-// ================= SLICE =================
+  loading: false,
+  actionLoading: false,
+
+  timezone: null,
+  error: null
+};
+
 const airportSlice = createSlice({
   name: "airport",
-  initialState: {
-    airports: [],
-    airport: null,
-    loading: false,
-    error: null,
-  },
+  initialState,
+
   reducers: {
     clearAirportError: (state) => {
       state.error = null;
     },
+    clearSelectedAirport: (state) => {
+      state.airport = null;
+    }
   },
+
   extraReducers: (builder) => {
     builder
-      // Create Airport
-      .addCase(createAirport.pending, (state) => {
-        console.log("⏳ createAirport pending");
+
+      // ================= LIST =================
+      .addCase(listAllAirports.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
-      .addCase(createAirport.fulfilled, (state, action) => {
-        console.log("✅ createAirport fulfilled");
+      .addCase(listAllAirports.fulfilled, (state, action) => {
         state.loading = false;
-        state.airports.push(action.payload);
+
+        state.airports = action.payload.content || [];
+        state.total = action.payload.totalElements || 0;
+        state.totalPages = action.payload.totalPages || 1;
       })
-      .addCase(createAirport.rejected, (state, action) => {
-        console.log("❌ createAirport rejected:", action.payload);
+      .addCase(listAllAirports.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Get Airport by ID
-      .addCase(getAirportById.pending, (state) => {
-        console.log("⏳ getAirportById pending");
-        state.loading = true;
-        state.error = null;
-      })
+      // ================= GET BY ID =================
       .addCase(getAirportById.fulfilled, (state, action) => {
-        console.log("✅ getAirportById fulfilled");
         state.loading = false;
         state.airport = action.payload;
       })
-      .addCase(getAirportById.rejected, (state, action) => {
-        console.log("❌ getAirportById rejected:", action.payload);
-        state.loading = false;
+
+      // ================= CREATE =================
+      .addCase(createAirport.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(createAirport.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.airports.unshift(action.payload);
+      })
+      .addCase(createAirport.rejected, (state, action) => {
+        state.actionLoading = false;
         state.error = action.payload;
       })
 
-
-      // List All Airports
-      .addCase(listAllAirports.pending, (state) => {
-        console.log("⏳ listAllAirports pending");
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(listAllAirports.fulfilled, (state, action) => {
-        console.log("✅ listAllAirports fulfilled");
-        state.loading = false;
-        state.airports = action.payload;
-      })
-      .addCase(listAllAirports.rejected, (state, action) => {
-        console.log("❌ listAllAirports rejected:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
-      })
-
-      // Update Airport
+      // ================= UPDATE =================
       .addCase(updateAirport.pending, (state) => {
-        console.log("⏳ updateAirport pending");
-        state.loading = true;
-        state.error = null;
+        state.actionLoading = true;
       })
       .addCase(updateAirport.fulfilled, (state, action) => {
-        console.log("✅ updateAirport fulfilled");
-        state.loading = false;
-        const index = state.airports.findIndex(a => a.id === action.payload.id);
-        if (index !== -1) state.airports[index] = action.payload;
-        if (state.airport?.id === action.payload.id) state.airport = action.payload;
+        state.actionLoading = false;
+
+        const index = state.airports.findIndex(
+          (a) => a.id === action.payload.id
+        );
+
+        if (index !== -1) {
+          state.airports[index] = action.payload;
+        }
+
+        if (state.airport?.id === action.payload.id) {
+          state.airport = action.payload;
+        }
       })
       .addCase(updateAirport.rejected, (state, action) => {
-        console.log("❌ updateAirport rejected:", action.payload);
-        state.loading = false;
+        state.actionLoading = false;
         state.error = action.payload;
       })
 
-      // Delete Airport
-      .addCase(deleteAirport.pending, (state) => {
-        console.log("⏳ deleteAirport pending");
-        state.loading = true;
-        state.error = null;
-      })
+      // ================= DELETE =================
       .addCase(deleteAirport.fulfilled, (state, action) => {
-        console.log("✅ deleteAirport fulfilled");
-        state.loading = false;
-        state.airports = state.airports.filter(a => a.id !== action.payload);
-        if (state.airport?.id === action.payload) state.airport = null;
+        state.airports = state.airports.filter(
+          (a) => a.id !== action.payload
+        );
+        state.total -= 1;
       })
-      .addCase(deleteAirport.rejected, (state, action) => {
-        console.log("❌ deleteAirport rejected:", action.payload);
-        state.loading = false;
-        state.error = action.payload;
+
+      // ================= DETECT TIMEZONE =================
+      .addCase(detectTimezone.fulfilled, (state, action) => {
+        state.timezone = action.payload;
       });
   }
 });
 
-export const { clearAirportError } = airportSlice.actions;
+export const {
+  clearAirportError,
+  clearSelectedAirport
+} = airportSlice.actions;
+
 export default airportSlice.reducer;

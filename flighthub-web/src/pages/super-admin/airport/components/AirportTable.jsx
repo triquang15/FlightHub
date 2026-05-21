@@ -1,5 +1,14 @@
-import React from 'react';
-import { ChevronUp, ChevronDown, Edit, Trash2, MoreVertical, MapPin, Clock } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Edit,
+  MapPin,
+  MoreVertical,
+  Plane,
+  RefreshCw,
+  Trash2
+} from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,7 +18,6 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -20,7 +28,7 @@ import {
 
 const SortableHeader = ({ field, sortField, sortDirection, onSort, children }) => (
   <TableHead
-    className="cursor-pointer hover:bg-gray-50 transition-colors"
+    className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
     onClick={() => onSort(field)}
   >
     <div className="flex items-center gap-1">
@@ -48,29 +56,27 @@ const AirportTable = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading airports...</div>
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+        <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
+        <p className="text-sm">Loading airports...</p>
       </div>
     );
   }
 
-  if (airports.length === 0) {
+  if (!airports || airports.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">No airports found</div>
-          <div className="text-sm text-gray-400">
-            Try adjusting your search criteria or add a new airport
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+        <Plane className="h-10 w-10 mb-3 opacity-40" />
+        <p className="font-medium">No airports found</p>
+        <p className="text-sm mt-1">Try adjusting your filters</p>
       </div>
     );
   }
 
   return (
-    <div className="">
-      <Table>
-        <TableHeader>
+    <div className="overflow-x-auto">
+      <Table className="w-full text-sm">
+        <TableHeader className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
           <TableRow>
             
             <SortableHeader
@@ -89,7 +95,9 @@ const AirportTable = ({
             >
               Airport Name
             </SortableHeader>
-            <TableHead>Detailed Name</TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Detailed Name
+            </TableHead>
             <SortableHeader
               field="city"
               sortField={sortField}
@@ -98,73 +106,77 @@ const AirportTable = ({
             >
               City
             </SortableHeader>
-            <SortableHeader
-              field="country"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={onSort}
-            >
-              Country
-            </SortableHeader>
-            <TableHead>Time Zone</TableHead>
-            <TableHead>Coordinates</TableHead>
-            <TableHead className="w-16">Actions</TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Timezone
+            </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Coordinates
+            </TableHead>
+            <TableHead className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Actions
+            </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="divide-y dark:divide-gray-700">
           {airports.map((airport) => (
-            <TableRow key={airport.id} className="hover:bg-gray-50">
+            <TableRow
+              key={airport.id}
+              className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
              
-              <TableCell className="font-medium">
-                <Badge variant="secondary" className="font-mono">
+              <TableCell className="px-4 py-3">
+                <Badge className="font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
                   {airport.iataCode}
                 </Badge>
               </TableCell>
-              <TableCell className="font-medium">
-                {airport.name}
-              </TableCell>
-              <TableCell className="text-gray-600">
-                {airport.detailedName || '-'}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-gray-400" />
-                  <span>{airport.city?.name || '-'}</span>
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-semibold text-xs">
+                    {(airport.iataCode || airport.name || '?')[0].toUpperCase()}
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {airport.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {airport.iataCode}
+                    </p>
+                  </div>
                 </div>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span>{airport.address?.countryName || '-'}</span>
-                  {airport.address?.countryCode && (
-                    <Badge variant="outline" className="text-xs">
-                      {airport.address.countryCode}
-                    </Badge>
-                  )}
+              <TableCell className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                {airport.detailedName || <span className="text-gray-400">—</span>}
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                  <span>{airport.city?.name || '—'}</span>
                 </div>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-gray-400" />
-                  <span className="text-sm">
-                    {airport.timeZone || 'Not set'}
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
+                  <Clock className="h-3.5 w-3.5 text-gray-400" />
+                  <span>
+                    {airport.timeZone || '—'}
                   </span>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="px-4 py-3">
                 {airport.geoCode?.latitude && airport.geoCode?.longitude ? (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     <div>{airport.geoCode.latitude.toFixed(4)}</div>
                     <div>{airport.geoCode.longitude.toFixed(4)}</div>
                   </div>
                 ) : (
-                  <span className="text-gray-400">-</span>
+                  <span className="text-gray-400">—</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="px-4 py-3 text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
-                      <MoreVertical className="w-4 h-4" />
+                      <MoreVertical className="h-4 w-4 text-gray-500" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -174,7 +186,7 @@ const AirportTable = ({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(airport)}
-                      className="text-red-600"
+                      className="text-red-500"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete

@@ -1,5 +1,9 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -10,52 +14,64 @@ import {
 } from '@/components/ui/select';
 
 const AirportPagination = ({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
+  currentPage = 1,
+  totalPages = 1,
+  totalItems = 0,
+  itemsPerPage = 25,
   onPageChange,
   onItemsPerPageChange
 }) => {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const page = Number(currentPage) || 1;
+  const size = Number(itemsPerPage) || 25;
+  const total = Number(totalItems) || 0;
+  const pages = Number(totalPages) || 1;
+
+  const startItem = total === 0 ? 0 : (page - 1) * size + 1;
+  const endItem = Math.min(page * size, total);
 
   const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
+    const result = [];
+    const max = 5;
 
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    let start = Math.max(1, page - Math.floor(max / 2));
+    let end = Math.min(pages, start + max - 1);
 
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    if (end - start + 1 < max) {
+      start = Math.max(1, end - max + 1);
     }
 
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
+    for (let i = start; i <= end; i++) {
+      result.push(i);
     }
 
-    return pages;
+    return result;
   };
 
-  if (totalItems === 0) return null;
+  if (total === 0) return null;
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
       <div className="flex items-center gap-4 text-sm text-gray-600">
         <span>
-          Showing {startItem} to {endItem} of {totalItems} airports
+          Showing {startItem} to {endItem} of {total} airports
         </span>
+
         <div className="flex items-center gap-2">
-          <span>Rows per page:</span>
+          <span>Rows:</span>
+
           <Select
-            value={itemsPerPage.toString()}
-            onValueChange={(value) => onItemsPerPageChange(parseInt(value))}
+            value={String(size)}
+            onValueChange={(value) => {
+              onItemsPerPageChange(Number(value));
+              onPageChange(1);
+            }}
           >
             <SelectTrigger className="w-20">
               <SelectValue />
             </SelectTrigger>
+
             <SelectContent>
+              <SelectItem value="5">5</SelectItem>
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
@@ -69,23 +85,31 @@ const AirportPagination = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
+          onClick={() => onPageChange(1)}
+          disabled={page === 1}
+        >
+          <ChevronsLeft className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
         >
           <ChevronLeft className="w-4 h-4" />
-          Previous
         </Button>
 
         <div className="flex items-center gap-1">
-          {getPageNumbers().map((pageNum) => (
+          {getPageNumbers().map((pageNumber) => (
             <Button
-              key={pageNum}
-              variant={currentPage === pageNum ? "default" : "outline"}
+              key={pageNumber}
+              variant={page === pageNumber ? "default" : "outline"}
               size="sm"
-              onClick={() => onPageChange(pageNum)}
-              className="w-10"
+              onClick={() => onPageChange(pageNumber)}
+              className="w-9"
             >
-              {pageNum}
+              {pageNumber}
             </Button>
           ))}
         </div>
@@ -93,11 +117,19 @@ const AirportPagination = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= pages}
         >
-          Next
           <ChevronRight className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(pages)}
+          disabled={page >= pages}
+        >
+          <ChevronsRight className="w-4 h-4" />
         </Button>
       </div>
     </div>

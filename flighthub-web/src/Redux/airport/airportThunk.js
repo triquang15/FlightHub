@@ -1,11 +1,10 @@
-// src/redux/slices/airportSlice.js
-
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 import { getHeaders } from "@/utils/getHeaders";
 
-
-// ✅ Create Airport
+// ============================
+// CREATE
+// ============================
 export const createAirport = createAsyncThunk(
   "airport/create",
   async (airportData, { rejectWithValue }) => {
@@ -13,10 +12,8 @@ export const createAirport = createAsyncThunk(
       const res = await api.post("/api/airports", airportData, {
         headers: getHeaders()
       });
-      console.log("Create airport success:", res.data);
-      return res.data;
+      return res.data.data; // ✅ ApiResponse
     } catch (err) {
-      console.error("Create airport error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to create airport"
       );
@@ -24,7 +21,9 @@ export const createAirport = createAsyncThunk(
   }
 );
 
-// ✅ Get Airport by ID
+// ============================
+// GET BY ID
+// ============================
 export const getAirportById = createAsyncThunk(
   "airport/getById",
   async (airportId, { rejectWithValue }) => {
@@ -32,10 +31,8 @@ export const getAirportById = createAsyncThunk(
       const res = await api.get(`/api/airports/${airportId}`, {
         headers: getHeaders()
       });
-      console.log("Get airport by ID success:", res.data);
-      return res.data;
+      return res.data.data; // ✅ ApiResponse
     } catch (err) {
-      console.error("Get airport by ID error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Airport not found"
       );
@@ -43,20 +40,39 @@ export const getAirportById = createAsyncThunk(
   }
 );
 
-
-
-// ✅ List All Airports
+// ============================
+// LIST (PAGINATION + FILTER)
+// ============================
 export const listAllAirports = createAsyncThunk(
   "airport/listAll",
-  async (_, { rejectWithValue }) => {
+  async (
+    {
+      page = 0,
+      size = 20,
+      sortBy = "name",
+      sortDirection = "asc",
+      keyword,
+      country,
+      cityId
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const res = await api.get("/api/airports", {
+        params: {
+          page,
+          size,
+          sortBy,
+          sortDirection,
+          keyword,
+          country,
+          cityId
+        },
         headers: getHeaders()
       });
-      console.log("List all airports success:", res.data);
-      return res.data;
+
+      return res.data; // ✅ Page<>
     } catch (err) {
-      console.error("List all airports error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch airports"
       );
@@ -64,7 +80,9 @@ export const listAllAirports = createAsyncThunk(
   }
 );
 
-// ✅ Update Airport
+// ============================
+// UPDATE
+// ============================
 export const updateAirport = createAsyncThunk(
   "airport/update",
   async ({ airportId, airportData }, { rejectWithValue }) => {
@@ -72,10 +90,8 @@ export const updateAirport = createAsyncThunk(
       const res = await api.put(`/api/airports/${airportId}`, airportData, {
         headers: getHeaders()
       });
-      console.log("Update airport success:", res.data);
-      return res.data;
+      return res.data.data;
     } catch (err) {
-      console.error("Update airport error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to update airport"
       );
@@ -83,7 +99,9 @@ export const updateAirport = createAsyncThunk(
   }
 );
 
-// ✅ Delete Airport
+// ============================
+// DELETE
+// ============================
 export const deleteAirport = createAsyncThunk(
   "airport/delete",
   async (airportId, { rejectWithValue }) => {
@@ -91,10 +109,8 @@ export const deleteAirport = createAsyncThunk(
       await api.delete(`/api/airports/${airportId}`, {
         headers: getHeaders()
       });
-      console.log("Delete airport success:", airportId);
       return airportId;
     } catch (err) {
-      console.error("Delete airport error:", err);
       return rejectWithValue(
         err.response?.data?.message || "Failed to delete airport"
       );
@@ -102,3 +118,19 @@ export const deleteAirport = createAsyncThunk(
   }
 );
 
+// ============================
+// DETECT TIMEZONE
+// ============================
+export const detectTimezone = createAsyncThunk(
+  "airport/detectTimezone",
+  async ({ lat, lng }, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/api/airports/timezone/detect", {
+        params: { lat, lng }
+      });
+      return res.data.data;
+    } catch {
+      return rejectWithValue("Cannot detect timezone");
+    }
+  }
+);

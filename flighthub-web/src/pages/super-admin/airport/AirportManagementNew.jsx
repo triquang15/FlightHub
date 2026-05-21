@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Plane, Plus, Filter, Download, Upload } from 'lucide-react';
+import { Download, Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -26,11 +26,11 @@ import AirportNotification from './components/AirportNotification';
 const AirportManagementNew = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { airports, loading, error } = useSelector((state) => state.airport);
+  const { airports, total, totalPages, loading, error } = useSelector((state) => state.airport);
+  const { cityList = [] } = useSelector((state) => state.city);
 
 
   // Local state
-  const [selectedAirports, setSelectedAirports] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({});
   const [sortField, setSortField] = useState('name');
@@ -50,121 +50,70 @@ const AirportManagementNew = () => {
 
   const getStatistics = () => {
     if (!Array.isArray(airports)) {
-      return { totalAirports: 0, totalCountries: 0, totalTimezones: 0, activeAirports: 0 };
+      return { totalAirports: 0, totalCities: 0, totalTimezones: 0 };
     }
     return {
-      totalAirports: airports.length,
-      totalCountries: new Set(airports.map(a => a.address?.countryName).filter(Boolean)).size,
+      totalAirports: total || airports.length,
+      totalCities: new Set(airports.map(a => a.city?.name).filter(Boolean)).size,
       totalTimezones: new Set(airports.map(a => a.timeZone).filter(Boolean)).size,
-      activeAirports: airports.filter(a => a.status === 'Active').length
+      airportsWithCoordinates: airports.filter(a => a.geoCode?.latitude && a.geoCode?.longitude).length
     };
   };
 
   const getFilterOptions = () => {
     if (!Array.isArray(airports)) {
-      return { countries: [], timezones: [], cities: [] };
+      return { countries: [], cities: [] };
     }
     const countries = new Set();
-    const timezones = new Set();
-    const airportCities = new Set();
 
-    airports.forEach(airport => {
-      if (airport.address?.countryName) countries.add(airport.address.countryName);
-      if (airport.timeZone) timezones.add(airport.timeZone);
-      if (airport.city?.name) airportCities.add(airport.city.name);
+    cityList.forEach(city => {
+      if (city.countryName && city.countryCode) {
+        countries.add(JSON.stringify({ name: city.countryName, code: city.countryCode }));
+      }
     });
 
     return {
-      countries: Array.from(countries),
-      timezones: Array.from(timezones),
-      cities: Array.from(airportCities)
+      countries: Array.from(countries).map(country => JSON.parse(country)),
+      cities: cityList
     };
   };
 
-  // Load airports
+  // ================= LOAD AIRPORT =================
   const loadAirports = useCallback(async () => {
     try {
-      await dispatch(listAllAirports()).unwrap();
+      await dispatch(
+        listAllAirports({
+          page: currentPage - 1,
+          size: itemsPerPage,
+          sortBy: sortField,
+          sortDirection,
+          keyword: searchQuery,
+          country: filters.country,
+          cityId: filters.cityId
+        })
+      ).unwrap();
     } catch (err) {
-      console.error('Error loading airports:', err);
-      showNotification('error', err.message || 'Failed to load airports');
+      showNotification('error', err || 'Failed to load airports');
     }
-  }, [dispatch, showNotification]);
+  }, [
+    dispatch,
+    currentPage,
+    itemsPerPage,
+    sortField,
+    sortDirection,
+    searchQuery,
+    filters,
+    showNotification
+  ]);
 
   // Load cities for dropdown
   const loadCities = useCallback(async () => {
     try {
-      await dispatch(getAllCities()).unwrap();
+      await dispatch(getAllCities({ page: 0, size: 1000, sortBy: 'name', sortDirection: 'asc' })).unwrap();
     } catch (err) {
       console.error('Error loading cities:', err);
     }
   }, [dispatch]);
-
-  // Filter and sort airports
-  const getFilteredAndSortedAirports = () => {
-    let filtered = [...(airports || [])];
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(airport =>
-        airport.name?.toLowerCase().includes(query) ||
-        airport.iataCode?.toLowerCase().includes(query) ||
-        airport.detailedName?.toLowerCase().includes(query) ||
-        airport.city?.name?.toLowerCase().includes(query) ||
-        airport.address?.countryName?.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply filters
-    if (filters.country) {
-      filtered = filtered.filter(airport => airport.address?.countryName === filters.country);
-    }
-    if (filters.timezone) {
-      filtered = filtered.filter(airport => airport.timeZone === filters.timezone);
-    }
-    if (filters.city) {
-      filtered = filtered.filter(airport => airport.city?.name === filters.city);
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortField] || '';
-      let bValue = b[sortField] || '';
-
-      if (sortField === 'city') {
-        aValue = a.city?.name || '';
-        bValue = b.city?.name || '';
-      } else if (sortField === 'country') {
-        aValue = a.address?.countryName || '';
-        bValue = b.address?.countryName || '';
-      }
-
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    return filtered;
-  };
-
-  // Get paginated airports
-  const getPaginatedAirports = () => {
-    const filtered = getFilteredAndSortedAirports();
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedAirports = filtered.slice(startIndex, endIndex);
-
-    return {
-      paginatedAirports,
-      totalPages: Math.ceil(filtered.length / itemsPerPage),
-      totalItems: filtered.length
-    };
-  };
 
   // Event handlers
 
@@ -173,7 +122,6 @@ const AirportManagementNew = () => {
       const airport = airports.find(a => a.id === airportId);
       await dispatch(deleteAirport(airportId)).unwrap();
       closeModals();
-      setSelectedAirports(prev => prev.filter(id => id !== airportId));
       showNotification('success', `Airport "${airport?.name}" deleted successfully`);
       await loadAirports();
     } catch (error) {
@@ -193,27 +141,6 @@ const AirportManagementNew = () => {
       setSortDirection('asc');
     }
     setCurrentPage(1);
-  };
-
-  const handleSelectAll = () => {
-    const { paginatedAirports } = getPaginatedAirports();
-    const currentPageIds = paginatedAirports.map(airport => airport.id);
-    const allSelected = currentPageIds.every(id => selectedAirports.includes(id));
-    if (allSelected) {
-      setSelectedAirports(prev => prev.filter(id => !currentPageIds.includes(id)));
-    } else {
-      setSelectedAirports(prev => [...new Set([...prev, ...currentPageIds])]);
-    }
-  };
-
-  const handleSelectAirport = (airportId) => {
-    setSelectedAirports(prev => {
-      if (prev.includes(airportId)) {
-        return prev.filter(id => id !== airportId);
-      } else {
-        return [...prev, airportId];
-      }
-    });
   };
 
   const handleSearchChange = (query) => {
@@ -267,27 +194,28 @@ const AirportManagementNew = () => {
     showNotification('info', 'Import functionality will be available soon');
   };
 
-  // Load data on mount
+  // Load airports whenever server-side query params change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAirports();
+  }, [loadAirports]);
+
+  // Load cities once for the filter dropdown
+  useEffect(() => {
     loadCities();
-  }, [loadAirports, loadCities]);
+  }, [loadCities]);
 
   if (error && airports.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="text-red-600 mb-2">Error loading airports</div>
-          <div className="text-sm text-gray-500 mb-4">{error}</div>
-          <Button onClick={loadAirports} variant="outline">
-            Try Again
-          </Button>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</div>
+          <Button onClick={loadAirports}>Retry</Button>
         </div>
       </div>
     );
   }
-
-  const paginationData = getPaginatedAirports();
 
   return (
     <div className="space-y-6">
@@ -297,26 +225,34 @@ const AirportManagementNew = () => {
         onClose={() => setNotification(null)}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Plane className="w-6 h-6 text-blue-600" />
-            Airport Management
-          </h1>
-          <p className="text-gray-600">Manage airports, codes, and location data across the platform</p>
-        </div>
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div />
+
         <div className="flex items-center gap-2">
-          <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="hidden sm:inline-flex items-center gap-2"
+          >
             <Download className="w-4 h-4" />
             Export
           </Button>
-          <Button onClick={handleImport} variant="outline" className="flex items-center gap-2">
+
+          <Button
+            onClick={handleImport}
+            variant="outline"
+            className="hidden sm:inline-flex items-center gap-2"
+          >
             <Upload className="w-4 h-4" />
             Import
           </Button>
-          <Button onClick={openAddModal} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
+
+          <Button
+            onClick={openAddModal}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
             Add Airport
           </Button>
         </div>
@@ -333,6 +269,7 @@ const AirportManagementNew = () => {
         onToggleFilters={() => setShowFilters(!showFilters)}
         onExport={handleExport}
         onImport={handleImport}
+        lastUpdated={new Date().toLocaleTimeString()}
       />
 
       {/* Advanced Filters */}
@@ -342,21 +279,17 @@ const AirportManagementNew = () => {
         onFiltersChange={handleFiltersChange}
         onReset={resetFilters}
         countries={getFilterOptions().countries}
-        timezones={getFilterOptions().timezones}
         cities={getFilterOptions().cities}
       />
 
       {/* Airport Table */}
-      <Card>
+      <Card className="dark:bg-gray-900 dark:border-gray-800">
         <CardContent className="p-0">
           <AirportTable
-            airports={paginationData.paginatedAirports}
-            selectedAirports={selectedAirports}
+            airports={airports || []}
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={handleSort}
-            onSelectAll={handleSelectAll}
-            onSelectAirport={handleSelectAirport}
             onEdit={openEditModal}
             onDelete={openDeleteModal}
             loading={loading}
@@ -366,8 +299,8 @@ const AirportManagementNew = () => {
           <div className="px-6">
             <AirportPagination
               currentPage={currentPage}
-              totalPages={paginationData.totalPages}
-              totalItems={paginationData.totalItems}
+              totalPages={totalPages}
+              totalItems={total}
               itemsPerPage={itemsPerPage}
               onPageChange={handlePageChange}
               onItemsPerPageChange={handleItemsPerPageChange}

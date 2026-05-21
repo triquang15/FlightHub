@@ -16,7 +16,7 @@ export const getAllCities = createAsyncThunk(
       country,
       timezone,
       region
-    },
+    } = {},
     { rejectWithValue }
   ) => {
     try {

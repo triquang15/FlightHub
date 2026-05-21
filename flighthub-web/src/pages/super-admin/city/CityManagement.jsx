@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapPin, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -40,14 +40,12 @@ const CityManagement = () => {
   const cities = cityList || [];
 
   // ================= STATE =================
-  const [selectedCities, setSelectedCities] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const [showFilters, setShowFilters] = useState(false);
-  const [showInactive, setShowInactive] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -119,13 +117,13 @@ const CityManagement = () => {
         region: filters.region || undefined,
       };
 
-      const res = await dispatch(getAllCities(params)).unwrap();
+      await dispatch(getAllCities(params)).unwrap();
 
     } catch (err) {
       console.error(err);
       showNotification('error', err || 'Failed to load cities');
     }
-  }, [currentPage, itemsPerPage, searchQuery, filters]);
+  }, [currentPage, itemsPerPage, searchQuery, filters, dispatch, showNotification]);
 
   // ================= CRUD =================
   const handleAddCity = async (cityData) => {
@@ -186,13 +184,9 @@ const CityManagement = () => {
 
   // ================= EFFECT =================
   useEffect(() => {
-  loadCities();
-  }, [currentPage, itemsPerPage, searchQuery, filters]);
-
-  useEffect(() => {
-    const t = setTimeout(loadCities, 300);
-    return () => clearTimeout(t);
-  }, [searchQuery, filters]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCities();
+  }, [loadCities]);
 
   // ================= ERROR UI =================
   if (error && (!cities || cities.length === 0)) {
@@ -217,18 +211,7 @@ const CityManagement = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
         {/* LEFT */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
-              <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-            </span>
-            City Directory
-          </h1>
-
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Manage and organize global cities across your platform
-          </p>
-        </div>
+        <div />
 
         {/* RIGHT */}
         <Button
@@ -282,7 +265,6 @@ const CityManagement = () => {
         <CardContent className="p-0">
           <CityTable
             cities={cities}
-            selectedCities={selectedCities}
             onEdit={(c) => {
               setEditingCity(c);
               setShowEditModal(true);

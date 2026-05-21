@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { Loader2 } from "lucide-react";
@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { getTimezones } from "@/redux/city/cityThunk";
+import { getTimezones } from "@/Redux/city/cityThunk";
 
 // ================= VALIDATION =================
 const cityValidationSchema = Yup.object().shape({
@@ -74,7 +74,7 @@ const CityFormModal = ({
 
   const dispatch = useDispatch();
 
-  const { timezones, timezoneLoading } = useSelector(
+  const { timezones } = useSelector(
     (state) => state.city
   );
 
