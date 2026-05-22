@@ -156,23 +156,7 @@ const UserManagement = () => {
     <div className="space-y-6">
       {/* header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="
-          text-2xl font-bold 
-          text-gray-900 dark:text-gray-100
-          flex items-center gap-2
-        ">
-          <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          User Management
-        </h1>
-
-        <p className="
-          text-sm mt-1
-          text-gray-600 dark:text-gray-400
-        ">
-          All registered users across the platform
-        </p>
-        </div>
+        <div />
         <button
           onClick={() => dispatch(getAllUsers())}
           disabled={usersLoading}

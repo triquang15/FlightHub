@@ -9,7 +9,7 @@ const CreateAirport = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading } = useSelector((state) => state.airport);
-  const { cities } = useSelector((state) => state.city);
+  const { cityList: cities } = useSelector((state) => state.city);
 
   // Load cities on component mount
   useEffect(() => {

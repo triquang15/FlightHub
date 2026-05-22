@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
-import { Loader2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandItem,
-} from "@/components/ui/command";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Dialog,
@@ -74,16 +75,16 @@ const CityFormModal = ({
 
   const dispatch = useDispatch();
 
-  const { timezones } = useSelector(
+  const { timezones, timezoneLoading } = useSelector(
     (state) => state.city
   );
 
   // 🔥 LOAD TIMEZONE
   useEffect(() => {
-    if (!timezones.length) {
+    if (!timezones.length && !timezoneLoading) {
       dispatch(getTimezones());
     }
-  }, [dispatch, timezones.length]);
+  }, [dispatch, timezones.length, timezoneLoading]);
 
   const isEditing = Boolean(city);
 
@@ -314,22 +315,41 @@ const CityFormModal = ({
                 </div>
 
                 <div className="space-y-1">
-                  <Label>Timezone *</Label>
+                  <Label htmlFor="timeZone" className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-green-600" />
+                    Timezone *
+                  </Label>
 
-                  <Command className="border rounded">
-                    <CommandInput placeholder="Search timezone..." />
-
-                    <CommandList className="max-h-48 overflow-y-auto">
-                      {timezones.map((tz) => (
-                        <CommandItem
-                          key={tz.value}
-                          onSelect={() => setFieldValue("timeZone", tz.value)}
-                        >
-                          {tz.label}
-                        </CommandItem>
-                      ))}
-                    </CommandList>
-                  </Command>
+                  <Select
+                    value={values.timeZone}
+                    onValueChange={(value) => setFieldValue("timeZone", value)}
+                    disabled={timezoneLoading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          timezoneLoading ? "Loading timezone..." : "Select timezone"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!timezoneLoading && timezones.length > 0 ? (
+                        timezones.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))
+                      ) : timezoneLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Loading timezone...
+                        </SelectItem>
+                      ) : (
+                        <SelectItem value="no-timezone" disabled>
+                          No timezones available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
 
                   {errors.timeZone && touched.timeZone && (
                     <p className="text-sm text-red-600">{errors.timeZone}</p>

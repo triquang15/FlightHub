@@ -10,7 +10,7 @@ const EditAirport = () => {
   const navigate = useNavigate();
   const { airportId } = useParams();
   const { airports, loading } = useSelector((state) => state.airport);
-  const { cities } = useSelector((state) => state.city);
+  const { cityList: cities } = useSelector((state) => state.city);
 
   // Find the airport from the list or fetch it
   const airport = airports?.find((a) => a.id === parseInt(airportId));
@@ -41,9 +41,9 @@ const EditAirport = () => {
 
   if (!airport && loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
         <div className="text-center">
-          <p className="text-lg text-gray-600">Loading airport data...</p>
+          <p className="text-lg text-gray-300">Loading airport data...</p>
         </div>
       </div>
     );
@@ -51,10 +51,10 @@ const EditAirport = () => {
 
   if (!airport && !loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Airport Not Found</h2>
-          <p className="text-gray-600 mb-4">
+          <h2 className="text-2xl font-bold text-white mb-2">Airport Not Found</h2>
+          <p className="text-gray-300 mb-4">
             The airport you're trying to edit doesn't exist.
           </p>
           <button

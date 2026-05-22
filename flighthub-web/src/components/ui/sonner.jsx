@@ -10,6 +10,7 @@ const Toaster = ({
   return (
     <Sonner
       theme={theme}
+      position="top-right"
       className="toaster group"
       icons={{
         success: (
@@ -30,16 +31,18 @@ const Toaster = ({
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)"
+          "--normal-bg": "#ECFDF5",
+          "--normal-text": "#065F46",
+          "--normal-border": "#D1FAE5",
+          "--border-radius": "var(--radius)",
+          "--box-shadow": "0 15px 40px rgba(15, 23, 42, 0.08)",
         }
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900 shadow-lg",
         },
+        duration: 4000,
       }}
       {...props} />
   );

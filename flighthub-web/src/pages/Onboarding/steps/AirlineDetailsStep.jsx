@@ -53,7 +53,7 @@ import { getAllCities } from "@/Redux/city/cityThunk";
 
 const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   const [logoPreview, setLogoPreview] = useState(data?.logoUrl || "");
-  const { cities } = useSelector((state) => state.city);
+  const { cityList: cities } = useSelector((state) => state.city);
   const dispatch = useDispatch();
 
   useEffect(() => {

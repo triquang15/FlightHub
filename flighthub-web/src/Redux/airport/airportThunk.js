@@ -119,6 +119,25 @@ export const deleteAirport = createAsyncThunk(
 );
 
 // ============================
+// FETCH TIMEZONES
+// ============================
+export const fetchTimezones = createAsyncThunk(
+  "airport/fetchTimezones",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/api/cities/timezones", {
+        headers: getHeaders()
+      });
+      return res.data; // ✅ Array<TimezoneResponse>
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch timezones"
+      );
+    }
+  }
+);
+
+// ============================
 // DETECT TIMEZONE
 // ============================
 export const detectTimezone = createAsyncThunk(

@@ -5,7 +5,8 @@ import {
   getAirportById,
   listAllAirports,
   updateAirport,
-  detectTimezone
+  detectTimezone,
+  fetchTimezones
 } from "./airportThunk";
 
 const initialState = {
@@ -15,8 +16,11 @@ const initialState = {
   total: 0,
   totalPages: 1,
 
-  loading: false,
-  actionLoading: false,
+  loading: false,        // list + getById
+  actionLoading: false,  // create/update/delete
+
+  timezones: [],         // API timezones
+  timezonesLoading: false,
 
   timezone: null,
   error: null
@@ -32,6 +36,9 @@ const airportSlice = createSlice({
     },
     clearSelectedAirport: (state) => {
       state.airport = null;
+    },
+    clearTimezone: (state) => {
+      state.timezone = null;
     }
   },
 
@@ -41,6 +48,7 @@ const airportSlice = createSlice({
       // ================= LIST =================
       .addCase(listAllAirports.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(listAllAirports.fulfilled, (state, action) => {
         state.loading = false;
@@ -55,18 +63,30 @@ const airportSlice = createSlice({
       })
 
       // ================= GET BY ID =================
+      .addCase(getAirportById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(getAirportById.fulfilled, (state, action) => {
         state.loading = false;
         state.airport = action.payload;
+      })
+      .addCase(getAirportById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
       // ================= CREATE =================
       .addCase(createAirport.pending, (state) => {
         state.actionLoading = true;
+        state.error = null;
       })
       .addCase(createAirport.fulfilled, (state, action) => {
         state.actionLoading = false;
+
+        // add vào đầu list
         state.airports.unshift(action.payload);
+        state.total += 1;
       })
       .addCase(createAirport.rejected, (state, action) => {
         state.actionLoading = false;
@@ -76,20 +96,22 @@ const airportSlice = createSlice({
       // ================= UPDATE =================
       .addCase(updateAirport.pending, (state) => {
         state.actionLoading = true;
+        state.error = null;
       })
       .addCase(updateAirport.fulfilled, (state, action) => {
         state.actionLoading = false;
 
-        const index = state.airports.findIndex(
-          (a) => a.id === action.payload.id
-        );
+        const updated = action.payload;
 
+        // update list
+        const index = state.airports.findIndex((a) => a.id === updated.id);
         if (index !== -1) {
-          state.airports[index] = action.payload;
+          state.airports[index] = updated;
         }
 
-        if (state.airport?.id === action.payload.id) {
-          state.airport = action.payload;
+        // update detail
+        if (state.airport?.id === updated.id) {
+          state.airport = updated;
         }
       })
       .addCase(updateAirport.rejected, (state, action) => {
@@ -98,23 +120,59 @@ const airportSlice = createSlice({
       })
 
       // ================= DELETE =================
+      .addCase(deleteAirport.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(deleteAirport.fulfilled, (state, action) => {
+        state.actionLoading = false;
+
         state.airports = state.airports.filter(
           (a) => a.id !== action.payload
         );
-        state.total -= 1;
+
+        state.total = Math.max(0, state.total - 1);
+
+        if (state.airport?.id === action.payload) {
+          state.airport = null;
+        }
+      })
+      .addCase(deleteAirport.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // ================= FETCH TIMEZONES =================
+      .addCase(fetchTimezones.pending, (state) => {
+        state.timezonesLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchTimezones.fulfilled, (state, action) => {
+        state.timezonesLoading = false;
+        state.timezones = action.payload;
+      })
+      .addCase(fetchTimezones.rejected, (state, action) => {
+        state.timezonesLoading = false;
+        state.error = action.payload;
       })
 
       // ================= DETECT TIMEZONE =================
+      .addCase(detectTimezone.pending, (state) => {
+        state.timezone = null;
+      })
       .addCase(detectTimezone.fulfilled, (state, action) => {
         state.timezone = action.payload;
+      })
+      .addCase(detectTimezone.rejected, (state) => {
+        state.timezone = null;
       });
   }
 });
 
 export const {
   clearAirportError,
-  clearSelectedAirport
+  clearSelectedAirport,
+  clearTimezone
 } = airportSlice.actions;
 
 export default airportSlice.reducer;

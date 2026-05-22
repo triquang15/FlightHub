@@ -29,28 +29,9 @@ import * as Yup from "yup";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTimezones } from "@/Redux/airport/airportThunk";
 
-// Common timezone options
-const TIMEZONE_OPTIONS = [
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "America/Mexico_City",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Europe/Moscow",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Asia/Shanghai",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-];
 
 // Size category options
 const SIZE_CATEGORIES = [
@@ -64,13 +45,24 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(airport?.id || id);
+  
+  // Redux
+  const dispatch = useDispatch();
+  const { timezones, timezonesLoading } = useSelector((state) => state.airport);
+
+  // Fetch timezones on mount
+  useEffect(() => {
+    if (timezones.length === 0 && !timezonesLoading) {
+      dispatch(fetchTimezones());
+    }
+  }, [dispatch, timezones.length, timezonesLoading]);
 
   // Initial form values
   const initialValues = {
     iataCode: airport?.iataCode || "",
     name: airport?.name || "",
-    timeZoneId: airport?.timeZoneId || "",
-    cityId: airport?.city?.id || "",
+    timeZone: airport?.timeZone || "",
+    cityId: airport?.city?.id ? String(airport.city.id) : "",
 
     // Address (only street-level details)
     street: airport?.address?.street || "",
@@ -99,7 +91,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
       .min(2, "Airport name must be at least 2 characters")
       .max(255, "Airport name must be less than 255 characters")
       .required("Airport name is required"),
-    timeZoneId: Yup.string().required("Time zone is required"),
+    timeZone: Yup.string().required("Time zone is required"),
     cityId: Yup.string().required("City is required"),
     street: Yup.string().max(255, "Street must be less than 255 characters"),
     postalCode: Yup.string().max(20, "Postal code must be less than 20 characters"),
@@ -137,7 +129,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
       const formattedValues = {
         iataCode: values.iataCode,
         name: values.name,
-        timeZoneId: values.timeZoneId,
+        timeZone: values.timeZone,
         cityId: parseInt(values.cityId),
         address:
           values.street || values.postalCode
@@ -183,14 +175,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
 
       if (onSubmit) {
         await onSubmit(formattedValues);
-        toast.success(
-          isEditing ? "Airport updated successfully!" : "Airport created successfully!",
-          {
-            description: `${formattedValues.name} (${formattedValues.iataCode}) has been ${
-              isEditing ? "updated" : "created"
-            }.`,
-          }
-        );
+        toast.success(isEditing ? "Airport updated" : "Airport created");
 
         if (!isEditing) {
           resetForm();
@@ -200,49 +185,46 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
       console.log("Airport Data:", formattedValues);
     } catch (error) {
       console.error("Error saving airport:", error);
-      toast.error("Failed to save airport", {
-        description:
-          error?.message || "An error occurred while saving the airport. Please try again.",
-      });
+      toast.error("Save failed");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="bg-white rounded-lg shadow-sm border w-full">
-        <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-slate-950 dark:text-white">
+      <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 w-full">
+        <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50 dark:bg-slate-950 dark:border-gray-700">
           <Button
             variant="ghost"
             onClick={() => navigate(-1)}
-            className="flex items-center hover:bg-gray-100"
+            className="flex items-center hover:bg-gray-100 dark:hover:bg-slate-800"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div className="text-sm text-gray-500 font-medium">
+          <div className="text-sm text-gray-500 dark:text-gray-300 font-medium">
             / Airport / {isEditing ? "Edit" : "New Airport"}
           </div>
         </div>
 
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10 shadow-sm">
+        <div className="sticky top-0 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-gray-700 p-6 z-10 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-blue-100 p-3 rounded-lg">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <div className="bg-blue-100 dark:bg-slate-800 p-3 rounded-lg">
                   <Plane className="h-6 w-6 text-blue-600" />
                 </div>
                 {isEditing ? "Edit Airport" : "Create New Airport"}
               </h2>
-              <p className="text-gray-600 mt-2">
+              <p className="text-gray-600 dark:text-gray-300 mt-2">
                 Configure airport information, location details, and analytics
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-blue-900">✈️ Airport Management</p>
-                <p className="text-xs text-blue-700">Define comprehensive airport data</p>
+              <div className="bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-gray-700 rounded-lg p-3">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200">✈️ Airport Management</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Define comprehensive airport data</p>
               </div>
             </div>
           </div>
@@ -365,27 +347,38 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                       </div>
 
                       <div>
-                        <Label htmlFor="timeZoneId" className="flex items-center gap-2">
+                        <Label htmlFor="timeZone" className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-green-600" />
                           Time Zone *
                         </Label>
                         <Select
-                          value={values.timeZoneId}
-                          onValueChange={(value) => setFieldValue("timeZoneId", value)}
+                          value={values.timeZone}
+                          onValueChange={(value) => setFieldValue("timeZone", value)}
+                          disabled={timezonesLoading}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select timezone" />
+                            <SelectValue placeholder={timezonesLoading ? "Loading timezones..." : "Select timezone"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {TIMEZONE_OPTIONS.map((tz) => (
-                              <SelectItem key={tz} value={tz}>
-                                {tz}
+                            {!timezonesLoading && timezones.length > 0 ? (
+                              timezones.map((tz) => (
+                                <SelectItem key={tz.value} value={tz.value}>
+                                  {tz.label}
+                                </SelectItem>
+                              ))
+                            ) : timezonesLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading timezones...
                               </SelectItem>
-                            ))}
+                            ) : (
+                              <SelectItem value="no-tz" disabled>
+                                No timezones available
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                         <ErrorMessage
-                          name="timeZoneId"
+                          name="timeZone"
                           component="div"
                           className="text-sm text-red-600 mt-1"
                         />
@@ -533,7 +526,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                         <div className="flex items-center justify-between">
                           <span>Timezone:</span>
                           <span className="font-medium text-xs truncate max-w-[120px]">
-                            {values.timeZoneId || "N/A"}
+                            {values.timeZone || "N/A"}
                           </span>
                         </div>
                       </div>
