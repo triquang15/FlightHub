@@ -1,5 +1,6 @@
 package com.triquang.payload.request;
 
+import com.triquang.enums.UserRole;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -21,5 +22,6 @@ public class SignupRequest {
     @Pattern(regexp = "^(\\+84|0)[0-9]{9}$", message = "Invalid phone number")
     private String phone;
 
+    private UserRole role;
     private String deviceId;
 }

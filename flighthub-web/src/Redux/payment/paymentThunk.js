@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
-
 const API_URL = "/api/payments";
 
 
@@ -16,9 +14,7 @@ export const verifyPayment = createAsyncThunk(
   console.log("Verifying payment thunk called with request: ---------- ", request);
     try {
       console.log("📤 Verifying payment with data:", request);
-      const res = await api.post(`${API_URL}/verify`, request, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`${API_URL}/verify`, request);
       console.log("✅ verifyPayment success:", res.data);
       return res.data;
     } catch (err) {
@@ -49,9 +45,7 @@ export const getAllPayments = createAsyncThunk(
       });
 
       console.log("📤 Fetching all payments with params:", { page, size, sortBy, sortDirection });
-      const res = await api.get(`${API_URL}?${params.toString()}`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`${API_URL}?${params.toString()}`);
       console.log("✅ getAllPayments success:", res.data);
       return res.data;
     } catch (err) {

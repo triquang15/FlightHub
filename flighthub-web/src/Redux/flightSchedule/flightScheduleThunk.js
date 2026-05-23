@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/flight-schedules";
 
@@ -9,7 +8,7 @@ export const createFlightSchedule = createAsyncThunk(
   "flightSchedule/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, data, { headers: getHeaders() });
+      const res = await api.post(API_URL, data);
       console.log("✅ createFlightSchedule success:", res.data);
       return res.data;
     } catch (err) {
@@ -25,7 +24,7 @@ export const getFlightScheduleById = createAsyncThunk(
   "flightSchedule/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightScheduleById success:", res.data);
       return res.data;
     } catch (err) {
@@ -40,7 +39,7 @@ export const getAllFlightSchedules = createAsyncThunk(
   "flightSchedule/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(API_URL, { headers: getHeaders() });
+      const res = await api.get(API_URL);
       console.log("✅ getAllFlightSchedules success:", res.data);
       return res.data;
     } catch (err) {
@@ -55,7 +54,7 @@ export const updateFlightSchedule = createAsyncThunk(
   "flightSchedule/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, data);
       console.log("✅ updateFlightSchedule success:", res.data);
       return res.data;
     } catch (err) {
@@ -70,7 +69,7 @@ export const deleteFlightSchedule = createAsyncThunk(
   "flightSchedule/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFlightSchedule success:", id);
       return id;
     } catch (err) {

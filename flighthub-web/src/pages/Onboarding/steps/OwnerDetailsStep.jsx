@@ -59,20 +59,21 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         role: 'ROLE_AIRLINE_OWNER'
       })).unwrap();
 
-      if (signupResult.jwt) {
-        // Fetch user profile using thunk
-        const profileResult = await dispatch(getUserProfile(signupResult.jwt)).unwrap();
-        localStorage.setItem("jwt",signupResult.jwt)
-        // Update form data
-        onDataChange({
-          ...values,
-          userId: profileResult.id,
-          jwt: signupResult.jwt
-        });
-
-        // Proceed to next step
-        onNext();
+      if (!signupResult.accessToken) {
+        throw new Error('Signup failed. Please try again.');
       }
+
+      // Fetch user profile after storing tokens
+      const profileResult = await dispatch(getUserProfile()).unwrap();
+
+      onDataChange({
+        ...values,
+        userId: profileResult?.id,
+        accessToken: signupResult.accessToken
+      });
+
+      // Proceed to next step
+      onNext();
     } catch (error) {
       setIsSubmitting(false);
 
@@ -84,10 +85,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
     }
   };
 
-  const fetchUserProfile = async () => {  
-    const jwt = localStorage.getItem('jwt');
-    if (jwt) {
-      const response = await dispatch(getUserProfile(jwt)).unwrap();
+  const fetchUserProfile = async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      const response = await dispatch(getUserProfile()).unwrap();
       if (response && response.id) {
         console.log("User profile fetched successfully", response);
         onNext();
@@ -95,10 +96,9 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
     }
   };
 
-  
-  useEffect( () => {
-    const jwt = localStorage.getItem('jwt');
-    if (jwt) {
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
       fetchUserProfile();
     }
   }, [data]);

@@ -1,6 +1,0 @@
-$kind: http-request
-url: http://localhost:8083/api/aircrafts
-method: GET
-headers:
-  X-User-Id: "1"
-order: 3000

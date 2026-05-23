@@ -1,15 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // ✅ Create Aircraft
 export const createAircraft = createAsyncThunk(
   "aircraft/create",
   async (aircraftData, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/aircrafts", aircraftData, {
-        headers: getHeaders()
-      });
+      const res = await api.post("/api/aircrafts", aircraftData);
       console.log("Create aircraft success:", res.data);
       return res.data;
     } catch (err) {
@@ -26,9 +23,7 @@ export const getAircraftById = createAsyncThunk(
   "aircraft/getById",
   async (aircraftId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/aircrafts/${aircraftId}`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`/api/aircrafts/${aircraftId}`);
       console.log("Get aircraft by ID success:", res.data);
       return res.data;
     } catch (err) {
@@ -46,8 +41,7 @@ export const listAllAircrafts = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const res = await api.get("/api/aircrafts", {
-        params,
-        headers: getHeaders()
+        params
       });
       console.log("List all aircrafts success:", res.data);
       return res.data;
@@ -69,9 +63,7 @@ export const updateAircraft = createAsyncThunk(
   "aircraft/update",
   async ({ aircraftId, aircraftData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/aircrafts/${aircraftId}`, aircraftData, {
-        headers: getHeaders()
-      });
+      const res = await api.put(`/api/aircrafts/${aircraftId}`, aircraftData);
       console.log("Update aircraft success:", res.data);
       return res.data;
     } catch (err) {
@@ -88,9 +80,7 @@ export const deleteAircraft = createAsyncThunk(
   "aircraft/delete",
   async (aircraftId, { rejectWithValue }) => {
     try {
-      const res = await api.delete(`/api/aircrafts/${aircraftId}`, {
-        headers: getHeaders()
-      });
+      const res = await api.delete(`/api/aircrafts/${aircraftId}`);
       console.log("Delete aircraft success:", res.data);
       return aircraftId;
     } catch (err) {

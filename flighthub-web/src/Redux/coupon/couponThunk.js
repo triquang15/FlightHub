@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
-
 const API_URL = "/api/coupons";
 
 // ✅ Create Coupon
@@ -9,7 +7,7 @@ export const createCoupon = createAsyncThunk(
   "coupon/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, data, { headers: getHeaders() });
+      const res = await api.post(API_URL, data);
       console.log("✅ createCoupon success:", res.data);
       return res.data;
     } catch (err) {
@@ -29,9 +27,7 @@ export const getCouponById = createAsyncThunk(
   "coupon/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getCouponById success:", res.data);
       return res.data;
     } catch (err) {
@@ -69,8 +65,7 @@ export const getAllCoupons = createAsyncThunk(
 
       const res = await api.get(API_URL, {
         params: queryParams,
-        headers: getHeaders()
-      });
+        });
       console.log("✅ getAllCoupons success:", res.data);
       return res.data;
     } catch (err) {
@@ -90,9 +85,7 @@ export const getActiveCoupons = createAsyncThunk(
   "coupon/getActive",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/active`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`${API_URL}/active`);
       console.log("✅ getActiveCoupons success:", res.data);
       return res.data;
     } catch (err) {
@@ -113,8 +106,7 @@ export const updateCoupon = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const res = await api.put(`${API_URL}/${id}`, data, {
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ updateCoupon success:", res.data);
       return res.data;
     } catch (err) {
@@ -134,7 +126,7 @@ export const deleteCoupon = createAsyncThunk(
   "coupon/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteCoupon success:", id);
       return id;
     } catch (err) {
@@ -154,9 +146,7 @@ export const validateCoupon = createAsyncThunk(
   "coupon/validate",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(`${API_URL}/validate`, data, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`${API_URL}/validate`, data);
       console.log("✅ validateCoupon success:", res.data);
       return res.data;
     } catch (err) {
@@ -176,9 +166,7 @@ export const checkCouponCode = createAsyncThunk(
   "coupon/checkCode",
   async (code, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/check/${code}`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`${API_URL}/check/${code}`);
       console.log("✅ checkCouponCode success:", res.data);
       return res.data;
     } catch (err) {

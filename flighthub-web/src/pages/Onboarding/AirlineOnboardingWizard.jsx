@@ -53,12 +53,12 @@ const AirlineOnboardingWizard = () => {
     }
   ];
 
-  // JWT persistence logic
+  // Access token persistence logic
   useEffect(() => {
     const savedProgress = localStorage.getItem('airline_onboarding_progress');
-    const jwt = localStorage.getItem('jwt');
+    const accessToken = localStorage.getItem('accessToken');
 
-    if (jwt && savedProgress) {
+    if (accessToken && savedProgress) {
       const progress = JSON.parse(savedProgress);
       setCurrentStep(progress.currentStep);
       setFormData(progress.formData);

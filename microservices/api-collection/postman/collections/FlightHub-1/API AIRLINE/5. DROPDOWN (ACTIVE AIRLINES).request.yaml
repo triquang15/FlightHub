@@ -1,6 +1,0 @@
-$kind: http-request
-url: http://localhost:8083/api/airlines/dropdown
-method: GET
-headers:
-  "": ""
-order: 5000

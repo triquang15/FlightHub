@@ -1,7 +1,6 @@
 // src/redux/slices/seatMapSlice.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // ================= THUNKS =================
 
@@ -10,7 +9,7 @@ export const createSeatMap = createAsyncThunk(
   "seatMap/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/seat-maps", data, { headers: getHeaders() });
+      const res = await api.post("/api/seat-maps", data);
       console.log("✅ createSeatMap success:", res.data);
       return res.data;
     } catch (err) {
@@ -25,7 +24,7 @@ export const updateSeatMap = createAsyncThunk(
   "seatMap/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/seat-maps/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`/api/seat-maps/${id}`, data);
       console.log("✅ updateSeatMap success:", res.data);
       return res.data;
     } catch (err) {
@@ -40,7 +39,7 @@ export const getSeatMapsByCabinClass = createAsyncThunk(
   "seatMap/getByCabinClass",
   async (cabinClassId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/seat-maps/cabin-class/${cabinClassId}`, { headers: getHeaders() });
+      const res = await api.get(`/api/seat-maps/cabin-class/${cabinClassId}`);
       console.log("✅ getSeatMapsByCabinClass success:", res.data);
       return res.data;
     } catch (err) {
@@ -55,7 +54,7 @@ export const deleteSeatMap = createAsyncThunk(
   "seatMap/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/seat-maps/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/seat-maps/${id}`);
       console.log("✅ deleteSeatMap success:", id);
       return id;
     } catch (err) {

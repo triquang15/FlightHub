@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
-
 const API_URL = "/api/fares";
 
 // ✅ Create Fare
@@ -9,7 +7,7 @@ export const createFare = createAsyncThunk(
   "fare/create",
   async (fareData, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, fareData, { headers: getHeaders() });
+      const res = await api.post(API_URL, fareData);
       console.log("✅ createFare success:", res.data);
       return res.data;
     } catch (err) {
@@ -24,7 +22,7 @@ export const getFareById = createAsyncThunk(
   "fare/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFareById success: ------------------- ", res.data);
       return res.data;
     } catch (err) {
@@ -40,7 +38,7 @@ export const updateFare = createAsyncThunk(
   "fare/update",
   async ({ id, fareData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, fareData, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, fareData);
       console.log("✅ updateFare success:", res.data);
       return res.data;
     } catch (err) {
@@ -55,7 +53,7 @@ export const deleteFare = createAsyncThunk(
   "fare/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFare success:", id);
       return id;
     } catch (err) {
@@ -72,9 +70,7 @@ export const getFlightFares = createAsyncThunk(
   "fare/getFlightFares",
   async ({ flightId, cabinId }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}/cabin-class/${cabinId}`, {
-      headers: getHeaders()
-      });
+      const res = await api.get(`${API_URL}/flight/${flightId}/cabin-class/${cabinId}`);
       console.log("✅ getFlightFares success:", res.data);
       return res.data;
     } catch (err) {
@@ -101,9 +97,7 @@ export const searchFares = createAsyncThunk(
   async (searchParams, { rejectWithValue }) => {
     console.log("🔍 searchFares called with params:", searchParams);
     try {
-      const res = await api.post(`${API_URL}/search`, searchParams, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`${API_URL}/search`, searchParams);
       console.log("✅ searchFares success:", res.data);
       return res.data;
     } catch (err) {

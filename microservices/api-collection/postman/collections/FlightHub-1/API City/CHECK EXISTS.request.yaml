@@ -1,4 +1,0 @@
-$kind: http-request
-url: http://localhost:8081/api/cities/exists/HCM
-method: GET
-order: 9000

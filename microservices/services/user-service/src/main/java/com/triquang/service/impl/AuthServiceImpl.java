@@ -64,12 +64,14 @@ public class AuthServiceImpl implements AuthService {
 
         String deviceId = normalizeDeviceId(req.getDeviceId());
 
+        UserRole userRole = req.getRole() != null ? req.getRole() : UserRole.ROLE_CUSTOMER;
+
         User user = User.builder()
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
                 .phone(req.getPhone())
-                .role(UserRole.ROLE_CUSTOMER)
+                .role(userRole)
                 .verified(true)
                 .active(true)
                 .build();

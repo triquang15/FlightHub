@@ -1,42 +1,83 @@
-# =============================================================================
-# DEV INFRASTRUCTURE ONLY
-# Starts Redis + Kafka with ports exposed to localhost.
-# Use this when running services locally (not in Docker).
-#
-# Usage:
-#   docker compose -f docker-compose.dev.yml up -d
-#   docker compose -f docker-compose.dev.yml down
-# =============================================================================
+
+# docker compose -f docker-compose.dev.yml up -d
+# docker compose -f docker-compose.dev.yml down
+
+version: "3.9"
 
 services:
 
+  # =========================
+  # REDIS
+  # =========================
   redis:
     image: redis:7.2-alpine
     container_name: gds-redis-dev
     ports:
-      - "6379:6379"          # accessible at localhost:6379
-    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru --save ""
+      - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
+  # =========================
+  # KAFKA (KRaft - no Zookeeper)
+  # =========================
   kafka:
     image: apache/kafka:4.1.1
     container_name: gds-kafka-dev
     ports:
-      - "9092:9092"          # accessible at localhost:9092
+      - "9092:9092"
     environment:
+      # KRaft mode
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # Listeners
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092   # <-- localhost for local services
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # Logs
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+
+      # Single node config
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Auto create topic (dev only)
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      # Memory
       KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================
+  # KAFKA UI (Kafbat)
+  # =========================
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: gds-kafka-ui
+    ports:
+      - "8000:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+      # Optional: show more debug info
+      KAFKA_CLUSTERS_0_READONLY: "false"

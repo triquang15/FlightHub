@@ -1,6 +1,0 @@
-$kind: http-request
-url: http://localhost:8083/api/aircrafts/1
-method: DELETE
-headers:
-  X-User-Id: "1"
-order: 5000

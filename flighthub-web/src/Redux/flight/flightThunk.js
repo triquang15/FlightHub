@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/flights";
 
@@ -9,7 +8,7 @@ export const createFlight = createAsyncThunk(
   "flight/create",
   async (flightData, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, flightData, { headers: getHeaders() });
+      const res = await api.post(API_URL, flightData);
       console.log("✅ createFlight success:", res.data);
       return res.data;
     } catch (err) {
@@ -24,7 +23,7 @@ export const getFlightById = createAsyncThunk(
   "flight/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightById success:", res.data);
       return res.data;
     } catch (err) {
@@ -41,7 +40,7 @@ export const updateFlight = createAsyncThunk(
   "flight/update",
   async ({ id, flightData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, flightData, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, flightData);
       console.log("✅ updateFlight success:", res.data);
       return res.data;
     } catch (err) {
@@ -56,7 +55,7 @@ export const deleteFlight = createAsyncThunk(
   "flight/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFlight success:", id);
       return id;
     } catch (err) {
@@ -72,7 +71,7 @@ export const getFlightsByAirline = createAsyncThunk(
   async (_, 
     { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/airline`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/airline`);
       console.log("✅ getFlightsByAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -87,7 +86,7 @@ export const getFlightsByAircraft = createAsyncThunk(
   "flight/getByAircraft",
   async (aircraftId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/aircraft/${aircraftId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/aircraft/${aircraftId}`);
       console.log("✅ getFlightsByAircraft success:", res.data);
       return res.data;
     } catch (err) {

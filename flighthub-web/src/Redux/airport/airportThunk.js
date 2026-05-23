@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // ============================
 // CREATE
@@ -9,9 +8,7 @@ export const createAirport = createAsyncThunk(
   "airport/create",
   async (airportData, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/airports", airportData, {
-        headers: getHeaders()
-      });
+      const res = await api.post("/api/airports", airportData);
       return res.data.data; // ✅ ApiResponse
     } catch (err) {
       return rejectWithValue(
@@ -28,9 +25,7 @@ export const getAirportById = createAsyncThunk(
   "airport/getById",
   async (airportId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/airports/${airportId}`, {
-        headers: getHeaders()
-      });
+      const res = await api.get(`/api/airports/${airportId}`);
       return res.data.data; // ✅ ApiResponse
     } catch (err) {
       return rejectWithValue(
@@ -68,8 +63,7 @@ export const listAllAirports = createAsyncThunk(
           country,
           cityId
         },
-        headers: getHeaders()
-      });
+        });
 
       return res.data; // ✅ Page<>
     } catch (err) {
@@ -87,9 +81,7 @@ export const updateAirport = createAsyncThunk(
   "airport/update",
   async ({ airportId, airportData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/airports/${airportId}`, airportData, {
-        headers: getHeaders()
-      });
+      const res = await api.put(`/api/airports/${airportId}`, airportData);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(
@@ -106,9 +98,7 @@ export const deleteAirport = createAsyncThunk(
   "airport/delete",
   async (airportId, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/airports/${airportId}`, {
-        headers: getHeaders()
-      });
+      await api.delete(`/api/airports/${airportId}`);
       return airportId;
     } catch (err) {
       return rejectWithValue(
@@ -125,9 +115,7 @@ export const fetchTimezones = createAsyncThunk(
   "airport/fetchTimezones",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/cities/timezones", {
-        headers: getHeaders()
-      });
+      const res = await api.get("/api/cities/timezones");
       return res.data; // ✅ Array<TimezoneResponse>
     } catch (err) {
       return rejectWithValue(

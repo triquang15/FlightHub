@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/flight-cabin-ancillaries";
 
@@ -10,7 +9,7 @@ export const createFlightCabinAncillary = createAsyncThunk(
   "flightCabinAncillary/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, data, { headers: getHeaders() });
+      const res = await api.post(API_URL, data);
       console.log("✅ createFlightCabinAncillary success:", res.data);
       return res.data;
     } catch (err) {
@@ -25,7 +24,7 @@ export const getFlightCabinAncillariesByFlightId = createAsyncThunk(
   "flightCabinAncillary/getByFlightId",
   async (flightId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/flight/${flightId}`);
       console.log("✅ getFlightCabinAncillariesByFlightId success:", res.data);
       return res.data;
     } catch (err) {
@@ -40,7 +39,7 @@ export const getFlightCabinAncillariesByFlightAndCabinClass = createAsyncThunk(
   "flightCabinAncillary/getByFlightAndCabinClass",
   async ({ flightId, cabinClassId }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}`);
       console.log("✅ getFlightCabinAncillariesByFlightAndCabinClass success:", res.data);
       return res.data;
     } catch (err) {
@@ -55,7 +54,7 @@ export const getFlightCabinAncillaryById = createAsyncThunk(
   "flightCabinAncillary/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightCabinAncillaryById success:", res.data);
       return res.data;
     } catch (err) {
@@ -70,7 +69,7 @@ export const updateFlightCabinAncillary = createAsyncThunk(
   "flightCabinAncillary/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, data);
       console.log("✅ updateFlightCabinAncillary success:", res.data);
       return res.data;
     } catch (err) {
@@ -85,7 +84,7 @@ export const deleteFlightCabinAncillary = createAsyncThunk(
   "flightCabinAncillary/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFlightCabinAncillary success:", id);
       return id;
     } catch (err) {
@@ -100,7 +99,7 @@ export const bulkCreateFlightCabinAncillaries = createAsyncThunk(
   "flightCabinAncillary/bulkCreate",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(`${API_URL}/bulk`, data, { headers: getHeaders() });
+      const res = await api.post(`${API_URL}/bulk`, data);
       console.log("✅ bulkCreateFlightCabinAncillaries success:", res.data);
       return res.data;
     } catch (err) {
@@ -115,7 +114,7 @@ export const getFlightCabinAncillariesByType = createAsyncThunk(
   "flightCabinAncillary/getByType",
   async ({ flightId, cabinClassId, type }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}`);
       console.log(`✅ getFlightCabinAncillariesByType [${type}] success:`, res.data);
       return { type, data: res.data };
     } catch (err) {
@@ -130,7 +129,7 @@ export const getAllFlightCabinAncillariesByType = createAsyncThunk(
   "flightCabinAncillary/getAllByType",
   async ({ flightId, cabinClassId, type }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}/all`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}/all`);
       console.log(`✅ getAllFlightCabinAncillariesByType [${type}] success:`, res.data);
       return { type, data: res.data };
     } catch (err) {

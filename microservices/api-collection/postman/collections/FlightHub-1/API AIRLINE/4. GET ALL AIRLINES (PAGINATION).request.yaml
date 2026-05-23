@@ -1,9 +1,0 @@
-$kind: http-request
-url: http://localhost:8083/api/airlines?page=0&size=10
-method: GET
-headers:
-  "": ""
-queryParams:
-  page: "0"
-  size: "10"
-order: 4000

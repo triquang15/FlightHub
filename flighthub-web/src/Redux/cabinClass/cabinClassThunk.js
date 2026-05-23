@@ -2,7 +2,6 @@
 
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // ================= THUNKS =================
 
@@ -11,7 +10,7 @@ export const createCabinClass = createAsyncThunk(
   "cabinClass/create",
   async (cabinClassData, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/cabin-classes", cabinClassData, { headers: getHeaders() });
+      const res = await api.post("/api/cabin-classes", cabinClassData);
       console.log("✅ createCabinClass success:", res.data);
       return res.data;
     } catch (err) {
@@ -26,7 +25,7 @@ export const getCabinClassById = createAsyncThunk(
   "cabinClass/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/cabin-classes/${id}`, { headers: getHeaders() });
+      const res = await api.get(`/api/cabin-classes/${id}`);
       console.log("✅ getCabinClassById success:", res.data);
       return res.data;
     } catch (err) {
@@ -41,7 +40,7 @@ export const getCabinClassesByAircraft = createAsyncThunk(
   "cabinClass/getByAircraft",
   async (aircraftId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/cabin-classes/aircraft/${aircraftId}`, { headers: getHeaders() });
+      const res = await api.get(`/api/cabin-classes/aircraft/${aircraftId}`);
       console.log("✅ getCabinClassesByAircraft success:", res.data);
       return res.data;
     } catch (err) {
@@ -56,7 +55,7 @@ export const updateCabinClass = createAsyncThunk(
   "cabinClass/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/cabin-classes/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`/api/cabin-classes/${id}`, data);
       console.log("✅ updateCabinClass success:", res.data);
       return res.data;
     } catch (err) {
@@ -71,7 +70,7 @@ export const deleteCabinClass = createAsyncThunk(
   "cabinClass/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/cabin-classes/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/cabin-classes/${id}`);
       console.log("✅ deleteCabinClass success:", id);
       return id;
     } catch (err) {

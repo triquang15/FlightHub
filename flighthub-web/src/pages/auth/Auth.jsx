@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -61,7 +61,10 @@ const Auth = ({ isLogin }) => {
           <div className="max-w-md">
 
             {/* Logo */}
-            <div className="flex items-center mb-8">
+            <Link
+              to="/"
+              className="flex items-center mb-8 no-underline focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-xl"
+            >
               <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-3 rounded-2xl shadow-lg">
                 <Plane className="h-8 w-8 text-white" />
               </div>
@@ -71,7 +74,7 @@ const Auth = ({ isLogin }) => {
                   Global Flight Distribution Platform
                 </p>
               </div>
-            </div>
+            </Link>
 
             {/* Heading */}
             <div className="mb-8">
@@ -140,14 +143,17 @@ const Auth = ({ isLogin }) => {
               <CardContent className="p-8">
 
                 {/* Mobile logo */}
-                <div className="lg:hidden flex items-center justify-center mb-8">
+                <Link
+                  to="/"
+                  className="lg:hidden flex items-center justify-center mb-8 no-underline focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-xl"
+                >
                   <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-2xl">
                     <Plane className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-3">
                     <h1 className="text-xl font-bold text-gray-900">FlightHub</h1>
                   </div>
-                </div>
+                </Link>
 
                 {/* Header */}
                 <div className="text-center mb-8">

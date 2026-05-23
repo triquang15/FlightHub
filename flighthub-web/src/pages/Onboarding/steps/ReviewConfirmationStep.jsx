@@ -36,12 +36,6 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
     setSubmitError('');
 
     try {
-      const jwt = localStorage.getItem('jwt');
-
-      if (!jwt) {
-        throw new Error('Authentication token not found. Please start over.');
-      }
-
       const airlineData={
         iataCode: formData.airline.iataCode,
         icaoCode: formData.airline.icaoCode,

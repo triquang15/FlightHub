@@ -1,13 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // Create Ancillary
 export const createAncillary = createAsyncThunk(
   "ancillary/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/ancillaries", data, { headers: getHeaders() });
+      const res = await api.post("/api/ancillaries", data);
       console.log("✅ createAncillary success:", res.data);
       return res.data;
     } catch (err) {
@@ -22,7 +21,7 @@ export const getAncillaryById = createAsyncThunk(
   "ancillary/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/ancillaries/${id}`, { headers: getHeaders() });
+      const res = await api.get(`/api/ancillaries/${id}`);
       console.log("✅ getAncillaryById success:", res.data);
       return res.data;
     } catch (err) {
@@ -37,7 +36,7 @@ export const getAllAncillaries = createAsyncThunk(
   "ancillary/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/ancillaries", { headers: getHeaders() });
+      const res = await api.get("/api/ancillaries");
       console.log("✅ getAllAncillaries success:", res.data);
       return res.data;
     } catch (err) {
@@ -52,7 +51,7 @@ export const updateAncillary = createAsyncThunk(
   "ancillary/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/ancillaries/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`/api/ancillaries/${id}`, data);
       console.log("✅ updateAncillary success:", res.data);
       return res.data;
     } catch (err) {
@@ -67,7 +66,7 @@ export const deleteAncillary = createAsyncThunk(
   "ancillary/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/ancillaries/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/ancillaries/${id}`);
       console.log("✅ deleteAncillary success:", id);
       return id;
     } catch (err) {

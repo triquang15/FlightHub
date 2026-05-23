@@ -1,4 +1,0 @@
-$kind: http-request
-url: http://localhost:8081/api/airports/1
-method: DELETE
-order: 7000

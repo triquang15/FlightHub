@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
-
 const API_URL = "/api/fare-rules";
 
 // ✅ Create Fare Rule
@@ -9,7 +7,7 @@ export const createFareRule = createAsyncThunk(
   "fareRules/create",
   async (fareRuleData, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, fareRuleData, { headers: getHeaders() });
+      const res = await api.post(API_URL, fareRuleData);
       console.log("✅ createFareRule success:", res.data);
       return res.data;
     } catch (err) {
@@ -26,7 +24,7 @@ export const getAllFareRules = createAsyncThunk(
   "fareRules/getAll",
   async (params = { page: 0, size: 100 }, { rejectWithValue }) => {
     try {
-      const res = await api.get(API_URL, { params, headers: getHeaders() });
+      const res = await api.get(API_URL, { params, });
       console.log("✅ getAllFareRules success:", res.data);
       return res.data;
     } catch (err) {
@@ -43,7 +41,7 @@ export const getFareRuleById = createAsyncThunk(
   "fareRules/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFareRuleById success:", res.data);
       return res.data;
     } catch (err) {
@@ -58,7 +56,7 @@ export const updateFareRule = createAsyncThunk(
   "fareRules/update",
   async ({ id, fareRuleData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, fareRuleData, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, fareRuleData);
       console.log("✅ updateFareRule success:", res.data);
       return res.data;
     } catch (err) {
@@ -75,7 +73,7 @@ export const deleteFareRule = createAsyncThunk(
   "fareRules/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFareRule success:", id);
       return id;
     } catch (err) {
@@ -92,7 +90,7 @@ export const getFareRulesByAirline = createAsyncThunk(
   "fareRules/getByAirline",
   async (airlineId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/airline/${airlineId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/airline/${airlineId}`);
       console.log("✅ getFareRulesByAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -111,7 +109,7 @@ export const getFareRuleByFare = createAsyncThunk(
   "fareRules/getByFare",
   async (fareId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/fare/${fareId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/fare/${fareId}`);
       console.log("✅ getFareRuleByFare success:", res.data);
       return res.data;
     } catch (err) {

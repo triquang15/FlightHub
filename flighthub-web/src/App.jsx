@@ -43,7 +43,7 @@ import GuestOnly from "./components/auth/GuestOnly.jsx";
 function RoleRedirect() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -53,19 +53,19 @@ function RoleRedirect() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      switch (user.role) {
-        case "ROLE_SYSTEM_ADMIN":
-          navigate("/super-admin");
-          break;
-        case "ROLE_AIRLINE_OWNER":
-          navigate("/airline");
-          break;
-        default:
-          navigate("/traveler");
-      }
+    if (!isAuthenticated || loading || !user?.role) return;
+
+    switch (user.role) {
+      case "ROLE_SYSTEM_ADMIN":
+        navigate("/super-admin");
+        break;
+      case "ROLE_AIRLINE_OWNER":
+        navigate("/airline");
+        break;
+      default:
+        navigate("/traveler");
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, loading, navigate]);
 
   return null;
 }

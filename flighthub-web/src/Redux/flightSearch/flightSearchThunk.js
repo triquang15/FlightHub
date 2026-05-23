@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/flights/search";
 
@@ -13,8 +12,7 @@ export const searchFlightsAvailability = createAsyncThunk(
     try {
       const res = await api.get(API_URL, {
         params,
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ searchFlightsAvailability success:", res.data);
       return res.data;
     } catch (err) {

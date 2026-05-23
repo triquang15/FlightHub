@@ -1,7 +1,0 @@
-$kind: http-request
-url: http://localhost:8082/api/users?page=0&size=10
-method: GET
-queryParams:
-  page: "0"
-  size: "10"
-order: 6000

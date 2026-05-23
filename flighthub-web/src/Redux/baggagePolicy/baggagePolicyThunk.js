@@ -1,14 +1,13 @@
 // src/redux/thunks/baggagePolicyThunks.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 // ✅ Create Policy
 export const createPolicy = createAsyncThunk(
   "baggagePolicy/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/baggage-policies", data, { headers: getHeaders() });
+      const res = await api.post("/api/baggage-policies", data);
       console.log("✅ createPolicy success:", res.data);
       return res.data;
     } catch (err) {
@@ -23,7 +22,7 @@ export const getPolicyById = createAsyncThunk(
   "baggagePolicy/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/baggage-policies/${id}`, { headers: getHeaders() });
+      const res = await api.get(`/api/baggage-policies/${id}`);
       console.log("✅ getPolicyById success:", res.data);
       return res.data;
     } catch (err) {
@@ -38,7 +37,7 @@ export const updatePolicy = createAsyncThunk(
   "baggagePolicy/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/baggage-policies/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`/api/baggage-policies/${id}`, data);
       console.log("✅ updatePolicy success:", res.data);
       return res.data;
     } catch (err) {
@@ -53,7 +52,7 @@ export const deletePolicy = createAsyncThunk(
   "baggagePolicy/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/baggage-policies/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/baggage-policies/${id}`);
       console.log("✅ deletePolicy success:", id);
       return id;
     } catch (err) {
@@ -73,7 +72,7 @@ export const getPolicyByAirline = createAsyncThunk(
   "baggagePolicy/getByAirline",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/baggage-policies/airline", { headers: getHeaders() });
+      const res = await api.get("/api/baggage-policies/airline");
       console.log("✅ getPolicyByAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -89,7 +88,7 @@ export const getBaggagePolicyByFare = createAsyncThunk(
   "baggagePolicy/getByFare",
   async (fareId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/baggage-policies/fare/${fareId}`, { headers: getHeaders() });
+      const res = await api.get(`/api/baggage-policies/fare/${fareId}`);
       console.log("✅ getPolicyByFare success:", res.data);
       return res.data;
     } catch (err) {

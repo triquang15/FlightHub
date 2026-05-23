@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
-import { getHeaders } from "../../utils/getHeaders";
-
 /**
  * Create a new meal
  */
@@ -10,8 +8,7 @@ export const createMeal = createAsyncThunk(
   async (mealData, { rejectWithValue }) => {
     try {
       const response = await api.post("/api/meals", mealData, {
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -29,8 +26,7 @@ export const fetchMealById = createAsyncThunk(
   async (mealId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/api/meals/${mealId}`, {
-        headers: getHeaders(),
-      });
+        });
       console.log("Fetched meal:", response.data);
       return response.data;
     } catch (error) {
@@ -49,8 +45,7 @@ export const fetchMealsByAirlineId = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get(`/api/meals/airline`, {
-        headers: getHeaders(),
-      });
+        });
       console.log("Meals by airline response:", response.data);
       return response.data;
     } catch (error) {
@@ -73,8 +68,7 @@ export const searchMeals = createAsyncThunk(
     try {
       const response = await api.get("/api/meals/search", {
         params: { keyword, page, size },
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -92,8 +86,7 @@ export const updateMeal = createAsyncThunk(
   async ({ mealId, mealData }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/api/meals/${mealId}`, mealData, {
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -115,8 +108,7 @@ export const updateMealAvailability = createAsyncThunk(
         null,
         {
           params: { available },
-          headers: getHeaders(),
-        }
+          }
       );
       return response.data;
     } catch (error) {
@@ -135,8 +127,7 @@ export const deleteMeal = createAsyncThunk(
   async (mealId, { rejectWithValue }) => {
     try {
       await api.delete(`/api/meals/${mealId}`, {
-        headers: getHeaders(),
-      });
+        });
       return mealId;
     } catch (error) {
       return rejectWithValue(

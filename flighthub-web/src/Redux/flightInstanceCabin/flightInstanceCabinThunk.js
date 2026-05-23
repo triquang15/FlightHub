@@ -1,7 +1,6 @@
 // src/redux/thunks/flightInstanceCabinThunks.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = `/api/flight-instance-cabins`;
 
@@ -10,7 +9,7 @@ export const createFlightInstanceCabin = createAsyncThunk(
   "flightInstanceCabin/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(`${API_URL}`, data, { headers: getHeaders() });
+      const res = await api.post(`${API_URL}`, data);
       console.log("✅ createFlightCabin success:", res.data);
       return res.data;
     } catch (err) {
@@ -31,8 +30,7 @@ export const updateFlightCabin = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const res = await api.put(`${API_URL}/${id}`, data, {
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ updateFlightCabin success:", res.data);
       return res.data;
     } catch (err) {
@@ -52,7 +50,7 @@ export const getFlightInstanceCabinById = createAsyncThunk(
   "flightInstanceCabin/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightCabinById success:", res.data);
       return res.data;
     } catch (err) {
@@ -72,7 +70,7 @@ export const deleteFlightCabin = createAsyncThunk(
   "flightInstanceCabin/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFlightCabin success:", id);
       return id;
     } catch (err) {
@@ -97,8 +95,7 @@ export const getFlightInstanceCabinsByFlightInstanceAndCabinClass =
       
       try {
         const res = await api.get(
-          `${API_URL}/flight-instance/${flightInstanceId}/cabin-class/${cabinClassId}`,
-          { headers: getHeaders() }
+          `${API_URL}/flight-instance/${flightInstanceId}/cabin-class/${cabinClassId}`
         );
         console.log("✅ getFlightCabinsByFlightInstance success: )))))))) ", res.data);
         return res.data;
@@ -121,8 +118,7 @@ export const getFlightInstanceCabinsByFlightInstance = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/flight-instance/${flightInstanceId}`, {
         params,
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ getFlightInstanceCabinsByFlight success:", res.data);
       return res.data;
     } catch (err) {

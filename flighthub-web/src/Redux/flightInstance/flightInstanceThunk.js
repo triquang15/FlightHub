@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/flight-instances";
 
@@ -9,7 +8,7 @@ export const createFlightInstance = createAsyncThunk(
   "flightInstance/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, data, { headers: getHeaders() });
+      const res = await api.post(API_URL, data);
       console.log("✅ createFlightInstance success:", res.data);
       return res.data;
     } catch (err) {
@@ -30,8 +29,7 @@ export const getFlightInstanceById = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const res = await api.get(`${API_URL}/${id}`, {
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ getFlightInstanceById success:", res.data);
       return res.data;
     } catch (err) {
@@ -74,8 +72,7 @@ export const getAllFlightInstances = createAsyncThunk(
 
       const res = await api.get(API_URL, {
         params: queryParams,
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ getAllFlightInstances success:", res.data);
       return res.data; // Returns Page object with content, totalPages, totalElements, etc.
     } catch (err) {
@@ -96,8 +93,7 @@ export const updateFlightInstance = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const res = await api.put(`${API_URL}/${id}`, data, {
-        headers: getHeaders(),
-      });
+        });
       console.log("✅ updateFlightInstance success:", res.data);
       return res.data;
     } catch (err) {
@@ -119,7 +115,7 @@ export const deleteFlightInstance = createAsyncThunk(
   "flightInstance/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteFlightInstance success:", id);
       return id;
     } catch (err) {

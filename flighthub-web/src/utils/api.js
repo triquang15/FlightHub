@@ -1,4 +1,5 @@
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import { getDeviceId } from "@/utils/device";
 
 const BASE_URL = "http://localhost:8080";
@@ -19,6 +20,16 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      
+      // Extract userId from token and add X-User-Id header
+      try {
+        const decoded = jwtDecode(token);
+        if (decoded.userId) {
+          config.headers["X-User-Id"] = decoded.userId;
+        }
+      } catch (err) {
+        console.error("Failed to decode token:", err);
+      }
     }
 
     // 🔥 attach device id

@@ -1,7 +1,6 @@
 // src/redux/thunks/bookingThunks.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 const API_URL = "/api/bookings";
 
@@ -10,7 +9,7 @@ export const createBooking = createAsyncThunk(
   "booking/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, data, { headers: getHeaders() });
+      const res = await api.post(API_URL, data);
       console.log("✅ createBooking success:", res.data);
 
       // Check for checkout URL in the response (checkoutUrl or payment_link_url)
@@ -43,7 +42,7 @@ export const updateBooking = createAsyncThunk(
   "booking/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, data, { headers: getHeaders() });
+      const res = await api.put(`${API_URL}/${id}`, data);
       console.log("✅ updateBooking success:", res.data);
       return res.data;
     } catch (err) {
@@ -58,7 +57,7 @@ export const getBookingById = createAsyncThunk(
   "booking/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getBookingById success:", res.data);
       return res.data;
     } catch (err) {
@@ -85,7 +84,7 @@ export const getBookingsByAirline = createAsyncThunk(
       const queryString = params.toString();
       const url = queryString ? `${API_URL}/airline?${queryString}` : `${API_URL}/airline`;
 
-      const res = await api.get(url, { headers: getHeaders() });
+      const res = await api.get(url);
       console.log("✅ getBookingsByAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -100,7 +99,7 @@ export const getBookingsByUser = createAsyncThunk(
   "booking/getByUser",
   async (userId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/user/history`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/user/history`);
       console.log("✅ getBookingsByUser success:", res.data);
       return res.data;
     } catch (err) {
@@ -115,7 +114,7 @@ export const getBookingsByFlight = createAsyncThunk(
   "booking/getByFlight",
   async (flightId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/flight/${flightId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/flight/${flightId}`);
       console.log("✅ getBookingsByFlight success:", res.data);
       return res.data;
     } catch (err) {
@@ -132,7 +131,7 @@ export const cancelBooking = createAsyncThunk(
   "booking/cancel",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.patch(`${API_URL}/${id}/cancel`, null, { headers: getHeaders() });
+      const res = await api.patch(`${API_URL}/${id}/cancel`, null);
       console.log("✅ cancelBooking success:", res.data);
       return res.data;
     } catch (err) {
@@ -149,7 +148,7 @@ export const deleteBooking = createAsyncThunk(
   "booking/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`${API_URL}/${id}`, { headers: getHeaders() });
+      await api.delete(`${API_URL}/${id}`);
       console.log("✅ deleteBooking success:", id);
       return id;
     } catch (err) {
@@ -167,7 +166,7 @@ export const getBookingCountByFlight = createAsyncThunk(
   "booking/getCountByFlight",
   async (flightId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/count/flight/${flightId}`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/count/flight/${flightId}`);
       console.log("✅ getBookingCountByFlight success:", res.data);
       return res.data;
     } catch (err) {
@@ -184,7 +183,7 @@ export const getBookingStatisticsForAirline = createAsyncThunk(
   "booking/getStatisticsForAirline",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/statistics/airline`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/statistics/airline`);
       console.log("✅ getBookingStatisticsForAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -199,7 +198,7 @@ export const getRoutePerformanceForAirline = createAsyncThunk(
   "booking/getRoutePerformanceForAirline",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/route-performance/airline`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/route-performance/airline`);
       console.log("✅ getRoutePerformanceForAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -214,7 +213,7 @@ export const getAirportPerformanceForAirline = createAsyncThunk(
   "booking/getAirportPerformanceForAirline",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/airport-performance/airline`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/airport-performance/airline`);
       console.log("✅ getAirportPerformanceForAirline success:", res.data);
       return res.data;
     } catch (err) {
@@ -229,7 +228,7 @@ export const getAirportPerformanceForSuperAdmin = createAsyncThunk(
   "booking/getAirportPerformanceForSuperAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/airport-performance/super-admin`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/airport-performance/super-admin`);
       console.log("✅ getAirportPerformanceForSuperAdmin success:", res.data);
       return res.data;
     } catch (err) {
@@ -244,7 +243,7 @@ export const getRoutePerformanceForSuperAdmin = createAsyncThunk(
   "booking/getRoutePerformanceForSuperAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/route-performance/super-admin`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/route-performance/super-admin`);
       console.log("✅ getRoutePerformanceForSuperAdmin success:", res.data);
       return res.data;
     } catch (err) {
@@ -259,7 +258,7 @@ export const getBookingStatisticsForSuperAdmin = createAsyncThunk(
   "booking/getStatisticsForSuperAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/statistics/super-admin`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/statistics/super-admin`);
       console.log("✅ getBookingStatisticsForSuperAdmin success:", res.data);
       return res.data;
     } catch (err) {
@@ -274,7 +273,7 @@ export const getAirlinePerformanceForSuperAdmin = createAsyncThunk(
   "booking/getAirlinePerformanceForSuperAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/airline-performance/super-admin`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/airline-performance/super-admin`);
       console.log("✅ getAirlinePerformanceForSuperAdmin success:", res.data);
       return res.data;
     } catch (err) {
@@ -289,7 +288,7 @@ export const getSuperAdminDashboardStats = createAsyncThunk(
   "booking/getSuperAdminDashboardStats",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/dashboard-stats/super-admin`, { headers: getHeaders() });
+      const res = await api.get(`${API_URL}/dashboard-stats/super-admin`);
       console.log("✅ getSuperAdminDashboardStats success:", res.data);
       return res.data;
     } catch (err) {

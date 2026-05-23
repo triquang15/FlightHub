@@ -1,7 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
-import { getHeaders } from "../../utils/getHeaders";
-
 /**
  * Create a new flight meal
  */
@@ -10,8 +8,7 @@ export const createFlightMeal = createAsyncThunk(
   async (flightMealData, { rejectWithValue }) => {
     try {
       const response = await api.post("/api/flight-meals", flightMealData, {
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -29,8 +26,7 @@ export const bulkCreateFlightMeals = createAsyncThunk(
   async (flightMealsData, { rejectWithValue }) => {
     try {
       const response = await api.post("/api/flight-meals/bulk", flightMealsData, {
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -48,8 +44,7 @@ export const fetchFlightMealsByFlightId = createAsyncThunk(
   async (flightId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/api/flight-meals/flight/${flightId}`, {
-        headers: getHeaders(),
-      });
+        });
       console.log("Fetched flight meals: ----- ====== ++++", response.data);
    return response.data;
     } catch (error) {
@@ -69,8 +64,7 @@ export const updateFlightMeal = createAsyncThunk(
   async ({ flightMealId, flightMealData }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/api/flight-meals/${flightMealId}`, flightMealData, {
-        headers: getHeaders(),
-      });
+        });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -92,8 +86,7 @@ export const updateFlightMealAvailability = createAsyncThunk(
         null,
         {
           params: { available },
-          headers: getHeaders(),
-        }
+          }
       );
       return response.data;
     } catch (error) {
@@ -112,8 +105,7 @@ export const deleteFlightMeal = createAsyncThunk(
   async (flightMealId, { rejectWithValue }) => {
     try {
       await api.delete(`/api/flight-meals/${flightMealId}`, {
-        headers: getHeaders(),
-      });
+        });
       return flightMealId;
     } catch (error) {
       return rejectWithValue(

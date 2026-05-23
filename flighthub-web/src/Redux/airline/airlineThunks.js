@@ -1,17 +1,14 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getHeaders } from "@/utils/getHeaders";
 
 
 export const createAirline = createAsyncThunk(
   "airline/create",
   async (airlineData, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/airlines", airlineData, {
-        headers: getHeaders()
-      });
+      const res = await api.post("/api/airlines", airlineData);
       console.log("Create airline success:", res.data);
-      return res.data;
+      return res.data?.data;
     } catch (err) {
       console.error("Create airline error:", err);
       return rejectWithValue(
@@ -26,11 +23,9 @@ export const getAirlineByAdmin = createAsyncThunk(
   "airline/getByAdmin",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/airlines/admin", {
-        headers: getHeaders()
-      });
+      const res = await api.get("/api/airlines/admin");
       console.log("Get airline by admin success:", res.data);
-      return res.data;
+      return res.data?.data || [];
     } catch (err) {
       console.error("Get airline by admin error:", err);
       return rejectWithValue(
@@ -46,11 +41,9 @@ export const getAirlinesForDropdown = createAsyncThunk(
   "airline/getDropdown",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/airlines/dropdown", {
-        headers: getHeaders()
-      });
+      const res = await api.get("/api/airlines/dropdown");
       console.log("Get airlines dropdown success:", res.data);
-      return res.data;
+      return res.data?.data || res.data;
     } catch (err) {
       console.error("Get airlines dropdown error:", err);
       return rejectWithValue(
@@ -66,11 +59,10 @@ export const getAllAirlines = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const res = await api.get("/api/airlines", { 
-        params,
-        headers: getHeaders()
+        params
       });
       console.log("Get all airlines success:", res.data);
-      return res.data;
+      return res.data?.data || res.data;
     } catch (err) {
       console.error("Get all airlines error:", err);
       return rejectWithValue(
@@ -85,11 +77,10 @@ export const updateAirline = createAsyncThunk(
   "airline/update",
   async (airlineData, { rejectWithValue }) => {
     try {
-      const res = await api.put("/api/airlines", airlineData, {
-        headers: getHeaders()
-      });
+      const { id, ...data } = airlineData;
+      const res = await api.put(`/api/airlines/${id}`, data);
       console.log("Update airline success:", res.data);
-      return res.data;
+      return res.data?.data;
     } catch (err) {
       console.error("Update airline error:", err);
       return rejectWithValue(
@@ -104,9 +95,7 @@ export const deleteAirline = createAsyncThunk(
   "airline/delete",
   async (airlineId, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/airlines/${airlineId}`, {
-        headers: getHeaders()
-      });
+      await api.delete(`/api/airlines/${airlineId}`);
       console.log("Delete airline success");
       return airlineId;
     } catch (err) {
@@ -128,11 +117,9 @@ export const approveAirline = createAsyncThunk(
   "airline/approve",
   async (airlineId, { rejectWithValue }) => {
     try {
-      const res = await api.post(`/api/airlines/${airlineId}/approve`, null, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`/api/airlines/${airlineId}/approve`, null);
       console.log("Approve airline success:", res.data);
-      return res.data;
+      return res.data?.data;
     } catch (err) {
       console.error("Approve airline error:", err);
       return rejectWithValue(
@@ -147,11 +134,9 @@ export const suspendAirline = createAsyncThunk(
   "airline/suspend",
   async (airlineId, { rejectWithValue }) => {
     try {
-      const res = await api.post(`/api/airlines/${airlineId}/suspend`, null, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`/api/airlines/${airlineId}/suspend`, null);
       console.log("Suspend airline success:", res.data);
-      return res.data;
+      return res.data?.data;
     } catch (err) {
       console.error("Suspend airline error:", err);
       return rejectWithValue(
@@ -166,11 +151,9 @@ export const banAirline = createAsyncThunk(
   "airline/ban",
   async (airlineId, { rejectWithValue }) => {
     try {
-      const res = await api.post(`/api/airlines/${airlineId}/ban`, null, {
-        headers: getHeaders()
-      });
+      const res = await api.post(`/api/airlines/${airlineId}/ban`, null);
       console.log("Ban airline success:", res.data);
-      return res.data;
+      return res.data?.data;
     } catch (err) {
       console.error("Ban airline error:", err);
       return rejectWithValue(
