@@ -1,4 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from "sonner";
 import api from "@/utils/api";
 import { clearUserState } from "./userSlice";
 import { logoutLocal } from "../auth/authSlice";
@@ -65,9 +66,13 @@ export const logout = createAsyncThunk(
   "user/logout",
   async (_, { dispatch }) => {
     try {
-      await api.post("/auth/logout");
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      // Send refresh token so backend can invalidate it gracefully
+      await api.post("/api/auth/logout", { refreshToken });
     } catch (err) {
-      console.warn("Logout API failed, fallback local logout");
+      console.warn("Logout API failed, fallback local logout", err);
+      toast.error("Logout failed on server, signing out locally");
     }
 
     localStorage.clear();
@@ -75,6 +80,7 @@ export const logout = createAsyncThunk(
     dispatch(clearUserState());
     dispatch(logoutLocal());
 
+    toast.success("You have been logged out");
     return true;
   }
 );

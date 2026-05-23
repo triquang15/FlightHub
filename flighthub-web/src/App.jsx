@@ -139,20 +139,20 @@ function App() {
             <Route
               path="/traveler"
               element={
-                <AuthRequired>
+                <>
                   <Header />
                   <HomePage />
-                </AuthRequired>
+                </>
               }
             />
 
             <Route
               path="/search"
               element={
-                <AuthRequired>
+                <>
                   <Header />
                   <SearchResults />
-                </AuthRequired>
+                </>
               }
             />
 

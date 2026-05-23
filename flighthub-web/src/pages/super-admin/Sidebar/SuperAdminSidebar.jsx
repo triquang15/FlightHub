@@ -76,9 +76,14 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
     }))
   }
 
-    const handleLogout = () => {
-      dispatch(logout())
-      navigate('/login')
+    const handleLogout = async () => {
+      try {
+        await dispatch(logout()).unwrap()
+      } catch (e) {
+        console.error("Logout failed:", e)
+      } finally {
+        navigate('/')
+      }
     }
   
   return (

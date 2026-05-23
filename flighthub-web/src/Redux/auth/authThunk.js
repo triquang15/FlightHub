@@ -1,5 +1,6 @@
 import api from "@/utils/api";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from "sonner";
 
 
 export const signup = createAsyncThunk(
@@ -42,9 +43,12 @@ export const login = createAsyncThunk(
       localStorage.setItem("accessToken", authResponse.accessToken);
       localStorage.setItem("refreshToken", authResponse.refreshToken);
 
+      toast.success("Logged in successfully");
+
       return authResponse;
     } catch (err) {
       console.error("Login error:", err);
+      toast.error(err.response?.data?.message || "Login failed");
 
       return rejectWithValue(
         err.response?.data?.message || "Login failed"

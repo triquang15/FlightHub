@@ -47,9 +47,14 @@ const AirlineSidebar = ({ activeSection, onSectionChange, isCollapsed, onToggleC
   const navigate = useNavigate()
   const location = useLocation()
 
-  const handleLogout = () => {
-    dispatch(logout())
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout()).unwrap()
+    } catch (e) {
+      console.error("Logout failed:", e)
+    } finally {
+      navigate('/')
+    }
   }
 
   return (

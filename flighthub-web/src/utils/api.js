@@ -66,9 +66,9 @@ api.interceptors.response.use(
       !isAuthEndpoint
     ) {
       // ❗ refresh endpoint failed → logout
-      if (originalRequest.url.includes("/api/auth/refresh")) {
+        if (originalRequest.url.includes("/api/auth/refresh")) {
+        // Refresh failed — clear local tokens but do not force a navigation here.
         localStorage.clear();
-        window.location.href = "/login";
         return Promise.reject(error);
       }
 
@@ -92,8 +92,8 @@ api.interceptors.response.use(
 
         // ❗ nếu không có refresh token → logout luôn
         if (!refreshToken) {
+          // No refresh token available — clear local tokens and bubble the error.
           localStorage.clear();
-          window.location.href = "/login";
           return Promise.reject(error);
         }
 
@@ -117,9 +117,8 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
 
+        // Clear tokens and rethrow the error so callers can handle navigation.
         localStorage.clear();
-        window.location.href = "/login";
-
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
