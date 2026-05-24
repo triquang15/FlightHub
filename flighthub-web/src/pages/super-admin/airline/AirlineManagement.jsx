@@ -50,60 +50,34 @@ const AirlineManagement = ({ activeSection }) => {
 
   // Local state
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState("all")
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(10)
 
 
   React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchQuery])
+
+  React.useEffect(() => {
     dispatch(getAllAirlines({
       page: currentPage - 1,
       size: itemsPerPage,
-      sort: "name,asc"
+      sortBy: "name",
+      sortDirection: "asc",
+      keyword: debouncedSearchQuery || undefined,
+      status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined
     }))
-  }, [dispatch, currentPage, itemsPerPage])
+  }, [dispatch, currentPage, itemsPerPage, debouncedSearchQuery, statusFilter])
 
   const filteredAirlines = React.useMemo(() => {
-    if (!airlines || airlines.length === 0) {
-      return []
-    }
-
-    const normalize = (value) => String(value ?? "").toLowerCase().trim()
-    const normalizedQuery = normalize(searchQuery)
-    let filtered = [...airlines]
-
-    if (normalizedQuery) {
-      filtered = filtered.filter((airline) => {
-        const searchableValues = [
-          airline.id,
-          airline.name,
-          airline.alias,
-          airline.iataCode,
-          airline.icaoCode,
-          airline.countryName,
-          airline.countryCode,
-          airline.alliance,
-          airline.website,
-          airline.ownerId,
-          airline.owner?.fullName,
-          airline.support?.email,
-          airline.support?.phone
-        ]
-
-        return searchableValues.some((value) =>
-          normalize(value).includes(normalizedQuery)
-        )
-      })
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (airline) => normalize(airline.status) === normalize(statusFilter)
-      )
-    }
-
-    return filtered
-  }, [airlines, searchQuery, statusFilter])
+    return Array.isArray(airlines) ? airlines : []
+  }, [airlines])
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -292,7 +266,7 @@ const AirlineManagement = ({ activeSection }) => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search airlines..."
+              placeholder="Search name, code, alliance..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)

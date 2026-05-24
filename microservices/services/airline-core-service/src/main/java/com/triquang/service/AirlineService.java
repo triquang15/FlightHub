@@ -19,6 +19,8 @@ public interface AirlineService {
 
 	Page<AirlineResponse> getAllAirlines(Pageable pageable);
 
+	Page<AirlineResponse> searchAdvanced(String keyword, AirlineStatus status, Pageable pageable);
+
 	AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status);
 
 	// ----- Dropdown -----

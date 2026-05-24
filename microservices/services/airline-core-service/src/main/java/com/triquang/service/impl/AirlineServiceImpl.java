@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,6 +87,43 @@ public class AirlineServiceImpl implements AirlineService {
 
         Page<Airline> page = airlineRepository.findAll(pageable);
 
+        Map<Long, CityResponse> cityMap = preloadCities(page.getContent());
+
+        return page.map(a -> mapWithCityCached(a, cityMap));
+    }
+
+    @Override
+    public Page<AirlineResponse> searchAdvanced(String keyword, AirlineStatus status, Pageable pageable) {
+
+        log.info("DB HIT - airline searchAdvanced | keyword={} status={} page={}",
+                keyword, status, pageable.getPageNumber());
+
+        Specification<Airline> spec = (root, query, cb) -> cb.conjunction();
+
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = "%" + keyword.trim().toLowerCase() + "%";
+
+            spec = spec.and((root, q, cb) ->
+                    cb.or(
+                            cb.like(cb.lower(root.get("name")), kw),
+                            cb.like(cb.lower(root.get("alias")), kw),
+                            cb.like(cb.lower(root.get("iataCode")), kw),
+                            cb.like(cb.lower(root.get("icaoCode")), kw),
+                            cb.like(cb.lower(root.get("alliance")), kw),
+                            cb.like(cb.lower(root.get("website")), kw),
+                            cb.like(cb.lower(root.get("support").get("email")), kw),
+                            cb.like(cb.lower(root.get("support").get("phone")), kw)
+                    )
+            );
+        }
+
+        if (status != null) {
+            spec = spec.and((root, q, cb) ->
+                    cb.equal(root.get("status"), status)
+            );
+        }
+
+        Page<Airline> page = airlineRepository.findAll(spec, pageable);
         Map<Long, CityResponse> cityMap = preloadCities(page.getContent());
 
         return page.map(a -> mapWithCityCached(a, cityMap));
