@@ -493,9 +493,9 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                
 
                 {/* Summary Card */}
-                <Card className="bg-blue-50/50 border-blue-200">
+                <Card className="bg-blue-50/50 dark:bg-slate-900 border-blue-200 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-900">
+                    <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
                       <Plane className="h-5 w-5" />
                       Airport Summary
                     </CardTitle>
@@ -562,7 +562,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                 </Card>
 
                 {/* Form Actions */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 z-10 shadow-lg">
+                <div className="sticky bottom-0 bg-white dark:bg-slate-950 border-t border-gray-200 dark:border-gray-700 p-6 z-10 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">Airport: {values.name || "Untitled"}</span>
