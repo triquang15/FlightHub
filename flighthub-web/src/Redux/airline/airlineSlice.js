@@ -13,6 +13,13 @@ import {
   banAirline
 } from './airlineThunks';
 
+const mergeAirlineResponse = (currentAirline, nextAirline) => ({
+  ...currentAirline,
+  ...nextAirline,
+  countryCode: nextAirline?.countryCode ?? currentAirline?.countryCode,
+  countryName: nextAirline?.countryName ?? currentAirline?.countryName,
+});
+
 const initialState = {
   // Data
   airlines: [],
@@ -233,12 +240,15 @@ const airlineSlice = createSlice({
         // Update in airlines array
         const index = state.airlines.findIndex(airline => airline.id === action.payload.id);
         if (index !== -1) {
-          state.airlines[index] = action.payload;
+          state.airlines[index] = mergeAirlineResponse(state.airlines[index], action.payload);
         }
         // Update in paginated airlines
         const paginatedIndex = state.paginatedAirlines.content.findIndex(airline => airline.id === action.payload.id);
         if (paginatedIndex !== -1) {
-          state.paginatedAirlines.content[paginatedIndex] = action.payload;
+          state.paginatedAirlines.content[paginatedIndex] = mergeAirlineResponse(
+            state.paginatedAirlines.content[paginatedIndex],
+            action.payload
+          );
         }
       })
       .addCase(approveAirline.rejected, (state, action) => {
@@ -256,12 +266,15 @@ const airlineSlice = createSlice({
         // Update in airlines array
         const index = state.airlines.findIndex(airline => airline.id === action.payload.id);
         if (index !== -1) {
-          state.airlines[index] = action.payload;
+          state.airlines[index] = mergeAirlineResponse(state.airlines[index], action.payload);
         }
         // Update in paginated airlines
         const paginatedIndex = state.paginatedAirlines.content.findIndex(airline => airline.id === action.payload.id);
         if (paginatedIndex !== -1) {
-          state.paginatedAirlines.content[paginatedIndex] = action.payload;
+          state.paginatedAirlines.content[paginatedIndex] = mergeAirlineResponse(
+            state.paginatedAirlines.content[paginatedIndex],
+            action.payload
+          );
         }
       })
       .addCase(suspendAirline.rejected, (state, action) => {
@@ -279,12 +292,15 @@ const airlineSlice = createSlice({
         // Update in airlines array
         const index = state.airlines.findIndex(airline => airline.id === action.payload.id);
         if (index !== -1) {
-          state.airlines[index] = action.payload;
+          state.airlines[index] = mergeAirlineResponse(state.airlines[index], action.payload);
         }
         // Update in paginated airlines
         const paginatedIndex = state.paginatedAirlines.content.findIndex(airline => airline.id === action.payload.id);
         if (paginatedIndex !== -1) {
-          state.paginatedAirlines.content[paginatedIndex] = action.payload;
+          state.paginatedAirlines.content[paginatedIndex] = mergeAirlineResponse(
+            state.paginatedAirlines.content[paginatedIndex],
+            action.payload
+          );
         }
       })
       .addCase(banAirline.rejected, (state, action) => {
@@ -317,4 +333,3 @@ export const {
 } = airlineSlice.actions;
 
 export default airlineSlice.reducer;
-
