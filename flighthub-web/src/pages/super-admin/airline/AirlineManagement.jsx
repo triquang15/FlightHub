@@ -73,8 +73,7 @@ const AirlineManagement = ({ activeSection }) => {
       filtered = filtered.filter(airline =>
         airline.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         airline.iataCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        airline.icaoCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        airline.country?.toLowerCase().includes(searchQuery.toLowerCase())
+        airline.icaoCode?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
 
@@ -406,10 +405,7 @@ const AirlineManagement = ({ activeSection }) => {
                     <span className="text-xs text-gray-500">ICAO Code</span>
                     <p className="text-sm font-medium">{airline.icaoCode}</p>
                   </div>
-                  <div>
-                    <span className="text-xs text-gray-500">Country</span>
-                    <p className="text-sm font-medium">{airline.country}</p>
-                  </div>
+                  {/* Country removed from overview */}
                   <div>
                     <span className="text-xs text-gray-500">Status</span>
                     <p className="text-sm font-medium">{airline.status}</p>

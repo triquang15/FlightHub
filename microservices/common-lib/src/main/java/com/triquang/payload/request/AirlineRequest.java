@@ -26,9 +26,6 @@ public class AirlineRequest {
 
 	private String alias;
 
-	@NotBlank
-	private String country;
-
 	private String logoUrl;
 
 	private String website;

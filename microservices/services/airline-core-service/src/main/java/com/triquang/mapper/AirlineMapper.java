@@ -1,41 +1,42 @@
 package com.triquang.mapper;
 
 import com.triquang.embeddable.Support;
+import com.triquang.enums.AirlineStatus;
 import com.triquang.model.Airline;
 import com.triquang.payload.request.AirlineRequest;
 import com.triquang.payload.response.AirlineResponse;
 
 public class AirlineMapper {
 
+    // ================= CREATE =================
     public static Airline toEntity(AirlineRequest request, Long ownerId) {
         if (request == null) return null;
 
         Airline airline = Airline.builder()
-                .iataCode(request.getIataCode())
-                .icaoCode(request.getIcaoCode())
-                .name(request.getName())
-                .alias(request.getAlias())
-                .country(request.getCountry())
+                .iataCode(toUpper(request.getIataCode()))
+                .icaoCode(toUpper(request.getIcaoCode()))
+                .name(trim(request.getName()))
+                .alias(trim(request.getAlias()))
                 .logoUrl(request.getLogoUrl())
                 .website(request.getWebsite())
-                .status(request.getStatus())
-                .alliance(request.getAlliance())
+                .status(request.getStatus() != null ? request.getStatus() : AirlineStatus.ACTIVE)
+                .alliance(trim(request.getAlliance()))
                 .headquartersCityId(request.getHeadquartersCityId())
                 .ownerId(ownerId)
                 .build();
 
-        if (request.getSupportEmail() != null || request.getSupportPhone() != null
-                || request.getSupportHours() != null) {
+        if (hasSupport(request)) {
             airline.setSupport(Support.builder()
-                    .email(request.getSupportEmail())
-                    .phone(request.getSupportPhone())
-                    .hours(request.getSupportHours())
+                    .email(trim(request.getSupportEmail()))
+                    .phone(trim(request.getSupportPhone()))
+                    .hours(trim(request.getSupportHours()))
                     .build());
         }
 
         return airline;
     }
 
+    // ================= RESPONSE =================
     public static AirlineResponse toResponse(Airline airline) {
         if (airline == null) return null;
 
@@ -45,14 +46,12 @@ public class AirlineMapper {
                 .icaoCode(airline.getIcaoCode())
                 .name(airline.getName())
                 .alias(airline.getAlias())
-                .country(airline.getCountry())
                 .logoUrl(airline.getLogoUrl())
                 .website(airline.getWebsite())
                 .status(airline.getStatus())
                 .alliance(airline.getAlliance())
                 .support(airline.getSupport())
                 .headquartersCityId(airline.getHeadquartersCityId())
-                .support(airline.getSupport())
                 .createdAt(airline.getCreatedAt())
                 .updatedAt(airline.getUpdatedAt())
                 .ownerId(airline.getOwnerId())
@@ -60,27 +59,76 @@ public class AirlineMapper {
                 .build();
     }
 
-
-
+    // ================= UPDATE =================
     public static void updateEntity(Airline airline, AirlineRequest request) {
         if (airline == null || request == null) return;
 
-        airline.setIataCode(request.getIataCode());
-        airline.setIcaoCode(request.getIcaoCode());
-        airline.setName(request.getName());
-        airline.setAlias(request.getAlias());
-        airline.setCountry(request.getCountry());
-        airline.setLogoUrl(request.getLogoUrl());
-        airline.setWebsite(request.getWebsite());
-        airline.setStatus(request.getStatus());
-        airline.setAlliance(request.getAlliance());
-        airline.setHeadquartersCityId(request.getHeadquartersCityId());
+        if (request.getIataCode() != null) {
+            airline.setIataCode(toUpper(request.getIataCode()));
+        }
 
+        if (request.getIcaoCode() != null) {
+            airline.setIcaoCode(toUpper(request.getIcaoCode()));
+        }
+
+        if (request.getName() != null) {
+            airline.setName(trim(request.getName()));
+        }
+
+        if (request.getAlias() != null) {
+            airline.setAlias(trim(request.getAlias()));
+        }
+
+        if (request.getLogoUrl() != null) {
+            airline.setLogoUrl(request.getLogoUrl());
+        }
+
+        if (request.getWebsite() != null) {
+            airline.setWebsite(request.getWebsite());
+        }
+
+        if (request.getStatus() != null) {
+            airline.setStatus(request.getStatus());
+        }
+
+        if (request.getAlliance() != null) {
+            airline.setAlliance(trim(request.getAlliance()));
+        }
+
+        if (request.getHeadquartersCityId() != null) {
+            airline.setHeadquartersCityId(request.getHeadquartersCityId());
+        }
+
+        // support
         if (airline.getSupport() == null) {
             airline.setSupport(new Support());
         }
-        airline.getSupport().setEmail(request.getSupportEmail());
-        airline.getSupport().setPhone(request.getSupportPhone());
-        airline.getSupport().setHours(request.getSupportHours());
+
+        if (request.getSupportEmail() != null) {
+            airline.getSupport().setEmail(trim(request.getSupportEmail()));
+        }
+
+        if (request.getSupportPhone() != null) {
+            airline.getSupport().setPhone(trim(request.getSupportPhone()));
+        }
+
+        if (request.getSupportHours() != null) {
+            airline.getSupport().setHours(trim(request.getSupportHours()));
+        }
+    }
+
+    // ================= HELPER =================
+    private static boolean hasSupport(AirlineRequest request) {
+        return request.getSupportEmail() != null
+                || request.getSupportPhone() != null
+                || request.getSupportHours() != null;
+    }
+
+    private static String trim(String val) {
+        return val != null ? val.trim() : null;
+    }
+
+    private static String toUpper(String val) {
+        return val != null ? val.trim().toUpperCase() : null;
     }
 }

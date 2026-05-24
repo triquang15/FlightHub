@@ -96,7 +96,7 @@ const SuccessScreen = ({ airlineData }) => {
                       <span className="text-lg font-semibold">Welcome to the Global Aviation Network</span>
                     </div>
                     <p className="text-green-100 text-lg max-w-md mx-auto">
-                      Your airline is now connected to millions of travelers worldwide
+                      Your airline is now live and discoverable by millions of travelers worldwide.
                     </p>
                   </div>
                 </div>

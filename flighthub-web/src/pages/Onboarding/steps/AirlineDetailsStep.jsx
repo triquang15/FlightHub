@@ -67,7 +67,6 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
     icaoCode: data?.icaoCode || "",
     airlineName: data?.airlineName || "",
     alias: data?.alias || "",
-    country: data?.country || "",
     logoUrl: data?.logoUrl || "",
     website: data?.website || "",
     status: data?.status || "ACTIVE",
@@ -76,47 +75,12 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
     headquartersCity: data?.headquartersCity || "",
   };
 
-  const countries = [
-    "United States",
-    "United Kingdom",
-    "Canada",
-    "Australia",
-    "Germany",
-    "France",
-    "Japan",
-    "Singapore",
-    "United Arab Emirates",
-    "Netherlands",
-    "Switzerland",
-    "Sweden",
-    "Norway",
-    "Denmark",
-    "New Zealand",
-    "India",
-    "China",
-    "South Korea",
-    "Brazil",
-    "Mexico",
-    "Argentina",
-    "Chile",
-    "Italy",
-    "Spain",
-    "Portugal",
-    "Ireland",
-    "Austria",
-    "Belgium",
-    "Finland",
-    "Iceland",
-    "Luxembourg",
-    "Turkey",
-    "South Africa",
-    "Egypt",
-  ];
+  // Country selection removed: backend does not use this field
 
   const statusOptions = [
     { value: "ACTIVE", label: "Active" },
     { value: "INACTIVE", label: "Inactive" },
-    { value: "SUSPENDED", label: "Suspended" },
+    { value: "BANNED", label: "Banned" },
   ];
 
   const alliances = ["Star Alliance", "SkyTeam", "Oneworld", "Unaligned"];
@@ -143,28 +107,22 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   };
 
   const FormField = ({ name, label, children, required = false, helpText, ...props }) => (
-    <div className="space-y-2">
-      <Label htmlFor={name} className="text-gray-700 flex items-center gap-2 font-medium">
-        {props.icon && <props.icon className="w-4 h-4 text-gray-500" />}
-        {label}
-        {required && <span className="text-red-500 text-sm">*</span>}
-        {helpText && (
-          <div className="ml-auto">
-            <div className="group relative">
-              <AlertCircle className="w-4 h-4 text-gray-400 cursor-help" />
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                {helpText}
-              </div>
-            </div>
-          </div>
-        )}
-      </Label>
-      {children}
+    <div className="relative">
+      <div className="relative">
+        {children}
+        <label htmlFor={name} className="absolute left-3 top-3 pointer-events-none text-gray-500 transition-all duration-200 peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600">
+          {props.icon && <props.icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
+          {label} {required && <span className="text-red-500 text-sm">*</span>}
+        </label>
+      </div>
       <ErrorMessage
         name={name}
         component="div"
-        className="text-red-500 text-sm flex items-center gap-1"
+        className="text-red-500 text-sm flex items-center gap-1 mt-2"
       />
+      {helpText && (
+        <div className="text-xs text-gray-400 mt-1">{helpText}</div>
+      )}
     </div>
   );
 
@@ -176,10 +134,10 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
         </div>
         <div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            Configure Your Airline Profile
+            Airline Details & Branding
           </h3>
           <p className="text-gray-600 text-lg">
-            Set up your airline's identity and operational details
+            Enter your airline's identity, codes and brand assets to get listed.
           </p>
         </div>
       </div>
@@ -324,23 +282,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
               {/* Country and Headquarters */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="country" label="Country" icon={Globe}>
-                  <Select
-                    onValueChange={(value) => setFieldValue("country", value)}
-                    value={values.country}
-                  >
-                    <SelectTrigger className="w-full transition-all duration-200 hover:shadow-md focus:shadow-lg">
-                      <SelectValue placeholder="Select country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
+                {/* Country field removed (not used by backend) */}
 
                 <FormField
                   name="headquartersCity"
@@ -521,7 +463,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   // disabled={!isValid}
                   // className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-2 group"
                 >
-                  Continue Setup
+                  Save & Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>

@@ -53,24 +53,19 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
   ];
 
   const FormField = ({ name, label, children, helpText, ...props }) => (
-    <div className="space-y-2">
-      <Label htmlFor={name} className="text-gray-700 flex items-center gap-2 font-medium">
-        {props.icon && <props.icon className="w-4 h-4 text-gray-500" />}
-        {label}
-        <span className="text-green-600 text-sm font-normal ml-1">(Optional)</span>
-        {helpText && (
-          <div className="ml-auto">
-            <div className="group relative">
-              <AlertCircle className="w-4 h-4 text-gray-400 cursor-help" />
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                {helpText}
-              </div>
-            </div>
-          </div>
-        )}
-      </Label>
-      {children}
-      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1" />
+    <div className="relative">
+      <div className="relative">
+        {children}
+        <label htmlFor={name} className="absolute left-3 top-3 pointer-events-none text-gray-500 transition-all duration-200 peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600">
+          {props.icon && <props.icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
+          {label}
+          <span className="text-green-600 text-xs font-normal ml-1">(Optional)</span>
+        </label>
+      </div>
+      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1 mt-2" />
+      {helpText && (
+        <div className="text-xs text-gray-400 mt-1">{helpText}</div>
+      )}
     </div>
   );
 
@@ -82,10 +77,10 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
         </div>
         <div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            Customer Support Center
+            Customer Support & Contact
           </h3>
           <p className="text-gray-600 text-lg">
-            Configure how customers can reach your support team
+            Provide preferred contact channels so customers and partners can reach you.
           </p>
         </div>
         <div className="inline-flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
@@ -288,7 +283,7 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   type="submit"
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-2 group"
                 >
-                  Review & Launch
+                  Review & Launch Setup
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>

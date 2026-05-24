@@ -14,7 +14,7 @@ import com.triquang.model.Airline;
 
 public interface AirlineRepository extends JpaRepository<Airline, Long> {
 
-	List<Airline> findAllByOwnerId(Long ownerId);
+    List<Airline> findAllByOwnerId(Long ownerId);
 
     Optional<Airline> findByIataCode(String code);
 
@@ -24,8 +24,6 @@ public interface AirlineRepository extends JpaRepository<Airline, Long> {
 
     boolean existsByIcaoCode(String code);
 
-    Page<Airline> findByCountryIgnoreCase(String country, Pageable pageable);
-
     Page<Airline> findByStatus(AirlineStatus status, Pageable pageable);
 
     List<Airline> findByStatus(AirlineStatus status);
@@ -33,14 +31,13 @@ public interface AirlineRepository extends JpaRepository<Airline, Long> {
     @Query("SELECT a FROM Airline a " +
             "WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(a.iataCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(a.icaoCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(a.country) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+            "OR LOWER(a.icaoCode) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Airline> searchByKeyword(String keyword, Pageable pageable);
 
-    /** Used for flight search: resolve IATA codes → airline IDs in bulk. */
+    // Bulk resolve
     List<Airline> findAllByIataCodeIn(Collection<String> iataCodes);
 
-    /** Used for flight search: find all airlines belonging to a given alliance. */
+    // Alliance filter
     List<Airline> findAllByAllianceIgnoreCase(String alliance);
 
     Optional<Airline> findByOwnerId(Long ownerId);

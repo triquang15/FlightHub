@@ -111,7 +111,7 @@ const AirlinePerformancePage = () => {
       switch (status?.toUpperCase()) {
         case 'ACTIVE':
           return 'bg-green-500/10 text-green-700 border-green-200';
-        case 'SUSPENDED':
+        case 'BANNED':
           return 'bg-red-500/10 text-red-700 border-red-200';
         case 'PENDING':
           return 'bg-yellow-500/10 text-yellow-700 border-yellow-200';
@@ -131,10 +131,7 @@ const AirlinePerformancePage = () => {
                   <h3 className="font-semibold text-lg">{airline.airlineName}</h3>
                   <Badge variant="outline" className="text-xs">{airline.airlineCode}</Badge>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Globe className="h-3 w-3 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">{airline.country}</p>
-                </div>
+                {/* country removed */}
               </div>
             </div>
             <Badge className={getStatusColor(airline.status)} variant="outline">

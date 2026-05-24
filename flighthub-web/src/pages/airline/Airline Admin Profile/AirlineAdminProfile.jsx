@@ -27,7 +27,6 @@ export default function AirlineAdminProfile() {
     iataCode: '',
     icaoCode: '',
     alias: '',
-    country: '',
     logoUrl: '',
     website: '',
     alliance: '',
@@ -55,7 +54,6 @@ export default function AirlineAdminProfile() {
         iataCode: currentAirline.iataCode || '',
         icaoCode: currentAirline.icaoCode || '',
         alias: currentAirline.alias || '',
-        country: currentAirline.country || '',
         logoUrl: currentAirline.logoUrl || '',
         website: currentAirline.website || '',
         alliance: currentAirline.alliance || '',
@@ -105,7 +103,7 @@ export default function AirlineAdminProfile() {
   }
   
   if (!data.country || data.country.trim().length === 0) {
-    newErrors.country = 'Country is required';
+    // country not required (backend does not use it)
   }
   
   // Optional field validation

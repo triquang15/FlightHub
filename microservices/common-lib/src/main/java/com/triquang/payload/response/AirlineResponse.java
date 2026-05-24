@@ -16,13 +16,11 @@ import com.triquang.enums.AirlineStatus;
 public class AirlineResponse {
 
     private Long id;
-
     private String iataCode;
     private String icaoCode;
 
     private String name;
     private String alias;
-    private String country;
 
     private String logoUrl;
     private String website;
@@ -31,6 +29,9 @@ public class AirlineResponse {
     private String alliance;
 
     private Long headquartersCityId;
+
+    private String countryCode;
+    private String countryName;
 
     private Instant createdAt;
     private Instant updatedAt;

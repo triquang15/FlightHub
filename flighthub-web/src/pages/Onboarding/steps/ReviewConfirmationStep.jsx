@@ -41,7 +41,6 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
         icaoCode: formData.airline.icaoCode,
         name: formData.airline.airlineName,
         alias: formData.airline.alias || null,
-        country: formData.airline.country,
         logoUrl: formData.airline.logoUrl || null,
         website: formData.airline.website || null,
         status: formData.airline.status,
@@ -183,7 +182,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
 
             <DataRow label="Airline Name" value={formData.airline.airlineName} />
             <DataRow label="Alias" value={formData.airline.alias} />
-            <DataRow label="Country" value={formData.airline.country} />
+            {/* Country removed (not used by backend) */}
             <DataRow label="Headquarters" value={formData.airline.headquartersCity} />
             <DataRow
               label="Status"

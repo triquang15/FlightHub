@@ -3,7 +3,7 @@ export const AIRLINE_STATUS = {
   ACTIVE: "Active",
   INACTIVE: "Inactive", 
   PENDING: "Pending",
-  SUSPENDED: "Suspended"
+  BANNED: "Banned"
 }
 
 // Airline status configuration for UI
@@ -23,22 +23,14 @@ export const AIRLINE_STATUS_CONFIG = {
     icon: "Clock",
     description: "Airline is pending approval"
   },
-  SUSPENDED: { 
-    color: "bg-gray-100 text-gray-800 border-gray-200", 
-    icon: "Shield",
-    description: "Airline is temporarily suspended"
+  BANNED: {
+    color: "bg-red-100 text-red-800 border-red-200",
+    icon: "XCircle",
+    description: "Airline has been banned"
   }
 }
 
-// Common countries for airline registration
-export const COUNTRIES = [
-  "India", "United States", "United Kingdom", "Germany", "France", 
-  "Japan", "Australia", "Canada", "Brazil", "China", "Singapore",
-  "United Arab Emirates", "Netherlands", "Spain", "Italy", "Switzerland",
-  "Sweden", "Norway", "Denmark", "Finland", "Belgium", "Austria",
-  "South Korea", "Thailand", "Malaysia", "Indonesia", "Philippines",
-  "Vietnam", "New Zealand", "South Africa", "Egypt", "Turkey", "Russia"
-]
+// Country field removed: backend does not use this field
 
 // Airline alliances
 export const ALLIANCES = [
@@ -71,8 +63,8 @@ export const VALIDATION_RULES = {
     message: "Airline name must be between 2 and 100 characters"
   },
   COUNTRY: {
-    required: true,
-    message: "Country is required"
+    required: false,
+    message: "Country (not required)"
   },
   WEBSITE: {
     required: false,
@@ -112,8 +104,8 @@ export const FORM_FIELDS = {
     { name: "iataCode", label: "IATA Code", type: "text", required: true, maxLength: 2 },
     { name: "icaoCode", label: "ICAO Code", type: "text", required: true, maxLength: 3 },
     { name: "name", label: "Airline Name", type: "text", required: true },
-    { name: "alias", label: "Alias", type: "text", required: false },
-    { name: "country", label: "Country", type: "select", required: true, options: COUNTRIES }
+    { name: "alias", label: "Alias", type: "text", required: false }
+    // country field removed
   ],
   MEDIA_WEB: [
     { name: "logoUrl", label: "Logo URL", type: "url", required: false },
@@ -138,7 +130,7 @@ export const DEFAULT_AIRLINE_DATA = {
   icaoCode: "",
   name: "",
   alias: "",
-  country: "",
+  // country removed
   logoUrl: "",
   website: "",
   status: "ACTIVE",

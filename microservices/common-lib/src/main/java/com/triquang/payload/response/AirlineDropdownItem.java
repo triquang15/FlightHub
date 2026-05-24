@@ -15,5 +15,4 @@ public class AirlineDropdownItem {
     private String iataCode;
     private String icaoCode;
     private String logoUrl;
-    private String country;
 }

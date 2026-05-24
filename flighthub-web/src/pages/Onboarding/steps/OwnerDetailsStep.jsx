@@ -115,42 +115,17 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   };
 
   const FormField = ({ name, label, type = 'text', icon: Icon, isPassword = false, ...props }) => (
-    <div className="space-y-2">
-      <Label htmlFor={name} className="text-gray-700 flex items-center gap-2 font-medium">
-        {Icon && <Icon className="w-4 h-4 text-gray-500" />}
-        {label}
-        {name === 'password' && (
-          <div className="ml-auto flex items-center space-x-2">
-            {passwordStrength > 0 && (
-              <div className="flex space-x-1">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <div
-                    key={level}
-                    className={`h-1 w-4 rounded-full transition-colors ${
-                      level <= passwordStrength
-                        ? level <= 2
-                          ? 'bg-red-400'
-                          : level <= 3
-                          ? 'bg-yellow-400'
-                          : 'bg-green-400'
-                        : 'bg-gray-200'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </Label>
+    <div className="relative">
       <Field name={name}>
-        {({ field, meta, form }) => (
+        {({ field, meta }) => (
           <div className="relative">
             <Input
               {...field}
               {...props}
               id={name}
+              placeholder=" "
               type={isPassword ? (name === 'password' ? (showPassword ? 'text' : 'password') : (showConfirmPassword ? 'text' : 'password')) : type}
-              className={`transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 ${
+              className={`peer w-full transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 py-3 rounded-md bg-white/80 backdrop-blur-sm ${
                 meta.touched && meta.error
                   ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                   : meta.touched && !meta.error
@@ -164,6 +139,17 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 }
               }}
             />
+
+            <label
+              htmlFor={name}
+              className={`absolute left-3 transition-all duration-200 pointer-events-none text-gray-500 ${
+                meta.touched && !meta.error ? 'text-green-600' : 'text-gray-500'
+              } peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600`}
+            >
+              {Icon && <Icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
+              {label}
+            </label>
+
             {/* Password visibility toggle */}
             {isPassword && (
               <button
@@ -178,6 +164,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 )}
               </button>
             )}
+
             {/* Validation icons */}
             {meta.touched && !isPassword && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -191,9 +178,11 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
           </div>
         )}
       </Field>
-      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1" />
+
+      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1 mt-2" />
+
       {name === 'password' && passwordStrength > 0 && (
-        <div className="text-xs text-gray-600">
+        <div className="text-xs text-gray-600 mt-1">
           Password strength: {passwordStrength <= 2 ? 'Weak' : passwordStrength <= 3 ? 'Fair' : passwordStrength <= 4 ? 'Good' : 'Strong'}
         </div>
       )}
@@ -208,10 +197,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         </div>
         <div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            Create Your Admin Account
+            Create Airline Administrator
           </h3>
           <p className="text-gray-600 text-lg">
-            Secure your airline's presence with administrator credentials
+            Securely create an administrator account to manage your airline.
           </p>
         </div>
       </div>
@@ -327,7 +316,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5 mr-3 group-hover:animate-pulse" />
-                      Create Account & Continue
+                      Create Admin & Continue
                     </>
                   )}
                 </Button>
@@ -348,7 +337,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                   </button>
                 </p>
                 <p className="text-xs text-gray-500 mt-3">
-                  By creating an account, you agree to our Terms of Service and Privacy Policy
+                  By creating an account, you agree to our Terms of Service and Privacy Policy.
                 </p>
               </div>
             </Form>

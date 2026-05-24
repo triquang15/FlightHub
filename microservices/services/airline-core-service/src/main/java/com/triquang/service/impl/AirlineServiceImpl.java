@@ -1,6 +1,8 @@
 package com.triquang.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -9,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.triquang.client.CityClient;
 import com.triquang.enums.AirlineStatus;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
@@ -17,146 +20,226 @@ import com.triquang.model.Airline;
 import com.triquang.payload.request.AirlineRequest;
 import com.triquang.payload.response.AirlineDropdownItem;
 import com.triquang.payload.response.AirlineResponse;
+import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.AirlineRepository;
 import com.triquang.service.AirlineService;
 
 import java.util.List;
-
-/**
- * AirlineServiceImpl is the implementation of the AirlineService interface. It
- * provides methods to manage airlines, including creating, reading, updating,
- * and deleting airlines, as well as changing airline status and retrieving
- * airlines for dropdowns.
- * 
- * @author Tri Quang
- */
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class AirlineServiceImpl implements AirlineService {
 
-	private final AirlineRepository airlineRepository;
+    private final AirlineRepository airlineRepository;
+    private final CityClient cityClient;
 
-	// ---------- CREATE ----------
-	@Override
-	public AirlineResponse createAirline(AirlineRequest request, Long ownerId) {
+    // ================= CREATE =================
+    @Override
+    public AirlineResponse createAirline(AirlineRequest request, Long ownerId) {
 
-		validateRequest(request);
+        validateRequest(request);
 
-		Airline airline = AirlineMapper.toEntity(request, ownerId);
-		Airline saved = airlineRepository.save(airline);
+        Airline airline = AirlineMapper.toEntity(request, ownerId);
+        Airline saved = airlineRepository.save(airline);
 
-		return AirlineMapper.toResponse(saved);
-	}
+        log.info("Created airline id={}", saved.getId());
 
-	// ---------- READ ----------
-	@Override
-	@Cacheable(cacheNames = "airlinesByOwner", key = "#ownerId")
-	public List<AirlineResponse> getAirlinesByOwner(Long ownerId) {
+        return mapWithCity(saved); // ✅ enrich đúng
+    }
 
-		List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
+    // ================= READ =================
 
-		if (airlines.isEmpty()) {
-			throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
-		}
+    @Override
+    @Cacheable(cacheNames = "airlinesByOwner", key = "#ownerId")
+    public List<AirlineResponse> getAirlinesByOwner(Long ownerId) {
 
-		return airlines.stream().map(AirlineMapper::toResponse).toList();
-	}
+        List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
 
-	@Override
-	@Cacheable(cacheNames = "airlines", key = "#id")
-	public AirlineResponse getAirlineById(Long id) {
+        if (airlines.isEmpty()) {
+            throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+        }
 
-		Airline airline = airlineRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+        // ✅ FIX: dùng preload thay vì gọi từng cái
+        Map<Long, CityResponse> cityMap = preloadCities(airlines);
 
-		return AirlineMapper.toResponse(airline);
-	}
+        return airlines.stream()
+                .map(a -> mapWithCityCached(a, cityMap))
+                .toList();
+    }
 
-	@Override
-	public Page<AirlineResponse> getAllAirlines(Pageable pageable) {
-		return airlineRepository.findAll(pageable).map(AirlineMapper::toResponse);
-	}
+    @Override
+    @Cacheable(cacheNames = "airlines", key = "#id")
+    public AirlineResponse getAirlineById(Long id) {
 
-	// ---------- UPDATE ----------
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "airlines", key = "#id"),
-			@CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
-			@CacheEvict(cacheNames = "airlinesDropdown", allEntries = true) })
-	public AirlineResponse updateAirline(Long id, AirlineRequest request, Long ownerId) {
+        Airline airline = airlineRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
-		validateRequest(request);
+        return mapWithCity(airline); // single → OK
+    }
 
-		Airline airline = airlineRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+    @Override
+    public Page<AirlineResponse> getAllAirlines(Pageable pageable) {
 
-		// ownership check
-		if (!airline.getOwnerId().equals(ownerId)) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+        Page<Airline> page = airlineRepository.findAll(pageable);
 
-		AirlineMapper.updateEntity(airline, request);
+        Map<Long, CityResponse> cityMap = preloadCities(page.getContent());
 
-		return AirlineMapper.toResponse(airlineRepository.save(airline));
-	}
+        return page.map(a -> mapWithCityCached(a, cityMap));
+    }
 
-	@Override
-	@Caching(evict = {
-	        @CacheEvict(cacheNames = "airlines", key = "#id"),
-	        @CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
-	        @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
-	})
-	public void deleteAirline(Long id, Long ownerId) {
+    // ================= UPDATE =================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#id"),
+            @CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public AirlineResponse updateAirline(Long id, AirlineRequest request, Long ownerId) {
 
-	    Airline airline = airlineRepository.findById(id)
-	            .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+        validateRequest(request);
 
-	    if (!airline.getOwnerId().equals(ownerId)) {
-	        throw new BaseException(ErrorCode.INVALID_INPUT);
-	    }
+        Airline airline = airlineRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
-	    airlineRepository.delete(airline);
-	}
+        if (!airline.getOwnerId().equals(ownerId)) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
 
-	// ---------- BUSINESS ----------
-	@Override
-	@Caching(evict = { @CacheEvict(cacheNames = "airlines", key = "#airlineId"),
-			@CacheEvict(cacheNames = "airlinesByAlliance", allEntries = true) })
-	public AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status) {
+        AirlineMapper.updateEntity(airline, request);
 
-		Airline airline = airlineRepository.findById(airlineId)
-				.orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+        Airline saved = airlineRepository.save(airline);
 
-		airline.setStatus(status);
+        return mapWithCity(saved); // single → OK
+    }
 
-		return AirlineMapper.toResponse(airlineRepository.save(airline));
-	}
+    // ================= DELETE =================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#id"),
+            @CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public void deleteAirline(Long id, Long ownerId) {
 
-	// ---------- DROPDOWN ----------
-	@Override
-	@Cacheable(cacheNames = "airlinesDropdown")
-	public List<AirlineDropdownItem> getAirlinesForDropdown() {
+        Airline airline = airlineRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
-		return airlineRepository.findByStatus(AirlineStatus.ACTIVE).stream()
-				.map(a -> AirlineDropdownItem.builder().id(a.getId()).name(a.getName()).iataCode(a.getIataCode())
-						.icaoCode(a.getIcaoCode()).logoUrl(a.getLogoUrl()).country(a.getCountry()).build())
-				.toList();
-	}
+        if (!airline.getOwnerId().equals(ownerId)) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
 
-	// ---------- VALIDATION ----------
-	private void validateRequest(AirlineRequest request) {
+        airlineRepository.delete(airline);
+    }
 
-		if (request.getName() == null || request.getName().isBlank()) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+    // ================= ADMIN =================
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#airlineId"),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status) {
 
-		if (request.getIataCode() != null && request.getIataCode().length() != 2) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+        Airline airline = airlineRepository.findById(airlineId)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
-		if (request.getIcaoCode() != null && request.getIcaoCode().length() != 3) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
-	}
+        airline.setStatus(status);
+
+        return AirlineMapper.toResponse(airlineRepository.save(airline));
+    }
+
+    // ================= DROPDOWN =================
+    @Override
+    @Cacheable(cacheNames = "airlinesDropdown")
+    public List<AirlineDropdownItem> getAirlinesForDropdown() {
+
+        return airlineRepository.findByStatus(AirlineStatus.ACTIVE)
+                .stream()
+                .map(a -> AirlineDropdownItem.builder()
+                        .id(a.getId())
+                        .name(a.getName())
+                        .iataCode(a.getIataCode())
+                        .icaoCode(a.getIcaoCode())
+                        .logoUrl(a.getLogoUrl())
+                        .build())
+                .toList();
+    }
+
+    // ================= HELPER =================
+
+    // SINGLE entity
+    private AirlineResponse mapWithCity(Airline airline) {
+
+        AirlineResponse res = AirlineMapper.toResponse(airline);
+
+        if (airline.getHeadquartersCityId() != null) {
+            try {
+                var response = cityClient.getCityById(airline.getHeadquartersCityId());
+
+                if (response != null && response.data() != null) {
+                    var city = response.data();
+
+                    res.setCountryCode(city.getCountryCode());
+                    res.setCountryName(city.getCountryName());
+                }
+
+            } catch (Exception e) {
+                log.warn("City service failed for airline {}", airline.getId(), e);
+            }
+        }
+
+        return res;
+    }
+
+    private Map<Long, CityResponse> preloadCities(List<Airline> airlines) {
+
+        return airlines.stream()
+                .map(Airline::getHeadquartersCityId)
+                .filter(id -> id != null)
+                .distinct()
+                .map(id -> {
+                    try {
+                        var res = cityClient.getCityById(id);
+                        return res != null ? res.data() : null;
+                    } catch (Exception e) {
+                        log.warn("City preload failed id={}", id);
+                        return null;
+                    }
+                })
+                .filter(c -> c != null)
+                .collect(Collectors.toMap(CityResponse::getId, c -> c));
+    }
+
+    private AirlineResponse mapWithCityCached(Airline airline, Map<Long, CityResponse> cityMap) {
+
+        var res = AirlineMapper.toResponse(airline);
+
+        CityResponse city = cityMap.get(airline.getHeadquartersCityId());
+
+        if (city != null) {
+            res.setCountryCode(city.getCountryCode());
+            res.setCountryName(city.getCountryName());
+        }
+
+        return res;
+    }
+
+    // ================= VALIDATION =================
+    private void validateRequest(AirlineRequest request) {
+
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (request.getIataCode() != null && request.getIataCode().length() != 2) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (request.getIcaoCode() != null && request.getIcaoCode().length() != 3) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+    }
 }
