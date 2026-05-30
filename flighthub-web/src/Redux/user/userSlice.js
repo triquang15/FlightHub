@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
   getUserProfile,
+  updateUserProfile,
   getAllUsers,
   getUserById,
   logout
@@ -41,6 +42,18 @@ const userSlice = createSlice({
         state.userProfile = action.payload;
       })
       .addCase(getUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.profileError = action.payload;
+      })
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.profileError = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userProfile = action.payload;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
         state.loading = false;
         state.profileError = action.payload;
       })

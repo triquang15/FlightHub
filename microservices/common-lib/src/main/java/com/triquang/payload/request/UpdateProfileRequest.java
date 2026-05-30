@@ -10,6 +10,6 @@ public class UpdateProfileRequest {
     @Size(min = 2, max = 100)
     private String fullName;
 
-    @Pattern(regexp = "^(\\+84|0)[0-9]{9}$", message = "Invalid phone number")
+    @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Invalid phone number")
     private String phone;
 }

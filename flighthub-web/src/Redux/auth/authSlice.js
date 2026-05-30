@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
 import { login, signup, forgotPassword, resetPassword } from "./authThunk";
-import { getUserProfile, logout } from "../user/userThunks";
+import { getUserProfile, updateUserProfile, logout } from "../user/userThunks";
 
 // ================= INIT USER =================
 const getInitialUser = () => {
@@ -104,6 +104,11 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
       })
 
       // ================= LOGOUT =================

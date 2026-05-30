@@ -26,6 +26,42 @@ export const getUserProfile = createAsyncThunk(
 );
 
 // ============================
+// UPDATE PROFILE
+// ============================
+export const updateUserProfile = createAsyncThunk(
+  "user/updateProfile",
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const res = await api.put("/api/users/profile", profileData);
+      toast.success("Profile updated successfully");
+      return res.data?.data;
+    } catch (err) {
+      const message = getError(err) || "Failed to update profile";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// ============================
+// CHANGE PASSWORD
+// ============================
+export const changePassword = createAsyncThunk(
+  "user/changePassword",
+  async (passwordData, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/api/users/change-password", passwordData);
+      toast.success("Password updated successfully");
+      return res.data?.data;
+    } catch (err) {
+      const message = getError(err) || "Failed to update password";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// ============================
 // GET ALL USERS
 // ============================
 export const getAllUsers = createAsyncThunk(
