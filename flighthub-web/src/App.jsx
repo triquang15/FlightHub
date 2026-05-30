@@ -48,7 +48,7 @@ function RoleRedirect() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (token) {
-      dispatch(getUserProfile());
+      dispatch(getUserProfile({ silent: true }));
     }
   }, [dispatch]);
 

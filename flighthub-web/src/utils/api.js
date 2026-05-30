@@ -11,6 +11,17 @@ const api = axios.create({
   },
 });
 
+const clearSession = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+};
+
+const redirectToLogin = () => {
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+};
+
 // ============================
 // REQUEST INTERCEPTOR
 // ============================
@@ -62,6 +73,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.response?.data?.detail ||
+      "";
 
     // ❗ detect auth endpoints (IMPORTANT)
     const isAuthEndpoint =
@@ -73,13 +89,24 @@ api.interceptors.response.use(
     // ============================
     if (
       status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
+      const sessionInvalidated =
+        message.includes("Token invalidated") ||
+        message.includes("Token revoked");
+
+      if (sessionInvalidated) {
+        clearSession();
+        redirectToLogin();
+        return Promise.reject(error);
+      }
+
       // ❗ refresh endpoint failed → logout
-        if (originalRequest.url.includes("/api/auth/refresh")) {
-        // Refresh failed — clear local tokens but do not force a navigation here.
-        localStorage.clear();
+      if (originalRequest.url.includes("/api/auth/refresh")) {
+        clearSession();
+        redirectToLogin();
         return Promise.reject(error);
       }
 
@@ -104,18 +131,30 @@ api.interceptors.response.use(
         // ❗ nếu không có refresh token → logout luôn
         if (!refreshToken) {
           // No refresh token available — clear local tokens and bubble the error.
-          localStorage.clear();
+          clearSession();
+          redirectToLogin();
           return Promise.reject(error);
         }
 
-        const res = await axios.post(`${BASE_URL}/api/auth/refresh`, {
-          refreshToken,
-        });
+        const res = await axios.post(
+          `${BASE_URL}/api/auth/refresh`,
+          { refreshToken },
+          {
+            headers: {
+              "X-Device-Id": getDeviceId(),
+            },
+          }
+        );
 
-        const newAccessToken = res.data.data.accessToken;
+        const authResponse = res.data.data;
+        const newAccessToken = authResponse.accessToken;
+        const newRefreshToken = authResponse.refreshToken;
 
         // save token mới
         localStorage.setItem("accessToken", newAccessToken);
+        if (newRefreshToken) {
+          localStorage.setItem("refreshToken", newRefreshToken);
+        }
 
         // release queue
         processQueue(null, newAccessToken);
@@ -129,7 +168,8 @@ api.interceptors.response.use(
         processQueue(err, null);
 
         // Clear tokens and rethrow the error so callers can handle navigation.
-        localStorage.clear();
+        clearSession();
+        redirectToLogin();
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

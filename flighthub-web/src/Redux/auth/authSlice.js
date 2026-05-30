@@ -51,9 +51,13 @@ const authSlice = createSlice({
       state.resetPasswordError = null;
       state.resetPasswordSuccess = false;
     },
+    clearAuthError: (state) => {
+      state.error = null;
+    },
     logoutLocal: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -101,9 +105,11 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(getUserProfile.rejected, (state, action) => {
+        const isSilentCheck = action.meta.arg?.silent;
         state.loading = false;
-        state.error = action.payload;
         state.isAuthenticated = false;
+        state.user = null;
+        state.error = isSilentCheck ? null : action.payload;
       })
       .addCase(updateUserProfile.fulfilled, (state, action) => {
         state.user = action.payload;
@@ -121,6 +127,7 @@ const authSlice = createSlice({
 });
 
 export const {
+  clearAuthError,
   clearForgotPasswordState,
   clearResetPasswordState,
   logoutLocal,

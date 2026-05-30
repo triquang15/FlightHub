@@ -48,10 +48,17 @@ export const updateUserProfile = createAsyncThunk(
 // ============================
 export const changePassword = createAsyncThunk(
   "user/changePassword",
-  async (passwordData, { rejectWithValue }) => {
+  async (passwordData, { dispatch, rejectWithValue }) => {
     try {
       const res = await api.post("/api/users/change-password", passwordData);
-      toast.success("Password updated successfully");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      dispatch(clearUserState());
+      dispatch(logoutLocal());
+      toast.success("Password changed successfully. Please sign in again.");
+      setTimeout(() => {
+        window.location.assign("/login");
+      }, 900);
       return res.data?.data;
     } catch (err) {
       const message = getError(err) || "Failed to update password";
@@ -105,7 +112,7 @@ export const logout = createAsyncThunk(
       const refreshToken = localStorage.getItem("refreshToken");
 
       // Send refresh token so backend can invalidate it gracefully
-      await api.post("/api/auth/logout", { refreshToken });
+      await api.post("/auth/logout", { refreshToken });
     } catch (err) {
       console.warn("Logout API failed, fallback local logout", err);
       toast.error("Logout failed on server, signing out locally");
