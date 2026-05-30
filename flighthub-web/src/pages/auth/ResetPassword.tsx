@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import AuthCard from '../../components/AuthCard';
 import PasswordField from '../../components/PasswordField';
@@ -14,6 +14,8 @@ const ResetPassword: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
+  const resetToken = token || searchParams.get('token') || '';
   const { resetPasswordLoading, resetPasswordError, resetPasswordSuccess } = 
     useSelector((state: any) => state.auth);
 
@@ -21,8 +23,8 @@ const ResetPassword: React.FC = () => {
   const validationSchema = Yup.object().shape({
     newPassword: Yup.string()
       .required('New password is required')
-      .min(6, 'Password must be at least 6 characters')
-      .matches(/^(?=.*[A-Za-z])(?=.*\d)/, 'Password must contain both letters and numbers'),
+      .min(8, 'Password must be at least 8 characters')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase, and number'),
     confirmPassword: Yup.string()
       .required('Please confirm your password')
       .oneOf([Yup.ref('newPassword')], 'Passwords must match'),
@@ -53,12 +55,12 @@ const ResetPassword: React.FC = () => {
   const handleSubmit = async (values: typeof initialValues, { setSubmitting }: any) => {
     try {
       setSubmitting(true);
-      if (!token) {
+      if (!resetToken) {
         console.error('No reset token provided');
         return;
       }
 
-      await dispatch(resetPassword({ token, password: values.newPassword }));
+      await dispatch(resetPassword({ token: resetToken, newPassword: values.newPassword }));
     } catch (err) {
       console.error('Failed to reset password:', err);
     } finally {
@@ -78,6 +80,14 @@ const ResetPassword: React.FC = () => {
       >
         {({ isSubmitting }) => (
           <Form className="space-y-4">
+            {!resetToken && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-100 animate-fade-in">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 mr-2 text-red-600 mt-0.5" />
+                  <p>Reset token is missing. Please request a new reset link.</p>
+                </div>
+              </div>
+            )}
             {/* Success message */}
             {resetPasswordSuccess && (
               <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm border border-green-100 animate-fade-in">
@@ -118,7 +128,7 @@ const ResetPassword: React.FC = () => {
             <Button
               type="submit"
               className="w-full h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 transform hover:translate-y-[-2px] hover:shadow-xl"
-              disabled={isSubmitting || resetPasswordLoading || resetPasswordSuccess}
+              disabled={!resetToken || isSubmitting || resetPasswordLoading || resetPasswordSuccess}
             >
               {(isSubmitting || resetPasswordLoading) ? (
                 <div className="flex items-center">

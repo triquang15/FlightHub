@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
+import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.mapper.UserMapper;
+import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.model.User;
 import com.triquang.payload.SessionDTO;
 import com.triquang.payload.request.ChangePasswordRequest;
@@ -40,6 +42,7 @@ public class UserServiceImpl implements UserService {
     private final RefreshTokenRepository refreshTokenRepo;
     private final SessionRepository sessionRepo;
     private final TokenHashUtil tokenHashUtil;
+    private final SecurityEventProducer securityEventProducer;
 
     // ================= PROFILE =================
     @Override
@@ -106,12 +109,21 @@ public class UserServiceImpl implements UserService {
             String hash = tokenHashUtil.hash(rawToken);
 
             user.setResetTokenHash(hash);
-            user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+            LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(15);
+            user.setResetTokenExpiry(expiresAt);
 
             userRepository.save(user);
 
-            // TODO: send email with rawToken
-            log.info("Reset password token generated for {}", email);
+            securityEventProducer.sendPasswordResetRequestedEvent(PasswordResetRequestedEvent.builder()
+                    .userId(user.getId())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .resetToken(rawToken)
+                    .expiresAt(expiresAt)
+                    .requestedAt(LocalDateTime.now())
+                    .build());
+
+            log.info("Reset password token generated and notification queued for {}", email);
         });
     }
 

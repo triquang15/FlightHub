@@ -12,6 +12,20 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  # ================= REDIS (IDEMPOTENCY) =================
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 5000ms
+
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: 2000ms
+
   # ================= KAFKA CONSUMER =================
   kafka:
     bootstrap-servers: localhost:9092
@@ -91,10 +105,24 @@ notification:
   from-name: "Flight Hub Notifications"
   support-email: ${MAIL_FROM:flight_hub@gmail.com}
   support-phone: "1800-123-5678"
+  idempotency:
+    retention-seconds: ${NOTIFICATION_IDEMPOTENCY_RETENTION_SECONDS:86400}
+    processing-lock-seconds: ${NOTIFICATION_IDEMPOTENCY_LOCK_SECONDS:300}
+  password-reset-url: ${PASSWORD_RESET_URL:${notification.frontend-base-url}/reset-password}
 
   frontend-base-url: http://localhost:3000
   checkin-url: ${notification.frontend-base-url}/checkin
   manage-booking-url: ${notification.frontend-base-url}/booking
+
+# ================= OPENAPI / SWAGGER =================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
 
 # ================= LOGGING =================
 logging:
@@ -114,7 +142,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, metrics
 
   endpoint:
     health:

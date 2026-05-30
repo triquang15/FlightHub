@@ -64,7 +64,7 @@ public class AuthServiceImpl implements AuthService {
 
         String deviceId = normalizeDeviceId(req.getDeviceId());
 
-        UserRole userRole = req.getRole() != null ? req.getRole() : UserRole.ROLE_CUSTOMER;
+        UserRole userRole = resolveSignupRole(req.getRole());
 
         User user = User.builder()
                 .email(req.getEmail())
@@ -219,6 +219,19 @@ public class AuthServiceImpl implements AuthService {
             return "unknown-device";
         }
         return deviceId.trim().toLowerCase();
+    }
+
+    private UserRole resolveSignupRole(UserRole requestedRole) {
+        if (requestedRole == null) {
+            return UserRole.ROLE_CUSTOMER;
+        }
+
+        if (requestedRole == UserRole.ROLE_SYSTEM_ADMIN) {
+            log.warn("Blocked public signup with elevated role={}", requestedRole);
+            throw new BaseException(ErrorCode.ACCESS_DENIED);
+        }
+
+        return requestedRole;
     }
 
     private void checkBruteForce(String email) {

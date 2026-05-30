@@ -3,6 +3,7 @@ package com.triquang.config;
 import java.net.URI;
 import java.util.UUID;
 
+import org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions;
 import org.springframework.cloud.gateway.server.mvc.filter.CircuitBreakerFilterFunctions;
 import org.springframework.cloud.gateway.server.mvc.filter.LoadBalancerFilterFunctions;
 import org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions;
@@ -70,13 +71,34 @@ public class RouteConfig {
                 .filter(LoadBalancerFilterFunctions.lb(serviceName));
     }
 
-    // ==================== PUBLIC (NO RATE LIMIT) ====================
+    // ==================== PUBLIC AUTH / RECOVERY ====================
 
     @Bean
+    @Order(0)
     public RouterFunction<ServerResponse> authRoutes() {
         return routeWithoutCB("auth-routes", "user-service")
                 .route(RequestPredicates.path("/api/auth/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/users/forgot-password"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/users/reset-password"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
                 .build();
+    }
+
+    // ==================== OPENAPI DOCS ====================
+
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> openApiDocsRoutes() {
+        return GatewayRouterFunctions.route("openapi-docs")
+                .route(RequestPredicates.path("/docs/user-service/**"), HandlerFunctions.http())
+                .before(BeforeFilterFunctions.rewritePath("/docs/user-service/(?<segment>.*)", "/${segment}"))
+                .filter(LoadBalancerFilterFunctions.lb("user-service"))
+                .build()
+                .and(GatewayRouterFunctions.route("notification-openapi-docs")
+                        .route(RequestPredicates.path("/docs/notification-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/notification-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("notification-service"))
+                        .build());
     }
 
     // ==================== CORE ====================

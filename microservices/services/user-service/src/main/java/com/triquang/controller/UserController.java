@@ -25,6 +25,7 @@ import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.UserService;
 import com.triquang.utils.ResponseUtil;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -46,7 +47,7 @@ public class UserController {
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestBody UpdateProfileRequest request) {
+            @Valid @RequestBody UpdateProfileRequest request) {
 
         return ResponseUtil.ok(userService.updateProfile(userId, request));
     }
@@ -69,7 +70,7 @@ public class UserController {
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<String>> changePassword(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequest request) {
 
         userService.changePassword(userId, request);
         return ResponseUtil.ok("Password changed successfully");
@@ -78,7 +79,7 @@ public class UserController {
     // ================= FORGOT PASSWORD =================
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<String>> forgotPassword(
-            @RequestBody ForgotPasswordRequest request) {
+            @Valid @RequestBody ForgotPasswordRequest request) {
 
         userService.forgotPassword(request.getEmail());
         return ResponseUtil.ok("If email exists, reset link sent");
@@ -87,7 +88,7 @@ public class UserController {
     // ================= RESET PASSWORD =================
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<String>> resetPassword(
-            @RequestBody ResetPasswordRequest request) {
+            @Valid @RequestBody ResetPasswordRequest request) {
 
         userService.resetPassword(request);
         return ResponseUtil.ok("Password reset successfully");

@@ -12,6 +12,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import com.triquang.message.BookingConfirmedEvent;
+import com.triquang.message.PasswordResetRequestedEvent;
 
 import java.io.UnsupportedEncodingException;
 import java.time.format.DateTimeFormatter;
@@ -137,9 +138,27 @@ public class EmailService {
         };
     }
 
-	public void send(String to, String subject, String content) {
-		log.warn("📧 EMAIL → to={}, subject={}, content={}", to, subject, content);
+	public void send(String to, String subject, String content) throws MessagingException, UnsupportedEncodingException {
+		MimeMessage message = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-		// TODO: SMTP / SendGrid / SES
+		helper.setFrom(fromEmail, fromName);
+		helper.setTo(to);
+		helper.setSubject(subject);
+		helper.setText(content, false);
+
+		mailSender.send(message);
+	}
+
+	public void sendPasswordReset(PasswordResetRequestedEvent event, String resetUrl)
+			throws MessagingException, UnsupportedEncodingException {
+		String subject = "Reset your FlightHub password";
+		String content = "Hi " + (event.getFullName() != null ? event.getFullName() : "there") + ",\n\n"
+				+ "We received a request to reset your FlightHub password.\n"
+				+ "Open this link to continue: " + resetUrl + "?token=" + event.getResetToken() + "\n\n"
+				+ "This link expires at: " + event.getExpiresAt() + "\n"
+				+ "If you did not request this, you can ignore this email.";
+
+		send(event.getEmail(), subject, content);
 	}
 }

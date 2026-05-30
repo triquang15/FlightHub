@@ -22,6 +22,30 @@ spring:
           min-idle: 2
           max-wait: 2000ms
 
+app:
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:QW5xY0ZJY2dLNWV1TzZ2aDJlYk1aZzV1d3pHb3V3M2l4YkFTR0NhN2s0Q0E4VQ==}
+
+jwt:
+  secret: ${JWT_SECRET:bTNRd2VVaXQ5Y2x5SmV4N2N0R3J1Qm5vS0R5Q0l5M3A5aXJYTXVqN3h4N0J5Zw==}
+
+# ================= OPENAPI / SWAGGER =================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+    urls:
+      - name: API Gateway
+        url: /v3/api-docs
+      - name: User Service
+        url: /docs/user-service/v3/api-docs
+      - name: Notification Service
+        url: /docs/notification-service/v3/api-docs
+
 # ================= RESILIENCE4J =================
 resilience4j:
   timelimiter:

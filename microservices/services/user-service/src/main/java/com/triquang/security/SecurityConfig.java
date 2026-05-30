@@ -39,7 +39,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                 // ================= PUBLIC =================
+                .requestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/users/forgot-password").permitAll()
+                .requestMatchers("/api/users/reset-password").permitAll()
 
                 // INTERNAL API (FIX BUG 403)
                 .requestMatchers("/api/internal/**").permitAll()

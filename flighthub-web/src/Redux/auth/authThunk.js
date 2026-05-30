@@ -62,7 +62,7 @@ export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
   async (email, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/forgot-password", { email });
+      const res = await api.post("/api/users/forgot-password", { email });
       console.log("Forgot password success:", res.data);
       return res.data;
     } catch (err) {
@@ -75,9 +75,9 @@ export const forgotPassword = createAsyncThunk(
 // ✅ Reset Password
 export const resetPassword = createAsyncThunk(
   "auth/resetPassword",
-  async ({ token, password }, { rejectWithValue }) => {
+  async ({ token, newPassword }, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/reset-password", { token, password });
+      const res = await api.post("/api/users/reset-password", { token, newPassword });
       console.log("Reset password success:", res.data);
       return res.data;
     } catch (err) {

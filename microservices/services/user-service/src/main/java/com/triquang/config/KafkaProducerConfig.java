@@ -32,6 +32,8 @@ public class KafkaProducerConfig {
         // ================= RELIABILITY =================
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 3);
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);
 
         // ================= TIMEOUT =================
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120000);

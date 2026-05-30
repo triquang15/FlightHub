@@ -6,6 +6,10 @@ import org.springframework.stereotype.Service;
 
 import com.triquang.message.SuspiciousLoginEvent;
 import com.triquang.service.EmailService;
+import com.triquang.service.NotificationIdempotencyService;
+import com.triquang.service.NotificationTrackingService;
+import com.triquang.enums.DeliveryChannel;
+import com.triquang.enums.NotificationType;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SecurityEventConsumer {
 
     private final EmailService emailService;
+    private final NotificationIdempotencyService idempotencyService;
+    private final NotificationTrackingService trackingService;
 
     @KafkaListener(
             topics = "security.suspicious-login",
@@ -26,10 +32,22 @@ public class SecurityEventConsumer {
         log.warn("🔐 Suspicious login → {}", event.getEmail());
 
         try {
-            emailService.send(
-                    event.getEmail(),
-                    "Suspicious Login Alert",
-                    "Device: " + event.getDeviceId() + " IP: " + event.getIp()
+            idempotencyService.runOnce(
+                    notificationKey(event),
+                    () -> trackingService.sendTracked(
+                            NotificationType.SUSPICIOUS_LOGIN,
+                            businessKey(event),
+                            DeliveryChannel.EMAIL,
+                            event.getEmail(),
+                            "Suspicious Login Alert",
+                            "Device: " + event.getDeviceId() + " IP: " + event.getIp(),
+                            event,
+                            () -> emailService.send(
+                                    event.getEmail(),
+                                    "Suspicious Login Alert",
+                                    "Device: " + event.getDeviceId() + " IP: " + event.getIp()
+                            )
+                    )
             );
 
         } catch (Exception e) {
@@ -45,5 +63,21 @@ public class SecurityEventConsumer {
     public void handleDLQ(ConsumerRecord<String, Object> record) {
 
         log.error("💀 DLQ EVENT → {}", record.value());
+    }
+
+    private String notificationKey(SuspiciousLoginEvent event) {
+        return "suspicious-login:" + businessKey(event);
+    }
+
+    private String businessKey(SuspiciousLoginEvent event) {
+        String timestamp = event.getTimestamp() != null ? event.getTimestamp().toString() : "unknown-time";
+        return valueOrUnknown(event.getEmail()) + ":"
+                + valueOrUnknown(event.getDeviceId()) + ":"
+                + valueOrUnknown(event.getIp()) + ":"
+                + timestamp;
+    }
+
+    private String valueOrUnknown(String value) {
+        return value != null && !value.isBlank() ? value : "unknown";
     }
 }

@@ -117,6 +117,14 @@ function App() {
                 </GuestOnly>
               }
             />
+            <Route
+              path="/reset-password"
+              element={
+                <GuestOnly>
+                  <ResetPassword />
+                </GuestOnly>
+              }
+            />
 
             {/* ================= LANDING ================= */}
             <Route

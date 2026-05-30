@@ -27,12 +27,7 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
 
         String path = request.path();
 
-        // 1. Skip auth
-        if (path.startsWith("/api/auth")) {
-            return next.handle(request);
-        }
-
-        // 2. Key
+        // 1. Key
         String userId = request.headers().firstHeader("X-User-Id");
         String ip = request.servletRequest().getRemoteAddr();
 
