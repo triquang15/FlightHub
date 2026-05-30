@@ -24,7 +24,7 @@ public class SecurityEventConsumer {
     private final NotificationTrackingService trackingService;
 
     @KafkaListener(
-            topics = "security.suspicious-login",
+            topics = "${kafka.topics.suspicious-login:security.suspicious-login}",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handle(SuspiciousLoginEvent event) {
@@ -57,8 +57,8 @@ public class SecurityEventConsumer {
     }
 
     @KafkaListener(
-            topics = "security.suspicious-login.DLQ",
-            groupId = "notification-dlq-group"
+            topics = "${kafka.topics.suspicious-login-dlq:security.suspicious-login.DLQ}",
+            groupId = "${kafka.groups.notification-dlq:notification-dlq-group}"
     )
     public void handleDLQ(ConsumerRecord<String, Object> record) {
 

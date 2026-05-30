@@ -17,7 +17,10 @@ public class BookingEventListener {
 
 	private final SeatInstanceService seatInstanceService;
 
-	@KafkaListener(topics = "booking.confirmed", groupId = "seat-service-group")
+	@KafkaListener(
+			topics = "${kafka.topics.booking-confirmed:booking.confirmed}",
+			groupId = "${spring.kafka.consumer.group-id:seat-service-group}"
+	)
 	@Transactional
 	public void handleBookingConfirmed(BookingConfirmedEvent event) {
 		if (event.getSeatInstanceIds() == null || event.getSeatInstanceIds().isEmpty()) {

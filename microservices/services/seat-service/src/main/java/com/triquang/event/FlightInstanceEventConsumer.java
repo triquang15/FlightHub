@@ -38,7 +38,10 @@ public class FlightInstanceEventConsumer {
     private final FlightInstanceCabinRepository flightInstanceCabinRepository;
     private final SeatInstanceRepository seatInstanceRepository;
 
-    @KafkaListener(topics = "flight-instance-created", groupId = "seat-service-group")
+    @KafkaListener(
+            topics = "${kafka.topics.flight-instance-created:flight-instance-created}",
+            groupId = "${spring.kafka.consumer.group-id:seat-service-group}"
+    )
     @Transactional
     public void handleFlightInstanceCreated(FlightInstanceCreatedEvent event) {
         log.info("Received FlightInstanceCreatedEvent: flightInstanceId={}, aircraftId={}",

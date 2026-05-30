@@ -31,7 +31,10 @@ public class PaymentEventListener {
 	private final PricingClient pricingClient;
 	private final UserClient userClient;
 
-	@KafkaListener(topics = "payment.completed", groupId = "booking-service-group")
+	@KafkaListener(
+			topics = "${kafka.topics.payment-completed:payment.completed}",
+			groupId = "${spring.kafka.consumer.group-id:booking-service-group}"
+	)
 	@Transactional
 	public void handlePaymentCompleted(PaymentCompletedEvent event) {
 		log.info("Received PaymentCompletedEvent for bookingId={}", event.getBookingId());
@@ -56,7 +59,10 @@ public class PaymentEventListener {
 		bookingEventProducer.sendBookingConfirmed(booking, event, flightInstance, fareResponse, userDTO);
 	}
 
-	@KafkaListener(topics = "payment.failed", groupId = "booking-service-group")
+	@KafkaListener(
+			topics = "${kafka.topics.payment-failed:payment.failed}",
+			groupId = "${spring.kafka.consumer.group-id:booking-service-group}"
+	)
 	@Transactional
 	public void handlePaymentFailed(PaymentFailedEvent event) {
 		log.info("Received PaymentFailedEvent for bookingId={}", event.getBookingId());

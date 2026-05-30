@@ -27,7 +27,7 @@ public class UserNotificationListener {
     private String passwordResetUrl;
 
     @KafkaListener(
-            topics = "user.password-reset-requested",
+            topics = "${kafka.topics.password-reset-requested:user.password-reset-requested}",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {

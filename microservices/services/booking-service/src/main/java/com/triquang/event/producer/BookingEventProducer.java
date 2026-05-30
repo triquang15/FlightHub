@@ -2,6 +2,7 @@ package com.triquang.event.producer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,9 @@ import java.util.stream.Collectors;
 public class BookingEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${kafka.topics.booking-confirmed:booking.confirmed}")
+    private String bookingConfirmedTopic;
 
     public void sendBookingConfirmed(Booking booking,
                                      PaymentCompletedEvent payment,
@@ -178,7 +182,7 @@ public class BookingEventProducer {
                 .seatInstanceIds(booking.getSeatInstanceIds())
                 .build();
 
-        kafkaTemplate.send("booking.confirmed", event);
+        kafkaTemplate.send(bookingConfirmedTopic, event);
         log.info("Published enriched BookingConfirmedEvent for booking={}", booking.getBookingReference());
     }
 }

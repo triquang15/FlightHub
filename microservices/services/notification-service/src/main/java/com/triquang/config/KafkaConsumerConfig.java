@@ -28,6 +28,12 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    @Value("${spring.kafka.consumer.group-id:notification-service-group}")
+    private String groupId;
+
+    @Value("${spring.kafka.listener.concurrency:3}")
+    private Integer listenerConcurrency;
+
     // ================= CONSUMER FACTORY =================
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
@@ -39,7 +45,7 @@ public class KafkaConsumerConfig {
         Map<String, Object> props = new HashMap<>();
 
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service-group");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -86,7 +92,7 @@ public class KafkaConsumerConfig {
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(errorHandler);
 
-        factory.setConcurrency(3); // scale
+        factory.setConcurrency(listenerConcurrency);
 
         return factory;
     }

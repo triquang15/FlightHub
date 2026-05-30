@@ -21,7 +21,7 @@ public class BookingNotificationListener {
     private final NotificationIdempotencyService idempotencyService;
 
     @KafkaListener(
-            topics = "booking.confirmed",
+            topics = "${kafka.topics.booking-confirmed:booking.confirmed}",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handleBookingConfirmed(BookingConfirmedEvent event) {
