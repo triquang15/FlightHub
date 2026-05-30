@@ -30,6 +30,13 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
       .nullable(),
     supportHours: Yup.string()
       .nullable()
+  }).test('support-contact-required', 'Provide at least one support email or phone number', function (values) {
+    if (values?.supportEmail || values?.supportPhone) return true;
+
+    return this.createError({
+      path: 'supportEmail',
+      message: 'Provide at least one support email or phone number'
+    });
   });
 
   const initialValues = {
@@ -52,16 +59,14 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
     'Available during flight operations only'
   ];
 
-  const FormField = ({ name, label, children, helpText, ...props }) => (
-    <div className="relative">
-      <div className="relative">
-        {children}
-        <label htmlFor={name} className="absolute left-3 top-3 pointer-events-none text-gray-500 transition-all duration-200 peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600">
-          {props.icon && <props.icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
-          {label}
-          <span className="text-green-600 text-xs font-normal ml-1">(Optional)</span>
-        </label>
-      </div>
+  const FormField = ({ name, label, children, helpText, optional = true, ...props }) => (
+    <div className="space-y-2">
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        {props.icon && <props.icon className="h-4 w-4 text-gray-400" />}
+        <span>{label}</span>
+        {optional && <span className="text-xs font-normal text-gray-400">(Optional)</span>}
+      </label>
+      {children}
       <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1 mt-2" />
       {helpText && (
         <div className="text-xs text-gray-400 mt-1">{helpText}</div>
@@ -83,9 +88,9 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
             Provide preferred contact channels so customers and partners can reach you.
           </p>
         </div>
-        <div className="inline-flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+        <div className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
           <CheckCircle className="w-4 h-4" />
-          <span>All fields are optional</span>
+          <span>Email or phone is required for operational review</span>
         </div>
       </div>
 
@@ -281,6 +286,7 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
                 <Button
                   type="submit"
+                  disabled={!isValid}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-2 group"
                 >
                   Review & Launch Setup

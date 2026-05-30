@@ -90,18 +90,23 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
     if (accessToken) {
       const response = await dispatch(getUserProfile()).unwrap();
       if (response && response.id) {
-        console.log("User profile fetched successfully", response);
-        onNext();
+        onDataChange({
+          fullName: response.fullName || response.name || data?.fullName || '',
+          email: response.email || data?.email || '',
+          phone: response.phone || data?.phone || '',
+          userId: response.id,
+          accessToken
+        });
       }
     }
   };
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
+    if (accessToken && !data?.userId) {
       fetchUserProfile();
     }
-  }, [data]);
+  }, []);
 
   // Password strength calculator
   const calculatePasswordStrength = (password) => {
@@ -115,7 +120,11 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   };
 
   const FormField = ({ name, label, type = 'text', icon: Icon, isPassword = false, ...props }) => (
-    <div className="relative">
+    <div className="space-y-2">
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        {Icon && <Icon className="h-4 w-4 text-gray-400" />}
+        {label}
+      </label>
       <Field name={name}>
         {({ field, meta }) => (
           <div className="relative">
@@ -123,9 +132,8 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               {...field}
               {...props}
               id={name}
-              placeholder=" "
               type={isPassword ? (name === 'password' ? (showPassword ? 'text' : 'password') : (showConfirmPassword ? 'text' : 'password')) : type}
-              className={`peer w-full transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 py-3 rounded-md bg-white/80 backdrop-blur-sm ${
+              className={`w-full transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 py-3 rounded-md bg-white/80 backdrop-blur-sm ${
                 meta.touched && meta.error
                   ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                   : meta.touched && !meta.error
@@ -139,16 +147,6 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 }
               }}
             />
-
-            <label
-              htmlFor={name}
-              className={`absolute left-3 transition-all duration-200 pointer-events-none text-gray-500 ${
-                meta.touched && !meta.error ? 'text-green-600' : 'text-gray-500'
-              } peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600`}
-            >
-              {Icon && <Icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
-              {label}
-            </label>
 
             {/* Password visibility toggle */}
             {isPassword && (

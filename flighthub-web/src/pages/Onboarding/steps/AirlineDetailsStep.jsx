@@ -32,24 +32,32 @@ import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { getAllCities } from "@/Redux/city/cityThunk";
 
-// const validationSchema = Yup.object({
-//   iataCode: Yup.string()
-//     .required("IATA code is required")
-//     .matches(/^[A-Z]{2}$/, "IATA code must be exactly 2 uppercase letters"),
-//   icaoCode: Yup.string()
-//     .required("ICAO code is required")
-//     .matches(/^[A-Z]{3}$/, "ICAO code must be exactly 3 uppercase letters"),
-//   airlineName: Yup.string()
-//     .required("Airline name is required")
-//     .min(2, "Airline name must be at least 2 characters"),
-//   country: Yup.string().required("Country is required"),
-//   headquartersCity: Yup.string().required("Headquarters city is required"),
-//   status: Yup.string()
-//     .required("Status is required")
-//     .oneOf(["ACTIVE", "INACTIVE", "SUSPENDED"], "Invalid status"),
-//   website: Yup.string().url("Invalid website URL").nullable(),
-//   logoUrl: Yup.string().url("Invalid logo URL").nullable(),
-// });
+const validationSchema = Yup.object({
+  iataCode: Yup.string()
+    .required("IATA code is required")
+    .matches(/^[A-Z0-9]{2}$/, "IATA code must be exactly 2 uppercase letters or numbers"),
+  icaoCode: Yup.string()
+    .required("ICAO code is required")
+    .matches(/^[A-Z]{3}$/, "ICAO code must be exactly 3 uppercase letters"),
+  airlineName: Yup.string()
+    .required("Airline name is required")
+    .min(2, "Airline name must be at least 2 characters"),
+  headquartersCity: Yup.string().required("Headquarters city is required"),
+  website: Yup.string()
+    .trim()
+    .matches(/^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/.*)?$/, {
+      message: "Enter a valid website",
+      excludeEmptyString: true
+    })
+    .nullable(),
+  logoUrl: Yup.string()
+    .trim()
+    .matches(/^(https?:\/\/|data:image\/).+/, {
+      message: "Enter a valid logo URL or upload an image",
+      excludeEmptyString: true
+    })
+    .nullable()
+});
 
 const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   const [logoPreview, setLogoPreview] = useState(data?.logoUrl || "");
@@ -69,19 +77,13 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
     alias: data?.alias || "",
     logoUrl: data?.logoUrl || "",
     website: data?.website || "",
-    status: data?.status || "ACTIVE",
+    status: "INACTIVE",
     alliance: data?.alliance || "",
    
     headquartersCity: data?.headquartersCity || "",
   };
 
   // Country selection removed: backend does not use this field
-
-  const statusOptions = [
-    { value: "ACTIVE", label: "Active" },
-    { value: "INACTIVE", label: "Inactive" },
-    { value: "BANNED", label: "Banned" },
-  ];
 
   const alliances = ["Star Alliance", "SkyTeam", "Oneworld", "Unaligned"];
 
@@ -101,20 +103,22 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   };
 
   const handleSubmit = (values) => {
-    console.log('Form Data at Step', values);
-    onDataChange(values);
+    onDataChange({
+      ...values,
+      status: "INACTIVE"
+    });
     onNext();
   };
 
   const FormField = ({ name, label, children, required = false, helpText, ...props }) => (
-    <div className="relative">
-      <div className="relative">
-        {children}
-        <label htmlFor={name} className="absolute left-3 top-3 pointer-events-none text-gray-500 transition-all duration-200 peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:text-xs peer-focus:text-blue-600">
-          {props.icon && <props.icon className="w-4 h-4 inline-block mr-2 text-gray-400" />}
-          {label} {required && <span className="text-red-500 text-sm">*</span>}
-        </label>
-      </div>
+    <div className="space-y-2">
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        {props.icon && <props.icon className="h-4 w-4 text-gray-400" />}
+        <span>
+          {label} {required && <span className="text-red-500">*</span>}
+        </span>
+      </label>
+      {children}
       <ErrorMessage
         name={name}
         component="div"
@@ -144,7 +148,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
       <Formik
         initialValues={initialValues}
-        // validationSchema={validationSchema}
+        validationSchema={validationSchema}
         onSubmit={handleSubmit}
         enableReinitialize
       >
@@ -405,25 +409,19 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                 </Field>
               </FormField>
 
-              {/* Status and Alliance */}
+              {/* Review status and Alliance */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="status" label="Status">
-                  <Select
-                    onValueChange={(value) => setFieldValue("status", value)}
-                    value={values.status}
-                  >
-                    <SelectTrigger className="transition-all duration-200 hover:shadow-md focus:shadow-lg">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
+                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="mt-0.5 h-5 w-5 text-yellow-700" />
+                    <div>
+                      <p className="font-semibold text-yellow-900">Pending review</p>
+                      <p className="mt-1 text-sm text-yellow-800">
+                        New airline registrations are submitted as inactive until a super admin approves them.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 <FormField name="alliance" label="Alliance (Optional)">
                   <Select
@@ -459,9 +457,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
                 <Button
                   type="submit"
-                  // onClick={handleSubmit}
-                  // disabled={!isValid}
-                  // className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-2 group"
+                  disabled={!isValid}
                 >
                   Save & Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

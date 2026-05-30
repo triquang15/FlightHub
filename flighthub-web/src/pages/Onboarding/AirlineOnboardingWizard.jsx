@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Stepper } from '@/components/ui/stepper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Shield, Sparkles, Zap, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, FileText, Shield, Sparkles, Users, Zap } from 'lucide-react';
 import {
   OwnerDetailsStep,
   AirlineDetailsStep,
@@ -13,7 +12,6 @@ import {
 } from './steps';
 
 const AirlineOnboardingWizard = () => {
-  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isCompleted, setIsCompleted] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,18 +54,30 @@ const AirlineOnboardingWizard = () => {
   // Access token persistence logic
   useEffect(() => {
     const savedProgress = localStorage.getItem('airline_onboarding_progress');
-    const accessToken = localStorage.getItem('accessToken');
 
-    if (accessToken && savedProgress) {
-      const progress = JSON.parse(savedProgress);
-      setCurrentStep(progress.currentStep);
-      setFormData(progress.formData);
+    if (savedProgress) {
+      try {
+        const progress = JSON.parse(savedProgress);
+        const savedStep = Number(progress.currentStep);
+        const safeStep = Number.isInteger(savedStep)
+          ? Math.min(Math.max(savedStep, 1), steps.length)
+          : 1;
+
+        setCurrentStep(safeStep);
+        setFormData({
+          owner: progress.formData?.owner || {},
+          airline: progress.formData?.airline || {},
+          support: progress.formData?.support || {}
+        });
+      } catch {
+        localStorage.removeItem('airline_onboarding_progress');
+      }
     }
   }, []);
 
   const saveProgress = (step, data) => {
     const progress = {
-      currentStep: step,
+      currentStep: Math.min(Math.max(step, 1), steps.length),
       formData: data
     };
     localStorage.setItem('airline_onboarding_progress', JSON.stringify(progress));
@@ -158,135 +168,121 @@ const AirlineOnboardingWizard = () => {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Enhanced background with animated gradients */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%239C92AC%22%20fill-opacity%3D%220.1%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div>
-      </div>
-
-      {/* Floating decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/30 to-purple-600/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-400/30 to-blue-600/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
-          {/* Enhanced Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-2xl">
-              <Sparkles className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent mb-4">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef4ff_42%,#f8fafc_100%)] text-slate-950 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_46%,#020617_100%)] dark:text-white">
+      <div className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-3xl">
+            <Badge variant="outline" className="mb-4 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/40 dark:bg-blue-500/10 dark:text-blue-100">
+              Airline partner onboarding
+            </Badge>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white md:text-5xl">
               Join Our Global Network
             </h1>
-            <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-              Connect your airline to millions of travelers worldwide through our advanced GDS platform
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300 md:text-lg">
+              Register your airline profile, support contacts and administrator account for review by the FlightHub operations team.
             </p>
-            <div className="flex items-center justify-center space-x-8 mt-8 text-gray-400">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm">Step {currentStep} of {steps.length}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Shield className="w-4 h-4" />
-                <span className="text-sm">Secure Registration</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4" />
-                <span className="text-sm">24/7 Support</span>
-              </div>
-            </div>
           </div>
 
-          {/* Enhanced Progress Stepper */}
-          <div className="mb-12">
-            <div className="flex justify-between items-center max-w-4xl mx-auto">
-              {steps.map((step, index) => {
-                const isCompleted = index + 1 < currentStep;
-                const isCurrent = index + 1 === currentStep;
-                const IconComponent = step.icon;
+          <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-white p-4 text-center shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div>
+              <p className="text-2xl font-semibold text-slate-950 dark:text-white">{currentStep}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Current step</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-950 dark:text-white">{steps.length}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Total steps</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-950 dark:text-white">{Math.round((currentStep / steps.length) * 100)}%</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Complete</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                return (
-                  <div key={step.id} className="flex flex-col items-center space-y-3 flex-1">
-                    <div className={`relative flex items-center justify-center w-16 h-16 rounded-2xl transition-all duration-500 ${
-                      isCompleted
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25'
-                        : isCurrent
-                        ? `bg-gradient-to-br ${step.color} shadow-2xl shadow-purple-500/25 scale-110`
-                        : 'bg-gray-700 border-2 border-gray-600'
-                    }`}>
-                      <IconComponent className={`w-7 h-7 ${
-                        isCompleted || isCurrent ? 'text-white' : 'text-gray-400'
-                      }`} />
-                      {isCompleted && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-400 rounded-full flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="space-y-4">
+                {steps.map((step, index) => {
+                  const stepNumber = index + 1;
+                  const isCompletedStep = stepNumber < currentStep;
+                  const isCurrent = stepNumber === currentStep;
+                  const IconComponent = step.icon;
+
+                  return (
+                    <div
+                      key={step.id}
+                      className={`rounded-md border p-3 transition-colors ${
+                        isCurrent
+                          ? 'border-blue-300 bg-blue-50 dark:border-blue-400/60 dark:bg-blue-500/15'
+                          : isCompletedStep
+                          ? 'border-green-300 bg-green-50 dark:border-green-400/40 dark:bg-green-500/10'
+                          : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${
+                          isCompletedStep ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
+                          {isCompletedStep ? <CheckCircle className="h-5 w-5" /> : <IconComponent className="h-5 w-5" />}
                         </div>
-                      )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-950 dark:text-white">{step.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <h3 className={`font-semibold text-sm transition-colors ${
-                        isCompleted || isCurrent ? 'text-white' : 'text-gray-400'
-                      }`}>
-                        {step.title}
-                      </h3>
-                      <p className={`text-xs transition-colors ${
-                        isCompleted || isCurrent ? 'text-gray-300' : 'text-gray-500'
-                      }`}>
-                        {step.description}
-                      </p>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className={`absolute top-8 left-16 w-full h-0.5 transition-colors ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-700'
-                      }`} style={{ transform: 'translateX(50%)' }}></div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Enhanced Step Content */}
-          <Card className="backdrop-blur-xl bg-white/95 shadow-2xl border-0 rounded-3xl overflow-hidden">
+            <div className="rounded-lg border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <Shield className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                Secure registration
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <Users className="h-4 w-4 text-green-600 dark:text-green-300" />
+                Operations team review
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <FileText className="h-4 w-4 text-orange-600 dark:text-orange-300" />
+                Pending approval by default
+              </div>
+            </div>
+          </aside>
+
+          <Card className="overflow-hidden rounded-lg border-0 bg-white text-slate-950 shadow-2xl">
             <div className={`h-2 bg-gradient-to-r ${steps[currentStep - 1]?.color}`}></div>
-            <CardHeader className="pb-6 pt-8 px-8">
-              <div className="flex items-center space-x-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${steps[currentStep - 1]?.color} flex items-center justify-center shadow-lg`}>
+            <CardHeader className="border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br ${steps[currentStep - 1]?.color}`}>
                   {React.createElement(steps[currentStep - 1]?.icon, { className: "w-6 h-6 text-white" })}
                 </div>
                 <div>
-                  <CardTitle className="text-2xl font-bold text-gray-900">
+                  <CardTitle className="text-xl font-semibold text-slate-950">
                     {steps[currentStep - 1]?.title}
                   </CardTitle>
-                  <p className="text-gray-600 mt-1">
+                  <p className="mt-1 text-sm text-slate-500">
                     {steps[currentStep - 1]?.description}
                   </p>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="px-8 pb-8">
-              <div className="transition-all duration-300 ease-in-out">
-                {renderCurrentStep()}
-              </div>
+            <CardContent className="px-6 py-6">
+              {renderCurrentStep()}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Progress indicator */}
-          <div className="mt-8 max-w-4xl mx-auto">
-            <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full bg-gradient-to-r ${steps[currentStep - 1]?.color} transition-all duration-500 ease-out`}
-                style={{ width: `${(currentStep / steps.length) * 100}%` }}
-              ></div>
-            </div>
-            <p className="text-center text-gray-400 text-sm mt-2">
-              {Math.round((currentStep / steps.length) * 100)}% Complete
-            </p>
-          </div>
+        <div className="mt-8 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+          <div
+            className={`h-full bg-gradient-to-r ${steps[currentStep - 1]?.color} transition-all duration-500 ease-out`}
+            style={{ width: `${(currentStep / steps.length) * 100}%` }}
+          ></div>
         </div>
       </div>
     </div>

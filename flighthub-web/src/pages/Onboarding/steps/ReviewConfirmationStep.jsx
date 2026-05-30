@@ -36,14 +36,20 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
     setSubmitError('');
 
     try {
+      const website = formData.airline.website?.trim()
+        ? /^https?:\/\//i.test(formData.airline.website.trim())
+          ? formData.airline.website.trim()
+          : `https://${formData.airline.website.trim()}`
+        : null;
+
       const airlineData={
         iataCode: formData.airline.iataCode,
         icaoCode: formData.airline.icaoCode,
         name: formData.airline.airlineName,
         alias: formData.airline.alias || null,
         logoUrl: formData.airline.logoUrl || null,
-        website: formData.airline.website || null,
-        status: formData.airline.status,
+        website,
+        status: "INACTIVE",
         alliance: formData.airline.alliance || null,
         baggagePolicy: formData.airline.baggagePolicy || null,
         headquartersCityId: formData.airline.headquartersCity,
@@ -53,22 +59,21 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
         additionalNotes: formData.support.additionalNotes || null
       }
 
-      console.log('Submitting airline data:', airlineData);
-
       // Dispatch createAirline thunk
-      const airlineResult = await dispatch(createAirline(airlineData)).unwrap();
+      await dispatch(createAirline(airlineData)).unwrap();
 
       // Success - trigger completion
       onComplete();
     } catch (error) {
       setIsSubmitting(false);
+      const message = String(error || '');
 
-      if (error.includes('session has expired') || error.includes('Unauthorized')) {
+      if (message.includes('session has expired') || message.includes('Unauthorized')) {
         setSubmitError('Your session has expired. Please refresh the page and try again.');
-      } else if (error.includes('already exists') || error.includes('IATA') || error.includes('ICAO')) {
+      } else if (message.includes('already exists') || message.includes('IATA') || message.includes('ICAO')) {
         setSubmitError('An airline with this IATA or ICAO code already exists.');
       } else {
-        setSubmitError(error || 'An error occurred while creating your airline. Please try again.');
+        setSubmitError(message || 'An error occurred while creating your airline. Please try again.');
       }
     }
   };
@@ -185,13 +190,13 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
             {/* Country removed (not used by backend) */}
             <DataRow label="Headquarters" value={formData.airline.headquartersCity} />
             <DataRow
-              label="Status"
-              value={formData.airline.status && (
+              label="Submission Status"
+              value={(
                 <Badge
-                  variant={formData.airline.status === 'ACTIVE' ? 'default' : 'secondary'}
-                  className={formData.airline.status === 'ACTIVE' ? 'bg-green-100 text-green-800 border-green-300' : ''}
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-800 border-yellow-300"
                 >
-                  {formData.airline.status}
+                  Pending super-admin approval
                 </Badge>
               )}
             />
