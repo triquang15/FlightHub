@@ -44,7 +44,7 @@ public class UserController {
     }
 
     // ================= UPDATE PROFILE =================
-    @PutMapping("/me")
+    @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
             @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody UpdateProfileRequest request) {
