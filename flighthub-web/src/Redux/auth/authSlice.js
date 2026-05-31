@@ -2,10 +2,11 @@ import { createSlice } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
 import { login, signup, forgotPassword, resetPassword } from "./authThunk";
 import { getUserProfile, updateUserProfile, logout } from "../user/userThunks";
+import { getAccessToken, hasAuthTokens } from "@/utils/authStorage";
 
 // ================= INIT USER =================
 const getInitialUser = () => {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   if (!token) return null;
 
@@ -24,7 +25,7 @@ const getInitialUser = () => {
 
 const initialState = {
   user: getInitialUser(),
-  isAuthenticated: !!localStorage.getItem("accessToken"),
+  isAuthenticated: hasAuthTokens(),
   loading: false,
   error: null,
 

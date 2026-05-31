@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { login } from '@/Redux/auth/authThunk';
 import { Form, Formik } from 'formik';
 import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
-import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
@@ -26,7 +25,8 @@ const LoginForm = () => {
 
   const initialValues = {
     email: '',
-    password: ''
+    password: '',
+    rememberMe: false
   };
 
   const handleSubmit = async (values, { setSubmitting }) => {
@@ -56,7 +56,7 @@ const LoginForm = () => {
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting }) => (
+      {({ isSubmitting, values, setFieldValue }) => (
         <Form className={`space-y-6 ${loading ? 'opacity-70 pointer-events-none' : ''}`}>
 
           {/* Error */}
@@ -100,7 +100,10 @@ const LoginForm = () => {
           <div className="flex items-center justify-between">
             <label className="flex items-center">
               <input
+                name="rememberMe"
                 type="checkbox"
+                checked={values.rememberMe}
+                onChange={(event) => setFieldValue('rememberMe', event.target.checked)}
                 className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
               />
               <span className="ml-2 text-sm text-gray-600">Remember me</span>

@@ -188,13 +188,38 @@ public class EmailService {
 
 	public void sendPasswordReset(PasswordResetRequestedEvent event, String resetUrl)
 			throws MessagingException, UnsupportedEncodingException {
-		String subject = "Reset your FlightHub password";
-		String content = "Hi " + (event.getFullName() != null ? event.getFullName() : "there") + ",\n\n"
-				+ "We received a request to reset your FlightHub password.\n"
-				+ "Open this link to continue: " + resetUrl + "?token=" + event.getResetToken() + "\n\n"
-				+ "This link expires at: " + event.getExpiresAt() + "\n"
-				+ "If you did not request this, you can ignore this email.";
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-		send(event.getEmail(), subject, content);
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(event.getEmail());
+        helper.setSubject("Reset your FlightHub password");
+        helper.setText(buildPasswordResetBody(event, resetUrl), true);
+
+        mailSender.send(message);
 	}
+
+    private String buildPasswordResetBody(PasswordResetRequestedEvent event, String resetUrl) {
+        String resetLink = buildResetLink(resetUrl, event.getResetToken());
+
+        Context ctx = new Context(Locale.ENGLISH);
+        ctx.setVariable("fullName", valueOrUnknown(event.getFullName()));
+        ctx.setVariable("email", valueOrUnknown(event.getEmail()));
+        ctx.setVariable("resetLink", resetLink);
+        ctx.setVariable("expiresAt", event.getExpiresAt() != null ? event.getExpiresAt().format(DT_FMT) : "15 minutes");
+        ctx.setVariable("requestedAt", event.getRequestedAt() != null ? event.getRequestedAt().format(DT_FMT) : "Unknown time");
+        ctx.setVariable("supportEmail", supportEmail);
+        ctx.setVariable("frontendBaseUrl", frontendBaseUrl);
+
+        return templateEngine.process("email/password-reset", ctx);
+    }
+
+    private String buildResetLink(String resetUrl, String token) {
+        String baseUrl = resetUrl != null && !resetUrl.isBlank()
+                ? resetUrl.trim()
+                : frontendBaseUrl + "/reset-password";
+
+        String separator = baseUrl.contains("?") ? "&" : "?";
+        return baseUrl + separator + "token=" + token;
+    }
 }

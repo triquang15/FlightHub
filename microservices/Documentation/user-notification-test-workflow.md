@@ -11,10 +11,12 @@ This workflow covers:
 - Service startup order
 - Swagger/OpenAPI access
 - Signup, login, refresh token, and protected profile APIs
+- Remember me token persistence
 - Public route behavior for forgot/reset password
-- Password reset email notification
+- Password reset HTML email notification
 - Suspicious login email notification
 - Logout and token revocation
+- Known-device tracking for suspicious login detection
 - Notification idempotency during Kafka retry
 - Frontend forgot/reset password integration
 - Troubleshooting checklist
@@ -70,6 +72,14 @@ The notification-service appends the token as a query parameter:
 ```text
 http://localhost:5173/reset-password?token=<reset-token>
 ```
+
+Known device tracking requires the `known_devices` table. If the database was created before this feature was added, run:
+
+```text
+microservices/Documentation/sql/2026-05-31-create-known-devices.sql
+```
+
+This creates the table and backfills existing rows from `sessions`.
 
 ## Swagger URLs
 
@@ -250,6 +260,7 @@ Expected result:
 - Response includes `accessToken` and `refreshToken`.
 - Login audit is written.
 - Existing device session is created or updated.
+- Successful login creates or updates a `known_devices` row for the user/device.
 
 Save these values for later phases:
 
@@ -257,6 +268,52 @@ Save these values for later phases:
 ACCESS_TOKEN=<accessToken>
 REFRESH_TOKEN=<refreshToken>
 DEVICE_ID=browser-local-test-001
+```
+
+## Phase 5A: Frontend Remember Me
+
+Use the frontend login page:
+
+```text
+/login
+```
+
+Case A: Remember me is not checked.
+
+Expected result:
+
+- Login succeeds.
+- Browser `sessionStorage` contains:
+  - `accessToken`
+  - `refreshToken`
+- Browser `localStorage` does not contain auth tokens.
+- Browser `localStorage` still contains `deviceId`.
+- Refreshing the page keeps the user signed in.
+- Closing the tab or browser clears the auth session.
+
+Case B: Remember me is checked.
+
+Expected result:
+
+- Login succeeds.
+- Browser `localStorage` contains:
+  - `accessToken`
+  - `refreshToken`
+- Browser `sessionStorage` does not contain auth tokens.
+- Browser `localStorage` still contains `deviceId`.
+- Refreshing the page keeps the user signed in.
+- Closing and reopening the browser keeps the user signed in until token expiry/logout.
+
+Quick console check:
+
+```javascript
+{
+  localAccess: localStorage.getItem("accessToken"),
+  localRefresh: localStorage.getItem("refreshToken"),
+  sessionAccess: sessionStorage.getItem("accessToken"),
+  sessionRefresh: sessionStorage.getItem("refreshToken"),
+  deviceId: localStorage.getItem("deviceId"),
+}
 ```
 
 ## Phase 6: Protected Profile API
@@ -333,7 +390,15 @@ Expected backend result:
 - User-service generates a reset token hash and expiry.
 - User-service publishes Kafka topic `user.password-reset-requested`.
 - Notification-service consumes the event.
-- Email is sent to the user.
+- Notification-service sends the HTML template `email/password-reset.html`.
+- Email contains:
+  - Branded FlightHub header
+  - Reset password CTA
+  - Account email
+  - Requested-at timestamp
+  - Expires-at timestamp
+  - Copy/paste fallback reset link
+  - Support email
 - Notification database contains:
   - `notification_events` row with type `PASSWORD_RESET_REQUESTED`
   - `notification_deliveries` row with channel `EMAIL`
@@ -386,6 +451,7 @@ Expected result:
 Password rule:
 
 - Minimum 8 characters
+- Maximum 64 characters
 - At least one uppercase letter
 - At least one lowercase letter
 - At least one number
@@ -407,6 +473,25 @@ Expected result:
   - `notification_events` row with type `SUSPICIOUS_LOGIN`
   - `notification_deliveries` row with channel `EMAIL`
   - delivery status eventually becomes `SENT`
+
+Known-device regression test:
+
+1. Login with `X-Device-Id: browser-local-test-001`.
+2. Logout from the same device.
+3. Login again with `X-Device-Id: browser-local-test-001`.
+
+Expected result:
+
+- Login succeeds.
+- No new-device suspicious login email is sent solely because of logout/login.
+- `sessions` can be recreated.
+- `known_devices` keeps the device identity across logout.
+
+Frontend known-device check:
+
+- Logout removes `accessToken` and `refreshToken`.
+- Logout does not remove `deviceId` from `localStorage`.
+- Logging in again from the same browser should reuse the same `X-Device-Id`.
 
 ## Phase 11: Logout Flow
 
@@ -437,6 +522,8 @@ Expected result:
 - Gateway blacklists the access token in Redis.
 - Protected API calls with the old access token fail.
 - Refresh calls with the old refresh token fail.
+- Frontend removes auth tokens from both `localStorage` and `sessionStorage`.
+- Frontend preserves `localStorage.deviceId`.
 
 Redis expected behavior:
 
@@ -514,7 +601,10 @@ Use these frontend routes:
 
 Expected result:
 
-- Login stores `accessToken` and `refreshToken`.
+- Login without Remember me stores `accessToken` and `refreshToken` in `sessionStorage`.
+- Login with Remember me stores `accessToken` and `refreshToken` in `localStorage`.
+- Token refresh writes refreshed tokens back to the same storage used by the login session.
+- Logout clears auth tokens from both browser storage locations and preserves `deviceId`.
 - Forgot password calls `/api/users/forgot-password`.
 - Reset password calls `/api/users/reset-password`.
 - Reset password accepts token from query string.
@@ -545,8 +635,22 @@ If password reset email is not received:
 - Check user-service logs for Kafka publish.
 - Check Kafka topic `user.password-reset-requested`.
 - Check notification-service logs for consumer errors.
+- Verify `email/password-reset.html` is present in notification-service resources.
 - Check SMTP credentials.
 - Check `notification_deliveries.last_error`.
+
+If suspicious login email is sent after normal logout/login from the same browser:
+
+- Confirm frontend logout did not remove `localStorage.deviceId`.
+- Confirm the login request sends the same `X-Device-Id`.
+- Confirm `known_devices` contains the user/device pair.
+- Confirm `microservices/Documentation/sql/2026-05-31-create-known-devices.sql` was applied for existing databases.
+
+If Remember me does not behave correctly:
+
+- If checked, verify tokens are in `localStorage`.
+- If unchecked, verify tokens are in `sessionStorage`.
+- Confirm `src/utils/authStorage.js` is used by login, API refresh, auth init, logout, and change password flows.
 
 If notification-service fails to start:
 

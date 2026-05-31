@@ -33,6 +33,7 @@ import BookingReview from "./pages/traveler/BookingReview/BookingReview.jsx";
 import AirlineOnboardingWizard from "./pages/Onboarding/AirlineOnboardingWizard";
 
 import { getUserProfile } from "./Redux/user/userThunks.js";
+import { getAccessToken } from "./utils/authStorage.js";
 
 import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
@@ -46,7 +47,7 @@ function RoleRedirect() {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (token) {
       dispatch(getUserProfile({ silent: true }));
     }

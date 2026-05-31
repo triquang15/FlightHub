@@ -1,6 +1,7 @@
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { getDeviceId } from "@/utils/device";
+import { clearAuthTokens, getAccessToken, getRefreshToken, updateAuthTokens } from "@/utils/authStorage";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -12,8 +13,7 @@ const api = axios.create({
 });
 
 const clearSession = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
+  clearAuthTokens();
 };
 
 const redirectToLogin = () => {
@@ -27,7 +27,7 @@ const redirectToLogin = () => {
 // ============================
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -126,7 +126,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
+        const refreshToken = getRefreshToken();
 
         // ❗ nếu không có refresh token → logout luôn
         if (!refreshToken) {
@@ -150,11 +150,10 @@ api.interceptors.response.use(
         const newAccessToken = authResponse.accessToken;
         const newRefreshToken = authResponse.refreshToken;
 
-        // save token mới
-        localStorage.setItem("accessToken", newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem("refreshToken", newRefreshToken);
-        }
+        updateAuthTokens({
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        });
 
         // release queue
         processQueue(null, newAccessToken);

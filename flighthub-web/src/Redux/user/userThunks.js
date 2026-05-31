@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "sonner";
 import api from "@/utils/api";
+import { clearAuthTokens, getRefreshToken } from "@/utils/authStorage";
 import { clearUserState } from "./userSlice";
 import { logoutLocal } from "../auth/authSlice";
 
@@ -51,8 +52,7 @@ export const changePassword = createAsyncThunk(
   async (passwordData, { dispatch, rejectWithValue }) => {
     try {
       const res = await api.post("/api/users/change-password", passwordData);
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      clearAuthTokens();
       dispatch(clearUserState());
       dispatch(logoutLocal());
       toast.success("Password changed successfully. Please sign in again.");
@@ -109,7 +109,7 @@ export const logout = createAsyncThunk(
   "user/logout",
   async (_, { dispatch }) => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken");
+      const refreshToken = getRefreshToken();
 
       // Send refresh token so backend can invalidate it gracefully
       await api.post("/auth/logout", { refreshToken });
@@ -118,8 +118,7 @@ export const logout = createAsyncThunk(
       toast.error("Logout failed on server, signing out locally");
     }
 
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    clearAuthTokens();
 
     dispatch(clearUserState());
     dispatch(logoutLocal());

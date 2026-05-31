@@ -1,6 +1,7 @@
 import api from "@/utils/api";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "sonner";
+import { setAuthTokens } from "@/utils/authStorage";
 
 
 export const signup = createAsyncThunk(
@@ -12,8 +13,7 @@ export const signup = createAsyncThunk(
       const authResponse = res.data.data;
 
       // save tokens
-      localStorage.setItem("accessToken", authResponse.accessToken);
-      localStorage.setItem("refreshToken", authResponse.refreshToken);
+      setAuthTokens(authResponse, true);
 
       console.log("Signup success:", authResponse);
 
@@ -34,14 +34,14 @@ export const login = createAsyncThunk(
     console.log("Credentials:", credentials);
 
     try {
-      const res = await api.post("/api/auth/login", credentials);
+      const { rememberMe = false, ...loginData } = credentials;
+      const res = await api.post("/api/auth/login", loginData);
 
       const authResponse = res.data.data;
 
       console.log("Login success:", authResponse);
 
-      localStorage.setItem("accessToken", authResponse.accessToken);
-      localStorage.setItem("refreshToken", authResponse.refreshToken);
+      setAuthTokens(authResponse, rememberMe);
 
       toast.success("Logged in successfully");
 
