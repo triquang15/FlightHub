@@ -42,11 +42,7 @@ public class SecurityEventConsumer {
                             "Suspicious Login Alert",
                             "Device: " + event.getDeviceId() + " IP: " + event.getIp(),
                             event,
-                            () -> emailService.send(
-                                    event.getEmail(),
-                                    "Suspicious Login Alert",
-                                    "Device: " + event.getDeviceId() + " IP: " + event.getIp()
-                            )
+                            () -> emailService.sendSuspiciousLogin(event)
                     )
             );
 

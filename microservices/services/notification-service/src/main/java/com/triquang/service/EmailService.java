@@ -13,6 +13,7 @@ import org.thymeleaf.context.Context;
 
 import com.triquang.message.BookingConfirmedEvent;
 import com.triquang.message.PasswordResetRequestedEvent;
+import com.triquang.message.SuspiciousLoginEvent;
 
 import java.io.UnsupportedEncodingException;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +32,12 @@ public class EmailService {
 
     @Value("${notification.from-name}")
     private String fromName;
+
+    @Value("${notification.support-email}")
+    private String supportEmail;
+
+    @Value("${notification.frontend-base-url}")
+    private String frontendBaseUrl;
 
     private static final DateTimeFormatter DATE_FMT   = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
     private static final DateTimeFormatter TIME_FMT   = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH);
@@ -149,6 +156,35 @@ public class EmailService {
 
 		mailSender.send(message);
 	}
+
+    public void sendSuspiciousLogin(SuspiciousLoginEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(event.getEmail());
+        helper.setSubject("Security alert: new sign-in to your FlightHub account");
+        helper.setText(buildSuspiciousLoginBody(event), true);
+
+        mailSender.send(message);
+    }
+
+    private String buildSuspiciousLoginBody(SuspiciousLoginEvent event) {
+        Context ctx = new Context(Locale.ENGLISH);
+        ctx.setVariable("email", event.getEmail());
+        ctx.setVariable("deviceId", valueOrUnknown(event.getDeviceId()));
+        ctx.setVariable("ipAddress", valueOrUnknown(event.getIp()));
+        ctx.setVariable("detectedAt", event.getTimestamp() != null ? event.getTimestamp().format(DT_FMT) : "Unknown time");
+        ctx.setVariable("supportEmail", supportEmail);
+        ctx.setVariable("frontendBaseUrl", frontendBaseUrl);
+
+        return templateEngine.process("email/suspicious-login", ctx);
+    }
+
+    private String valueOrUnknown(String value) {
+        return value != null && !value.isBlank() ? value : "Unknown";
+    }
 
 	public void sendPasswordReset(PasswordResetRequestedEvent event, String resetUrl)
 			throws MessagingException, UnsupportedEncodingException {
