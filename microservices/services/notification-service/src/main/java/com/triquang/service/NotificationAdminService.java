@@ -107,6 +107,14 @@ public class NotificationAdminService {
         }
     }
 
+    @Transactional
+    public void deleteDelivery(Long deliveryId) {
+        NotificationDelivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new EntityNotFoundException("Notification delivery not found: " + deliveryId));
+
+        deliveryRepository.delete(delivery);
+    }
+
     private Specification<NotificationDelivery> deliverySpec(
             DeliveryStatus status,
             DeliveryChannel channel,
