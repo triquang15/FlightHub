@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.message.SuspiciousLoginEvent;
 import com.triquang.model.LoginAudit;
-import com.triquang.model.Session;
+import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.repository.LoginAuditRepository;
 import com.triquang.repository.SessionRepository;
 import com.triquang.service.SuspiciousLoginService;
@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SuspiciousLoginServiceImpl implements SuspiciousLoginService {
 
     private final SessionRepository sessionRepo;
+    private final KnownDeviceRepository knownDeviceRepo;
     private final LoginAuditRepository loginAuditRepo;
     private final SecurityEventProducer securityEventProducer;
 
@@ -73,10 +74,11 @@ public class SuspiciousLoginServiceImpl implements SuspiciousLoginService {
 
         if (deviceId == null) return false;
 
-        List<Session> sessions = sessionRepo.findByUserId(userId);
+        if (knownDeviceRepo.existsByUserIdAndDeviceId(userId, deviceId)) {
+            return false;
+        }
 
-        return sessions.stream()
-                .noneMatch(s -> deviceId.equals(s.getDeviceId()));
+        return sessionRepo.findByUserIdAndDeviceId(userId, deviceId).isEmpty();
     }
 
     // ================= RULE 2: IP =================

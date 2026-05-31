@@ -118,7 +118,8 @@ export const logout = createAsyncThunk(
       toast.error("Logout failed on server, signing out locally");
     }
 
-    localStorage.clear();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
 
     dispatch(clearUserState());
     dispatch(logoutLocal());

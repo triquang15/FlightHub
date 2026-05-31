@@ -15,12 +15,14 @@ import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.UserMapper;
+import com.triquang.model.KnownDevice;
 import com.triquang.model.RefreshToken;
 import com.triquang.model.Session;
 import com.triquang.model.User;
 import com.triquang.payload.request.SignupRequest;
 import com.triquang.payload.response.AuthResponse;
 import com.triquang.repository.LoginAuditRepository;
+import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.repository.RefreshTokenRepository;
 import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
@@ -40,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepo;
     private final SessionRepository sessionRepo;
+    private final KnownDeviceRepository knownDeviceRepo;
     private final LoginAuditRepository loginAuditRepo;
 
     private final JwtProvider jwtProvider;
@@ -78,6 +81,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
+        upsertKnownDevice(user, deviceId, ip, agent);
         upsertSession(user, deviceId, ip, agent);
 
         return buildAuthResponse(user, deviceId, ip, agent);
@@ -117,6 +121,7 @@ public class AuthServiceImpl implements AuthService {
 
             auditService.saveLoginAudit(email, true, ip, agent);
 
+            upsertKnownDevice(user, normalizedDeviceId, ip, agent);
             upsertSession(user, normalizedDeviceId, ip, agent);
 
             return buildAuthResponse(user, normalizedDeviceId, ip, agent);
@@ -263,6 +268,25 @@ public class AuthServiceImpl implements AuthService {
                                 .ipAddress(ip)
                                 .userAgent(agent)
                                 .lastActive(LocalDateTime.now())
+                                .build())
+                );
+    }
+
+    private void upsertKnownDevice(User user, String deviceId, String ip, String agent) {
+
+        knownDeviceRepo.findByUserIdAndDeviceId(user.getId(), deviceId)
+                .ifPresentOrElse(
+                        device -> {
+                            device.setLastSeenAt(LocalDateTime.now());
+                            device.setIpAddress(ip);
+                            device.setUserAgent(agent);
+                        },
+                        () -> knownDeviceRepo.save(KnownDevice.builder()
+                                .user(user)
+                                .deviceId(deviceId)
+                                .ipAddress(ip)
+                                .userAgent(agent)
+                                .lastSeenAt(LocalDateTime.now())
                                 .build())
                 );
     }
