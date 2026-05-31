@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers } from "@/Redux/user/userThunks";
 import {
@@ -42,6 +42,12 @@ function formatDate(dateStr) {
     return "—";
   }
 }
+
+const MIN_RELOAD_SPINNER_MS = 500;
+
+const wait = (ms) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms);
+});
 
 /* ─────────────────────── stat card ─────────────────────── */
 function StatCard({ icon: Icon, label, value, color }) {
@@ -91,10 +97,26 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [sortField, setSortField] = useState("fullName");
   const [sortDir, setSortDir] = useState("asc");
+  const [refreshSpinning, setRefreshSpinning] = useState(false);
 
   useEffect(() => {
     dispatch(getAllUsers());
   }, [dispatch]);
+
+  async function handleRefresh() {
+    const startedAt = Date.now();
+    setRefreshSpinning(true);
+
+    try {
+      await dispatch(getAllUsers());
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_RELOAD_SPINNER_MS) {
+        await wait(MIN_RELOAD_SPINNER_MS - elapsed);
+      }
+      setRefreshSpinning(false);
+    }
+  }
 
   function handleSort(field) {
     if (sortField === field) {
@@ -158,11 +180,11 @@ const UserManagement = () => {
       <div className="flex items-center justify-between">
         <div />
         <button
-          onClick={() => dispatch(getAllUsers())}
-          disabled={usersLoading}
+          onClick={handleRefresh}
+          disabled={usersLoading || refreshSpinning}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition"
         >
-          <RefreshCw className={`h-4 w-4 ${usersLoading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${usersLoading || refreshSpinning ? "animate-spin" : ""}`} />
           Refresh
         </button>
       </div>
