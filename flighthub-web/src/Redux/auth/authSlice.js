@@ -122,6 +122,40 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
         state.error = null;
+      })
+
+      // ================= FORGOT PASSWORD =================
+      .addCase(forgotPassword.pending, (state) => {
+        state.forgotPasswordLoading = true;
+        state.forgotPasswordError = null;
+        state.forgotPasswordSuccess = false;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.forgotPasswordLoading = false;
+        state.forgotPasswordError = null;
+        state.forgotPasswordSuccess = true;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.forgotPasswordLoading = false;
+        state.forgotPasswordError = action.payload;
+        state.forgotPasswordSuccess = false;
+      })
+
+      // ================= RESET PASSWORD =================
+      .addCase(resetPassword.pending, (state) => {
+        state.resetPasswordLoading = true;
+        state.resetPasswordError = null;
+        state.resetPasswordSuccess = false;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.resetPasswordLoading = false;
+        state.resetPasswordError = null;
+        state.resetPasswordSuccess = true;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.resetPasswordLoading = false;
+        state.resetPasswordError = action.payload;
+        state.resetPasswordSuccess = false;
       });
   },
 });

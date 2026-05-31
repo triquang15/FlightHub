@@ -25,8 +25,8 @@ import UserProfile from "./pages/traveler/Profile/UserProfile.jsx";
 import AirlineDashboard from "./pages/airline/Dashboard/AirlineDashboard.jsx";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard/SuperAdminDashboard.jsx";
 
-import ForgotPassword from "./pages/auth/ForgotPassword.jsx";
-import ResetPassword from "./pages/auth/ResetPassword.jsx";
+import ForgotPassword from "./pages/auth/ForgotPassword.tsx";
+import ResetPassword from "./pages/auth/ResetPassword.tsx";
 import Auth from "./pages/auth/Auth.jsx";
 
 import BookingReview from "./pages/traveler/BookingReview/BookingReview.jsx";

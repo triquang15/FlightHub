@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plane, Building2, Phone, Mail, Users, Shield, Edit2, X, Check, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Plane, Phone, Mail, Users, Shield, Edit2, X, Check, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,58 +12,90 @@ import { Badge } from '@/components/ui/badge';
 import { getAirlineByAdmin, updateAirline } from '@/Redux/airline/airlineThunks';
 import { getUserProfile } from '@/Redux/user/userThunks';
 
+const emptyAirlineData = {
+  name: '',
+  iataCode: '',
+  icaoCode: '',
+  alias: '',
+  logoUrl: '',
+  website: '',
+  alliance: '',
+  headquartersCityId: '',
+  countryName: '',
+  supportEmail: '',
+  supportPhone: '',
+  supportHours: ''
+};
+
+const toAirlineFormData = (airline) => {
+  if (!airline) return emptyAirlineData;
+
+  return {
+    name: airline.name || '',
+    iataCode: airline.iataCode || '',
+    icaoCode: airline.icaoCode || '',
+    alias: airline.alias || '',
+    logoUrl: airline.logoUrl || '',
+    website: airline.website || '',
+    alliance: airline.alliance || '',
+    headquartersCityId: airline.headquartersCityId || '',
+    countryName: airline.countryName || '',
+    supportEmail: airline.support?.email || airline.supportEmail || '',
+    supportPhone: airline.support?.phone || airline.supportPhone || '',
+    supportHours: airline.support?.hours || airline.supportHours || ''
+  };
+};
+
+const FormField = ({ name, label, value, onChange, type = "text", disabled = false, as = null, rows = null, error }) => (
+  <div className="space-y-2">
+    <Label htmlFor={name}>{label}</Label>
+    {as === 'textarea' ? (
+      <Textarea
+        id={name}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        rows={rows}
+        className={error ? 'border-red-500' : ''}
+      />
+    ) : (
+      <Input
+        id={name}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={error ? 'border-red-500' : ''}
+      />
+    )}
+    {error && <p className="text-sm text-red-500">{error}</p>}
+  </div>
+);
+
 export default function AirlineAdminProfile() {
   const dispatch = useDispatch();
   const { currentAirline, loading, error, updateLoading } = useSelector((state) => state.airline);
   const { userProfile } = useSelector((state) => state.user);
-  
+
   const [editMode, setEditMode] = useState({
     airline: false,
     support: false
   });
 
-  const [airlineData, setAirlineData] = useState({
-    name: '',
-    iataCode: '',
-    icaoCode: '',
-    alias: '',
-    logoUrl: '',
-    website: '',
-    alliance: '',
-    headquartersCityId: '',
-    supportEmail: '',
-    supportPhone: '',
-    supportHours: ''
-  });
+  const [airlineData, setAirlineData] = useState(emptyAirlineData);
 
   const [errors, setErrors] = useState({});
   const [tempData, setTempData] = useState({});
   const [saveMessage, setSaveMessage] = useState('');
+  const currentAirlineData = toAirlineFormData(currentAirline);
+  const hasActiveEdit = editMode.airline || editMode.support;
+  const displayData = hasActiveEdit ? airlineData : currentAirlineData;
 
   // Fetch airline data on component mount
   useEffect(() => {
     dispatch(getAirlineByAdmin());
-    dispatch(getUserProfile(localStorage.getItem("jwt")));
+    dispatch(getUserProfile());
   }, [dispatch]);
-
-  // Update local state when Redux data is available
-  useEffect(() => {
-    if (currentAirline) {
-      setAirlineData({
-        name: currentAirline.name || '',
-        iataCode: currentAirline.iataCode || '',
-        icaoCode: currentAirline.icaoCode || '',
-        alias: currentAirline.alias || '',
-        logoUrl: currentAirline.logoUrl || '',
-        website: currentAirline.website || '',
-        alliance: currentAirline.alliance || '',
-        headquartersCityId: currentAirline.headquartersCityId || '',
-        supportEmail: currentAirline.support?.email || currentAirline.supportEmail || '',
-        supportPhone: currentAirline.support?.phone || currentAirline.supportPhone || '',
-        supportHours: currentAirline.support?.hours || currentAirline.supportHours || ''
-      });
-    }
-  }, [currentAirline]);
 
   const ownerSource = userProfile || currentAirline?.owner;
   const ownerData = ownerSource ? {
@@ -87,54 +119,48 @@ export default function AirlineAdminProfile() {
   };
 
   const validateAirline = (data) => {
-  const newErrors = {};
-  
-  // Required fields based on AirlineRequest @NotBlank annotations
-  if (!data.iataCode || data.iataCode.trim().length !== 2) {
-    newErrors.iataCode = 'IATA code must be exactly 2 characters';
-  }
-  
-  if (!data.icaoCode || data.icaoCode.trim().length !== 3) {
-    newErrors.icaoCode = 'ICAO code must be exactly 3 characters';
-  }
-  
-  if (!data.name || data.name.trim().length < 2) {
-    newErrors.name = 'Airline name is required (min 2 characters)';
-  }
-  
-  if (!data.country || data.country.trim().length === 0) {
-    // country not required (backend does not use it)
-  }
-  
-  // Optional field validation
-  if (data.website && data.website.trim() && !isValidUrl(data.website)) {
-    newErrors.website = 'Valid website URL is required';
-  }
-  
-  if (data.logoUrl && data.logoUrl.trim() && !isValidUrl(data.logoUrl)) {
-    newErrors.logoUrl = 'Valid logo URL is required';
-  }
-  
-  return newErrors;
-};
+    const newErrors = {};
 
-const validateSupport = (data) => {
-  const newErrors = {};
-  
-  if (data.supportEmail && data.supportEmail.trim() && !isValidEmail(data.supportEmail)) {
-    newErrors.supportEmail = 'Please enter a valid support email';
-  }
-  
-  if (!data.supportPhone || data.supportPhone.trim().length === 0) {
-    newErrors.supportPhone = 'Support phone is required';
-  }
-  
-  if (!data.supportHours || data.supportHours.trim().length === 0) {
-    newErrors.supportHours = 'Support hours are required';
-  }
-  
-  return newErrors;
-};
+    if (!data.iataCode || data.iataCode.trim().length !== 2) {
+      newErrors.iataCode = 'IATA code must be exactly 2 characters';
+    }
+
+    if (!data.icaoCode || data.icaoCode.trim().length !== 3) {
+      newErrors.icaoCode = 'ICAO code must be exactly 3 characters';
+    }
+
+    if (!data.name || data.name.trim().length < 2) {
+      newErrors.name = 'Airline name is required (min 2 characters)';
+    }
+
+    if (data.website && data.website.trim() && !isValidUrl(data.website)) {
+      newErrors.website = 'Valid website URL is required';
+    }
+
+    if (data.logoUrl && data.logoUrl.trim() && !isValidUrl(data.logoUrl)) {
+      newErrors.logoUrl = 'Valid logo URL is required';
+    }
+
+    return newErrors;
+  };
+
+  const validateSupport = (data) => {
+    const newErrors = {};
+
+    if (data.supportEmail && data.supportEmail.trim() && !isValidEmail(data.supportEmail)) {
+      newErrors.supportEmail = 'Please enter a valid support email';
+    }
+
+    if (!data.supportPhone || data.supportPhone.trim().length === 0) {
+      newErrors.supportPhone = 'Support phone is required';
+    }
+
+    if (!data.supportHours || data.supportHours.trim().length === 0) {
+      newErrors.supportHours = 'Support hours are required';
+    }
+
+    return newErrors;
+  };
 
   const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -152,7 +178,8 @@ const validateSupport = (data) => {
   const toggleEdit = (section) => {
     if (!editMode[section]) {
       // Entering edit mode - store current data
-      setTempData({ ...airlineData });
+      setAirlineData({ ...currentAirlineData });
+      setTempData({ ...currentAirlineData });
     } else {
       // Canceling edit mode - restore original data
       setAirlineData({ ...tempData });
@@ -162,66 +189,66 @@ const validateSupport = (data) => {
   };
 
   const handleSave = async (section) => {
-  try {
-    setErrors({});
-    setSaveMessage('');
-
-    let validationErrors = {};
-    
-    if (section === 'airline') {
-      validationErrors = validateAirline(airlineData);
-    } else if (section === 'support') {
-      validationErrors = validateSupport(airlineData);
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    // Prepare update data according to AirlineRequest entity
-    const updateData = {
-      iataCode: airlineData.iataCode,
-      icaoCode: airlineData.icaoCode,
-      name: airlineData.name,
-      alias: airlineData.alias || null,
-      country: airlineData.country,
-      logoUrl: airlineData.logoUrl || null,
-      website: airlineData.website || null,
-      status: currentAirline?.status || 'ACTIVE',
-      alliance: airlineData.alliance || null,
-      // Remove headquartersCityId if it's causing issues, or ensure it's the correct type
-      headquartersCityId: airlineData.headquartersCityId ? parseInt(airlineData.headquartersCityId) : null,
-      supportEmail: airlineData.supportEmail || null,
-      supportPhone: airlineData.supportPhone || null,
-      supportHours: airlineData.supportHours || null
-    };
-
-    // Clean up the data - remove null/undefined values that might cause issues
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] === null || updateData[key] === undefined || updateData[key] === '') {
-        delete updateData[key];
-      }
-    });
-
-    console.log('Sending update data:', updateData); // For debugging
-
-    // Dispatch update action
-    await dispatch(updateAirline(updateData)).unwrap();
-    
-    setSaveMessage(`${section === 'airline' ? 'Airline' : 'Support'} information updated successfully!`);
-    setEditMode(prev => ({ ...prev, [section]: false }));
-
-    // Clear success message after 3 seconds
-    setTimeout(() => {
+    try {
+      setErrors({});
       setSaveMessage('');
-    }, 3000);
 
-  } catch (error) {
-    console.error('Error updating airline:', error);
-    setErrors({ submit: error.message || 'Failed to update airline information' });
-  }
-};
+      if (!currentAirline?.id) {
+        setErrors({ submit: 'Airline profile is not ready yet. Please refresh and try again.' });
+        return;
+      }
+
+      let validationErrors = {};
+
+      if (section === 'airline') {
+        validationErrors = validateAirline(airlineData);
+      } else if (section === 'support') {
+        validationErrors = validateSupport(airlineData);
+      }
+
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
+
+      const headquartersCityId = airlineData.headquartersCityId
+        ? Number(airlineData.headquartersCityId)
+        : null;
+
+      const updateData = {
+        id: currentAirline.id,
+        iataCode: airlineData.iataCode.trim().toUpperCase(),
+        icaoCode: airlineData.icaoCode.trim().toUpperCase(),
+        name: airlineData.name.trim(),
+        alias: airlineData.alias.trim(),
+        logoUrl: airlineData.logoUrl.trim(),
+        website: airlineData.website.trim(),
+        status: currentAirline?.status || 'ACTIVE',
+        alliance: airlineData.alliance.trim(),
+        supportEmail: airlineData.supportEmail.trim(),
+        supportPhone: airlineData.supportPhone.trim(),
+        supportHours: airlineData.supportHours.trim()
+      };
+
+      if (headquartersCityId) {
+        updateData.headquartersCityId = headquartersCityId;
+      }
+
+      await dispatch(updateAirline(updateData)).unwrap();
+
+      setTempData({});
+      setSaveMessage(`${section === 'airline' ? 'Airline' : 'Support'} information updated successfully!`);
+      setEditMode(prev => ({ ...prev, [section]: false }));
+
+      setTimeout(() => {
+        setSaveMessage('');
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error updating airline:', error);
+      setErrors({ submit: typeof error === 'string' ? error : 'Failed to update airline information' });
+    }
+  };
 
   const handleFieldChange = (field, value) => {
     setAirlineData(prev => ({ ...prev, [field]: value }));
@@ -238,33 +265,8 @@ const validateSupport = (data) => {
 
   const handleRefresh = () => {
     dispatch(getAirlineByAdmin());
+    dispatch(getUserProfile());
   };
-
-  const FormField = ({ name, label, value, onChange, type = "text", disabled = false, as = null, rows = null, error }) => (
-    <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
-      {as === 'textarea' ? (
-        <Textarea
-          id={name}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          rows={rows}
-          className={error ? 'border-red-500' : ''}
-        />
-      ) : (
-        <Input
-          id={name}
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={error ? 'border-red-500' : ''}
-        />
-      )}
-      {error && <p className="text-sm text-red-500">{error}</p>}
-    </div>
-  );
 
   // Loading state
   if (loading && !currentAirline) {
@@ -309,10 +311,10 @@ const validateSupport = (data) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
-                  {airlineData.logoUrl ? (
-                    <img 
-                      src={airlineData.logoUrl} 
-                      alt={airlineData.name}
+                  {displayData.logoUrl ? (
+                    <img
+                      src={displayData.logoUrl}
+                      alt={displayData.name}
                       className="w-full h-full object-cover rounded-lg"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/150';
@@ -324,7 +326,7 @@ const validateSupport = (data) => {
                   )}
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-800">{airlineData.name}</h1>
+                  <h1 className="text-3xl font-bold text-gray-800">{displayData.name}</h1>
                   <p className="text-gray-600">Admin Dashboard</p>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="outline" className="flex items-center gap-1">
@@ -400,9 +402,9 @@ const validateSupport = (data) => {
                     <Label>Airline Logo URL</Label>
                     <div className="flex items-center gap-4">
                       <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
-                        {airlineData.logoUrl ? (
-                          <img 
-                            src={airlineData.logoUrl} 
+                        {displayData.logoUrl ? (
+                          <img
+                            src={displayData.logoUrl}
                             alt="Airline Logo" 
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {
@@ -418,7 +420,7 @@ const validateSupport = (data) => {
                         <div className="flex-1">
                           <Input
                             type="url"
-                            value={airlineData.logoUrl}
+                            value={displayData.logoUrl}
                             onChange={(e) => handleFieldChange('logoUrl', e.target.value)}
                             placeholder="Enter logo URL"
                             className={errors.logoUrl ? 'border-red-500' : ''}
@@ -433,7 +435,7 @@ const validateSupport = (data) => {
                     <FormField 
                       name="name" 
                       label="Airline Name" 
-                      value={airlineData.name}
+                      value={displayData.name}
                       onChange={(val) => handleFieldChange('name', val)}
                       disabled={!editMode.airline}
                       error={errors.name}
@@ -441,7 +443,7 @@ const validateSupport = (data) => {
                     <FormField 
                       name="iataCode" 
                       label="IATA Code" 
-                      value={airlineData.iataCode}
+                      value={displayData.iataCode}
                       onChange={(val) => handleFieldChange('iataCode', val)}
                       disabled={!editMode.airline}
                       error={errors.iataCode}
@@ -449,7 +451,7 @@ const validateSupport = (data) => {
                     <FormField 
                       name="icaoCode" 
                       label="ICAO Code" 
-                      value={airlineData.icaoCode}
+                      value={displayData.icaoCode}
                       onChange={(val) => handleFieldChange('icaoCode', val)}
                       disabled={!editMode.airline}
                       error={errors.icaoCode}
@@ -457,29 +459,28 @@ const validateSupport = (data) => {
                     <FormField 
                       name="alias" 
                       label="Alias" 
-                      value={airlineData.alias}
+                      value={displayData.alias}
                       onChange={(val) => handleFieldChange('alias', val)}
                       disabled={!editMode.airline}
                     />
-                    <FormField 
-                      name="country" 
-                      label="Country" 
-                      value={airlineData.country}
-                      onChange={(val) => handleFieldChange('country', val)}
-                      disabled={!editMode.airline}
-                      error={errors.country}
+                    <FormField
+                      name="countryName"
+                      label="Country"
+                      value={displayData.countryName}
+                      onChange={() => {}}
+                      disabled
                     />
                     <FormField 
                       name="alliance" 
                       label="Alliance" 
-                      value={airlineData.alliance}
+                      value={displayData.alliance}
                       onChange={(val) => handleFieldChange('alliance', val)}
                       disabled={!editMode.airline}
                     />
                     <FormField 
                       name="website" 
                       label="Website" 
-                      value={airlineData.website}
+                      value={displayData.website}
                       onChange={(val) => handleFieldChange('website', val)}
                       disabled={!editMode.airline}
                       error={errors.website}
@@ -488,7 +489,7 @@ const validateSupport = (data) => {
                       name="headquartersCityId" 
                       label="Headquarters City ID" 
                       type="number"
-                      value={airlineData.headquartersCityId}
+                      value={displayData.headquartersCityId}
                       onChange={(val) => handleFieldChange('headquartersCityId', val)}
                       disabled={!editMode.airline}
                     />
@@ -542,7 +543,7 @@ const validateSupport = (data) => {
                       name="supportEmail" 
                       label="Support Email" 
                       type="email"
-                      value={airlineData.supportEmail}
+                      value={displayData.supportEmail}
                       onChange={(val) => handleFieldChange('supportEmail', val)}
                       disabled={!editMode.support}
                       error={errors.supportEmail}
@@ -550,7 +551,7 @@ const validateSupport = (data) => {
                     <FormField 
                       name="supportPhone" 
                       label="Support Phone"
-                      value={airlineData.supportPhone}
+                      value={displayData.supportPhone}
                       onChange={(val) => handleFieldChange('supportPhone', val)}
                       disabled={!editMode.support}
                       error={errors.supportPhone}
@@ -558,7 +559,7 @@ const validateSupport = (data) => {
                     <FormField 
                       name="supportHours" 
                       label="Support Hours"
-                      value={airlineData.supportHours}
+                      value={displayData.supportHours}
                       onChange={(val) => handleFieldChange('supportHours', val)}
                       disabled={!editMode.support}
                       error={errors.supportHours}
