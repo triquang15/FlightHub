@@ -1,217 +1,156 @@
 # =============================================================================
-# Airline Microservices — Docker Compose
+# FlightHub Microservices - Docker Compose
 # =============================================================================
-# ONLY API GATEWAY (Port 8080) is exposed externally
-# All other services are internal only
+# External entrypoint: api-gateway on http://localhost:8080
+# Other Spring services are internal and discover each other through Eureka.
 # =============================================================================
+
+x-common-env: &common-env
+  SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
+  JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m -XX:+UseG1GC
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+
+x-postgres-healthcheck: &postgres-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 10s
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - triquang15
+
+x-db-defaults: &db-defaults
+  image: postgres:16-alpine
+  restart: unless-stopped
+  mem_limit: 512m
+  mem_reservation: 256m
+  cpus: 0.5
+  healthcheck: *postgres-healthcheck
+  networks:
+    - triquang15
 
 services:
-
   # ===========================================================================
-  # INFRASTRUCTURE
+  # DATABASES
   # ===========================================================================
 
-  # ========== USER DB ==========
   userdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: userdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3302:3306"  # LOCALHOST ONLY - for debugging if needed
+      - "127.0.0.1:5432:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_user
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_user
 
-  # ========== AIRLINE CORE DB ==========
   airlinecoredb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: airlinecoredb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3303:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5433:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_core_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_core_db
 
-  # ========== FLIGHT OPS DB ==========
   flightopsdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: flightopsdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3304:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5434:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_flight_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_flight_db
 
-  # ========== LOCATION DB ==========
   locationdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: locationdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3305:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5435:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_location_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_location_db
 
-  # ========== SEAT DB ==========
   seatdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: seatdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3311:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5436:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_seat_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_seat_db
 
-  # ========== PRICING DB ==========
   pricingdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: pricingdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3307:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5437:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_pricing_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_pricing_db
 
-  # ========== ANCILLARY DB ==========
   ancillarydb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: ancillarydb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3308:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5438:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_ancillary_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_ancillary_db
 
-  # ========== BOOKING DB ==========
   bookingdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: bookingdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3309:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5439:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_booking_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_booking_db
 
-  # ========== PAYMENT DB ==========
   paymentdb:
-    image: mysql:8.0
+    <<: *db-defaults
     container_name: paymentdb
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
-      - "127.0.0.1:3310:3306"  # LOCALHOST ONLY
+      - "127.0.0.1:5440:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: airline_payment_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-    networks:
-      - triquang15
+      <<: *postgres-env
+      POSTGRES_DB: airline_payment_db
 
+  subscriptiondb:
+    <<: *db-defaults
+    container_name: subscriptiondb
+    ports:
+      - "127.0.0.1:5441:5432"
+    environment:
+      <<: *postgres-env
+      POSTGRES_DB: airline_subscription_db
+
+  notificationdb:
+    <<: *db-defaults
+    container_name: notificationdb
+    ports:
+      - "127.0.0.1:5442:5432"
+    environment:
+      <<: *postgres-env
+      POSTGRES_DB: airline_notification_db
 
   # ===========================================================================
-  # REDIS — shared cache for location, airline, pricing, flight-ops, api-gateway
+  # SHARED INFRASTRUCTURE
   # ===========================================================================
 
   redis:
     image: redis:7.2-alpine
     container_name: gds-redis
+    restart: unless-stopped
     mem_limit: 256m
     mem_reservation: 128m
     cpus: 0.25
-    # NO PORTS EXPOSED - Internal only
     command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru --save ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -222,383 +161,372 @@ services:
     networks:
       - triquang15
 
-  # ===========================================================================
-  # KAFKA (KRaft Mode - No Zookeeper)
-  # ===========================================================================
-
   kafka:
     image: apache/kafka:4.1.1
     container_name: kafka
+    restart: unless-stopped
     mem_limit: 1g
     mem_reservation: 512m
     cpus: 1.0
-    # NO PORTS EXPOSED - Internal only
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # Internal service name
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_HEAP_OPTS: "-Xms256m -Xmx1g"
-    networks:
-      - triquang15
-
-  # ===========================================================================
-  # CONFIG SERVER
-  # ===========================================================================
-
-  config-server:
-    image: "triquang15ilo/gds-config-server:1.0.0"
-    container_name: gds-config-server
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
-    environment:
-      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: "https://github.com/developer407/gds-config"
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
-      start_period: 10s
-    restart: unless-stopped
+      start_period: 20s
     networks:
       - triquang15
 
   # ===========================================================================
-  # SERVICE REGISTRY (Eureka)
+  # PLATFORM SERVICES
   # ===========================================================================
 
   service-registry:
-    image: "triquang15ilo/gds-service-registry:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-service-registry:1.0.0
     container_name: gds-eureka-server
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
-    depends_on:
-      config-server:
-        condition: service_healthy
-    environment:
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-    restart: unless-stopped
-    networks:
-      - triquang15
 
-  # ===========================================================================
-  # API GATEWAY - ONLY EXTERNALLY EXPOSED SERVICE
-  # ===========================================================================
+  config-server:
+    <<: *service-defaults
+    image: triquang15/gds-config-server
+    container_name: gds-config-server
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    depends_on:
+      service-registry:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
+      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: https://github.com/triquang15/flight-hub-config-server
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m -XX:+UseG1GC
 
   api-gateway:
-    image: "triquang15ilo/gds-api-gateway:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-api-gateway
     container_name: gds-api-gateway
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
     ports:
-      - "5000:5000"  # ONLY PORT EXPOSED TO THE WORLD
+      - "8080:8080"
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "api-gateway"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: api-gateway
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   # ===========================================================================
-  # BUSINESS SERVICES - ALL INTERNAL (NO PORTS EXPOSED)
+  # BUSINESS SERVICES
   # ===========================================================================
 
   user-service:
-    image: "triquang15ilo/gds-user:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-user
     container_name: gds-user-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       userdb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "user-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://userdb:3306/airline_user?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
+      <<: *common-env
+      SPRING_APPLICATION_NAME: user-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://userdb:5432/airline_user
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   airline-core-service:
-    image: "triquang15ilo/gds-airline:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-airline
     container_name: gds-airline-core-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       airlinecoredb:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "airline-core-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://airlinecoredb:3306/airline_core_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: airline-core-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://airlinecoredb:5432/airline_core_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   flight-ops-service:
-    image: "triquang15ilo/gds-flight:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-flight-ops
     container_name: gds-flight-ops-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       flightopsdb:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "flight-ops-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://flightopsdb:3306/airline_flight_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: flight-ops-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://flightopsdb:5432/airline_flight_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   location-service:
-    image: "triquang15ilo/gds-location:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-location
     container_name: gds-location-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       locationdb:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "location-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://locationdb:3306/airline_location_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: location-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://locationdb:5432/airline_location_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   seat-service:
-    image: "triquang15ilo/gds-seat:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-seat
     container_name: gds-seat-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       seatdb:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "seat-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://seatdb:3306/airline_seat_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: seat-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://seatdb:5432/airline_seat_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   pricing-service:
-    image: "triquang15ilo/gds-pricing:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-pricing
     container_name: gds-pricing-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       pricingdb:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "pricing-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://pricingdb:3306/airline_pricing_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: pricing-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pricingdb:5432/airline_pricing_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
 
   ancillary-service:
-    image: "triquang15ilo/gds-ancillary:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-ancillary
     container_name: gds-ancillary-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       ancillarydb:
         condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "ancillary-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://ancillarydb:3306/airline_ancillary_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
+      <<: *common-env
+      SPRING_APPLICATION_NAME: ancillary-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ancillarydb:5432/airline_ancillary_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
 
   booking-service:
-    image: "triquang15ilo/gds-booking:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-booking
     container_name: gds-booking-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       bookingdb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "booking-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://bookingdb:3306/airline_booking_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
+      <<: *common-env
+      SPRING_APPLICATION_NAME: booking-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bookingdb:5432/airline_booking_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   payment-service:
-    image: "triquang15ilo/gds-payment:1.0.0"
+    <<: *service-defaults
+    image: triquang15/gds-payment
     container_name: gds-payment-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
-    # NO PORTS EXPOSED - Internal only
+    env_file:
+      - ../services/payment-service/.env
     depends_on:
       config-server:
-        condition: service_healthy
+        condition: service_started
       service-registry:
-        condition: service_healthy
+        condition: service_started
       paymentdb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
-      SPRING_APPLICATION_NAME: "payment-service"
-      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888/"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://paymentdb:3306/airline_payment_db?useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-registry:8761/eureka/"
+      <<: *common-env
+      SPRING_APPLICATION_NAME: payment-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://paymentdb:5432/airline_payment_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m -XX:+UseG1GC"
-    restart: unless-stopped
-    networks:
-      - triquang15
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  subscription-service:
+    <<: *service-defaults
+    image: triquang15/gds-subscription
+    container_name: gds-subscription-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    depends_on:
+      config-server:
+        condition: service_started
+      service-registry:
+        condition: service_started
+      subscriptiondb:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      SPRING_APPLICATION_NAME: subscription-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://subscriptiondb:5432/airline_subscription_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+  notification-service:
+    <<: *service-defaults
+    image: triquang15/gds-notification
+    container_name: gds-notification-service
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    depends_on:
+      config-server:
+        condition: service_started
+      service-registry:
+        condition: service_started
+      notificationdb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      SPRING_APPLICATION_NAME: notification-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notificationdb:5432/airline_notification_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
 
 networks:
   triquang15:
