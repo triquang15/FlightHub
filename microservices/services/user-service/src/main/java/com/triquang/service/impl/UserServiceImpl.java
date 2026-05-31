@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
+import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.mapper.UserMapper;
@@ -24,6 +25,7 @@ import com.triquang.payload.request.UpdateProfileRequest;
 import com.triquang.repository.RefreshTokenRepository;
 import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
+import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.service.UserService;
 import com.triquang.utils.TokenHashUtil;
 
@@ -41,6 +43,7 @@ public class UserServiceImpl implements UserService {
 
     private final RefreshTokenRepository refreshTokenRepo;
     private final SessionRepository sessionRepo;
+    private final KnownDeviceRepository knownDeviceRepo;
     private final TokenHashUtil tokenHashUtil;
     private final SecurityEventProducer securityEventProducer;
 
@@ -156,6 +159,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public Page<UserDTO> getUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(UserMapper::toDTO);
+    }
+
+    // ================= DELETE USER =================
+    @Override
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getRole() == UserRole.ROLE_SYSTEM_ADMIN) {
+            throw new BaseException(ErrorCode.SYSTEM_ADMIN_DELETE_FORBIDDEN);
+        }
+
+        refreshTokenRepo.deleteByUserId(id);
+        sessionRepo.deleteByUserId(id);
+        knownDeviceRepo.deleteByUserId(id);
+        userRepository.delete(user);
+
+        log.info("User deleted userId={} email={} role={}", id, user.getEmail(), user.getRole());
     }
 
     // ================= SESSIONS =================

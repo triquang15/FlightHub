@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.model.KnownDevice;
 
@@ -13,4 +14,7 @@ public interface KnownDeviceRepository extends JpaRepository<KnownDevice, Long> 
     boolean existsByUserIdAndDeviceId(Long userId, String deviceId);
 
     Optional<KnownDevice> findByUserIdAndDeviceId(Long userId, String deviceId);
+
+    @Transactional
+    void deleteByUserId(Long userId);
 }

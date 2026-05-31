@@ -30,6 +30,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS("USR_003", "Invalid email or password", HttpStatus.UNAUTHORIZED),
     INVALID_PASSWORD("USR_004", "Invalid password", HttpStatus.BAD_REQUEST),
     SAME_PASSWORD("USR_005", "New password must be different from the current password", HttpStatus.BAD_REQUEST),
+    SYSTEM_ADMIN_DELETE_FORBIDDEN("USR_006", "System admin accounts cannot be deleted", HttpStatus.FORBIDDEN),
 
     // =========================
     // AUTH

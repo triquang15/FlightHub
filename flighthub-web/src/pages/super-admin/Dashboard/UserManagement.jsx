@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers } from "@/Redux/user/userThunks";
 import {
+  AlertTriangle,
   Users,
   Search,
   Shield,
@@ -13,11 +14,26 @@ import {
   Mail,
   Phone,
   Clock,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import api from "@/utils/api";
+import { toast } from "sonner";
+
+const SYSTEM_ADMIN_ROLE = "ROLE_SYSTEM_ADMIN";
 
 function getRoleMeta(role) {
   switch (role) {
-    case "ROLE_SYSTEM_ADMIN":
+    case SYSTEM_ADMIN_ROLE:
       return { label: "System Admin", color: "bg-purple-100 text-purple-700" };
     case "ROLE_AIRLINE_OWNER":
       return { label: "Airline Owner", color: "bg-blue-100 text-blue-700" };
@@ -48,6 +64,8 @@ const MIN_RELOAD_SPINNER_MS = 500;
 const wait = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms);
 });
+
+const isSystemAdmin = (user) => user?.role === SYSTEM_ADMIN_ROLE;
 
 /* ─────────────────────── stat card ─────────────────────── */
 function StatCard({ icon: Icon, label, value, color }) {
@@ -90,14 +108,16 @@ function SortHeader({ label, field, sortField, sortDir, onSort }) {
 /* ─────────────────────── main component ─────────────────────── */
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { users, usersLoading, error } = useSelector((s) => s.user);
-  const safeUsers = Array.isArray(users) ? users : [];
+  const { users, usersLoading, usersError } = useSelector((s) => s.user);
+  const safeUsers = useMemo(() => (Array.isArray(users) ? users : []), [users]);
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [sortField, setSortField] = useState("fullName");
   const [sortDir, setSortDir] = useState("asc");
   const [refreshSpinning, setRefreshSpinning] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     dispatch(getAllUsers());
@@ -118,6 +138,31 @@ const UserManagement = () => {
     }
   }
 
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+
+    if (isSystemAdmin(deleteTarget)) {
+      toast.error("System admin accounts cannot be deleted");
+      setDeleteTarget(null);
+      return;
+    }
+
+    setDeletingId(deleteTarget.id);
+    toast.loading("Deleting user account...", { id: "delete-user" });
+
+    try {
+      await api.delete(`/api/users/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      toast.success("User deleted successfully", { id: "delete-user" });
+      await dispatch(getAllUsers()).unwrap();
+    } catch (err) {
+      const message = err.response?.data?.message || "Unable to delete user.";
+      toast.error(message, { id: "delete-user" });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function handleSort(field) {
     if (sortField === field) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -129,16 +174,16 @@ const UserManagement = () => {
 
   /* stats derived from real data */
   const stats = useMemo(() => {
-    const total = users.length;
-    const customers = users.filter((u) => u.role === "ROLE_CUSTOMER").length;
-    const airlineOwners = users.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
-    const superAdmins = users.filter((u) => u.role === "ROLE_SYSTEM_ADMIN").length;
+    const total = safeUsers.length;
+    const customers = safeUsers.filter((u) => u.role === "ROLE_CUSTOMER").length;
+    const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
+    const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
     return { total, customers, airlineOwners, superAdmins };
-  }, [users]);
+  }, [safeUsers]);
 
   /* filtered + sorted list */
   const filtered = useMemo(() => {
-    let list = [...users];
+    let list = [...safeUsers];
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -170,9 +215,9 @@ const UserManagement = () => {
     });
 
     return list;
-  }, [users, search, roleFilter, sortField, sortDir]);
+  }, [safeUsers, search, roleFilter, sortField, sortDir]);
 
-  const uniqueRoles = useMemo(() => [...new Set(users.map((u) => u.role).filter(Boolean))], [users]);
+  const uniqueRoles = useMemo(() => [...new Set(safeUsers.map((u) => u.role).filter(Boolean))], [safeUsers]);
 
   return (
     <div className="space-y-6">
@@ -260,10 +305,10 @@ const UserManagement = () => {
           <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
           <p className="text-sm">Loading users…</p>
         </div>
-      ) : error ? (
+      ) : usersError ? (
         <div className="flex flex-col items-center justify-center py-20 text-red-400">
           <p className="font-medium">Failed to load users</p>
-          <p className="text-sm mt-1 opacity-80">{error}</p>
+          <p className="text-sm mt-1 opacity-80">{usersError}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
@@ -313,6 +358,10 @@ const UserManagement = () => {
                   sortDir={sortDir}
                   onSort={handleSort}
                 />
+
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -320,6 +369,7 @@ const UserManagement = () => {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {filtered.map((user, idx) => {
                 const roleMeta = getRoleMeta(user.role);
+                const protectedUser = isSystemAdmin(user);
 
                 return (
                   <tr
@@ -396,6 +446,27 @@ const UserManagement = () => {
                         {formatDate(user.lastLogin)}
                       </span>
                     </td>
+
+                    {/* actions */}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(user)}
+                        disabled={protectedUser || deletingId === user.id}
+                        title={protectedUser ? "System Admin accounts are protected" : "Delete user"}
+                        aria-label={protectedUser ? "System Admin accounts are protected" : `Delete user ${user.email || user.id}`}
+                        className="
+                          inline-flex h-8 w-8 items-center justify-center rounded-lg
+                          text-red-500 transition
+                          hover:bg-red-50 hover:text-red-600
+                          disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent
+                          dark:hover:bg-red-950/30 dark:hover:text-red-300
+                          dark:disabled:text-gray-700
+                        "
+                      >
+                        <Trash2 className={`h-4 w-4 ${deletingId === user.id ? "animate-pulse" : ""}`} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -409,6 +480,64 @@ const UserManagement = () => {
         </div>
       )}
     </div>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-300 sm:mx-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <AlertDialogTitle className="text-red-600 dark:text-red-300">
+              Delete user account?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {deleteTarget?.fullName || deleteTarget?.email || "this user"}
+              </span>
+              , revoke their sessions, and remove remembered devices. System Admin accounts are protected and cannot be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {deleteTarget && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/60">
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500 dark:text-gray-400">Email</span>
+                <span className="truncate font-medium text-gray-900 dark:text-gray-100">{deleteTarget.email || "—"}</span>
+              </div>
+              <div className="mt-2 flex justify-between gap-4">
+                <span className="text-gray-500 dark:text-gray-400">Role</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleMeta(deleteTarget.role).color}`}>
+                  {getRoleMeta(deleteTarget.role).label}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteUser();
+              }}
+              disabled={Boolean(deletingId) || isSystemAdmin(deleteTarget)}
+              className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500"
+            >
+              {deletingId ? "Deleting..." : "Delete user"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

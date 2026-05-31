@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.triquang.dto.UserDTO;
+import com.triquang.enums.ErrorCode;
+import com.triquang.enums.UserRole;
+import com.triquang.exception.BaseException;
 import com.triquang.payload.SessionDTO;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ForgotPasswordRequest;
@@ -64,6 +67,17 @@ public class UserController {
     public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
 
         return ResponseUtil.ok(userService.getUsers(pageable));
+    }
+
+    // ================= DELETE USER =================
+    @DeleteMapping("/{id:\\d+}")
+    public ResponseEntity<ApiResponse<String>> deleteUser(
+            @RequestHeader("X-User-Roles") String roles,
+            @PathVariable Long id) {
+
+        requireSystemAdmin(roles);
+        userService.deleteUser(id);
+        return ResponseUtil.ok("User deleted successfully");
     }
 
     // ================= CHANGE PASSWORD =================
@@ -119,5 +133,11 @@ public class UserController {
 
         userService.logoutAll(userId);
         return ResponseUtil.ok("All sessions revoked");
+    }
+
+    private void requireSystemAdmin(String roles) {
+        if (roles == null || !roles.contains(UserRole.ROLE_SYSTEM_ADMIN.name())) {
+            throw new BaseException(ErrorCode.FORBIDDEN);
+        }
     }
 }

@@ -36,4 +36,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     """)
     void revokeByUserIdAndDeviceId(@Param("userId") Long userId,
                                    @Param("deviceId") String deviceId);
+
+    @Modifying
+    @Transactional
+    @Query("""
+        DELETE FROM RefreshToken t
+        WHERE t.user.id = :userId
+    """)
+    void deleteByUserId(@Param("userId") Long userId);
 }
