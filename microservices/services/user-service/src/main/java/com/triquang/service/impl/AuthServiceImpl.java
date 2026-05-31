@@ -121,6 +121,8 @@ public class AuthServiceImpl implements AuthService {
 
             return buildAuthResponse(user, normalizedDeviceId, ip, agent);
 
+        } catch (BaseException ex) {
+            throw ex;
         } catch (Exception ex) {
 
             auditService.saveLoginAudit(email, false, ip, agent);
@@ -242,7 +244,7 @@ public class AuthServiceImpl implements AuthService {
         );
 
         if (failCount >= MAX_FAILED_ATTEMPTS) {
-            throw new BaseException(ErrorCode.TOO_MANY_ATTEMPTS);
+            throw new BaseException(ErrorCode.ACCOUNT_LOCKED);
         }
     }
 

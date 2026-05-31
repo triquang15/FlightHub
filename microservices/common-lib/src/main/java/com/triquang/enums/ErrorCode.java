@@ -44,6 +44,7 @@ public enum ErrorCode {
 
     ACCOUNT_DISABLED("AUTH_401", "Account is disabled", HttpStatus.FORBIDDEN),
     EMAIL_NOT_VERIFIED("AUTH_402", "Email is not verified", HttpStatus.FORBIDDEN),
+    ACCOUNT_LOCKED("AUTH_423", "Account is temporarily locked due to too many failed login attempts. Please try again later.", HttpStatus.LOCKED),
     
     // =========================
     // CITY
