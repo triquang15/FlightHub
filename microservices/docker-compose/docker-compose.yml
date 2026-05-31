@@ -12,7 +12,7 @@ x-common-env: &common-env
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
+  POSTGRES_PASSWORD: 12345678
 
 x-postgres-healthcheck: &postgres-healthcheck
   test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -266,7 +266,7 @@ services:
       SPRING_APPLICATION_NAME: user-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://userdb:5432/airline_user
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
@@ -291,7 +291,7 @@ services:
       SPRING_APPLICATION_NAME: airline-core-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://airlinecoredb:5432/airline_core_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
@@ -319,7 +319,7 @@ services:
       SPRING_APPLICATION_NAME: flight-ops-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://flightopsdb:5432/airline_flight_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
@@ -346,7 +346,7 @@ services:
       SPRING_APPLICATION_NAME: location-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://locationdb:5432/airline_location_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
@@ -372,7 +372,7 @@ services:
       SPRING_APPLICATION_NAME: seat-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://seatdb:5432/airline_seat_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
@@ -397,7 +397,7 @@ services:
       SPRING_APPLICATION_NAME: pricing-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://pricingdb:5432/airline_pricing_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
@@ -421,7 +421,7 @@ services:
       SPRING_APPLICATION_NAME: ancillary-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://ancillarydb:5432/airline_ancillary_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
 
   booking-service:
@@ -445,7 +445,7 @@ services:
       SPRING_APPLICATION_NAME: booking-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://bookingdb:5432/airline_booking_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
@@ -472,7 +472,7 @@ services:
       SPRING_APPLICATION_NAME: payment-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://paymentdb:5432/airline_payment_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -496,7 +496,7 @@ services:
       SPRING_APPLICATION_NAME: subscription-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://subscriptiondb:5432/airline_subscription_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
 
   notification-service:
@@ -522,7 +522,7 @@ services:
       SPRING_APPLICATION_NAME: notification-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://notificationdb:5432/airline_notification_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_PASSWORD: 12345678
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
