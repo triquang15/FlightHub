@@ -171,6 +171,17 @@ public class RouteConfig {
                 .build();
     }
 
+    @Bean
+    @Order(2)
+    public RouterFunction<ServerResponse> notificationRoutes() {
+        return routeWithoutCB("notification", "notification-service")
+                .route(RequestPredicates.path("/api/notifications/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .build();
+    }
+
     // ==================== ADMIN ====================
 
     @Bean

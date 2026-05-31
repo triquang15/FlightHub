@@ -76,7 +76,7 @@ public class NotificationTrackingService {
                                 .eventKey(eventKey)
                                 .type(type)
                                 .businessKey(businessKey)
-                                .sourceService("user-service")
+                                .sourceService(sourceService(type))
                                 .payloadJson(writePayload(payload))
                                 .build());
                     } catch (DataIntegrityViolationException ex) {
@@ -134,6 +134,13 @@ public class NotificationTrackingService {
 
     private String normalizeBusinessKey(String businessKey) {
         return businessKey != null && !businessKey.isBlank() ? businessKey : "unknown";
+    }
+
+    private String sourceService(NotificationType type) {
+        return switch (type) {
+            case BOOKING_CONFIRMED -> "booking-service";
+            case PASSWORD_RESET_REQUESTED, SUSPICIOUS_LOGIN -> "user-service";
+        };
     }
 
     private String writePayload(Object payload) {

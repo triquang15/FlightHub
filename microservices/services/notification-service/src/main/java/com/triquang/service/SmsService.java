@@ -61,6 +61,23 @@ public class SmsService {
         ).create();
     }
 
+    public void send(String to, String body) {
+        if (!enabled) {
+            log.debug("SMS skipped (disabled): recipient={}", to);
+            return;
+        }
+        if (to == null || to.isBlank()) {
+            log.warn("SMS skipped because recipient is blank");
+            return;
+        }
+
+        Message.creator(
+                new PhoneNumber(to),
+                new PhoneNumber(fromNumber),
+                body
+        ).create();
+    }
+
     // ── 160-char friendly message ─────────────────────────────────────────────
     private String buildSmsBody(BookingConfirmedEvent event) {
         int paxCount = event.getPassengers() != null ? event.getPassengers().size() : 1;

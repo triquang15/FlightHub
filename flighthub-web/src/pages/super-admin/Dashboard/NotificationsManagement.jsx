@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Bell,
@@ -14,89 +15,30 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const summaryCards = [
-  {
-    label: "Event Types",
-    value: "3",
-    detail: "Suspicious login, password reset, booking confirmed",
-    icon: Bell,
-    className: "bg-blue-50 text-blue-700",
-  },
-  {
-    label: "Delivery Channels",
-    value: "2",
-    detail: "EMAIL and SMS are modeled by notification-service",
-    icon: Zap,
-    className: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    label: "Delivery Statuses",
-    value: "5",
-    detail: "PENDING, PROCESSING, SENT, FAILED, SKIPPED_DUPLICATE",
-    icon: Activity,
-    className: "bg-amber-50 text-amber-700",
-  },
-  {
-    label: "Admin API",
-    value: "Pending",
-    detail: "Tracking tables exist; REST endpoints are not exposed yet",
-    icon: Server,
-    className: "bg-slate-50 text-slate-700",
-  },
-];
-
-const deliverySamples = [
-  {
-    eventKey: "auth.password-reset.requested",
-    type: "PASSWORD_RESET_REQUESTED",
-    channel: "EMAIL",
-    recipient: "customer@example.com",
-    status: "SENT",
-    attempts: 1,
-    updatedAt: "May 31, 2026 09:42",
-  },
-  {
-    eventKey: "auth.suspicious-login.detected",
-    type: "SUSPICIOUS_LOGIN",
-    channel: "EMAIL",
-    recipient: "airline-admin@example.com",
-    status: "SENT",
-    attempts: 1,
-    updatedAt: "May 31, 2026 09:11",
-  },
-  {
-    eventKey: "booking.confirmed",
-    type: "BOOKING_CONFIRMED",
-    channel: "SMS",
-    recipient: "+84******678",
-    status: "FAILED",
-    attempts: 3,
-    updatedAt: "May 31, 2026 08:58",
-  },
-];
+import { Button } from "@/components/ui/button";
+import api from "@/utils/api";
 
 const templates = [
   {
     name: "Reset your FlightHub password",
     type: "PASSWORD_RESET_REQUESTED",
     channel: "EMAIL",
-    file: "templates/password-reset.html",
+    file: "templates/email/password-reset.html",
     status: "Production ready",
   },
   {
     name: "New sign-in detected",
     type: "SUSPICIOUS_LOGIN",
     channel: "EMAIL",
-    file: "templates/suspicious-login.html",
+    file: "templates/email/suspicious-login.html",
     status: "Production ready",
   },
   {
     name: "Booking confirmation",
     type: "BOOKING_CONFIRMED",
     channel: "EMAIL/SMS",
-    file: "Notification listener payload",
-    status: "Backend modeled",
+    file: "templates/email/booking-confirmation.html",
+    status: "Tracked",
   },
 ];
 
@@ -105,13 +47,13 @@ const channelHealth = [
     name: "Email delivery",
     icon: Mail,
     status: "Configured",
-    detail: "SMTP sender is used for password reset and security alerts.",
+    detail: "SMTP sender is used for password reset, security alerts, and booking confirmations.",
   },
   {
     name: "SMS delivery",
     icon: Smartphone,
     status: "Modeled",
-    detail: "SMS channel exists in backend enum; provider adapter should be verified before live sending.",
+    detail: "SMS channel is tracked and can be retried when Twilio is enabled.",
   },
   {
     name: "Kafka consumers",
@@ -130,8 +72,8 @@ const channelHealth = [
 const readinessItems = [
   "notification_events stores each business event.",
   "notification_deliveries tracks channel, recipient, status, attempts, and failure reason.",
-  "Kafka retry and DLQ flow is handled in notification-service.",
-  "Super Admin read/replay REST endpoints are still needed for live data and manual retry.",
+  "Booking, password reset, and suspicious login notifications are tracked.",
+  "Super Admin can read delivery logs and retry failed deliveries through /api/notifications/**.",
 ];
 
 const statusClassName = {
@@ -145,12 +87,12 @@ const statusClassName = {
   "Retry enabled": "bg-amber-100 text-amber-800",
   Enabled: "bg-emerald-100 text-emerald-800",
   "Production ready": "bg-emerald-100 text-emerald-800",
-  "Backend modeled": "bg-blue-100 text-blue-800",
+  Tracked: "bg-blue-100 text-blue-800",
 };
 
 const StatusBadge = ({ status }) => (
   <Badge className={statusClassName[status] || "bg-slate-100 text-slate-800"}>
-    {status}
+    {status || "UNKNOWN"}
   </Badge>
 );
 
@@ -161,125 +103,114 @@ const SectionHeader = ({ title, description }) => (
   </div>
 );
 
-const Overview = () => (
-  <>
-    <SectionHeader
-      title="Backend-aligned notification operations"
-      description="This page reflects the current notification-service capabilities instead of campaign features that do not exist yet."
-    />
-
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {summaryCards.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <div key={item.label} className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className={`rounded-md p-2 ${item.className}`}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{item.value}</p>
-            </div>
-            <p className="mt-4 text-sm font-medium text-gray-900">{item.label}</p>
-            <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
-          </div>
-        );
-      })}
-    </div>
-
-    <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-      <div className="flex items-start gap-3">
-        <Database className="mt-0.5 h-5 w-5 text-blue-700" />
-        <div>
-          <p className="font-medium text-blue-900">Current backend contract</p>
-          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-            {readinessItems.map((item) => (
-              <div key={item} className="flex items-start gap-2 text-sm text-blue-900">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+const InlineState = ({ loading, error, empty }) => {
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+        Loading notification data...
       </div>
-    </div>
-  </>
-);
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        {error}
+      </div>
+    );
+  }
+  if (empty) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+        No notification records found yet.
+      </div>
+    );
+  }
 
-const Deliveries = () => (
-  <>
-    <SectionHeader
-      title="Delivery logs"
-      description="Designed around notification_events and notification_deliveries. These rows are placeholders until the admin REST API is exposed."
-    />
+  return null;
+};
 
-    <div className="overflow-hidden rounded-lg border border-gray-200">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-          <tr>
-            <th className="px-4 py-3">Event</th>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Channel</th>
-            <th className="px-4 py-3">Recipient</th>
-            <th className="px-4 py-3">Attempts</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Updated</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
-          {deliverySamples.map((row) => (
-            <tr key={`${row.eventKey}-${row.recipient}`}>
-              <td className="px-4 py-3 font-medium text-gray-900">{row.eventKey}</td>
-              <td className="px-4 py-3 text-gray-600">{row.type}</td>
-              <td className="px-4 py-3 text-gray-600">{row.channel}</td>
-              <td className="px-4 py-3 text-gray-600">{row.recipient}</td>
-              <td className="px-4 py-3 text-gray-600">{row.attempts}</td>
-              <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
-              <td className="px-4 py-3 text-gray-600">{row.updatedAt}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </>
-);
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
 
-const FailedRetry = () => {
-  const failedRows = deliverySamples.filter((row) => row.status === "FAILED");
+const buildSummaryCards = (overview) => [
+  {
+    label: "Events",
+    value: overview?.totalEvents ?? 0,
+    detail: "Rows tracked in notification_events",
+    icon: Bell,
+    className: "bg-blue-50 text-blue-700",
+  },
+  {
+    label: "Deliveries",
+    value: overview?.totalDeliveries ?? 0,
+    detail: "Rows tracked in notification_deliveries",
+    icon: Zap,
+    className: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    label: "Failed",
+    value: overview?.deliveriesByStatus?.FAILED ?? 0,
+    detail: "Deliveries requiring investigation or retry",
+    icon: Activity,
+    className: "bg-red-50 text-red-700",
+  },
+  {
+    label: "Admin API",
+    value: "Live",
+    detail: "Gateway route: /api/notifications/**",
+    icon: Server,
+    className: "bg-slate-50 text-slate-700",
+  },
+];
+
+const Overview = ({ overview, loading, error }) => {
+  const summaryCards = buildSummaryCards(overview);
 
   return (
     <>
       <SectionHeader
-        title="Failed deliveries and retry queue"
-        description="Retry/DLQ is backend-managed today. Manual replay should be enabled after an admin endpoint is added."
+        title="Backend notification operations"
+        description="Live operational view backed by notification-service tracking tables."
       />
 
-      <div className="space-y-3">
-        {failedRows.map((row) => (
-          <div key={row.eventKey} className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-700" />
-                  <p className="font-medium text-red-950">{row.eventKey}</p>
-                </div>
-                <p className="mt-1 text-sm text-red-800">
-                  {row.channel} delivery to {row.recipient} failed after {row.attempts} attempts.
-                </p>
-              </div>
-              <StatusBadge status={row.status} />
-            </div>
-          </div>
-        ))}
+      <InlineState loading={loading} error={error} />
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-start gap-3">
-            <Clock className="mt-0.5 h-5 w-5 text-amber-700" />
-            <div>
-              <p className="font-medium text-amber-950">Next backend improvement</p>
-              <p className="mt-1 text-sm text-amber-800">
-                Add Super Admin endpoints for listing failed deliveries, reading failure reasons, and replaying DLQ messages with audit logging.
-              </p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div key={item.label} className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className={`rounded-md p-2 ${item.className}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{item.value}</p>
+              </div>
+              <p className="mt-4 text-sm font-medium text-gray-900">{item.label}</p>
+              <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div className="flex items-start gap-3">
+          <Database className="mt-0.5 h-5 w-5 text-blue-700" />
+          <div>
+            <p className="font-medium text-blue-900">Current backend contract</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+              {readinessItems.map((item) => (
+                <div key={item} className="flex items-start gap-2 text-sm text-blue-900">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{item}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -287,6 +218,100 @@ const FailedRetry = () => {
     </>
   );
 };
+
+const DeliveryTable = ({ rows }) => (
+  <div className="overflow-hidden rounded-lg border border-gray-200">
+    <table className="w-full text-left text-sm">
+      <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+        <tr>
+          <th className="px-4 py-3">Event</th>
+          <th className="px-4 py-3">Type</th>
+          <th className="px-4 py-3">Channel</th>
+          <th className="px-4 py-3">Recipient</th>
+          <th className="px-4 py-3">Attempts</th>
+          <th className="px-4 py-3">Status</th>
+          <th className="px-4 py-3">Updated</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200 bg-white">
+        {rows.map((row) => (
+          <tr key={row.id}>
+            <td className="px-4 py-3 font-medium text-gray-900">{row.eventKey}</td>
+            <td className="px-4 py-3 text-gray-600">{row.type}</td>
+            <td className="px-4 py-3 text-gray-600">{row.channel}</td>
+            <td className="px-4 py-3 text-gray-600">{row.recipient}</td>
+            <td className="px-4 py-3 text-gray-600">{row.attempts}</td>
+            <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+            <td className="px-4 py-3 text-gray-600">{formatDateTime(row.updatedAt)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+const Deliveries = ({ deliveries, loading, error }) => (
+  <>
+    <SectionHeader
+      title="Delivery logs"
+      description="Live records from notification_events and notification_deliveries."
+    />
+    <InlineState loading={loading} error={error} empty={!loading && !error && deliveries.length === 0} />
+    {!loading && !error && deliveries.length > 0 && <DeliveryTable rows={deliveries} />}
+  </>
+);
+
+const FailedRetry = ({ failedDeliveries, loading, error, onRetry, retryingId }) => (
+  <>
+    <SectionHeader
+      title="Failed deliveries and retry queue"
+      description="Retry failed deliveries using the saved notification event payload."
+    />
+
+    <InlineState loading={loading} error={error} empty={!loading && !error && failedDeliveries.length === 0} />
+
+    <div className="space-y-3">
+      {failedDeliveries.map((row) => (
+        <div key={row.id} className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-red-700" />
+                <p className="font-medium text-red-950">{row.eventKey}</p>
+              </div>
+              <p className="mt-1 text-sm text-red-800">
+                {row.channel} delivery to {row.recipient} failed after {row.attempts} attempt(s).
+              </p>
+              {row.lastError && <p className="mt-1 text-xs text-red-700">{row.lastError}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={row.status} />
+              <Button
+                size="sm"
+                onClick={() => onRetry(row.id)}
+                disabled={retryingId === row.id}
+              >
+                {retryingId === row.id ? "Retrying..." : "Retry"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-start gap-3">
+          <Clock className="mt-0.5 h-5 w-5 text-amber-700" />
+          <div>
+            <p className="font-medium text-amber-950">Retry behavior</p>
+            <p className="mt-1 text-sm text-amber-800">
+              Manual retry rehydrates the original Kafka payload from notification_events and sends via the matching EMAIL/SMS channel.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </>
+);
 
 const Templates = () => (
   <>
@@ -318,7 +343,7 @@ const ChannelHealth = () => (
   <>
     <SectionHeader
       title="Channel health"
-      description="Operational view for the delivery dependencies already represented by the backend."
+      description="Operational view for the delivery dependencies represented by the backend."
     />
 
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -344,16 +369,72 @@ const ChannelHealth = () => (
   </>
 );
 
-const sectionContent = {
-  "notifications-system": <Overview />,
-  "notifications-deliveries": <Deliveries />,
-  "notifications-failed": <FailedRetry />,
-  "notifications-templates": <Templates />,
-  "notifications-channels": <ChannelHealth />,
-};
-
 const NotificationsManagement = ({ activeSection = "notifications-system" }) => {
-  const content = sectionContent[activeSection] || sectionContent["notifications-system"];
+  const [overview, setOverview] = useState(null);
+  const [deliveries, setDeliveries] = useState([]);
+  const [failedDeliveries, setFailedDeliveries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [retryingId, setRetryingId] = useState(null);
+
+  const loadNotificationData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [overviewRes, deliveriesRes, failedRes] = await Promise.all([
+        api.get("/api/notifications/overview"),
+        api.get("/api/notifications/deliveries", { params: { page: 0, size: 20 } }),
+        api.get("/api/notifications/deliveries/failed", { params: { page: 0, size: 20 } }),
+      ]);
+
+      setOverview(overviewRes.data.data);
+      setDeliveries(deliveriesRes.data.data?.content || []);
+      setFailedDeliveries(failedRes.data.data?.content || []);
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to load notification data.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadNotificationData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadNotificationData]);
+
+  const handleRetry = useCallback(async (deliveryId) => {
+    setRetryingId(deliveryId);
+    setError("");
+
+    try {
+      await api.post(`/api/notifications/deliveries/${deliveryId}/retry`);
+      await loadNotificationData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to retry notification delivery.");
+    } finally {
+      setRetryingId(null);
+    }
+  }, [loadNotificationData]);
+
+  const sectionContent = useMemo(() => ({
+    "notifications-system": <Overview overview={overview} loading={loading} error={error} />,
+    "notifications-deliveries": <Deliveries deliveries={deliveries} loading={loading} error={error} />,
+    "notifications-failed": (
+      <FailedRetry
+        failedDeliveries={failedDeliveries}
+        loading={loading}
+        error={error}
+        onRetry={handleRetry}
+        retryingId={retryingId}
+      />
+    ),
+    "notifications-templates": <Templates />,
+    "notifications-channels": <ChannelHealth />,
+  }), [deliveries, error, failedDeliveries, handleRetry, loading, overview, retryingId]);
 
   return (
     <Card>
@@ -363,7 +444,7 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
           Notification Operations
         </CardTitle>
       </CardHeader>
-      <CardContent>{content}</CardContent>
+      <CardContent>{sectionContent[activeSection] || sectionContent["notifications-system"]}</CardContent>
     </Card>
   );
 };
