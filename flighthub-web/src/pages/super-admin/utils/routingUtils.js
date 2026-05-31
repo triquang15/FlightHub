@@ -75,11 +75,10 @@ export const ROUTE_MAP = {
 
   // Notifications
   "notifications-system": "/super-admin/notifications",
-  "notifications-airlines": "/super-admin/notifications?type=airlines",
-  "notifications-agents": "/super-admin/notifications?type=agents",
-  "notifications-email": "/super-admin/notifications?tab=email",
-  "notifications-sms": "/super-admin/notifications?tab=sms",
-  "notifications-marketing": "/super-admin/notifications?tab=marketing",
+  "notifications-deliveries": "/super-admin/notifications/deliveries",
+  "notifications-failed": "/super-admin/notifications/failed",
+  "notifications-templates": "/super-admin/notifications/templates",
+  "notifications-channels": "/super-admin/notifications/channels",
 
   // Security
   "security-rbac": "/super-admin/security?tab=rbac",
@@ -148,12 +147,11 @@ export const SECTION_TITLES = {
   "system-api": "API Management",
   "system-integrations": "OTA Integrations",
   // Notifications
-  "notifications-system": "System Notifications",
-  "notifications-airlines": "Airline Communications",
-  "notifications-agents": "Agent Communications",
-  "notifications-email": "Email Campaigns",
-  "notifications-sms": "SMS Alerts",
-  "notifications-marketing": "Marketing Communications",
+  "notifications-system": "Notification Operations",
+  "notifications-deliveries": "Delivery Logs",
+  "notifications-failed": "Failed & Retry Queue",
+  "notifications-templates": "Notification Templates",
+  "notifications-channels": "Channel Health",
   // Security
   "security-rbac": "Role Management",
   "security-kyc": "KYC Compliance",
@@ -221,12 +219,11 @@ export const SECTION_DESCRIPTIONS = {
   "system-api": "Control API access and authentication",
   "system-integrations": "Manage third-party integrations and OTAs",
   // Notifications
-  "notifications-system": "Manage system-wide alerts and notifications",
-  "notifications-airlines": "Send communications to airline partners",
-  "notifications-agents": "Communicate with travel agents",
-  "notifications-email": "Manage email marketing campaigns",
-  "notifications-sms": "Configure SMS alert systems",
-  "notifications-marketing": "Handle marketing communications",
+  "notifications-system": "Monitor notification events, deliveries, channels, and backend readiness",
+  "notifications-deliveries": "Review tracked notification_events and notification_deliveries records",
+  "notifications-failed": "Investigate failed deliveries, retries, and DLQ-bound events",
+  "notifications-templates": "Review transactional email templates used by notification-service",
+  "notifications-channels": "Monitor email, SMS, Kafka, Redis, and idempotency health",
   // Security
   "security-rbac": "Manage user roles and access permissions",
   "security-kyc": "Monitor Know Your Customer compliance",
@@ -327,13 +324,10 @@ export const getActiveSectionFromPath = (pathname, urlParams = null) => {
       return "system-global";
     },
     "/notifications": () => {
-      const type = params.get("type");
-      const tab = params.get("tab");
-      if (type === "airlines") return "notifications-airlines";
-      if (type === "agents") return "notifications-agents";
-      if (tab === "email") return "notifications-email";
-      if (tab === "sms") return "notifications-sms";
-      if (tab === "marketing") return "notifications-marketing";
+      if (path.includes("/notifications/deliveries")) return "notifications-deliveries";
+      if (path.includes("/notifications/failed")) return "notifications-failed";
+      if (path.includes("/notifications/templates")) return "notifications-templates";
+      if (path.includes("/notifications/channels")) return "notifications-channels";
       return "notifications-system";
     },
    

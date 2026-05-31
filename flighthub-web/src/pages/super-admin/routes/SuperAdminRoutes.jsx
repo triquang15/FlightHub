@@ -1,22 +1,4 @@
-import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import {
-  Building2,
-  Plane,
-  Users,
-  DollarSign,
-  Shield,
-  Activity,
-  Plus,
-  Settings,
-  BarChart3,
-  Bell,
-  Clock,
-  Zap
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import AirlineManagement from '../airline/AirlineManagement';
 import AirportManagementNew from '../airport/AirportManagementNew';
 import CreateAirport from '../airport/CreateAirport';
@@ -90,12 +72,16 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/system" element={<SystemConfiguration />} />
 
       {/* Notifications */}
-      <Route path="/notifications" element={<NotificationsManagement />} />
+      <Route path="/notifications" element={<NotificationsManagement activeSection="notifications-system" />} />
+      <Route path="/notifications/deliveries" element={<NotificationsManagement activeSection="notifications-deliveries" />} />
+      <Route path="/notifications/failed" element={<NotificationsManagement activeSection="notifications-failed" />} />
+      <Route path="/notifications/templates" element={<NotificationsManagement activeSection="notifications-templates" />} />
+      <Route path="/notifications/channels" element={<NotificationsManagement activeSection="notifications-channels" />} />
 
       {/* Security & Compliance */}
       <Route path="/security" element={<SecurityCompliance />} />
       <Route path="/security/audit" element={<SecurityCompliance />} />
-n      {/* Performance Analytics */}
+      {/* Performance Analytics */}
       <Route path="/airport-performance" element={<AirportPerformancePage />} />
       <Route path="/route-performance" element={<RoutePerformancePage />} />
       <Route path="/airline-performance" element={<AirlinePerformancePage />} />
