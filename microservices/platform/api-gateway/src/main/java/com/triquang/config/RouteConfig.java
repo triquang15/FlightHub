@@ -98,6 +98,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/notification-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/notification-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("notification-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("location-openapi-docs")
+                        .route(RequestPredicates.path("/docs/location-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/location-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("location-service"))
                         .build());
     }
 
