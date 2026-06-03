@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 import { useField } from 'formik';
+import { cn } from '@/lib/utils';
 
 const PasswordField = ({
   label,
   name,
   placeholder = '',
-  disabled = false
+  disabled = false,
+  className,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [field, meta] = useField(name);
@@ -24,7 +26,11 @@ const PasswordField = ({
           id={name}
           type={showPassword ? 'text' : 'password'}
           placeholder={placeholder}
-          className={`w-full pr-10 transition-all duration-200 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-gray-800 dark:border-gray-700 ${meta.touched && meta.error ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : ''}`}
+          className={cn(
+            'w-full border-input bg-background/70 pr-10 text-foreground transition-all duration-200 placeholder:text-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-slate-900/70 dark:focus:ring-blue-950',
+            meta.touched && meta.error && 'border-red-500 focus:border-red-500 focus:ring-red-100 dark:focus:ring-red-950',
+            className
+          )}
           disabled={disabled}
           {...field}
         />

@@ -34,6 +34,9 @@ import AirlineOnboardingWizard from "./pages/Onboarding/AirlineOnboardingWizard"
 
 import { getUserProfile } from "./Redux/user/userThunks.js";
 import { getAccessToken } from "./utils/authStorage.js";
+import { AUTH_SESSION_EXPIRED_EVENT } from "./utils/api.js";
+import { logoutLocal } from "./Redux/auth/authSlice.js";
+import { clearUserState } from "./Redux/user/userSlice.js";
 
 import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
@@ -71,6 +74,34 @@ function RoleRedirect() {
   return null;
 }
 
+function SessionExpiredHandler() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      dispatch(logoutLocal());
+      dispatch(clearUserState());
+
+      if (window.location.pathname !== "/login") {
+        navigate("/login", {
+          replace: true,
+          state: {
+            from: `${window.location.pathname}${window.location.search}`,
+          },
+        });
+      }
+    };
+
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    };
+  }, [dispatch, navigate]);
+
+  return null;
+}
+
 // ============================
 // APP
 // ============================
@@ -79,6 +110,7 @@ function App() {
     <ThemeProvider>
       <Router>
         <div className="min-h-screen bg-background transition-colors">
+          <SessionExpiredHandler />
           <Toaster />
 
           <Routes>

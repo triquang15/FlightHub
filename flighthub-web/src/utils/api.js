@@ -16,10 +16,17 @@ const clearSession = () => {
   clearAuthTokens();
 };
 
-const redirectToLogin = () => {
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
-  }
+export const AUTH_SESSION_EXPIRED_EVENT = "flighthub:auth-session-expired";
+
+const notifySessionExpired = (reason = "Session expired") => {
+  clearSession();
+  isRefreshing = false;
+  processQueue(new Error(reason), null);
+  window.dispatchEvent(
+    new CustomEvent(AUTH_SESSION_EXPIRED_EVENT, {
+      detail: { reason },
+    })
+  );
 };
 
 // ============================
@@ -79,10 +86,13 @@ api.interceptors.response.use(
       error.response?.data?.detail ||
       "";
 
-    // ❗ detect auth endpoints (IMPORTANT)
-    const isAuthEndpoint =
+    // Public auth endpoints should surface their own errors instead of forcing
+    // the protected-route session-expired flow.
+    const isPublicAuthEndpoint =
       originalRequest?.url?.includes("/api/auth/login") ||
-      originalRequest?.url?.includes("/api/auth/signup");
+      originalRequest?.url?.includes("/api/auth/signup") ||
+      originalRequest?.url?.includes("/api/users/forgot-password") ||
+      originalRequest?.url?.includes("/api/users/reset-password");
 
     // ============================
     // HANDLE 401 (ONLY FOR NON-AUTH)
@@ -91,22 +101,24 @@ api.interceptors.response.use(
       status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !isAuthEndpoint
+      !isPublicAuthEndpoint
     ) {
+      const normalizedMessage = message.toLowerCase();
       const sessionInvalidated =
-        message.includes("Token invalidated") ||
-        message.includes("Token revoked");
+        normalizedMessage.includes("invalid token") ||
+        normalizedMessage.includes("token invalidated") ||
+        normalizedMessage.includes("token revoked") ||
+        normalizedMessage.includes("token expired") ||
+        normalizedMessage.includes("jwt expired");
 
       if (sessionInvalidated) {
-        clearSession();
-        redirectToLogin();
+        notifySessionExpired(message || "Token invalidated");
         return Promise.reject(error);
       }
 
       // ❗ refresh endpoint failed → logout
       if (originalRequest.url.includes("/api/auth/refresh")) {
-        clearSession();
-        redirectToLogin();
+        notifySessionExpired(message || "Refresh token expired");
         return Promise.reject(error);
       }
 
@@ -130,9 +142,7 @@ api.interceptors.response.use(
 
         // ❗ nếu không có refresh token → logout luôn
         if (!refreshToken) {
-          // No refresh token available — clear local tokens and bubble the error.
-          clearSession();
-          redirectToLogin();
+          notifySessionExpired("Missing refresh token");
           return Promise.reject(error);
         }
 
@@ -166,9 +176,11 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
 
-        // Clear tokens and rethrow the error so callers can handle navigation.
-        clearSession();
-        redirectToLogin();
+        notifySessionExpired(
+          err.response?.data?.message ||
+            err.response?.data?.error ||
+            "Refresh token expired"
+        );
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

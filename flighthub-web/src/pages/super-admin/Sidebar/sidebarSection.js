@@ -22,13 +22,13 @@ import {
 export const sidebarSections = [
   {
     id: "overview",
-    title: "Platform Overview",
+    title: "FlightHub Overview",
     icon: Crown,
     color: "from-purple-500 to-purple-600",
     items: [
       {
         id: "overview",
-        label: "Dashboard",
+        label: "Control Center",
         icon: BarChart3,
         count: null,
         path: "/super-admin/dashboard",
@@ -37,41 +37,41 @@ export const sidebarSections = [
   },
   {
     id: "airlines",
-    title: "Airline Management",
+    title: "Airline Partners",
     icon: Building2,
     color: "from-blue-500 to-blue-600",
     items: [
       {
         id: "airlines-list",
-        label: "All Airlines",
+        label: "Airline Partners",
         icon: Building2,
-        count: 24,
+        countKey: "totalAirlines",
         path: "/super-admin/airlines",
       },
       {
         id: "airlines-pending",
-        label: "Pending Approval",
+        label: "Approval Queue",
         icon: Clock,
-        count: 3,
+        countKey: "pendingApprovals",
         path: "/super-admin/airlines/pending",
       },
       {
         id: "airlines-suspended",
-        label: "Suspended",
+        label: "Restricted Airlines",
         icon: XCircle,
-        count: 2,
+        countKey: "restrictedAirlines",
         path: "/super-admin/airlines/suspended",
       },
       {
         id: "airlines-compliance",
-        label: "Compliance",
+        label: "Compliance Review",
         icon: CheckCircle,
-        count: 8,
+        count: null,
         path: "/super-admin/airlines/compliance",
       },
       {
         id: "airlines-commission",
-        label: "Commission Rules",
+        label: "Commission Setup",
         icon: DollarSign,
         count: null,
         path: "/super-admin/airlines/commission",
@@ -80,39 +80,38 @@ export const sidebarSections = [
   },
   {
     id: "airports",
-    title: "Airport & City",
+    title: "Location Data",
     icon: MapPin,
     color: "from-green-500 to-emerald-500",
     items: [
       {
         id: "airports-list",
-        label: "All Airports",
+        label: "Airports",
         icon: MapPin,
-        count: 156,
+        countKey: "totalAirports",
         path: "/super-admin/airports",
       },
       {
         id: "cities-list",
-        label: "Cities",
+        label: "Cities & Markets",
         icon: Globe,
-        count: 89,
+        countKey: "totalCities",
         path: "/super-admin/cities",
       },
-      
     ],
   },
 
   {
     id: "users",
-    title: "User Management",
+    title: "Accounts & Access",
     icon: Users,
     color: "from-indigo-500 to-indigo-600",
     items: [
       {
         id: "users-list",
-        label: "All Users",
+        label: "User Accounts",
         icon: Users,
-        count: null,
+        countKey: "totalUsers",
         path: "/super-admin/users",
       },
     ],
@@ -120,13 +119,10 @@ export const sidebarSections = [
 
   {
     id: "reports",
-    title: "Reports & Analytics",
+    title: "Performance Analytics",
     icon: BarChart3,
     color: "from-pink-500 to-rose-500",
     items: [
-      
-    
-      
       {
         id: "airport-performance",
         label: "Airport Performance",
@@ -149,36 +145,34 @@ export const sidebarSections = [
         count: null,
         path: "/super-admin/airline-performance",
       }
-      
-      
     ],
   },
  
   {
     id: "notifications",
-    title: "Notification Ops",
+    title: "Notification Center",
     icon: Bell,
     color: "from-yellow-500 to-orange-500",
     items: [
       {
         id: "notifications-system",
-        label: "Overview",
+        label: "Operations Overview",
         icon: Activity,
-        count: null,
+        countKey: "totalNotificationEvents",
         path: "/super-admin/notifications",
       },
       {
         id: "notifications-deliveries",
         label: "Delivery Logs",
         icon: Database,
-        count: null,
+        countKey: "totalNotificationDeliveries",
         path: "/super-admin/notifications/deliveries",
       },
       {
         id: "notifications-failed",
-        label: "Failed & Retry",
+        label: "Failed Deliveries",
         icon: AlertTriangle,
-        count: null,
+        countKey: "failedNotifications",
         path: "/super-admin/notifications/failed",
       },
       {
@@ -199,3 +193,21 @@ export const sidebarSections = [
   },
   
 ];
+
+const resolveCount = (platformStats, countKey, fallbackCount) => {
+  if (!countKey) {
+    return Number.isFinite(fallbackCount) ? fallbackCount : null;
+  }
+
+  const count = platformStats?.[countKey];
+  return Number.isFinite(count) ? count : null;
+};
+
+export const buildSidebarSections = (platformStats = {}) =>
+  sidebarSections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      ...item,
+      count: resolveCount(platformStats, item.countKey, item.count),
+    })),
+  }));

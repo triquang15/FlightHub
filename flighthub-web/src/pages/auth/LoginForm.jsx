@@ -57,11 +57,11 @@ const LoginForm = () => {
       onSubmit={handleSubmit}
     >
       {({ isSubmitting, values, setFieldValue }) => (
-        <Form className={`space-y-6 ${loading ? 'opacity-70 pointer-events-none' : ''}`}>
+        <Form className={`space-y-5 sm:space-y-6 ${loading ? 'opacity-70 pointer-events-none' : ''}`}>
 
           {/* Error */}
           {error && (
-            <Alert className="border-red-200 bg-red-50 text-red-800">
+            <Alert className="border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
               <AlertDescription className="flex items-center">
                 <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
                 {error}
@@ -71,8 +71,8 @@ const LoginForm = () => {
 
           {/* Email */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center">
-              <Mail className="w-4 h-4 mr-2 text-gray-400" />
+            <label className="text-sm font-medium text-foreground flex items-center">
+              <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
               Email Address
             </label>
             <InputField
@@ -85,8 +85,8 @@ const LoginForm = () => {
 
           {/* Password */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center">
-              <Lock className="w-4 h-4 mr-2 text-gray-400" />
+            <label className="text-sm font-medium text-foreground flex items-center">
+              <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
               Password
             </label>
             <PasswordField
@@ -97,16 +97,16 @@ const LoginForm = () => {
           </div>
 
           {/* Remember */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center">
               <input
                 name="rememberMe"
                 type="checkbox"
                 checked={values.rememberMe}
                 onChange={(event) => setFieldValue('rememberMe', event.target.checked)}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                className="w-4 h-4 rounded border-input text-primary focus:ring-primary dark:bg-slate-900"
               />
-              <span className="ml-2 text-sm text-gray-600">Remember me</span>
+              <span className="ml-2 text-sm text-muted-foreground">Remember me</span>
             </label>
 
             <Link
@@ -137,7 +137,7 @@ const LoginForm = () => {
           </Button>
 
           {/* Divider */}
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-muted-foreground">
             Or sign in using
           </div>
 
@@ -145,7 +145,7 @@ const LoginForm = () => {
           <div className="grid grid-cols-2 gap-3">
 
             {/* Google */}
-            <Button variant="outline" className="h-11 rounded-xl">
+            <Button variant="outline" className="h-11 rounded-xl bg-background/60">
               <svg className="w-5 h-5" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.72 1.22 9.23 3.6l6.9-6.9C35.8 2.4 30.3 0 24 0 14.6 0 6.4 5.4 2.6 13.3l8.1 6.3C12.5 13.4 17.8 9.5 24 9.5z"/>
                 <path fill="#4285F4" d="M46.5 24.5c0-1.7-.2-3.3-.5-4.8H24v9.1h12.7c-.5 2.7-2 5-4.2 6.5l6.5 5c3.8-3.5 6-8.7 6-15.8z"/>
@@ -156,7 +156,7 @@ const LoginForm = () => {
             </Button>
 
             {/* Facebook */}
-            <Button variant="outline" className="h-11 rounded-xl hover:shadow-md transition-all">
+            <Button variant="outline" className="h-11 rounded-xl bg-background/60 hover:shadow-md transition-all">
               <svg className="w-5 h-5" viewBox="0 0 48 48">
                 <circle cx="24" cy="24" r="24" fill="#1877F2"/>
                 <path
@@ -171,7 +171,7 @@ const LoginForm = () => {
 
           {/* Register */}
           <div className="text-center pt-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Don’t have an account?{' '}
               <Link
                 to="/register"

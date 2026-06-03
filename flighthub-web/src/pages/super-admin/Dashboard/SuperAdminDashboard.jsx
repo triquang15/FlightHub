@@ -20,15 +20,47 @@ import {
   navigateToSection,
 } from "../utils/routingUtils";
 import { SIDEBAR_COLLAPSE_KEY } from "../constants";
+import api from "@/utils/api";
+
+const emptyPlatformStats = {
+  loading: true,
+  totalAirlines: null,
+  activeAirlines: null,
+  inactiveAirlines: null,
+  bannedAirlines: null,
+  restrictedAirlines: null,
+  totalAirports: null,
+  totalCities: null,
+  totalFlights: null,
+  activeFlights: null,
+  totalBookings: null,
+  totalUsers: null,
+  totalAgents: null,
+  systemRevenue: null,
+  commissionRevenue: null,
+  pendingApprovals: null,
+  securityAlerts: null,
+  totalNotificationEvents: null,
+  totalNotificationDeliveries: null,
+  failedNotifications: null,
+  systemUptime: null,
+};
+
+const getPayload = (response) => response?.data?.data ?? response?.data ?? null;
+const getPageTotal = (response) => {
+  const payload = getPayload(response);
+  return payload?.totalElements ?? 0;
+};
 
 const SuperAdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
 
-  const [activeSection, setActiveSection] = React.useState(
-    getActiveSectionFromPath(location.pathname)
-  );
+  const activeSection = React.useMemo(() => {
+    const urlParams = new URLSearchParams(location.search);
+    return getActiveSectionFromPath(location.pathname, urlParams);
+  }, [location.pathname, location.search]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     // Load sidebar collapse state from localStorage
     try {
@@ -39,12 +71,7 @@ const SuperAdminDashboard = () => {
       return false;
     }
   });
-
-  // Update active section when location changes
-  React.useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    setActiveSection(getActiveSectionFromPath(location.pathname, urlParams));
-  }, [location.pathname, location.search]);
+  const [platformStats, setPlatformStats] = React.useState(emptyPlatformStats);
 
   // Handle sidebar section changes using the utility function
   const handleSectionChange = React.useCallback((sectionId) => {
@@ -68,23 +95,70 @@ const SuperAdminDashboard = () => {
     }
   }, [isSidebarCollapsed]);
 
+  const loadPlatformStats = React.useCallback(async () => {
+    const safeRequest = async (request) => {
+      try {
+        return await request();
+      } catch (error) {
+        console.warn("Failed to load platform stat:", error.response?.data?.message || error.message);
+        return null;
+      }
+    };
 
-  // Mock platform statistics
-  const platformStats = {
-    totalAirlines: 24,
-    activeAirlines: 21,
-    totalAirports: 156,
-    totalFlights: 1247,
-    activeFlights: 89,
-    totalBookings: 15643,
-    totalUsers: 45678,
-    totalAgents: 234,
-    systemRevenue: 12450000,
-    commissionRevenue: 890000,
-    pendingApprovals: 8,
-    securityAlerts: 3,
-    systemUptime: 99.97,
-  };
+    const [
+      airlinesRes,
+      activeAirlinesRes,
+      inactiveAirlinesRes,
+      bannedAirlinesRes,
+      airportsRes,
+      citiesRes,
+      usersRes,
+      notificationsRes,
+    ] = await Promise.all([
+      safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1 } })),
+      safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "ACTIVE" } })),
+      safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "INACTIVE" } })),
+      safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "BANNED" } })),
+      safeRequest(() => api.get("/api/airports", { params: { page: 0, size: 1 } })),
+      safeRequest(() => api.get("/api/cities", { params: { page: 0, size: 1 } })),
+      safeRequest(() => api.get("/api/users", { params: { page: 0, size: 100 } })),
+      safeRequest(() => api.get("/api/notifications/overview")),
+    ]);
+
+    const notificationOverview = getPayload(notificationsRes);
+    const inactiveAirlines = inactiveAirlinesRes ? getPageTotal(inactiveAirlinesRes) : null;
+    const bannedAirlines = bannedAirlinesRes ? getPageTotal(bannedAirlinesRes) : null;
+    const failedNotifications = notificationOverview?.deliveriesByStatus?.FAILED ?? null;
+
+    setPlatformStats({
+      ...emptyPlatformStats,
+      loading: false,
+      totalAirlines: airlinesRes ? getPageTotal(airlinesRes) : null,
+      activeAirlines: activeAirlinesRes ? getPageTotal(activeAirlinesRes) : null,
+      inactiveAirlines,
+      bannedAirlines,
+      restrictedAirlines: Number.isFinite(inactiveAirlines) || Number.isFinite(bannedAirlines)
+        ? (inactiveAirlines ?? 0) + (bannedAirlines ?? 0)
+        : null,
+      totalAirports: airportsRes ? getPageTotal(airportsRes) : null,
+      totalCities: citiesRes ? getPageTotal(citiesRes) : null,
+      totalUsers: usersRes ? getPageTotal(usersRes) : null,
+      totalAgents: null,
+      pendingApprovals: null,
+      securityAlerts: failedNotifications,
+      totalNotificationEvents: notificationOverview?.totalEvents ?? null,
+      totalNotificationDeliveries: notificationOverview?.totalDeliveries ?? null,
+      failedNotifications,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadPlatformStats();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadPlatformStats]);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -94,6 +168,7 @@ const SuperAdminDashboard = () => {
         onSectionChange={handleSectionChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        platformStats={platformStats}
       />
 
       {/* Main Content Area */}
@@ -122,14 +197,14 @@ const SuperAdminDashboard = () => {
                   <Bell className="h-4 w-4" />
                   System Alerts
                   <Badge className="ml-1 bg-red-100 text-red-800">
-                    {platformStats.securityAlerts}
+                    {platformStats.loading ? "…" : platformStats.securityAlerts ?? "N/A"}
                   </Badge>
                 </Button>
                 <Button variant="outline" className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   Pending Approvals
                   <Badge className="ml-1 bg-yellow-100 text-yellow-800">
-                    {platformStats.pendingApprovals}
+                    {platformStats.loading ? "…" : platformStats.pendingApprovals ?? "N/A"}
                   </Badge>
                 </Button>
                 <Button className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getBookingStatisticsForSuperAdmin,
@@ -42,7 +42,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,6 +58,24 @@ function toChartData(monthlyData = []) {
 }
 
 const BAR_COLORS = ["#3B82F6", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#06B6D4", "#F97316"];
+const asNumber = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+const formatNumber = (value) => {
+  const number = asNumber(value);
+  return number === null ? "N/A" : number.toLocaleString();
+};
+const formatCompact = (value) => {
+  const number = asNumber(value);
+  if (number === null) return "N/A";
+  return number >= 1000 ? `${(number / 1000).toFixed(1)}K` : number.toLocaleString();
+};
+const formatMoney = (value) => {
+  const number = asNumber(value);
+  return number === null ? "N/A" : `₹${(number / 1_000_000).toFixed(1)}M`;
+};
+const formatPercent = (value) => {
+  const number = asNumber(value);
+  return number === null ? "N/A" : `${number}%`;
+};
 
 /** Transform AirlineStatistics[] → chart rows with relative booking-share % */
 function toAirlineChartData(airlines = []) {
@@ -114,7 +131,7 @@ const systemMetrics = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const StatCard = ({ title, value, subtitle, icon: Icon, gradient, trend, trendValue }) => (
+const StatCard = ({ title, value, subtitle, icon: Icon, gradient, trend }) => (
   <div className={`${gradient} p-4 rounded-xl border`}>
     <div className="flex items-center justify-between">
       <div>
@@ -193,20 +210,21 @@ const PlatformOverview = ({ platformStats }) => {
   const monthBookings = superAdminStatistics?.totalBookingsThisMonth ?? null;
   const monthRevenue  = superAdminStatistics?.revenueThisMonth ?? null;
 
-  // Dashboard stats card values — prefer live API data, fall back to platformStats mock
+  // Dashboard stats card values — prefer live booking API data, then live platform counts.
   const ds = superAdminDashboardStats;
   const stats = platformStats || {};
+  const dashboardLoading = superAdminDashboardStatsLoading || Boolean(stats.loading);
   const kpi = {
-    totalAirlines: ds?.totalAirlines ?? stats.totalAirlines ?? 24,
-    newAirlinesThisMonth: ds?.newAirlinesThisMonth ?? 2,
-    totalFlights: ds?.totalFlights ?? stats.totalFlights ?? 1247,
-    liveFlightsToday: ds?.liveFlightsToday ?? stats.activeFlights ?? 89,
-    totalBookings: ds?.totalBookings ?? stats.totalBookings ?? 15643,
-    weeklyBookingGrowthPercent: ds?.weeklyBookingGrowthPercent ?? 12,
-    totalRevenue: ds?.totalRevenue ?? stats.systemRevenue ?? 12450000,
-    monthlyRevenueGrowthPercent: ds?.monthlyRevenueGrowthPercent ?? 18,
-    systemUptime: ds?.systemUptime ?? stats.systemUptime ?? 99.97,
-    securityAlerts: ds?.securityAlerts ?? stats.securityAlerts ?? 3,
+    totalAirlines: asNumber(ds?.totalAirlines) ?? asNumber(stats.totalAirlines),
+    newAirlinesThisMonth: asNumber(ds?.newAirlinesThisMonth),
+    totalFlights: asNumber(ds?.totalFlights) ?? asNumber(stats.totalFlights),
+    liveFlightsToday: asNumber(ds?.liveFlightsToday) ?? asNumber(stats.activeFlights),
+    totalBookings: asNumber(ds?.totalBookings) ?? asNumber(stats.totalBookings),
+    weeklyBookingGrowthPercent: asNumber(ds?.weeklyBookingGrowthPercent),
+    totalRevenue: asNumber(ds?.totalRevenue) ?? asNumber(stats.systemRevenue),
+    monthlyRevenueGrowthPercent: asNumber(ds?.monthlyRevenueGrowthPercent),
+    systemUptime: asNumber(ds?.systemUptime) ?? asNumber(stats.systemUptime),
+    securityAlerts: asNumber(ds?.securityAlerts) ?? asNumber(stats.securityAlerts),
   };
 
   return (
@@ -216,47 +234,47 @@ const PlatformOverview = ({ platformStats }) => {
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Total Airlines"
-          value={superAdminDashboardStatsLoading ? "…" : kpi.totalAirlines.toLocaleString()}
+          value={dashboardLoading ? "…" : formatNumber(kpi.totalAirlines)}
           icon={Building2}
           gradient="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 text-purple-700"
           trend="up"
-          subtitle={`+${kpi.newAirlinesThisMonth} this month`}
+          subtitle={kpi.newAirlinesThisMonth === null ? "Live airline registry" : `+${kpi.newAirlinesThisMonth} this month`}
         />
         <StatCard
           title="Active Flights"
-          value={superAdminDashboardStatsLoading ? "…" : kpi.totalFlights.toLocaleString()}
+          value={dashboardLoading ? "…" : formatNumber(kpi.totalFlights)}
           icon={Plane}
           gradient="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 text-blue-700"
           trend="up"
-          subtitle={`${kpi.liveFlightsToday} live now`}
+          subtitle={kpi.liveFlightsToday === null ? "Awaiting flight ops data" : `${kpi.liveFlightsToday} live now`}
         />
         <StatCard
           title="Total Bookings"
-          value={superAdminDashboardStatsLoading ? "…" : kpi.totalBookings >= 1000 ? `${(kpi.totalBookings / 1000).toFixed(1)}K` : kpi.totalBookings.toLocaleString()}
+          value={dashboardLoading ? "…" : formatCompact(kpi.totalBookings)}
           icon={Users}
           gradient="bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-700"
           trend="up"
-          subtitle={`+${kpi.weeklyBookingGrowthPercent}% this week`}
+          subtitle={kpi.weeklyBookingGrowthPercent === null ? "Awaiting booking data" : `+${kpi.weeklyBookingGrowthPercent}% this week`}
         />
         <StatCard
           title="System Revenue"
-          value={superAdminDashboardStatsLoading ? "…" : `₹${(kpi.totalRevenue / 1000000).toFixed(1)}M`}
+          value={dashboardLoading ? "…" : formatMoney(kpi.totalRevenue)}
           icon={DollarSign}
           gradient="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 text-orange-700"
           trend="up"
-          subtitle={`+${kpi.monthlyRevenueGrowthPercent}% vs last month`}
+          subtitle={kpi.monthlyRevenueGrowthPercent === null ? "Awaiting revenue data" : `+${kpi.monthlyRevenueGrowthPercent}% vs last month`}
         />
         <StatCard
           title="System Uptime"
-          value={`${kpi.systemUptime}%`}
+          value={dashboardLoading ? "…" : formatPercent(kpi.systemUptime)}
           icon={Activity}
           gradient="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 text-indigo-700"
           trend="stable"
-          subtitle="All systems operational"
+          subtitle={kpi.systemUptime === null ? "No uptime endpoint connected" : "All systems operational"}
         />
         <StatCard
           title="Security Alerts"
-          value={superAdminDashboardStatsLoading ? "…" : kpi.securityAlerts}
+          value={dashboardLoading ? "…" : formatNumber(kpi.securityAlerts)}
           icon={Shield}
           gradient="bg-gradient-to-br from-red-50 to-red-100 border-red-200 text-red-700"
           trend="down"

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { User, Mail, Phone, Lock, Loader2, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Sparkles, ArrowRight } from 'lucide-react';
 import { signup } from '@/Redux/auth/authThunk';
 import { getUserProfile } from '@/Redux/user/userThunks';
@@ -18,7 +17,7 @@ import { getUserProfile } from '@/Redux/user/userThunks';
       .required('Email is required'),
     phone: Yup.string()
       .required('Phone number is required')
-      .matches(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number format'),
+      .matches(/^\+?[-\d\s()]+$/, 'Invalid phone number format'),
     password: Yup.string()
       .required('Password is required')
       .min(8, 'Password must be at least 8 characters')
@@ -76,16 +75,17 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
       onNext();
     } catch (error) {
       setIsSubmitting(false);
+      const message = String(error || 'An error occurred during registration. Please try again.');
 
-      if (error.includes('already registered') || error.includes('email already exists')) {
+      if (message.includes('already registered') || message.includes('email already exists')) {
         setFieldError('email', 'This email is already registered');
       } else {
-        setSubmitError(error || 'An error occurred during registration. Please try again.');
+        setSubmitError(message);
       }
     }
   };
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
       const response = await dispatch(getUserProfile()).unwrap();
@@ -99,14 +99,14 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         });
       }
     }
-  };
+  }, [data?.email, data?.fullName, data?.phone, dispatch, onDataChange]);
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken && !data?.userId) {
       fetchUserProfile();
     }
-  }, []);
+  }, [data?.userId, fetchUserProfile]);
 
   // Password strength calculator
   const calculatePasswordStrength = (password) => {
@@ -121,8 +121,8 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
 
   const FormField = ({ name, label, type = 'text', icon: Icon, isPassword = false, ...props }) => (
     <div className="space-y-2">
-      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
-        {Icon && <Icon className="h-4 w-4 text-gray-400" />}
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+        {Icon && <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
         {label}
       </label>
       <Field name={name}>
@@ -133,12 +133,12 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               {...props}
               id={name}
               type={isPassword ? (name === 'password' ? (showPassword ? 'text' : 'password') : (showConfirmPassword ? 'text' : 'password')) : type}
-              className={`w-full transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 py-3 rounded-md bg-white/80 backdrop-blur-sm ${
+              className={`h-12 w-full rounded-lg bg-white/90 pr-10 text-slate-950 shadow-sm backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 hover:shadow-md focus:shadow-lg dark:bg-slate-950/60 dark:text-white dark:placeholder:text-slate-500 ${
                 meta.touched && meta.error
-                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20'
                   : meta.touched && !meta.error
-                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20'
-                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
+                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20 dark:focus:ring-green-500/20'
+                  : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/20'
               }`}
               onChange={(e) => {
                 field.onChange(e);
@@ -153,7 +153,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               <button
                 type="button"
                 onClick={() => name === 'password' ? setShowPassword(!showPassword) : setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
               >
                 {(name === 'password' ? showPassword : showConfirmPassword) ? (
                   <EyeOff className="w-4 h-4" />
@@ -165,7 +165,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
 
             {/* Validation icons */}
             {meta.touched && !isPassword && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {meta.error ? (
                   <AlertCircle className="w-4 h-4 text-red-500" />
                 ) : (
@@ -177,10 +177,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         )}
       </Field>
 
-      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1 mt-2" />
+      <ErrorMessage name={name} component="div" className="mt-2 flex items-center gap-1 text-sm text-red-600 dark:text-red-400" />
 
       {name === 'password' && passwordStrength > 0 && (
-        <div className="text-xs text-gray-600 mt-1">
+        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Password strength: {passwordStrength <= 2 ? 'Weak' : passwordStrength <= 3 ? 'Fair' : passwordStrength <= 4 ? 'Good' : 'Strong'}
         </div>
       )}
@@ -188,16 +188,16 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-4 text-center">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/20 sm:h-16 sm:w-16">
           <Shield className="w-8 h-8 text-white" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
             Create Airline Administrator
           </h3>
-          <p className="text-gray-600 text-lg">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
             Securely create an administrator account to manage your airline.
           </p>
         </div>
@@ -209,10 +209,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         onSubmit={handleSubmit}
         enableReinitialize
       >
-        {({ values, isValid, dirty }) => {
+        {({ isValid }) => {
           return (
-            <Form className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Form className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                 <FormField
                   name="fullName"
                   label="Full Name"
@@ -237,7 +237,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 icon={Phone}
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
                 <FormField
                   name="password"
                   label="Password"
@@ -256,35 +256,35 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               </div>
 
               {/* Security Requirements */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-start space-x-3">
-                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-400/30 dark:bg-blue-500/10">
+                <div className="flex items-start gap-3">
+                  <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-300" />
                   <div>
-                    <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                    <h4 className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
                       Security Requirements
                     </h4>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li className="flex items-center space-x-2">
+                    <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-200">
+                      <li className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-300'
+                          passwordStrength >= 1 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
                         }`}></div>
                         <span>At least 8 characters</span>
                       </li>
-                      <li className="flex items-center space-x-2">
+                      <li className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-300'
+                          passwordStrength >= 2 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
                         }`}></div>
                         <span>Contains lowercase letters</span>
                       </li>
-                      <li className="flex items-center space-x-2">
+                      <li className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-300'
+                          passwordStrength >= 3 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
                         }`}></div>
                         <span>Contains uppercase letters</span>
                       </li>
-                      <li className="flex items-center space-x-2">
+                      <li className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-300'
+                          passwordStrength >= 4 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
                         }`}></div>
                         <span>Contains numbers</span>
                       </li>
@@ -294,16 +294,16 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               </div>
 
               {submitError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-red-600 text-sm">{submitError}</p>
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/40">
+                  <p className="text-sm text-red-700 dark:text-red-300">{submitError}</p>
                 </div>
               )}
 
-              <div className="pt-6">
+              <div className="pt-2 sm:pt-4">
                 <Button
                   type="submit"
                   disabled={!isValid || isSubmitting}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl text-lg group"
+                  className="group h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 font-bold text-white shadow-xl shadow-blue-950/15 transition-all duration-300 hover:scale-[1.01] hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 dark:shadow-black/30 sm:h-14 sm:text-lg"
                   size="lg"
                 >
                   {isSubmitting ? (
@@ -313,19 +313,19 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-5 h-5 mr-3 group-hover:animate-pulse" />
+                      <Sparkles className="w-5 h-5 mr-3" />
                       Create Admin & Continue
                     </>
                   )}
                 </Button>
               </div>
 
-              <div className="text-center pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
+              <div className="border-t border-slate-200 pt-5 text-center dark:border-white/10">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   Already have an account?{' '}
                   <button
                     type="button"
-                    className="text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all duration-200 hover:scale-105 inline-flex items-center"
+                    className="inline-flex items-center font-semibold text-blue-600 transition-all duration-200 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
                     onClick={() => {
                       window.location.href = '/login';
                     }}
@@ -334,7 +334,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                     <ArrowRight className="w-3 h-3 ml-1" />
                   </button>
                 </p>
-                <p className="text-xs text-gray-500 mt-3">
+                <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
                   By creating an account, you agree to our Terms of Service and Privacy Policy.
                 </p>
               </div>

@@ -1,3 +1,5 @@
+import { jwtDecode } from "jwt-decode";
+
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 
@@ -14,6 +16,20 @@ export const getRefreshToken = () =>
   localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
 export const hasAuthTokens = () => Boolean(getAccessToken());
+
+export const hasValidAccessToken = () => {
+  const token = getAccessToken();
+  if (!token) return false;
+
+  try {
+    const decoded = jwtDecode(token);
+    if (!decoded.exp) return true;
+
+    return decoded.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+};
 
 export const setAuthTokens = ({ accessToken, refreshToken }, rememberMe = true) => {
   const targetStorage = rememberMe ? localStorage : sessionStorage;

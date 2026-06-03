@@ -1,57 +1,30 @@
 import * as React from "react"
 import { 
-  Shield,
-  Building2,
-  MapPin,
-  Plane,
-  Users,
-  UserCheck,
-  DollarSign,
-  BarChart3,
-  Settings,
-  Bell,
-  Lock,
   ChevronDown,
   ChevronRight,
-  Home,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  Target,
-  CreditCard,
-  Gift,
-  Clock,
   Menu,
   X,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  FileText,
-  TrendingUp,
-  PieChart,
-  Globe,
-  Mail,
-  Smartphone,
-  Key,
-  Database,
-  Activity,
-  Zap,
   Crown,
-  Briefcase
+  LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useNavigate, useLocation } from "react-router-dom"
-import { sidebarSections } from "./sidebarSection"
+import { buildSidebarSections } from "./sidebarSection"
 import { useDispatch } from "react-redux"
 import { logout } from "@/Redux/user/userThunks"
-import { LogOut } from "lucide-react"
 
-const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onToggleCollapse }) => {
+const hasCount = (count) => Number.isFinite(count);
+const formatCount = (count) => (count > 999 ? "999+" : count);
+
+const SuperAdminSidebar = ({
+  onSectionChange,
+  isCollapsed,
+  onToggleCollapse,
+  platformStats,
+}) => {
   const [expandedSections, setExpandedSections] = React.useState({
     airlines: true,
     airports: false,
@@ -68,6 +41,10 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch=useDispatch();
+  const sections = React.useMemo(
+    () => buildSidebarSections(platformStats),
+    [platformStats]
+  )
 
   const toggleSection = (sectionId) => {
     setExpandedSections(prev => ({
@@ -97,9 +74,9 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
           {!isCollapsed && (
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Super Admin
+                FlightHub Admin
               </h1>
-              <p className="text-slate-400 text-sm mt-1">Platform Management</p>
+              <p className="text-slate-400 text-sm mt-1">System Control Center</p>
             </div>
           )}
           <Button 
@@ -115,10 +92,15 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4 space-y-2 h-[88vh]">
-        {sidebarSections.map((section) => {
+        {sections.map((section) => {
           const SectionIcon = section.icon
           const isExpanded = expandedSections[section.id]
           const hasActiveItem = section.items.some(item => item.path === location.pathname)
+          const sectionCount = section.items.reduce(
+            (sum, item) => (hasCount(item.count) ? sum + item.count : sum),
+            0
+          )
+          const hasSectionCount = section.items.some((item) => hasCount(item.count))
 
           return (
             <div key={section.id} className="px-3">
@@ -148,9 +130,9 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
                 </div>
                 {!isCollapsed && (
                   <div className="flex items-center gap-2">
-                    {section.items.some(item => item.count) && (
+                    {hasSectionCount && (
                       <Badge className="bg-slate-600 text-slate-200 text-xs">
-                        {section.items.reduce((sum, item) => sum + (item.count || 0), 0)}
+                        {formatCount(sectionCount)}
                       </Badge>
                     )}
                     {isExpanded ? (
@@ -207,14 +189,14 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
                               {item.label}
                             </span>
                           </div>
-                          {item.count && (
+                          {hasCount(item.count) && (
                             <Badge className={cn(
                               "text-xs transition-all duration-200",
                               isActive 
                                 ? "bg-white/20 text-white" 
                                 : "bg-slate-600 text-slate-300 group-hover:bg-slate-500"
                             )}>
-                              {item.count > 999 ? "999+" : item.count}
+                              {formatCount(item.count)}
                             </Badge>
                           )}
                         </button>
@@ -260,14 +242,14 @@ const SuperAdminSidebar = ({ activeSection, onSectionChange, isCollapsed, onTogg
                                   isActive ? "text-white" : "text-slate-300"
                                 )}>{item.label}</span>
                               </div>
-                              {item.count && (
+                              {hasCount(item.count) && (
                                 <Badge className={cn(
                                   "text-xs",
                                   isActive
                                     ? "bg-white/20 text-white"
                                     : "bg-slate-600 text-slate-300"
                                 )}>
-                                  {item.count > 999 ? "999+" : item.count}
+                                  {formatCount(item.count)}
                                 </Badge>
                               )}
                             </button>

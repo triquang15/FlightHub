@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, FileText, Shield, Sparkles, Users, Zap } from 'lucide-react';
 import {
@@ -11,69 +10,82 @@ import {
   SuccessScreen
 } from './steps';
 
-const AirlineOnboardingWizard = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [formData, setFormData] = useState({
-    owner: {},
-    airline: {},
-    support: {}
-  });
+const steps = [
+  {
+    id: 'owner',
+    title: 'Account Setup',
+    description: 'Create your admin account',
+    icon: Shield,
+    color: 'from-blue-500 to-cyan-500'
+  },
+  {
+    id: 'airline',
+    title: 'Airline Profile',
+    description: 'Configure airline details',
+    icon: Sparkles,
+    color: 'from-purple-500 to-pink-500'
+  },
+  {
+    id: 'support',
+    title: 'Support Center',
+    description: 'Setup customer support',
+    icon: Users,
+    color: 'from-green-500 to-emerald-500'
+  },
+  {
+    id: 'review',
+    title: 'Launch Ready',
+    description: 'Review and activate',
+    icon: Zap,
+    color: 'from-orange-500 to-red-500'
+  }
+];
 
-  const steps = [
-    {
-      id: 'owner',
-      title: 'Account Setup',
-      description: 'Create your admin account',
-      icon: Shield,
-      color: 'from-blue-500 to-cyan-500'
-    },
-    {
-      id: 'airline',
-      title: 'Airline Profile',
-      description: 'Configure airline details',
-      icon: Sparkles,
-      color: 'from-purple-500 to-pink-500'
-    },
-    {
-      id: 'support',
-      title: 'Support Center',
-      description: 'Setup customer support',
-      icon: Users,
-      color: 'from-green-500 to-emerald-500'
-    },
-    {
-      id: 'review',
-      title: 'Launch Ready',
-      description: 'Review and activate',
-      icon: Zap,
-      color: 'from-orange-500 to-red-500'
-    }
-  ];
+const emptyFormData = {
+  owner: {},
+  airline: {},
+  support: {}
+};
 
-  // Access token persistence logic
-  useEffect(() => {
-    const savedProgress = localStorage.getItem('airline_onboarding_progress');
+const getSavedProgress = () => {
+  const savedProgress = localStorage.getItem('airline_onboarding_progress');
 
-    if (savedProgress) {
-      try {
-        const progress = JSON.parse(savedProgress);
-        const savedStep = Number(progress.currentStep);
-        const safeStep = Number.isInteger(savedStep)
-          ? Math.min(Math.max(savedStep, 1), steps.length)
-          : 1;
+  if (!savedProgress) {
+    return {
+      currentStep: 1,
+      formData: emptyFormData
+    };
+  }
 
-        setCurrentStep(safeStep);
-        setFormData({
-          owner: progress.formData?.owner || {},
-          airline: progress.formData?.airline || {},
-          support: progress.formData?.support || {}
-        });
-      } catch {
-        localStorage.removeItem('airline_onboarding_progress');
+  try {
+    const progress = JSON.parse(savedProgress);
+    const savedStep = Number(progress.currentStep);
+    const safeStep = Number.isInteger(savedStep)
+      ? Math.min(Math.max(savedStep, 1), steps.length)
+      : 1;
+
+    return {
+      currentStep: safeStep,
+      formData: {
+        owner: progress.formData?.owner || {},
+        airline: progress.formData?.airline || {},
+        support: progress.formData?.support || {}
       }
-    }
-  }, []);
+    };
+  } catch {
+    localStorage.removeItem('airline_onboarding_progress');
+    return {
+      currentStep: 1,
+      formData: emptyFormData
+    };
+  }
+};
+
+const AirlineOnboardingWizard = () => {
+  const [initialProgress] = useState(getSavedProgress);
+  const [currentStep, setCurrentStep] = useState(initialProgress.currentStep);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [formData, setFormData] = useState(initialProgress.formData);
 
   const saveProgress = (step, data) => {
     const progress = {
@@ -255,24 +267,24 @@ const AirlineOnboardingWizard = () => {
             </div>
           </aside>
 
-          <Card className="overflow-hidden rounded-lg border-0 bg-white text-slate-950 shadow-2xl">
+          <Card className="overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-950 shadow-2xl shadow-slate-950/10 backdrop-blur dark:border-white/10 dark:bg-slate-950/75 dark:text-white dark:shadow-black/30">
             <div className={`h-2 bg-gradient-to-r ${steps[currentStep - 1]?.color}`}></div>
-            <CardHeader className="border-b border-slate-200 px-6 py-5">
-              <div className="flex items-center gap-4">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br ${steps[currentStep - 1]?.color}`}>
+            <CardHeader className="border-b border-slate-200 px-4 py-4 dark:border-white/10 sm:px-6 sm:py-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-br ${steps[currentStep - 1]?.color} sm:h-11 sm:w-11`}>
                   {React.createElement(steps[currentStep - 1]?.icon, { className: "w-6 h-6 text-white" })}
                 </div>
-                <div>
-                  <CardTitle className="text-xl font-semibold text-slate-950">
+                <div className="min-w-0">
+                  <CardTitle className="text-lg font-semibold text-slate-950 dark:text-white sm:text-xl">
                     {steps[currentStep - 1]?.title}
                   </CardTitle>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {steps[currentStep - 1]?.description}
                   </p>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="px-6 py-6">
+            <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
               {renderCurrentStep()}
             </CardContent>
           </Card>
