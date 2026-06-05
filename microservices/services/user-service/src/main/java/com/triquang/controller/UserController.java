@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.triquang.dto.UserDTO;
@@ -64,9 +65,12 @@ public class UserController {
 
     // ================= GET ALL =================
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(
+            Pageable pageable,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role) {
 
-        return ResponseUtil.ok(userService.getUsers(pageable));
+        return ResponseUtil.ok(userService.getUsers(pageable, keyword, parseRole(role)));
     }
 
     // ================= DELETE USER =================
@@ -138,6 +142,18 @@ public class UserController {
     private void requireSystemAdmin(String roles) {
         if (roles == null || !roles.contains(UserRole.ROLE_SYSTEM_ADMIN.name())) {
             throw new BaseException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    private UserRole parseRole(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+
+        try {
+            return UserRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
         }
     }
 }

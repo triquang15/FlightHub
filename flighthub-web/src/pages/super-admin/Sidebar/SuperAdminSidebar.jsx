@@ -6,6 +6,7 @@ import {
   X,
   Crown,
   LogOut,
+  UserCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,11 +14,25 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useNavigate, useLocation } from "react-router-dom"
 import { buildSidebarSections } from "./sidebarSection"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { logout } from "@/Redux/user/userThunks"
 
 const hasCount = (count) => Number.isFinite(count);
 const formatCount = (count) => (count > 999 ? "999+" : count);
+const getAdminName = (user) =>
+  user?.fullName ||
+  user?.name ||
+  [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+  user?.email ||
+  "System Admin";
+const getAdminMeta = (user) => user?.role || user?.email || "Super Admin";
+const getInitials = (name) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "SA";
 
 const SuperAdminSidebar = ({
   onSectionChange,
@@ -26,21 +41,22 @@ const SuperAdminSidebar = ({
   platformStats,
 }) => {
   const [expandedSections, setExpandedSections] = React.useState({
+    overview: true,
     airlines: true,
     airports: false,
-    flights: false,
-    bookings: false,
     users: false,
-    financial: false,
     reports: true,
-    system: false,
     notifications: false,
-    security: false
   })
 
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch=useDispatch();
+  const authUser = useSelector((state) => state.auth?.user)
+  const userProfile = useSelector((state) => state.user?.userProfile)
+  const adminUser = userProfile || authUser
+  const adminName = getAdminName(adminUser)
+  const adminMeta = getAdminMeta(adminUser)
   const sections = React.useMemo(
     () => buildSidebarSections(platformStats),
     [platformStats]
@@ -72,11 +88,20 @@ const SuperAdminSidebar = ({
       <div className="p-6 border-b border-slate-700/50">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 FlightHub Admin
               </h1>
               <p className="text-slate-400 text-sm mt-1">System Control Center</p>
+              <div className="mt-4 flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/45 p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-sm font-semibold text-slate-100">
+                  {adminName ? getInitials(adminName) : <UserCircle className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{adminName}</p>
+                  <p className="truncate text-xs text-slate-400">{adminMeta}</p>
+                </div>
+              </div>
             </div>
           )}
           <Button 
@@ -96,11 +121,6 @@ const SuperAdminSidebar = ({
           const SectionIcon = section.icon
           const isExpanded = expandedSections[section.id]
           const hasActiveItem = section.items.some(item => item.path === location.pathname)
-          const sectionCount = section.items.reduce(
-            (sum, item) => (hasCount(item.count) ? sum + item.count : sum),
-            0
-          )
-          const hasSectionCount = section.items.some((item) => hasCount(item.count))
 
           return (
             <div key={section.id} className="px-3">
@@ -130,11 +150,6 @@ const SuperAdminSidebar = ({
                 </div>
                 {!isCollapsed && (
                   <div className="flex items-center gap-2">
-                    {hasSectionCount && (
-                      <Badge className="bg-slate-600 text-slate-200 text-xs">
-                        {formatCount(sectionCount)}
-                      </Badge>
-                    )}
                     {isExpanded ? (
                       <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200" />
                     ) : (

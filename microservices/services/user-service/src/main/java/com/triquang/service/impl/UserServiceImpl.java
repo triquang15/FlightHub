@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -157,8 +158,24 @@ public class UserServiceImpl implements UserService {
 
     // ================= GET USERS =================
     @Override
-    public Page<UserDTO> getUsers(Pageable pageable) {
-        return userRepository.findAll(pageable).map(UserMapper::toDTO);
+    public Page<UserDTO> getUsers(Pageable pageable, String keyword, UserRole role) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Specification<User> spec = Specification.allOf();
+
+        if (role != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("role"), role));
+        }
+
+        if (normalizedKeyword != null) {
+            String pattern = "%" + normalizedKeyword.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("fullName")), pattern),
+                    cb.like(cb.lower(root.get("email")), pattern),
+                    cb.like(root.get("phone"), "%" + normalizedKeyword + "%")
+            ));
+        }
+
+        return userRepository.findAll(spec, pageable).map(UserMapper::toDTO);
     }
 
     // ================= DELETE USER =================

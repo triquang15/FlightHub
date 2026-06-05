@@ -10,6 +10,8 @@ import {
 const initialState = {
   userProfile: null,
   users: [],
+  total: 0,
+  totalPages: 1,
   selectedUser: null,
   loading: false,
   usersLoading: false,
@@ -24,6 +26,8 @@ const userSlice = createSlice({
     clearUserState: (state) => {
       state.userProfile = null;
       state.users = [];
+      state.total = 0;
+      state.totalPages = 1;
       state.selectedUser = null;
       state.profileError = null;
       state.usersError = null;
@@ -65,7 +69,16 @@ const userSlice = createSlice({
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
         state.usersLoading = false;
-        state.users = action.payload;
+        if (Array.isArray(action.payload)) {
+          state.users = action.payload;
+          state.total = action.payload.length;
+          state.totalPages = 1;
+          return;
+        }
+
+        state.users = action.payload?.content || [];
+        state.total = action.payload?.totalElements || 0;
+        state.totalPages = action.payload?.totalPages || 1;
       })
       .addCase(getAllUsers.rejected, (state, action) => {
         state.usersLoading = false;
@@ -82,6 +95,8 @@ const userSlice = createSlice({
         state.userProfile = null;
         state.selectedUser = null;
         state.users = [];
+        state.total = 0;
+        state.totalPages = 1;
         state.profileError = null;
         state.usersError = null;
       });

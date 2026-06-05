@@ -73,11 +73,28 @@ export const changePassword = createAsyncThunk(
 // ============================
 export const getAllUsers = createAsyncThunk(
   "user/getAll",
-  async (_, { rejectWithValue }) => {
+  async (
+    {
+      page = 0,
+      size = 10,
+      sort,
+      keyword,
+      role,
+    } = {},
+    { rejectWithValue }
+  ) => {
     try {
-      const res = await api.get("/api/users");
+      const res = await api.get("/api/users", {
+        params: {
+          page,
+          size,
+          sort,
+          keyword,
+          role,
+        },
+      });
 
-      return res.data?.data?.content || [];
+      return res.data?.data || { content: [], totalElements: 0, totalPages: 1 };
 
     } catch (err) {
       return rejectWithValue(

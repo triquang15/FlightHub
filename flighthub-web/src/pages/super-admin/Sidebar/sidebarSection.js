@@ -7,43 +7,44 @@ import {
   BarChart3,
   Bell,
   Clock,
-  CheckCircle,
   XCircle,
   AlertTriangle,
-  ArrowRight,
   Globe,
   Mail,
-  Database,
   Activity,
   Zap,
-  Crown,
+  LayoutDashboard,
+  ShieldCheck,
+  Route,
+  UserCog,
+  Gauge,
+  MailCheck,
 } from "lucide-react";
 
 export const sidebarSections = [
   {
     id: "overview",
-    title: "FlightHub Overview",
-    icon: Crown,
-    color: "from-purple-500 to-purple-600",
+    title: "Command Center",
+    icon: LayoutDashboard,
+    color: "from-sky-500 to-cyan-500",
     items: [
       {
         id: "overview",
-        label: "Control Center",
+        label: "Platform Overview",
         icon: BarChart3,
-        count: null,
         path: "/super-admin/dashboard",
       },
     ],
   },
   {
     id: "airlines",
-    title: "Airline Partners",
+    title: "Airline Operations",
     icon: Building2,
-    color: "from-blue-500 to-blue-600",
+    color: "from-blue-500 to-sky-600",
     items: [
       {
         id: "airlines-list",
-        label: "Airline Partners",
+        label: "Airlines",
         icon: Building2,
         countKey: "totalAirlines",
         path: "/super-admin/airlines",
@@ -57,30 +58,28 @@ export const sidebarSections = [
       },
       {
         id: "airlines-suspended",
-        label: "Restricted Airlines",
+        label: "Restricted",
         icon: XCircle,
         countKey: "restrictedAirlines",
         path: "/super-admin/airlines/suspended",
       },
       {
         id: "airlines-compliance",
-        label: "Compliance Review",
-        icon: CheckCircle,
-        count: null,
+        label: "Compliance",
+        icon: ShieldCheck,
         path: "/super-admin/airlines/compliance",
       },
       {
         id: "airlines-commission",
-        label: "Commission Setup",
+        label: "Commissions",
         icon: DollarSign,
-        count: null,
         path: "/super-admin/airlines/commission",
       },
     ],
   },
   {
     id: "airports",
-    title: "Location Data",
+    title: "Network Data",
     icon: MapPin,
     color: "from-green-500 to-emerald-500",
     items: [
@@ -93,7 +92,7 @@ export const sidebarSections = [
       },
       {
         id: "cities-list",
-        label: "Cities & Markets",
+        label: "Cities",
         icon: Globe,
         countKey: "totalCities",
         path: "/super-admin/cities",
@@ -103,13 +102,13 @@ export const sidebarSections = [
 
   {
     id: "users",
-    title: "Accounts & Access",
-    icon: Users,
-    color: "from-indigo-500 to-indigo-600",
+    title: "Identity & Access",
+    icon: UserCog,
+    color: "from-violet-500 to-indigo-600",
     items: [
       {
         id: "users-list",
-        label: "User Accounts",
+        label: "Accounts",
         icon: Users,
         countKey: "totalUsers",
         path: "/super-admin/users",
@@ -119,44 +118,40 @@ export const sidebarSections = [
 
   {
     id: "reports",
-    title: "Performance Analytics",
-    icon: BarChart3,
-    color: "from-pink-500 to-rose-500",
+    title: "Analytics",
+    icon: Gauge,
+    color: "from-teal-500 to-cyan-600",
     items: [
       {
         id: "airport-performance",
         label: "Airport Performance",
         icon: Building2,
-        count: null,
         path: "/super-admin/airport-performance",
       },
       {
         id: "route-performance",
         label: "Route Performance",
-        icon: ArrowRight,
-        count: null,
+        icon: Route,
         path: "/super-admin/route-performance",
-      }
-      ,
+      },
       {
         id: "airline-performance",
         label: "Airline Performance",
         icon: Plane,
-        count: null,
         path: "/super-admin/airline-performance",
-      }
+      },
     ],
   },
  
   {
     id: "notifications",
-    title: "Notification Center",
+    title: "Notifications",
     icon: Bell,
-    color: "from-yellow-500 to-orange-500",
+    color: "from-amber-500 to-orange-500",
     items: [
       {
         id: "notifications-system",
-        label: "Operations Overview",
+        label: "Operations",
         icon: Activity,
         countKey: "totalNotificationEvents",
         path: "/super-admin/notifications",
@@ -164,7 +159,7 @@ export const sidebarSections = [
       {
         id: "notifications-deliveries",
         label: "Delivery Logs",
-        icon: Database,
+        icon: MailCheck,
         countKey: "totalNotificationDeliveries",
         path: "/super-admin/notifications/deliveries",
       },
@@ -179,14 +174,12 @@ export const sidebarSections = [
         id: "notifications-templates",
         label: "Templates",
         icon: Mail,
-        count: null,
         path: "/super-admin/notifications/templates",
       },
       {
         id: "notifications-channels",
         label: "Channel Health",
         icon: Zap,
-        count: null,
         path: "/super-admin/notifications/channels",
       },
     ],

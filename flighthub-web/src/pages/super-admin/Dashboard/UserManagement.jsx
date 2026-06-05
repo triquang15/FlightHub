@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers } from "@/Redux/user/userThunks";
 import {
@@ -9,6 +9,10 @@ import {
   User,
   Plane,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ChevronUp,
   ChevronDown,
   Mail,
@@ -26,10 +30,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import api from "@/utils/api";
 import { toast } from "sonner";
 
 const SYSTEM_ADMIN_ROLE = "ROLE_SYSTEM_ADMIN";
+const ROLE_OPTIONS = [
+  SYSTEM_ADMIN_ROLE,
+  "ROLE_AIRLINE_OWNER",
+  "ROLE_CUSTOMER",
+];
 
 function getRoleMeta(role) {
   switch (role) {
@@ -105,30 +122,160 @@ function SortHeader({ label, field, sortField, sortDir, onSort }) {
   );
 }
 
+function UserPagination({
+  currentPage = 1,
+  totalPages = 1,
+  totalItems = 0,
+  itemsPerPage = 10,
+  onPageChange,
+  onItemsPerPageChange,
+}) {
+  const page = Number(currentPage) || 1;
+  const size = Number(itemsPerPage) || 10;
+  const total = Number(totalItems) || 0;
+  const pages = Math.max(Number(totalPages) || 1, 1);
+
+  const startItem = total === 0 ? 0 : (page - 1) * size + 1;
+  const endItem = Math.min(page * size, total);
+
+  const getPageNumbers = () => {
+    const result = [];
+    const max = 5;
+    let start = Math.max(1, page - Math.floor(max / 2));
+    let end = Math.min(pages, start + max - 1);
+
+    if (end - start + 1 < max) {
+      start = Math.max(1, end - max + 1);
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      result.push(i);
+    }
+
+    return result;
+  };
+
+  if (total === 0) return null;
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+        <span>
+          Showing {startItem} to {endItem} of {total} users
+        </span>
+
+        <div className="flex items-center gap-2">
+          <span>Rows:</span>
+          <Select
+            value={String(size)}
+            onValueChange={(value) => {
+              onItemsPerPageChange(Number(value));
+              onPageChange(1);
+            }}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(1)}
+          disabled={page === 1}
+        >
+          <ChevronsLeft className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <div className="flex items-center gap-1">
+          {getPageNumbers().map((p) => (
+            <Button
+              key={p}
+              variant={page === p ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(p)}
+              className="w-9"
+            >
+              {p}
+            </Button>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= pages}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(pages)}
+          disabled={page >= pages}
+        >
+          <ChevronsRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────── main component ─────────────────────── */
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { users, usersLoading, usersError } = useSelector((s) => s.user);
+  const { users, usersLoading, usersError, total, totalPages } = useSelector((s) => s.user);
   const safeUsers = useMemo(() => (Array.isArray(users) ? users : []), [users]);
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [sortField, setSortField] = useState("fullName");
   const [sortDir, setSortDir] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [refreshSpinning, setRefreshSpinning] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
+  const loadUsers = useCallback(() => {
+    return dispatch(
+      getAllUsers({
+        page: currentPage - 1,
+        size: itemsPerPage,
+        sort: `${sortField},${sortDir}`,
+        keyword: search.trim() || undefined,
+        role: roleFilter === "all" ? undefined : roleFilter,
+      })
+    );
+  }, [currentPage, dispatch, itemsPerPage, roleFilter, search, sortDir, sortField]);
+
   useEffect(() => {
-    dispatch(getAllUsers());
-  }, [dispatch]);
+    loadUsers();
+  }, [loadUsers]);
 
   async function handleRefresh() {
     const startedAt = Date.now();
     setRefreshSpinning(true);
 
     try {
-      await dispatch(getAllUsers());
+      await loadUsers();
     } finally {
       const elapsed = Date.now() - startedAt;
       if (elapsed < MIN_RELOAD_SPINNER_MS) {
@@ -154,7 +301,7 @@ const UserManagement = () => {
       await api.delete(`/api/users/${deleteTarget.id}`);
       setDeleteTarget(null);
       toast.success("User deleted successfully", { id: "delete-user" });
-      await dispatch(getAllUsers()).unwrap();
+      await loadUsers().unwrap();
     } catch (err) {
       const message = err.response?.data?.message || "Unable to delete user.";
       toast.error(message, { id: "delete-user" });
@@ -170,16 +317,17 @@ const UserManagement = () => {
       setSortField(field);
       setSortDir("asc");
     }
+    setCurrentPage(1);
   }
 
   /* stats derived from real data */
   const stats = useMemo(() => {
-    const total = safeUsers.length;
+    const totalUsers = total || safeUsers.length;
     const customers = safeUsers.filter((u) => u.role === "ROLE_CUSTOMER").length;
     const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
     const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
-    return { total, customers, airlineOwners, superAdmins };
-  }, [safeUsers]);
+    return { total: totalUsers, customers, airlineOwners, superAdmins };
+  }, [safeUsers, total]);
 
   /* filtered + sorted list */
   const filtered = useMemo(() => {
@@ -217,7 +365,7 @@ const UserManagement = () => {
     return list;
   }, [safeUsers, search, roleFilter, sortField, sortDir]);
 
-  const uniqueRoles = useMemo(() => [...new Set(safeUsers.map((u) => u.role).filter(Boolean))], [safeUsers]);
+  const uniqueRoles = useMemo(() => ROLE_OPTIONS, []);
 
   return (
     <div className="space-y-6">
@@ -253,7 +401,10 @@ const UserManagement = () => {
           type="text"
           placeholder="Search by name, email or phone…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           className="
             w-full pl-9 pr-4 py-2 text-sm rounded-lg
             bg-gray-50 dark:bg-gray-800
@@ -271,7 +422,10 @@ const UserManagement = () => {
       <div className="relative min-w-[180px]">
         <select
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
+          onChange={(e) => {
+            setRoleFilter(e.target.value);
+            setCurrentPage(1);
+          }}
           className="
             w-full px-3 py-2 text-sm rounded-lg
             bg-gray-50 dark:bg-gray-800
@@ -370,6 +524,7 @@ const UserManagement = () => {
               {filtered.map((user, idx) => {
                 const roleMeta = getRoleMeta(user.role);
                 const protectedUser = isSystemAdmin(user);
+                const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
                 return (
                   <tr
@@ -378,7 +533,7 @@ const UserManagement = () => {
                   >
                     {/* index */}
                     <td className="px-4 py-3 text-gray-400 text-xs">
-                      {idx + 1}
+                      {rowNumber}
                     </td>
 
                     {/* name */}
@@ -473,10 +628,17 @@ const UserManagement = () => {
             </tbody>
           </table>
 
-          {/* footer */}
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500 text-right">
-            Showing {filtered.length} of {safeUsers.length} users
-          </div>
+          <UserPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={total}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       )}
     </div>
