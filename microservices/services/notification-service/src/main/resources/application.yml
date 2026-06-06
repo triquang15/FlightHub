@@ -39,13 +39,11 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
 
       properties:
-        # 🔥 MULTI-EVENT SUPPORT
+        # MULTI-EVENT SUPPORT
         spring.json.trusted.packages: "com.triquang.message"
-        spring.json.use.type.headers: true   # 🔥 QUAN TRỌNG
+        spring.json.use.type.headers: true
 
-        # ❌ KHÔNG dùng default.type (tránh lỗi deserialize sai event)
-
-        # 🔥 STABILITY
+        # STABILITY
         max.poll.interval.ms: 300000
         session.timeout.ms: 15000
 

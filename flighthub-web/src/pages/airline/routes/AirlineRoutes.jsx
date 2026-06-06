@@ -1,10 +1,8 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import DashboardOverview from "../Dashboard/DashboardOverview";
 import FlightForm from "../Dashboard/FlightManagment/FlightForm";
 import AnalyticsDashboard from "../Dashboard/AnalyticsDashboard";
 import BookingManagement from "../Dashboard/Bookings/BookingManagement";
-import OffersManagement from "../Dashboard/OffersManagement";
 
 import SeatManagement from "../Dashboard/SeatManagement";
 
@@ -21,7 +19,6 @@ import FlightInstanceForm from "../Dashboard/FlightInstances/FlightInstanceForm"
 import FlightScheduleForm from "../Dashboard/FlightSchedules/FlightScheduleForm";
 import FlightScheduleTable from "../Dashboard/FlightSchedules/FlightScheduleTable";
 import FlightScheduleDetail from "../Dashboard/FlightSchedules/FlightScheduleDetail";
-import CabinSeatManagementPage from "../Dashboard/FlightInstances/CabinSeatManagementPage";
 
 // import FlightCabinSeatPage from "../Dashboard/FlightCabins/FlightInstanceCabinSeatPage";
 import FlightDetail from "../Dashboard/FlightManagment/FlightDetail";
@@ -33,7 +30,6 @@ import BaggagePolicyPage from "../Dashboard/BaggagePolicy/BaggagePolicyPage";
 import FareManagementForm from "../Dashboard/Fare/FareManagementForm";
 
 
-import CabinSeatManagement from "../Dashboard/FlightInstances/CabinSeatManagement";
 import FlightInstanceTable from "../Dashboard/FlightInstances/FlightInstanceTable";
 
 import AncillaryList from "../Dashboard/Ancillaries/AncillaryList";
@@ -46,7 +42,6 @@ import MealFormPage from "../Dashboard/Meals/MealFormPage";
 
 import FlightMealFormPage from "../Dashboard/FlightMeals/FlightMealFormPage";
 import InsuranceCoverageManagement from "../Dashboard/InsuranceCoverage/InsuranceCoverageManagement";
-import TransactionsManagement from "../Dashboard/Transactions/TransactionsManagement";
 import BookingStatisticsOverview from "../Dashboard/BookingStatistics/BookingStatisticsOverview";
 import RoutePerformancePage from "../Dashboard/RoutePerformance/RoutePerformancePage";
 import AirportPerformancePage from "../Dashboard/AirportPerformance/AirportPerformancePage";
@@ -54,8 +49,8 @@ import CouponTable from "../Dashboard/Coupons/CouponTable";
 import CouponForm from "../Dashboard/Coupons/CouponForm";
 
 import AirlineAdminProfile from "../Airline Admin Profile/AirlineAdminProfile";
-import FlightInstanceCabinSeatManagement from "@/components/seats/FlightInstanceCabinSeatManagement";
 import FlightInstanceCabinDetails from "../Dashboard/FlightInstances/FlightInstanceCabinDetails";
+import AirlineOwnerModulePlaceholder from "../Dashboard/AirlineOwnerModulePlaceholder";
 
 const AirlineRoutes = ({
   flights,
@@ -218,8 +213,8 @@ const AirlineRoutes = ({
 
       
       <Route path="/seats" element={<SeatManagement activeSection="seats" />} />
-      <Route path="/pricing" element={<OffersManagement />} />
-      <Route path="/offers" element={<OffersManagement />} />
+      <Route path="/pricing" element={<Navigate to="/airline/coupons" replace />} />
+      <Route path="/offers" element={<Navigate to="/airline/coupons" replace />} />
       <Route
         path="/bookings"
         element={<BookingManagement  />}
@@ -240,8 +235,12 @@ const AirlineRoutes = ({
       
       <Route
         path="/transactions"
-        element={<TransactionsManagement />}
+        element={<AirlineOwnerModulePlaceholder module="settlements" />}
       />
+      <Route path="/settlements" element={<AirlineOwnerModulePlaceholder module="settlements" />} />
+      <Route path="/administration/team" element={<AirlineOwnerModulePlaceholder module="team" />} />
+      <Route path="/administration/activity" element={<AirlineOwnerModulePlaceholder module="activity" />} />
+      <Route path="/administration/integrations" element={<AirlineOwnerModulePlaceholder module="integrations" />} />
       <Route
         path="/reports"
         element={<AnalyticsDashboard flights={flights} />}

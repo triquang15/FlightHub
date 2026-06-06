@@ -115,7 +115,7 @@ data.
 ```bash
 docker compose -f microservices/docker-compose/docker-compose.yml up -d \
   userdb airlinecoredb flightopsdb locationdb seatdb pricingdb ancillarydb \
-  bookingdb paymentdb subscriptiondb notificationdb redis kafka
+  bookingdb paymentdb subscriptiondb notificationdb redis kafka kafka-ui
 ```
 
 Check all containers:

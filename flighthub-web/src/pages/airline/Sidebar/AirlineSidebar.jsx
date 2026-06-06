@@ -1,300 +1,265 @@
 import * as React from "react"
-import { 
-
+import {
+  Building2,
   ChevronDown,
   ChevronRight,
-
+  LogOut,
   Menu,
-  X
+  PanelLeftClose,
+  UserRound,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useDispatch, useSelector } from "react-redux"
+import { useLocation, useNavigate } from "react-router-dom"
+
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { LogOut } from "lucide-react"
-import { useDispatch } from "react-redux"
+import { cn } from "@/lib/utils"
 import { logout } from "@/Redux/user/userThunks"
-import {
-  useNavigate,
-  useLocation
-} from "react-router-dom";
 import { sidebarSections } from "./sideBarSections"
 
+const isItemActive = (pathname, itemPath, siblingPaths = []) => {
+  if (pathname === itemPath) return true
+  if (itemPath === "/airline/dashboard" || !pathname.startsWith(`${itemPath}/`)) return false
 
+  return !siblingPaths.some(
+    (path) => path.length > itemPath.length && (pathname === path || pathname.startsWith(`${path}/`))
+  )
+}
 
-const AirlineSidebar = ({ activeSection, onSectionChange, isCollapsed, onToggleCollapse }) => {
-  const [expandedSections, setExpandedSections] = React.useState({
-    airlines: false,
-    flights: true,
-    seats: false,
-    pricing: false,
-    bookings: false,
-    reports: true,
-    meals: false,
-    ancillaries: false
-  })
+const getDisplayName = (user) =>
+  user?.fullName || user?.name || user?.email || "Airline Owner"
 
-  const toggleSection = (sectionId) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }))
-  }
+const getInitials = (value) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "AO"
 
+const statusStyles = {
+  ACTIVE: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+  INACTIVE: "border-amber-400/30 bg-amber-400/10 text-amber-300",
+  SUSPENDED: "border-orange-400/30 bg-orange-400/10 text-orange-300",
+  BANNED: "border-red-400/30 bg-red-400/10 text-red-300",
+}
 
-
+const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
+  const authUser = useSelector((state) => state.auth?.user)
+  const userProfile = useSelector((state) => state.user?.userProfile)
+  const currentAirline = useSelector((state) => state.airline?.currentAirline)
+
+  const owner = userProfile || authUser
+  const ownerName = getDisplayName(owner)
+  const airlineName = currentAirline?.name || "Airline workspace"
+  const airlineCode = currentAirline?.iataCode || currentAirline?.icaoCode || "FH"
+  const airlineStatus = currentAirline?.status || "INACTIVE"
+
+  const activeSectionId = React.useMemo(
+    () =>
+      sidebarSections.find((section) =>
+        section.items.some((item) =>
+          isItemActive(location.pathname, item.path, section.items.map(({ path }) => path))
+        )
+      )?.id || "overview",
+    [location.pathname]
+  )
+
+  const [expandedSections, setExpandedSections] = React.useState({
+    overview: true,
+  })
+
+  const handleNavigate = (item) => {
+    navigate(item.path)
+  }
 
   const handleLogout = async () => {
     try {
       await dispatch(logout()).unwrap()
-    } catch (e) {
-      console.error("Logout failed:", e)
+    } catch (error) {
+      console.error("Logout failed:", error)
     } finally {
-      navigate('/')
+      navigate("/")
     }
   }
 
   return (
-    <div className={cn(
-      "fixed left-0 top-0 h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out z-50 shadow-2xl",
-      isCollapsed ? "w-16" : "w-80"
-    )}>
-      {/* Header */}
-      <div className="p-6 border-b border-slate-700/50">
-        <div className="flex items-center justify-between">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-[width] duration-200",
+        isCollapsed ? "w-16" : "w-80"
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className={cn("border-b border-slate-800", isCollapsed ? "p-2" : "p-4")}>
+          <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between gap-3")}>
+            {!isCollapsed && (
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500 text-sm font-bold text-white">
+                  {airlineCode}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{airlineName}</p>
+                  <p className="truncate text-xs text-slate-400">Operations Console</p>
+                </div>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="h-9 w-9 shrink-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              {isCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </Button>
+          </div>
+
           {!isCollapsed && (
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                Airline Dashboard
-              </h1>
-              <p className="text-slate-400 text-sm mt-1">Management Console</p>
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Building2 className="h-4 w-4 shrink-0 text-slate-500" />
+                <span className="truncate text-xs text-slate-400">{airlineCode} workspace</span>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold",
+                  statusStyles[airlineStatus] || statusStyles.INACTIVE
+                )}
+              >
+                {airlineStatus}
+              </span>
             </div>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={onToggleCollapse}
-            className="text-slate-400 hover:text-white hover:bg-slate-700/50 p-2"
-          >
-            {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-          </Button>
         </div>
-      </div>
 
-      {/* Navigation */}
-      <ScrollArea className="flex-1 py-4 space-y-2 h-[88vh]">
-        {sidebarSections.map((section) => {
-          const SectionIcon = section.icon
-          const isExpanded = expandedSections[section.id]
-          const hasActiveItem = section.items.some(item => item.path === location.pathname)
+        <ScrollArea className="min-h-0 flex-1 py-3">
+          <nav aria-label="Airline operations navigation" className="space-y-1 px-2">
+            {sidebarSections.map((section) => {
+              const SectionIcon = section.icon
+              const hasActiveItem = section.id === activeSectionId
+              const isExpanded = expandedSections[section.id] ?? hasActiveItem
 
-          return (
-            <div key={section.id} className="px-3">
-              {/* Section Header */}
-              <button
-                onClick={() => toggleSection(section.id)}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
-                  "hover:bg-gradient-to-r hover:from-slate-700/50 hover:to-slate-600/50",
-                  hasActiveItem && "bg-gradient-to-r from-slate-700/70 to-slate-600/70",
-                  isCollapsed && "justify-center"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-lg bg-gradient-to-r transition-all duration-200",
-                    section.color,
-                    "group-hover:scale-110 group-hover:shadow-lg"
-                  )}>
-                    <SectionIcon className="h-5 w-5 text-white" />
-                  </div>
-                  {!isCollapsed && (
-                    <span className="font-medium text-slate-200 group-hover:text-white transition-colors">
-                      {section.title}
+              return (
+                <div key={section.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isCollapsed
+                        ? handleNavigate(section.items[0])
+                        : setExpandedSections((previous) => ({
+                            ...previous,
+                            [section.id]: !previous[section.id],
+                          }))
+                    }
+                    title={isCollapsed ? section.title : undefined}
+                    className={cn(
+                      "flex h-10 w-full items-center rounded-md text-sm transition-colors",
+                      isCollapsed ? "justify-center px-2" : "justify-between px-3",
+                      hasActiveItem
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <SectionIcon className={cn("h-4 w-4 shrink-0", hasActiveItem && "text-sky-400")} />
+                      {!isCollapsed && <span className="truncate font-medium">{section.title}</span>}
                     </span>
+                    {!isCollapsed && (
+                      isExpanded
+                        ? <ChevronDown className="h-4 w-4 shrink-0" />
+                        : <ChevronRight className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+
+                  {!isCollapsed && isExpanded && (
+                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-3">
+                      {section.items.map((item) => {
+                        const ItemIcon = item.icon
+                        const isActive = isItemActive(
+                          location.pathname,
+                          item.path,
+                          section.items.map(({ path }) => path)
+                        )
+
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => handleNavigate(item)}
+                            className={cn(
+                              "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors",
+                              isActive
+                                ? "bg-sky-500/15 font-medium text-sky-300"
+                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                            )}
+                          >
+                            <ItemIcon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
-                {!isCollapsed && (
-                  <div className="flex items-center gap-2">
-                    {section.items.some(item => item.count) && (
-                      <Badge className="bg-slate-600 text-slate-200 text-xs">
-                        {section.items.reduce((sum, item) => sum + (item.count || 0), 0)}
-                      </Badge>
-                    )}
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-slate-400 transition-transform duration-200" />
-                    )}
-                  </div>
-                )}
-              </button>
+              )
+            })}
+          </nav>
+        </ScrollArea>
 
-              {/* Section Items */}
-              {!isCollapsed && (
-                <div className={cn(
-                  "overflow-hidden transition-all duration-300 ease-in-out",
-                  isExpanded ? " opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  <div className="mt-2 space-y-1 pl-4">
-                    {section.items.map((item) => {
-                      const ItemIcon = item.icon
-                      const isActive = item.path === location.pathname
+        <div className={cn("border-t border-slate-800", isCollapsed ? "p-2" : "p-3")}>
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => navigate("/airline/profile")}
+              className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-900"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800 text-xs font-semibold text-slate-200">
+                {getInitials(ownerName)}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-100">{ownerName}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {owner?.email || "Airline Owner"}
+                </p>
+              </div>
+            </button>
+          )}
 
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            console.log("Navigating to:", item.id)
-                            onSectionChange(item.id)
-                            if (item.path) {
-                              navigate(item.path)
-                            }
-                          }}
-                          className={cn(
-                            "w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
-                            "hover:bg-slate-700/50 hover:translate-x-1",
-                            isActive && "bg-gradient-to-r from-blue-900 to-cyan-600 shadow-lg transform translate-x-1"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "p-1.5 rounded-md transition-all duration-200",
-                              isActive 
-                                ? "bg-white/20" 
-                                : "bg-slate-600/50 group-hover:bg-slate-600"
-                            )}>
-                              <ItemIcon className={cn(
-                                "h-4 w-4 transition-colors",
-                                isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                              )} />
-                            </div>
-                            <span className={cn(
-                              "text-sm font-medium transition-colors",
-                              isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                            )}>
-                              {item.label}
-                            </span>
-                          </div>
-                          {item.count && (
-                            <Badge className={cn(
-                              "text-xs transition-all duration-200",
-                              isActive 
-                                ? "bg-white/20 text-white" 
-                                : "bg-slate-600 text-slate-300 group-hover:bg-slate-500"
-                            )}>
-                              {item.count}
-                            </Badge>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Collapsed tooltip items */}
-              {isCollapsed && (
-                <div className="relative group">
-                  <div className="absolute left-full top-0 ml-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50">
-                    <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-3 min-w-48">
-                      <h3 className="font-medium text-white mb-2">{section.title}</h3>
-                      <div className="space-y-1">
-                        {section.items.map((item) => {
-                          const ItemIcon = item.icon
-                          const isActive = item.path === location.pathname
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                onSectionChange(item.id)
-                                if (item.path) {
-                                  navigate(item.path)
-                                }
-                              }}
-                              className={cn(
-                                "w-full flex items-center justify-between p-2 rounded transition-colors",
-                                isActive
-                                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
-                                  : "hover:bg-slate-700/50"
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <ItemIcon className={cn(
-                                  "h-4 w-4",
-                                  isActive ? "text-white" : "text-slate-300"
-                                )} />
-                                <span className={cn(
-                                  "text-sm",
-                                  isActive ? "text-white" : "text-slate-300"
-                                )}>{item.label}</span>
-                              </div>
-                              {item.count && (
-                                <Badge className={cn(
-                                  "text-xs",
-                                  isActive
-                                    ? "bg-white/20 text-white"
-                                    : "bg-slate-600 text-slate-300"
-                                )}>
-                                  {item.count}
-                                </Badge>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-        <div className="px-3 mt-4">
-          {/* <Button ><LogOut/> Logout</Button> */}
           <button
-                onClick={handleLogout}
-                
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
-                  "hover:bg-gradient-to-r hover:from-slate-700/50 hover:to-slate-600/50",
-                 
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-lg bg-gradient-to-r transition-all duration-200 bg-red-600",
-                    
-                    "group-hover:scale-110 group-hover:shadow-lg"
-                  )}>
-                    <LogOut className="h-5 w-5 text-white" />
-                  </div>
-                  <span>Logout</span>
-                  
-                </div>
-              
-                 
-               
-              </button>
-        </div>
-      </ScrollArea>
+            type="button"
+            onClick={handleLogout}
+            title={isCollapsed ? "Sign out" : undefined}
+            className={cn(
+              "flex h-10 w-full items-center rounded-md text-sm text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
+              isCollapsed ? "justify-center" : "gap-3 px-3"
+            )}
+          >
+            {isCollapsed ? <LogOut className="h-4 w-4" /> : (
+              <>
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Sign out</span>
+              </>
+            )}
+          </button>
 
-      {/* Footer */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-slate-700/50">
-          <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-200">System Status</span>
-            </div>
-            <p className="text-xs text-slate-400">All systems operational</p>
-          </div>
+          {isCollapsed && (
+            <button
+              type="button"
+              onClick={() => navigate("/airline/profile")}
+              title={ownerName}
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-400 hover:bg-slate-900 hover:text-white"
+            >
+              <UserRound className="h-4 w-4" />
+            </button>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </aside>
   )
 }
 

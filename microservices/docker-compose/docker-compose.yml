@@ -196,6 +196,25 @@ services:
     networks:
       - triquang15
 
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: gds-kafka-ui
+    restart: unless-stopped
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+    ports:
+      - "${KAFKA_UI_HOST_PORT:-8000}:8080"
+    networks:
+      - triquang15
+
   # ===========================================================================
   # PLATFORM SERVICES
   # ===========================================================================

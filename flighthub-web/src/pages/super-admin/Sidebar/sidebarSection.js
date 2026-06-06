@@ -19,6 +19,13 @@ import {
   UserCog,
   Gauge,
   MailCheck,
+  CreditCard,
+  FileClock,
+  HeartPulse,
+  Plug,
+  Settings,
+  Siren,
+  WalletCards,
 } from "lucide-react";
 
 export const sidebarSections = [
@@ -97,6 +104,12 @@ export const sidebarSections = [
         countKey: "totalCities",
         path: "/super-admin/cities",
       },
+      {
+        id: "flights-all",
+        label: "Flight Inventory",
+        icon: Plane,
+        path: "/super-admin/flights",
+      },
     ],
   },
 
@@ -112,6 +125,43 @@ export const sidebarSections = [
         icon: Users,
         countKey: "totalUsers",
         path: "/super-admin/users",
+      },
+      {
+        id: "access-roles",
+        label: "Roles & Permissions",
+        icon: ShieldCheck,
+        path: "/super-admin/access/roles",
+      },
+      {
+        id: "access-audit",
+        label: "Audit Logs",
+        icon: FileClock,
+        path: "/super-admin/access/audit",
+      },
+    ],
+  },
+  {
+    id: "finance",
+    title: "Finance",
+    icon: WalletCards,
+    items: [
+      {
+        id: "finance-transactions",
+        label: "Transactions",
+        icon: CreditCard,
+        path: "/super-admin/finance/transactions",
+      },
+      {
+        id: "finance-settlements",
+        label: "Settlements",
+        icon: DollarSign,
+        path: "/super-admin/finance/settlements",
+      },
+      {
+        id: "finance-disputes",
+        label: "Refunds & Chargebacks",
+        icon: AlertTriangle,
+        path: "/super-admin/finance/disputes",
       },
     ],
   },
@@ -145,7 +195,7 @@ export const sidebarSections = [
  
   {
     id: "notifications",
-    title: "Notifications",
+    title: "Platform Operations",
     icon: Bell,
     color: "from-amber-500 to-orange-500",
     items: [
@@ -181,6 +231,37 @@ export const sidebarSections = [
         label: "Channel Health",
         icon: Zap,
         path: "/super-admin/notifications/channels",
+      },
+      {
+        id: "operations-service-health",
+        label: "Service Health",
+        icon: HeartPulse,
+        path: "/super-admin/operations/health",
+      },
+      {
+        id: "operations-incidents",
+        label: "Incidents",
+        icon: Siren,
+        path: "/super-admin/operations/incidents",
+      },
+    ],
+  },
+  {
+    id: "configuration",
+    title: "Configuration",
+    icon: Settings,
+    items: [
+      {
+        id: "configuration-settings",
+        label: "Platform Settings",
+        icon: Settings,
+        path: "/super-admin/configuration/settings",
+      },
+      {
+        id: "configuration-integrations",
+        label: "Integrations",
+        icon: Plug,
+        path: "/super-admin/configuration/integrations",
       },
     ],
   },

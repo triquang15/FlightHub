@@ -1,38 +1,49 @@
 import * as React from "react"
-import { 
+import {
   ChevronDown,
   ChevronRight,
-  Menu,
-  X,
-  Crown,
   LogOut,
-  UserCircle,
+  Menu,
+  PanelLeftClose,
+  ShieldCheck,
+  UserRound,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useNavigate, useLocation } from "react-router-dom"
-import { buildSidebarSections } from "./sidebarSection"
 import { useDispatch, useSelector } from "react-redux"
-import { logout } from "@/Redux/user/userThunks"
+import { useLocation, useNavigate } from "react-router-dom"
 
-const hasCount = (count) => Number.isFinite(count);
-const formatCount = (count) => (count > 999 ? "999+" : count);
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import { logout } from "@/Redux/user/userThunks"
+import { buildSidebarSections } from "./sidebarSection"
+
+const hasCount = (count) => Number.isFinite(count)
+const formatCount = (count) => (count > 999 ? "999+" : count)
+
 const getAdminName = (user) =>
   user?.fullName ||
   user?.name ||
   [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
   user?.email ||
-  "System Admin";
-const getAdminMeta = (user) => user?.role || user?.email || "Super Admin";
-const getInitials = (name) =>
-  name
+  "System Admin"
+
+const getInitials = (value) =>
+  value
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
-    .join("") || "SA";
+    .join("") || "SA"
+
+const isItemActive = (pathname, itemPath, siblingPaths = []) => {
+  if (pathname === itemPath) return true
+  if (itemPath === "/super-admin/dashboard" || !pathname.startsWith(`${itemPath}/`)) return false
+
+  return !siblingPaths.some(
+    (path) => path.length > itemPath.length && (pathname === path || pathname.startsWith(`${path}/`))
+  )
+}
 
 const SuperAdminSidebar = ({
   onSectionChange,
@@ -40,290 +51,209 @@ const SuperAdminSidebar = ({
   onToggleCollapse,
   platformStats,
 }) => {
-  const [expandedSections, setExpandedSections] = React.useState({
-    overview: true,
-    airlines: true,
-    airports: false,
-    users: false,
-    reports: true,
-    notifications: false,
-  })
-
+  const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
-  const dispatch=useDispatch();
   const authUser = useSelector((state) => state.auth?.user)
   const userProfile = useSelector((state) => state.user?.userProfile)
+
   const adminUser = userProfile || authUser
   const adminName = getAdminName(adminUser)
-  const adminMeta = getAdminMeta(adminUser)
   const sections = React.useMemo(
     () => buildSidebarSections(platformStats),
     [platformStats]
   )
 
-  const toggleSection = (sectionId) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }))
+  const activeSectionId = React.useMemo(
+    () =>
+      sections.find((section) =>
+        section.items.some((item) =>
+          isItemActive(location.pathname, item.path, section.items.map(({ path }) => path))
+        )
+      )?.id || "overview",
+    [location.pathname, sections]
+  )
+
+  const [expandedSections, setExpandedSections] = React.useState({
+    overview: true,
+  })
+
+  const handleNavigate = (item) => {
+    onSectionChange?.(item.id)
+    navigate(item.path)
   }
 
-    const handleLogout = async () => {
-      try {
-        await dispatch(logout()).unwrap()
-      } catch (e) {
-        console.error("Logout failed:", e)
-      } finally {
-        navigate('/')
-      }
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout()).unwrap()
+    } catch (error) {
+      console.error("Logout failed:", error)
+    } finally {
+      navigate("/")
     }
-  
+  }
+
   return (
-    <div className={cn(
-      "fixed left-0 top-0 h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out z-50 shadow-2xl",
-      isCollapsed ? "w-16" : "w-80"
-    )}>
-      {/* Header */}
-      <div className="p-6 border-b border-slate-700/50">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                FlightHub Admin
-              </h1>
-              <p className="text-slate-400 text-sm mt-1">System Control Center</p>
-              <div className="mt-4 flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/45 p-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-sm font-semibold text-slate-100">
-                  {adminName ? getInitials(adminName) : <UserCircle className="h-5 w-5" />}
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-[width] duration-200",
+        isCollapsed ? "w-16" : "w-80"
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className={cn("border-b border-slate-800", isCollapsed ? "p-2" : "p-4")}>
+          <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between gap-3")}>
+            {!isCollapsed && (
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500 text-white">
+                  <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{adminName}</p>
-                  <p className="truncate text-xs text-slate-400">{adminMeta}</p>
+                  <p className="truncate text-sm font-semibold text-white">FlightHub Admin</p>
+                  <p className="truncate text-xs text-slate-400">Platform Control Center</p>
                 </div>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="h-9 w-9 shrink-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              {isCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          {!isCollapsed && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-slate-500" />
+                <span className="truncate text-xs text-slate-400">Platform administration</span>
+              </div>
+              <span className="shrink-0 rounded border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                SYSTEM ADMIN
+              </span>
+            </div>
+          )}
+        </div>
+
+        <ScrollArea className="min-h-0 flex-1 py-3">
+          <nav aria-label="System administration navigation" className="space-y-1 px-2">
+            {sections.map((section) => {
+              const SectionIcon = section.icon
+              const hasActiveItem = section.id === activeSectionId
+              const isExpanded = expandedSections[section.id] ?? hasActiveItem
+              const siblingPaths = section.items.map(({ path }) => path)
+
+              return (
+                <div key={section.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isCollapsed
+                        ? handleNavigate(section.items[0])
+                        : setExpandedSections((previous) => ({
+                            ...previous,
+                            [section.id]: !previous[section.id],
+                          }))
+                    }
+                    title={isCollapsed ? section.title : undefined}
+                    className={cn(
+                      "flex h-10 w-full items-center rounded-md text-sm transition-colors",
+                      isCollapsed ? "justify-center px-2" : "justify-between px-3",
+                      hasActiveItem
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <SectionIcon className={cn("h-4 w-4 shrink-0", hasActiveItem && "text-violet-400")} />
+                      {!isCollapsed && <span className="truncate font-medium">{section.title}</span>}
+                    </span>
+                    {!isCollapsed && (
+                      isExpanded
+                        ? <ChevronDown className="h-4 w-4 shrink-0" />
+                        : <ChevronRight className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+
+                  {!isCollapsed && isExpanded && (
+                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-3">
+                      {section.items.map((item) => {
+                        const ItemIcon = item.icon
+                        const isActive = isItemActive(location.pathname, item.path, siblingPaths)
+
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => handleNavigate(item)}
+                            className={cn(
+                              "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors",
+                              isActive
+                                ? "bg-violet-500/15 font-medium text-violet-300"
+                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                            )}
+                          >
+                            <ItemIcon className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            {hasCount(item.count) && (
+                              <Badge className="h-5 shrink-0 border-0 bg-slate-800 px-1.5 text-[10px] text-slate-300 hover:bg-slate-800">
+                                {formatCount(item.count)}
+                              </Badge>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </nav>
+        </ScrollArea>
+
+        <div className={cn("border-t border-slate-800", isCollapsed ? "p-2" : "p-3")}>
+          {!isCollapsed && (
+            <div className="mb-2 flex min-w-0 items-center gap-3 rounded-md px-3 py-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800 text-xs font-semibold text-slate-200">
+                {getInitials(adminName)}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-100">{adminName}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {adminUser?.email || "System Administrator"}
+                </p>
               </div>
             </div>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={onToggleCollapse}
-            className="text-slate-400 hover:text-white hover:bg-slate-700/50 p-2"
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={isCollapsed ? "Sign out" : undefined}
+            className={cn(
+              "flex h-10 w-full items-center rounded-md text-sm text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
+              isCollapsed ? "justify-center" : "gap-3 px-3"
+            )}
           >
-            {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-          </Button>
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span>Sign out</span>}
+          </button>
+
+          {isCollapsed && (
+            <div
+              title={adminName}
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-500"
+            >
+              <UserRound className="h-4 w-4" />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Navigation */}
-      <ScrollArea className="flex-1 py-4 space-y-2 h-[88vh]">
-        {sections.map((section) => {
-          const SectionIcon = section.icon
-          const isExpanded = expandedSections[section.id]
-          const hasActiveItem = section.items.some(item => item.path === location.pathname)
-
-          return (
-            <div key={section.id} className="px-3">
-              {/* Section Header */}
-              <button
-                onClick={() => toggleSection(section.id)}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
-                  "hover:bg-gradient-to-r hover:from-slate-700/50 hover:to-slate-600/50",
-                  hasActiveItem && "bg-gradient-to-r from-slate-700/70 to-slate-600/70",
-                  isCollapsed && "justify-center"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-lg bg-gradient-to-r transition-all duration-200",
-                    section.color,
-                    "group-hover:scale-110 group-hover:shadow-lg"
-                  )}>
-                    <SectionIcon className="h-5 w-5 text-white" />
-                  </div>
-                  {!isCollapsed && (
-                    <span className="font-medium text-slate-200 group-hover:text-white transition-colors">
-                      {section.title}
-                    </span>
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <div className="flex items-center gap-2">
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-slate-400 transition-transform duration-200" />
-                    )}
-                  </div>
-                )}
-              </button>
-
-              {/* Section Items */}
-              {!isCollapsed && (
-                <div className={cn(
-                  "overflow-hidden transition-all duration-300 ease-in-out",
-                  isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  <div className="mt-2 space-y-1 pl-4">
-                    {section.items.map((item) => {
-                      const ItemIcon = item.icon
-                      const isActive = item.path === location.pathname
-
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            onSectionChange(item.id)
-                            if (item.path) {
-                              navigate(item.path)
-                            }
-                          }}
-                          className={cn(
-                            "w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
-                            "hover:bg-slate-700/50 hover:translate-x-1",
-                            isActive && "bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg transform translate-x-1"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "p-1.5 rounded-md transition-all duration-200",
-                              isActive 
-                                ? "bg-white/20" 
-                                : "bg-slate-600/50 group-hover:bg-slate-600"
-                            )}>
-                              <ItemIcon className={cn(
-                                "h-4 w-4 transition-colors",
-                                isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                              )} />
-                            </div>
-                            <span className={cn(
-                              "text-sm font-medium transition-colors",
-                              isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                            )}>
-                              {item.label}
-                            </span>
-                          </div>
-                          {hasCount(item.count) && (
-                            <Badge className={cn(
-                              "text-xs transition-all duration-200",
-                              isActive 
-                                ? "bg-white/20 text-white" 
-                                : "bg-slate-600 text-slate-300 group-hover:bg-slate-500"
-                            )}>
-                              {formatCount(item.count)}
-                            </Badge>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Collapsed tooltip items */}
-              {isCollapsed && (
-                <div className="relative group">
-                  <div className="absolute left-full top-0 ml-2 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50">
-                    <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-3 min-w-48">
-                      <h3 className="font-medium text-white mb-2">{section.title}</h3>
-                      <div className="space-y-1">
-                        {section.items.map((item) => {
-                          const ItemIcon = item.icon
-                          const isActive = item.path === location.pathname
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                onSectionChange(item.id)
-                                if (item.path) {
-                                  navigate(item.path)
-                                }
-                              }}
-                              className={cn(
-                                "w-full flex items-center justify-between p-2 rounded transition-colors",
-                                isActive
-                                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                                  : "hover:bg-slate-700/50"
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <ItemIcon className={cn(
-                                  "h-4 w-4",
-                                  isActive ? "text-white" : "text-slate-300"
-                                )} />
-                                <span className={cn(
-                                  "text-sm",
-                                  isActive ? "text-white" : "text-slate-300"
-                                )}>{item.label}</span>
-                              </div>
-                              {hasCount(item.count) && (
-                                <Badge className={cn(
-                                  "text-xs",
-                                  isActive
-                                    ? "bg-white/20 text-white"
-                                    : "bg-slate-600 text-slate-300"
-                                )}>
-                                  {formatCount(item.count)}
-                                </Badge>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-         <div className="px-3 mt-4">
-          {/* <Button ><LogOut/> Logout</Button> */}
-          <button
-                onClick={handleLogout}
-                
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
-                  "hover:bg-gradient-to-r hover:from-slate-700/50 hover:to-slate-600/50",
-                 
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-lg bg-gradient-to-r transition-all duration-200 bg-red-600",
-                    
-                    "group-hover:scale-110 group-hover:shadow-lg"
-                  )}>
-                    <LogOut className="h-5 w-5 text-white" />
-                  </div>
-                  <span>Logout</span>
-                  
-                </div>
-              
-                 
-               
-              </button>
-        </div>
-      </ScrollArea>
-
-      {/* Footer */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-slate-700/50">
-          <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-200">Platform Status</span>
-            </div>
-            <p className="text-xs text-slate-400">All systems operational</p>
-            <div className="flex items-center gap-1 mt-1">
-              <Crown className="h-3 w-3 text-purple-400" />
-              <span className="text-xs text-purple-400">Super Admin Access</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </aside>
   )
 }
 

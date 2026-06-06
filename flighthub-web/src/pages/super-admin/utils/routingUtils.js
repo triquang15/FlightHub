@@ -45,6 +45,13 @@ export const ROUTE_MAP = {
   "users-agencies": "/super-admin/users?type=agencies",
   "users-suspended": "/super-admin/users?tab=suspended",
   "users-policies": "/super-admin/users?tab=policies",
+  "access-roles": "/super-admin/access/roles",
+  "access-audit": "/super-admin/access/audit",
+
+  // Finance UI shells
+  "finance-transactions": "/super-admin/finance/transactions",
+  "finance-settlements": "/super-admin/finance/settlements",
+  "finance-disputes": "/super-admin/finance/disputes",
 
   // Financial
   "financial-fees": "/super-admin/financial?tab=fees",
@@ -79,6 +86,10 @@ export const ROUTE_MAP = {
   "notifications-failed": "/super-admin/notifications/failed",
   "notifications-templates": "/super-admin/notifications/templates",
   "notifications-channels": "/super-admin/notifications/channels",
+  "operations-service-health": "/super-admin/operations/health",
+  "operations-incidents": "/super-admin/operations/incidents",
+  "configuration-settings": "/super-admin/configuration/settings",
+  "configuration-integrations": "/super-admin/configuration/integrations",
 
   // Security
   "security-rbac": "/super-admin/security?tab=rbac",
@@ -122,6 +133,11 @@ export const SECTION_TITLES = {
   "users-agencies": "Agency Management",
   "users-suspended": "Suspended Users",
   "users-policies": "User Policies",
+  "access-roles": "Roles & Permissions",
+  "access-audit": "Audit Logs",
+  "finance-transactions": "Platform Transactions",
+  "finance-settlements": "Airline Settlements",
+  "finance-disputes": "Refunds & Chargebacks",
   // Financial
   "financial-fees": "Service Fees",
   "financial-commissions": "Commission Management",
@@ -152,6 +168,10 @@ export const SECTION_TITLES = {
   "notifications-failed": "Failed & Retry Queue",
   "notifications-templates": "Notification Templates",
   "notifications-channels": "Channel Health",
+  "operations-service-health": "Service Health",
+  "operations-incidents": "Incident Management",
+  "configuration-settings": "Platform Settings",
+  "configuration-integrations": "Integrations",
   // Security
   "security-rbac": "Role Management",
   "security-kyc": "KYC Compliance",
@@ -194,6 +214,11 @@ export const SECTION_DESCRIPTIONS = {
   "users-agencies": "Manage travel agency partnerships",
   "users-suspended": "Review and manage suspended user accounts",
   "users-policies": "Configure global user policies and terms",
+  "access-roles": "Define roles, permission scopes, and privileged access",
+  "access-audit": "Review administrative and security-sensitive platform events",
+  "finance-transactions": "Monitor payment activity across the platform",
+  "finance-settlements": "Track settlement cycles and payable airline balances",
+  "finance-disputes": "Manage refunds, chargebacks, and financial exceptions",
   // Financial
   "financial-fees": "Configure platform service fees and charges",
   "financial-commissions": "Manage commission structures and payments",
@@ -224,6 +249,10 @@ export const SECTION_DESCRIPTIONS = {
   "notifications-failed": "Investigate failed deliveries, retries, and DLQ-bound events",
   "notifications-templates": "Review transactional email templates used by notification-service",
   "notifications-channels": "Monitor email, SMS, Kafka, Redis, and idempotency health",
+  "operations-service-health": "Monitor platform services and their dependencies",
+  "operations-incidents": "Coordinate and resolve platform-impacting incidents",
+  "configuration-settings": "Manage controlled global platform configuration",
+  "configuration-integrations": "Manage external providers and connection health",
   // Security
   "security-rbac": "Manage user roles and access permissions",
   "security-kyc": "Monitor Know Your Customer compliance",
@@ -330,6 +359,15 @@ export const getActiveSectionFromPath = (pathname, urlParams = null) => {
       if (path.includes("/notifications/channels")) return "notifications-channels";
       return "notifications-system";
     },
+    "/access/roles": () => "access-roles",
+    "/access/audit": () => "access-audit",
+    "/finance/transactions": () => "finance-transactions",
+    "/finance/settlements": () => "finance-settlements",
+    "/finance/disputes": () => "finance-disputes",
+    "/operations/health": () => "operations-service-health",
+    "/operations/incidents": () => "operations-incidents",
+    "/configuration/settings": () => "configuration-settings",
+    "/configuration/integrations": () => "configuration-integrations",
    
     "/airline-performance": () => "airline-performance",
     "/airport-performance": () => "airport-performance",

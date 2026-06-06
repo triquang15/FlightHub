@@ -16,6 +16,7 @@ import AirlinePerformancePage from "../Dashboard/Airport Anlitics/AirlinePerform
 import SecurityCompliance from '../Dashboard/SecurityCompliance';
 import CityManagement from '../city/CityManagement';
 import PlatformOverview from '../Dashboard/PlateformOverview';
+import PlatformModulePlaceholder from '../Dashboard/PlatformModulePlaceholder';
 
 // Platform Overview Component
 
@@ -58,9 +59,14 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/users" element={<UserManagement />} />
       <Route path="/users/:userId" element={<UserManagement />} />
       <Route path="/agents" element={<UserManagement />} />
+      <Route path="/access/roles" element={<PlatformModulePlaceholder module="roles" />} />
+      <Route path="/access/audit" element={<PlatformModulePlaceholder module="audit" />} />
 
       {/* Financial Management */}
       <Route path="/financial" element={<FinancialManagement />} />
+      <Route path="/finance/transactions" element={<PlatformModulePlaceholder module="transactions" />} />
+      <Route path="/finance/settlements" element={<PlatformModulePlaceholder module="settlements" />} />
+      <Route path="/finance/disputes" element={<PlatformModulePlaceholder module="disputes" />} />
 
       {/* Reports & Analytics */}
       <Route path="/reports" element={<ReportsAnalytics />} />
@@ -77,6 +83,10 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/notifications/failed" element={<NotificationsManagement activeSection="notifications-failed" />} />
       <Route path="/notifications/templates" element={<NotificationsManagement activeSection="notifications-templates" />} />
       <Route path="/notifications/channels" element={<NotificationsManagement activeSection="notifications-channels" />} />
+      <Route path="/operations/health" element={<PlatformModulePlaceholder module="health" />} />
+      <Route path="/operations/incidents" element={<PlatformModulePlaceholder module="incidents" />} />
+      <Route path="/configuration/settings" element={<PlatformModulePlaceholder module="settings" />} />
+      <Route path="/configuration/integrations" element={<PlatformModulePlaceholder module="integrations" />} />
 
       {/* Security & Compliance */}
       <Route path="/security" element={<SecurityCompliance />} />

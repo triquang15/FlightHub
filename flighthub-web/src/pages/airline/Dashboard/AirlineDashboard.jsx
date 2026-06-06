@@ -1,14 +1,5 @@
 import * as React from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import {
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  Bell
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
@@ -17,8 +8,35 @@ import AirlineSidebar from "../Sidebar/AirlineSidebar"
 import AirlineRoutes from "../routes/AirlineRoutes"
 import { useSelector, useDispatch } from "react-redux"
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk"
+import { getAirlineByAdmin } from "@/Redux/airline/airlineThunks"
 
+const sectionMeta = {
+  overview: ["Operations Overview", "Monitor your airline configuration and operational readiness"],
+  aircraft: ["Fleet Management", "Manage aircraft details and cabin configurations"],
+  flights: ["Flight Management", "Manage flight definitions, routes, and fares"],
+  schedules: ["Flight Schedules", "Manage recurring schedules and timetable templates"],
+  instances: ["Flight Instances", "Manage dated flight operations and cabin inventory"],
+  fareRules: ["Fare Rules", "Configure fare restrictions and commercial conditions"],
+  baggagePolicy: ["Baggage Policies", "Configure baggage allowances for your airline"],
+  insuranceCoverages: ["Insurance Coverage", "Manage travel protection products"],
+  ancillaries: ["Ancillaries", "Manage optional services and add-ons"],
+  meals: ["Meal Management", "Manage meal options and catering products"],
+  pricing: ["Pricing & Promotions", "Manage coupons and promotional offers"],
+  bookings: ["Booking Management", "Review and manage passenger bookings"],
+  transactions: ["Transactions", "Review airline payment and settlement activity"],
+  "route-performance": ["Route Performance", "Analyze performance across operated routes"],
+  "airport-performance": ["Airport Performance", "Monitor performance across your airport network"],
+  profile: ["Airline Profile", "Manage airline identity, support contacts, and owner details"],
+  settlements: ["Settlements", "Review airline-specific balances and settlement statements"],
+  administration: ["Workspace Administration", "Manage airline-scoped access, activity, and integrations"],
+}
 
+const statusClass = {
+  ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+  INACTIVE: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+  SUSPENDED: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300",
+  BANNED: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
+}
 
 const AirlineDashboard = () => {
   const location = useLocation()
@@ -29,7 +47,7 @@ const AirlineDashboard = () => {
   const getActiveSectionFromPath = (pathname) => {
     if (pathname === '/airline' || pathname === '/airline/' || pathname === '/airline/dashboard') return 'overview'
     if (pathname.includes('/aircraft')) return 'aircraft'
-    if (pathname.includes('/baggage-polic')) return 'baggagePolicy'
+    if (pathname.includes('/baggage-policies')) return 'baggagePolicy'
     if (pathname.includes('/fare-rules')) return 'fareRules'
     if (pathname.includes('/fare/')) return 'flights'
     if (pathname.includes('/flight-cabin')) return 'flights'
@@ -42,8 +60,11 @@ const AirlineDashboard = () => {
     if (pathname.includes('/coupons')) return 'pricing'
     if (pathname.includes('/pricing')) return 'pricing'
     if (pathname.includes('/bookings')) return 'bookings'
+    if (pathname.includes('/transactions') || pathname.includes('/settlements')) return 'settlements'
     if (pathname.includes('/route-performance')) return 'route-performance'
     if (pathname.includes('/airport-performance')) return 'airport-performance';
+    if (pathname.includes('/profile')) return 'profile'
+    if (pathname.includes('/administration')) return 'administration'
     if (pathname.includes('/reports')) return 'reports'
     return 'overview'
   }
@@ -53,6 +74,7 @@ const AirlineDashboard = () => {
   
   // Existing flight management state
   const {flights}=useSelector(state=>state.flight)
+  const currentAirline = useSelector((state) => state.airline?.currentAirline)
  
 
   const [statusFilter, setStatusFilter] = React.useState("all")
@@ -63,30 +85,14 @@ const AirlineDashboard = () => {
   // Load flights on component mount
   React.useEffect(() => {
     dispatch(getFlightsByAirline());
+    dispatch(getAirlineByAdmin());
   }, [dispatch])
-
-
-console.log("flightList ",flights)
 
 
  
 
-  const dashboardStats = React.useMemo(() => {
-    const flightList = flights|| [];
-    return {
-      totalFlights: flightList.length,
-      activeFlights: flightList.filter(f => f.status === "Active").length,
-      totalBookings: flightList.reduce((sum, f) => sum + (f.bookings || 0), 0),
-      avgOccupancy: flightList.length > 0
-        ? Math.round(flightList.reduce((sum, f) => sum + (f.occupancy || 0), 0) / flightList.length)
-        : 0,
-      revenue: flightList.reduce((sum, f) => sum + ((f.bookings || 0) * (f.pricing?.economy || 0)), 0)
-    };
-  }, [flights])
-
   // Handle sidebar section changes
   const handleSectionChange = (sectionId) => {
-    console.log("Section changed to:", sectionId)
     switch(sectionId) {
       // Dashboard
       case 'overview':
@@ -232,6 +238,8 @@ console.log("flightList ",flights)
     setIsSidebarCollapsed(!isSidebarCollapsed)
   }
 
+  const [sectionTitle, sectionDescription] = sectionMeta[activeSection] || sectionMeta.overview
+  const airlineStatus = String(currentAirline?.status || "INACTIVE").toUpperCase()
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -252,84 +260,29 @@ console.log("flightList ",flights)
         <div className="bg-background border-b border-border sticky top-0 z-30">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  {activeSection === "overview" ? "Dashboard Overview" :
-                   activeSection === "aircraft" ? "Aircraft Management" :
-                   activeSection === "flights" ? "Flight Management" :
-                   activeSection === "schedules" ? "Flight Schedules" :
-                   activeSection === "instances" ? "Flight Instances" :
-                   activeSection === "fareRules" ? "Fare Rules" :
-                   activeSection === "baggagePolicy" ? "Baggage Policies" :
-                   activeSection === "insuranceCoverages" ? "Insurance Coverage Management" :
-                   activeSection === "ancillaries" ? "Ancillaries" :
-                   activeSection === "meals" ? "Meal Management" :
-                   activeSection === "pricing" ? "Pricing & Discounts" :
-                   activeSection === "bookings" ? "Booking Management" :
-                   activeSection === "route-performance" ? "Route Performance" :
-                   activeSection === "reports" ? "Reports & Analytics" :
-                   "Dashboard"}
-                </h1>
-                <p className="text-muted-foreground">
-                  {activeSection === "overview" ? "Comprehensive overview of your airline operations" :
-                   activeSection === "aircraft" ? "Manage aircraft details and configurations" :
-                   activeSection === "flights" ? "Manage your flight schedules and operations" :
-                   activeSection === "schedules" ? "Manage recurring flight schedules and templates" :
-                   activeSection === "instances" ? "Manage flight instances and cabin configurations" :
-                   activeSection === "fareRules" ? "Configure fare rules and restrictions" :
-                   activeSection === "baggagePolicy" ? "Configure and manage baggage allowances for your airline" :
-                   activeSection === "insuranceCoverages" ? "Manage and configure insurance coverages for your travel protection products" :
-                   activeSection === "ancillaries" ? "Manage ancillary services and add-ons" :
-                   activeSection === "meals" ? "Manage meal options and catering services" :
-                   activeSection === "pricing" ? "Configure pricing and promotional offers" :
-                   activeSection === "bookings" ? "View and manage passenger bookings" :
-                   activeSection === "route-performance" ? "Analyze your most profitable and popular routes" :
-                   activeSection === "reports" ? "Analytics and performance insights" :
-                   "Manage your airline operations"}
-                </p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold text-foreground">{sectionTitle}</h1>
+                  <Badge
+                    variant="outline"
+                    className={cn("rounded-md", statusClass[airlineStatus] || statusClass.INACTIVE)}
+                  >
+                    {airlineStatus}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-muted-foreground">{sectionDescription}</p>
               </div>
               <div className="flex items-center gap-4">
                 <ThemeToggle />
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  Notifications
-                  <Badge className="ml-1 bg-red-100 text-red-800">3</Badge>
-                </Button>
-               
               </div>
             </div>
-
-            {/* Quick Stats - Show on overview */}
-            {activeSection === "overview" && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-600">{dashboardStats.totalFlights}</div>
-                  <div className="text-sm text-blue-800">Total Flights</div>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-                  <div className="text-2xl font-bold text-green-600">{dashboardStats.activeFlights}</div>
-                  <div className="text-sm text-green-800">Active Flights</div>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
-                  <div className="text-2xl font-bold text-purple-600">{dashboardStats.totalBookings}</div>
-                  <div className="text-sm text-purple-800">Total Bookings</div>
-                </div>
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200">
-                  <div className="text-2xl font-bold text-orange-600">{dashboardStats.avgOccupancy}%</div>
-                  <div className="text-sm text-orange-800">Avg Occupancy</div>
-                </div>
-                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-xl border border-indigo-200">
-                  <div className="text-2xl font-bold text-indigo-600">₹{(dashboardStats.revenue / 100000).toFixed(1)}L</div>
-                  <div className="text-sm text-indigo-800">Revenue</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Main Content */}
         <ScrollArea className="flex-1 p-6">
           <AirlineRoutes
+            flights={flights}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             routeFilter={routeFilter}
@@ -347,4 +300,3 @@ console.log("flightList ",flights)
 
 
 export default AirlineDashboard
-

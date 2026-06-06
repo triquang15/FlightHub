@@ -270,7 +270,7 @@ function App() {
             <Route
               path="/airline/*"
               element={
-                <AuthRequired>
+                <AuthRequired allowedRoles={["ROLE_AIRLINE_OWNER"]}>
                   <AirlineDashboard />
                 </AuthRequired>
               }
@@ -280,7 +280,7 @@ function App() {
             <Route
               path="/super-admin/*"
               element={
-                <AuthRequired>
+                <AuthRequired allowedRoles={["ROLE_SYSTEM_ADMIN"]}>
                   <SuperAdminDashboard />
                 </AuthRequired>
               }
