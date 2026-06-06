@@ -47,6 +47,8 @@ springdoc:
         url: /docs/notification-service/v3/api-docs
       - name: Location Service
         url: /docs/location-service/v3/api-docs
+      - name: Airline Core Service
+        url: /docs/airline-core-service/v3/api-docs
 
 # ================= RESILIENCE4J =================
 resilience4j:

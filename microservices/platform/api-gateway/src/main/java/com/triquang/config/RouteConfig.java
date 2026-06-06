@@ -103,6 +103,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/location-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/location-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("location-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("airline-core-openapi-docs")
+                        .route(RequestPredicates.path("/docs/airline-core-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/airline-core-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("airline-core-service"))
                         .build());
     }
 

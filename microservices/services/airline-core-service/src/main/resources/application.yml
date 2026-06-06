@@ -32,6 +32,15 @@ info:
     version: 1.0.0
     environment: development
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+
 management:
   endpoints:
     web:
@@ -49,4 +58,3 @@ management:
       enabled: true
     os:
       enabled: true
-

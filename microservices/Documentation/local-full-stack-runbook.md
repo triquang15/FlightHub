@@ -63,6 +63,7 @@ Password: 12345678
 | --- | ---: | --- |
 | Frontend Vite | 5173 | http://localhost:5173 |
 | API Gateway | 8080 | http://localhost:8080 |
+| Gateway Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
 | Eureka Service Registry | 8761 | http://localhost:8761 |
 | Config Server | 8888 | http://localhost:8888 |
 | Kafka UI | 8000 | http://localhost:8000 |
@@ -440,6 +441,31 @@ BOOKING-SERVICE
 PAYMENT-SERVICE
 SUBSCRIPTION-SERVICE
 NOTIFICATION-SERVICE
+```
+
+### Swagger and OpenAPI
+
+Open the shared Gateway Swagger UI:
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+Select `Airline Core Service` from the API definition selector.
+
+Airline Core OpenAPI JSON through the Gateway:
+
+```text
+http://localhost:8080/docs/airline-core-service/v3/api-docs
+```
+
+Direct Airline Core Swagger endpoints:
+
+```text
+http://localhost:8081/swagger-ui.html
+http://localhost:8081/v3/api-docs
+http://localhost:8081/v3/api-docs/airlines
+http://localhost:8081/v3/api-docs/aircrafts
 ```
 
 ### Test Login Through the API Gateway

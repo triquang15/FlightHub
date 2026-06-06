@@ -40,38 +40,47 @@ import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AirlineService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/airlines")
 @RequiredArgsConstructor
+@Tag(name = "Airlines", description = "Manage airline profiles, ownership, approval status, and dropdown reference data.")
 public class AirlineController {
 
 	private final AirlineService airlineService;
 
 	// ---------- CREATE ----------
 	@PostMapping
+	@Operation(summary = "Create an airline", description = "Creates an airline profile for the authenticated airline owner.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> createAirline(@Valid @RequestBody AirlineRequest request,
-			@RequestHeader("X-User-Id") Long userId) {
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		return ResponseUtil.created(airlineService.createAirline(request, userId));
 	}
 
 	// ---------- MY AIRLINES ----------
 	@GetMapping("/admin")
-	public ResponseEntity<ApiResponse<List<AirlineResponse>>> getAirlineByOwner(@RequestHeader("X-User-Id") Long userId) {
+	@Operation(summary = "List owned airlines", description = "Returns airline profiles owned by the authenticated airline owner.")
+	public ResponseEntity<ApiResponse<List<AirlineResponse>>> getAirlineByOwner(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 		return ResponseUtil.ok(airlineService.getAirlinesByOwner(userId));
 	}
 
 	// ---------- GET BY ID ----------
 	@GetMapping("/{id}")
+	@Operation(summary = "Get an airline by ID", description = "Returns a single airline profile by its identifier.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> getAirlineById(@PathVariable Long id) {
 		return ResponseUtil.ok(airlineService.getAirlineById(id));
 	}
 
 	// ---------- GET ALL ----------
 	@GetMapping
+	@Operation(summary = "Search airlines", description = "Returns a paginated airline list with optional keyword and status filters.")
 	public ResponseEntity<ApiResponse<Page<AirlineResponse>>> getAllAirlines(
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size,
@@ -88,6 +97,7 @@ public class AirlineController {
 
 	// ---------- DROPDOWN ----------
 	@GetMapping("/dropdown")
+	@Operation(summary = "List airline dropdown options", description = "Returns compact airline reference data for selection controls.")
 	public ResponseEntity<ApiResponse<List<AirlineDropdownItem>>> getAirlinesForDropdown() {
 
 		return ResponseUtil.ok(airlineService.getAirlinesForDropdown());
@@ -95,16 +105,19 @@ public class AirlineController {
 
 	// ---------- UPDATE ----------
 	@PutMapping("/{id}")
+	@Operation(summary = "Update an airline", description = "Updates an airline profile owned by the authenticated airline owner.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> updateAirline(@PathVariable Long id,
-			@Valid @RequestBody AirlineRequest request, @RequestHeader("X-User-Id") Long userId) {
+			@Valid @RequestBody AirlineRequest request,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		return ResponseUtil.ok(airlineService.updateAirline(id, request, userId));
 	}
 
 	// ---------- DELETE ----------
 	@DeleteMapping("/{id}")
+	@Operation(summary = "Delete an airline", description = "Deletes an airline profile owned by the authenticated airline owner.")
 	public ResponseEntity<ApiResponse<Void>> deleteAirline(@PathVariable Long id,
-			@RequestHeader("X-User-Id") Long userId) {
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		airlineService.deleteAirline(id, userId);
 
@@ -113,25 +126,28 @@ public class AirlineController {
 
 	// ---------- ADMIN ----------
 	@PostMapping("/{id}/approve")
+	@Operation(summary = "Approve an airline", description = "Activates an airline profile. Requires the system administrator role.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> approveAirline(
 			@PathVariable Long id,
-			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
 		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.ACTIVE));
 	}
 
 	@PostMapping("/{id}/suspend")
+	@Operation(summary = "Suspend an airline", description = "Marks an airline profile as inactive. Requires the system administrator role.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> suspendAirline(
 			@PathVariable Long id,
-			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
 		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.INACTIVE));
 	}
 
 	@PostMapping("/{id}/ban")
+	@Operation(summary = "Ban an airline", description = "Bans an airline profile. Requires the system administrator role.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> banAirline(
 			@PathVariable Long id,
-			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
 		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.BANNED));
 	}
