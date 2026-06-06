@@ -140,7 +140,9 @@ const airlineSlice = createSlice({
       })
       .addCase(getAirlineByAdmin.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentAirline = action.payload;
+        const airlines = Array.isArray(action.payload) ? action.payload : (action.payload ? [action.payload] : []);
+        state.airlines = airlines;
+        state.currentAirline = airlines[0] || null;
       })
       .addCase(getAirlineByAdmin.rejected, (state, action) => {
         state.loading = false;

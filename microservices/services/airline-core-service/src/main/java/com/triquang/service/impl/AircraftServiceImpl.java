@@ -4,10 +4,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.triquang.enums.ErrorCode;
+import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.AircraftMapper;
 import com.triquang.model.Aircraft;
@@ -43,7 +43,7 @@ public class AircraftServiceImpl implements AircraftService {
     @Override
     public AircraftResponse createAircraft(AircraftRequest request, Long ownerId) {
 
-        Airline airline = getAirlineByOwner(ownerId);
+        Airline airline = resolveAirlineForOwner(ownerId, request.getAirlineId());
 
         if (aircraftRepository.existsByCode(request.getCode())) {
             throw new BaseException(ErrorCode.AIRCRAFT_ALREADY_EXISTS);
@@ -62,10 +62,10 @@ public class AircraftServiceImpl implements AircraftService {
 
     // ---------- READ ----------
     @Override
-    @Cacheable(cacheNames = "aircrafts", key = "#id")
-    public AircraftResponse getAircraftById(Long id) {
+    public AircraftResponse getAircraftById(Long id, Long requesterId, String roles) {
 
         Aircraft aircraft = getAircraft(id);
+        validateReadAccess(aircraft, requesterId, roles);
 
         return AircraftMapper.toResponse(aircraft);
     }
@@ -73,9 +73,9 @@ public class AircraftServiceImpl implements AircraftService {
     @Override
     public List<AircraftResponse> listAllAircraftsByOwner(Long ownerId) {
 
-        Airline airline = getAirlineByOwner(ownerId);
+        List<Airline> airlines = getAirlinesByOwner(ownerId);
 
-        return aircraftRepository.findByAirline(airline)
+        return aircraftRepository.findByAirlineIn(airlines)
                 .stream()
                 .map(AircraftMapper::toResponse)
                 .toList();
@@ -86,10 +86,10 @@ public class AircraftServiceImpl implements AircraftService {
     @CacheEvict(cacheNames = "aircrafts", allEntries = true)
     public AircraftResponse updateAircraft(Long id, AircraftRequest request, Long ownerId) {
 
-        Airline airline = getAirlineByOwner(ownerId);
+        Airline airline = resolveAirlineForOwner(ownerId, request.getAirlineId());
         Aircraft aircraft = getAircraft(id);
 
-        validateOwnership(aircraft, airline);
+        validateOwnership(aircraft, ownerId);
 
         String oldCode = aircraft.getCode();
 
@@ -114,10 +114,9 @@ public class AircraftServiceImpl implements AircraftService {
     @CacheEvict(cacheNames = "aircrafts", allEntries = true)
     public void deleteAircraft(Long id, Long ownerId) {
 
-        Airline airline = getAirlineByOwner(ownerId);
         Aircraft aircraft = getAircraft(id);
 
-        validateOwnership(aircraft, airline);
+        validateOwnership(aircraft, ownerId);
 
         log.warn("DELETE aircraft id={} ownerId={}", id, ownerId);
 
@@ -159,7 +158,7 @@ public class AircraftServiceImpl implements AircraftService {
     }
 
     // ---------- HELPERS ----------  
-    private Airline getAirlineByOwner(Long ownerId) {
+    private List<Airline> getAirlinesByOwner(Long ownerId) {
 
         List<Airline> airlines = airlineRepository.findAllByOwnerId(ownerId);
 
@@ -167,7 +166,23 @@ public class AircraftServiceImpl implements AircraftService {
             throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
         }
 
-        return airlines.get(0);
+        return airlines;
+    }
+
+    private Airline resolveAirlineForOwner(Long ownerId, Long airlineId) {
+        List<Airline> airlines = getAirlinesByOwner(ownerId);
+
+        if (airlineId == null) {
+            if (airlines.size() == 1) {
+                return airlines.get(0);
+            }
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        return airlines.stream()
+                .filter(a -> a.getId().equals(airlineId))
+                .findFirst()
+                .orElseThrow(() -> new BaseException(ErrorCode.FORBIDDEN));
     }
 
     private Aircraft getAircraft(Long id) {
@@ -175,10 +190,22 @@ public class AircraftServiceImpl implements AircraftService {
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND));
     }
 
-    private void validateOwnership(Aircraft aircraft, Airline airline) {
-        if (!aircraft.getAirline().getId().equals(airline.getId())) {
+    private void validateOwnership(Aircraft aircraft, Long ownerId) {
+        if (!aircraft.getAirline().getOwnerId().equals(ownerId)) {
             throw new BaseException(ErrorCode.FORBIDDEN);
         }
+    }
+
+    private void validateReadAccess(Aircraft aircraft, Long requesterId, String roles) {
+        if (requesterId == null || isSystemAdmin(roles)) {
+            return;
+        }
+
+        validateOwnership(aircraft, requesterId);
+    }
+
+    private boolean isSystemAdmin(String roles) {
+        return roles != null && roles.contains(UserRole.ROLE_SYSTEM_ADMIN.name());
     }
 
     private int safe(Integer val) {

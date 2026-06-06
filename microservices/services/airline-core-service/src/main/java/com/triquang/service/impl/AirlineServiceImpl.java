@@ -177,6 +177,7 @@ public class AirlineServiceImpl implements AirlineService {
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "airlines", key = "#airlineId"),
+            @CacheEvict(cacheNames = "airlinesByOwner", allEntries = true),
             @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
     })
     public AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status) {

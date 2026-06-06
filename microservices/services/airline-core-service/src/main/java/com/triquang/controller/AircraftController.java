@@ -40,9 +40,12 @@ public class AircraftController {
 
 	// ---------- GET BY ID ----------
 	@GetMapping("/{id}")
-	public ResponseEntity<ApiResponse<AircraftResponse>> getAircraftById(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse<AircraftResponse>> getAircraftById(
+			@PathVariable Long id,
+			@RequestHeader(value = "X-User-Id", required = false) Long userId,
+			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
 
-		return ResponseUtil.ok(aircraftService.getAircraftById(id));
+		return ResponseUtil.ok(aircraftService.getAircraftById(id, userId, roles));
 	}
 
 	// ---------- GET MY AIRCRAFTS ----------

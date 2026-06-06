@@ -7,7 +7,7 @@ import com.triquang.payload.response.AircraftResponse;
 
 public interface AircraftService {
 
-	AircraftResponse getAircraftById(Long id);
+	AircraftResponse getAircraftById(Long id, Long requesterId, String roles);
 
 	List<AircraftResponse> listAllAircraftsByOwner(Long ownerId);
 

@@ -20,6 +20,8 @@ public interface AircraftRepository extends JpaRepository<Aircraft, Long> {
 
     List<Aircraft> findByAirline(Airline airline);
 
+    List<Aircraft> findByAirlineIn(List<Airline> airlines);
+
     List<Aircraft> findByAirlineAndStatus(Airline airline, AircraftStatus status);
 
     List<Aircraft> findByAirlineAndStatusAndIsAvailable(Airline airline, AircraftStatus status, Boolean isAvailable);

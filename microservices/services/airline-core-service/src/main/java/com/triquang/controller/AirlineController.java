@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.triquang.enums.AirlineStatus;
+import com.triquang.enums.ErrorCode;
+import com.triquang.enums.UserRole;
+import com.triquang.exception.BaseException;
 import com.triquang.payload.request.AirlineRequest;
 import com.triquang.payload.response.AirlineDropdownItem;
 import com.triquang.payload.response.AirlineResponse;
@@ -110,17 +113,32 @@ public class AirlineController {
 
 	// ---------- ADMIN ----------
 	@PostMapping("/{id}/approve")
-	public ResponseEntity<ApiResponse<AirlineResponse>> approveAirline(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse<AirlineResponse>> approveAirline(
+			@PathVariable Long id,
+			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.ACTIVE));
 	}
 
 	@PostMapping("/{id}/suspend")
-	public ResponseEntity<ApiResponse<AirlineResponse>> suspendAirline(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse<AirlineResponse>> suspendAirline(
+			@PathVariable Long id,
+			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.INACTIVE));
 	}
 
 	@PostMapping("/{id}/ban")
-	public ResponseEntity<ApiResponse<AirlineResponse>> banAirline(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse<AirlineResponse>> banAirline(
+			@PathVariable Long id,
+			@RequestHeader(value = "X-User-Roles", required = false) String roles) {
+		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.BANNED));
+	}
+
+	private void requireSystemAdmin(String roles) {
+		if (roles == null || !roles.contains(UserRole.ROLE_SYSTEM_ADMIN.name())) {
+			throw new BaseException(ErrorCode.FORBIDDEN);
+		}
 	}
 }

@@ -45,7 +45,7 @@ services:
     <<: *db-defaults
     container_name: userdb
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${USERDB_HOST_PORT:-15432}:5432"
     environment:
       <<: *postgres-env
       POSTGRES_DB: airline_user
@@ -54,7 +54,7 @@ services:
     <<: *db-defaults
     container_name: airlinecoredb
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${AIRLINECOREDB_HOST_PORT:-5433}:5432"
     environment:
       <<: *postgres-env
       POSTGRES_DB: airline_core_db
@@ -63,7 +63,7 @@ services:
     <<: *db-defaults
     container_name: flightopsdb
     ports:
-      - "127.0.0.1:5434:5432"
+      - "127.0.0.1:${FLIGHTOPSDB_HOST_PORT:-5434}:5432"
     environment:
       <<: *postgres-env
       POSTGRES_DB: airline_flight_db
@@ -72,7 +72,7 @@ services:
     <<: *db-defaults
     container_name: locationdb
     ports:
-      - "127.0.0.1:5435:5432"
+      - "127.0.0.1:${LOCATIONDB_HOST_PORT:-5435}:5432"
     environment:
       <<: *postgres-env
       POSTGRES_DB: airline_location_db
@@ -152,6 +152,8 @@ services:
     mem_reservation: 128m
     cpus: 0.25
     command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -172,10 +174,10 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -183,6 +185,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:19092"
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
       interval: 10s
@@ -527,6 +531,54 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+
+  # ===========================================================================
+  # ONE-SHOT DATA SEEDING
+  # ===========================================================================
+
+  seed-production-demo-data:
+    image: postgres:16-alpine
+    profiles: ["tools"]
+    container_name: gds-seed-production-demo-data
+    depends_on:
+      userdb:
+        condition: service_healthy
+      locationdb:
+        condition: service_healthy
+      airlinecoredb:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345678
+      SEED_BASE_DATA: "true"
+    volumes:
+      - ../Documentation/sql:/seed-sql:ro
+      - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro
+    command: ["sh", "/seed-scripts/seed-production-demo-data-internal.sh"]
+    networks:
+      - triquang15
+
+  seed-airline-core-data:
+    image: postgres:16-alpine
+    profiles: ["tools"]
+    container_name: gds-seed-airline-core-data
+    depends_on:
+      userdb:
+        condition: service_healthy
+      locationdb:
+        condition: service_healthy
+      airlinecoredb:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345678
+      SEED_BASE_DATA: "false"
+    volumes:
+      - ../Documentation/sql:/seed-sql:ro
+      - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro
+    command: ["sh", "/seed-scripts/seed-production-demo-data-internal.sh"]
+    networks:
+      - triquang15
 
 networks:
   triquang15:

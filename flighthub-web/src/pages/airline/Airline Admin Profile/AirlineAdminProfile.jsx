@@ -223,7 +223,6 @@ export default function AirlineAdminProfile() {
         alias: airlineData.alias.trim(),
         logoUrl: airlineData.logoUrl.trim(),
         website: airlineData.website.trim(),
-        status: currentAirline?.status || 'ACTIVE',
         alliance: airlineData.alliance.trim(),
         supportEmail: airlineData.supportEmail.trim(),
         supportPhone: airlineData.supportPhone.trim(),

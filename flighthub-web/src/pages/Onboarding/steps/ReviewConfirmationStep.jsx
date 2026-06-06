@@ -49,7 +49,6 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
         alias: formData.airline.alias || null,
         logoUrl: formData.airline.logoUrl || null,
         website,
-        status: "INACTIVE",
         alliance: formData.airline.alliance || null,
         baggagePolicy: formData.airline.baggagePolicy || null,
         headquartersCityId: formData.airline.headquartersCity,

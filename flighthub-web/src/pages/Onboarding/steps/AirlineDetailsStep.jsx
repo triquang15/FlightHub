@@ -77,7 +77,6 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
     alias: data?.alias || "",
     logoUrl: data?.logoUrl || "",
     website: data?.website || "",
-    status: "INACTIVE",
     alliance: data?.alliance || "",
    
     headquartersCity: data?.headquartersCity || "",
@@ -103,10 +102,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   };
 
   const handleSubmit = (values) => {
-    onDataChange({
-      ...values,
-      status: "INACTIVE"
-    });
+    onDataChange(values);
     onNext();
   };
 

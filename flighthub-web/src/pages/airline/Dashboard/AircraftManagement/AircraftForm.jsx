@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createAircraft } from '@/Redux/aircraft/aircraftThunks';
-import { useDispatch } from 'react-redux';
+import { getAirlineByAdmin } from '@/Redux/airline/airlineThunks';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 // AircraftStatus enum values from the DTO
 const AIRCRAFT_STATUS = [
   { value: 'ACTIVE', label: 'Active' },
-  { value: 'IN_MAINTENANCE', label: 'In Maintenance' },
-  { value: 'GROUNDED', label: 'Grounded' },
-  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'RETIRED', label: 'Retired' },
 ];
 
 const AircraftForm = ({ 
@@ -41,13 +42,26 @@ const AircraftForm = ({
     nextMaintenanceDate: null,
     status: 'ACTIVE',
     isAvailable: true,
+    airlineId: null,
     currentAirportId: null,
   });
   const [successMessage, setSuccessMessage] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { airlines = [] } = useSelector((state) => state.airline || {});
 
   const [errors, setErrors] = useState({});
+
+  // Initialize form with data when editing
+  useEffect(() => {
+    dispatch(getAirlineByAdmin());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!isEditMode && airlines.length === 1 && !formData.airlineId) {
+      setFormData(prev => ({ ...prev, airlineId: airlines[0].id }));
+    }
+  }, [airlines, formData.airlineId, isEditMode]);
 
   // Initialize form with data when editing
   useEffect(() => {
@@ -69,6 +83,7 @@ const AircraftForm = ({
         nextMaintenanceDate: aircraftData.nextMaintenanceDate ? new Date(aircraftData.nextMaintenanceDate) : null,
         status: aircraftData.status || 'ACTIVE',
         isAvailable: aircraftData.isAvailable !== undefined ? aircraftData.isAvailable : true,
+        airlineId: aircraftData.airlineId || null,
         currentAirportId: aircraftData.currentAirportId || null,
       });
     } else {
@@ -90,6 +105,7 @@ const AircraftForm = ({
         nextMaintenanceDate: null,
         status: 'ACTIVE',
         isAvailable: true,
+        airlineId: null,
         currentAirportId: null,
       });
     }
@@ -119,6 +135,10 @@ const AircraftForm = ({
     
     if (!formData.status) {
       newErrors.status = 'Status is required';
+    }
+
+    if (!formData.airlineId) {
+      newErrors.airlineId = 'Airline is required';
     }
     
     if (formData.economySeats <= 0) {
@@ -214,6 +234,32 @@ const AircraftForm = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="airlineId">Airline</Label>
+                  <div className="border rounded-md p-2">
+                    <select
+                      id="airlineId"
+                      name="airlineId"
+                      className="w-full bg-transparent outline-none"
+                      value={formData.airlineId || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        airlineId: e.target.value ? Number(e.target.value) : null
+                      }))}
+                    >
+                      <option value="">Select airline</option>
+                      {airlines.map((airline) => (
+                        <option key={airline.id} value={airline.id}>
+                          {airline.name} ({airline.iataCode || airline.icaoCode || airline.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {errors.airlineId && (
+                    <p className="text-sm text-red-500">{errors.airlineId}</p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="code">Aircraft Code</Label>
                   <Input

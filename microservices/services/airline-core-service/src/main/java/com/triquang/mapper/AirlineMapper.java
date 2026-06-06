@@ -19,7 +19,7 @@ public class AirlineMapper {
                 .alias(trim(request.getAlias()))
                 .logoUrl(request.getLogoUrl())
                 .website(request.getWebsite())
-                .status(request.getStatus() != null ? request.getStatus() : AirlineStatus.ACTIVE)
+                .status(AirlineStatus.INACTIVE)
                 .alliance(trim(request.getAlliance()))
                 .headquartersCityId(request.getHeadquartersCityId())
                 .ownerId(ownerId)
@@ -85,10 +85,6 @@ public class AirlineMapper {
 
         if (request.getWebsite() != null) {
             airline.setWebsite(request.getWebsite());
-        }
-
-        if (request.getStatus() != null) {
-            airline.setStatus(request.getStatus());
         }
 
         if (request.getAlliance() != null) {

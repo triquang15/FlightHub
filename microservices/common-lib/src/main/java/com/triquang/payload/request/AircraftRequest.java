@@ -59,6 +59,7 @@ public class AircraftRequest {
     @NotNull(message = "Availability status is required")
     private Boolean isAvailable;
 
+    private Long airlineId;
+
     private Long currentAirportId;
 }
-
