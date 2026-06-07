@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { getAircraftFleetSummary } from '@/Redux/aircraft/aircraftThunks';
 import AircraftTable from '@/components/aircraft/AircraftTable';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Plane } from 'lucide-react';
 
 const AircraftListPage = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const fleetSummary = useSelector((state) => state.aircraft.fleetSummary);
+
+  useEffect(() => {
+    dispatch(getAircraftFleetSummary());
+  }, [dispatch]);
 
   const handleViewDetails = (aircraft) => {
     navigate(`/airline/aircraft/${aircraft.id}`);
@@ -50,7 +58,9 @@ const AircraftListPage = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">24</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {fleetSummary.totalAircraft.toLocaleString()}
+              </p>
               <p className="text-sm text-gray-600">Total Aircraft</p>
             </div>
           </CardContent>
@@ -59,7 +69,9 @@ const AircraftListPage = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">18</p>
+              <p className="text-2xl font-bold text-green-600">
+                {fleetSummary.activeAircraft.toLocaleString()}
+              </p>
               <p className="text-sm text-gray-600">Active</p>
             </div>
           </CardContent>
@@ -68,7 +80,9 @@ const AircraftListPage = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">4</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {fleetSummary.maintenanceAircraft.toLocaleString()}
+              </p>
               <p className="text-sm text-gray-600">Maintenance</p>
             </div>
           </CardContent>
@@ -77,7 +91,9 @@ const AircraftListPage = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">4,280</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {fleetSummary.totalSeats.toLocaleString()}
+              </p>
               <p className="text-sm text-gray-600">Total Seats</p>
             </div>
           </CardContent>

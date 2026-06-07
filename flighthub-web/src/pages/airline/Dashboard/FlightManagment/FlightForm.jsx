@@ -21,14 +21,14 @@ import {
 } from "@/Redux/flight/flightThunk";
 import { getAllCities } from "@/Redux/city/cityThunk";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
-import { listAllAircrafts } from "@/Redux/aircraft/aircraftThunks";
+import { listAircraftOptions } from "@/Redux/aircraft/aircraftThunks";
 import { getAllFareRules } from "@/Redux/fareRules/fareRulesThunk";
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
 import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
 
 const FlightForm = () => {
   const { airports } = useSelector((state) => state.airport);
-  const { aircrafts } = useSelector((state) => state.aircraft);
+  const { aircraftOptions: aircrafts } = useSelector((state) => state.aircraft);
   const [initialValues, setInitialValues] = React.useState({
     flightNumber:  "",
     aircraftId: "",
@@ -118,7 +118,7 @@ const FlightForm = () => {
 
   React.useEffect(() => {
     dispatch(getAllCities());
-    dispatch(listAllAircrafts());
+    dispatch(listAircraftOptions());
     dispatch(listAllAirports());
     dispatch(getAllFareRules());
   }, []);

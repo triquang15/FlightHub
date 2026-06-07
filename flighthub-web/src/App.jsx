@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider.jsx";
+import { GlobalThemeControl } from "./components/global-theme-control.jsx";
 import { Toaster } from "./components/ui/sonner.jsx";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
@@ -112,6 +113,7 @@ function App() {
         <div className="min-h-screen bg-background transition-colors">
           <SessionExpiredHandler />
           <Toaster />
+          <GlobalThemeControl />
 
           <Routes>
             {/* ================= AUTH ================= */}

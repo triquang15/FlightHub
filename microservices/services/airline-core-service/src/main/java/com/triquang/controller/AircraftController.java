@@ -1,10 +1,16 @@
 package com.triquang.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.triquang.enums.AircraftStatus;
 import com.triquang.payload.request.AircraftRequest;
+import com.triquang.payload.response.AircraftFleetSummary;
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AircraftService;
@@ -15,6 +21,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+import java.util.Set;
 import java.util.List;
 
 /**
@@ -31,6 +38,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Aircrafts", description = "Manage airline-owned aircraft, fleet availability, and maintenance data.")
 public class AircraftController {
+
+	private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+			"code", "model", "manufacturer", "seatingCapacity", "status",
+			"yearOfManufacture", "nextMaintenanceDate", "createdAt", "updatedAt");
 
 	private final AircraftService aircraftService;
 
@@ -56,11 +67,39 @@ public class AircraftController {
 
 	// ---------- GET MY AIRCRAFTS ----------
 	@GetMapping
-	@Operation(summary = "List owned aircraft", description = "Returns all aircraft belonging to airlines owned by the authenticated airline owner.")
-	public ResponseEntity<ApiResponse<List<AircraftResponse>>> listMyAircrafts(
+	@Operation(summary = "Search owned aircraft", description = "Returns a paginated aircraft list scoped to the authenticated owner, with optional search and status filters.")
+	public ResponseEntity<ApiResponse<Page<AircraftResponse>>> listMyAircrafts(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size,
+			@RequestParam(defaultValue = "code") String sortBy,
+			@RequestParam(defaultValue = "asc") String sortDirection,
+			@RequestParam(required = false) String search,
+			@RequestParam(required = false) AircraftStatus status,
 			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(aircraftService.listAllAircraftsByOwner(userId));
+		String safeSortBy = ALLOWED_SORT_FIELDS.contains(sortBy) ? sortBy : "code";
+		Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection)
+				? Sort.Direction.DESC
+				: Sort.Direction.ASC;
+		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, 100), Sort.by(direction, safeSortBy));
+
+		return ResponseUtil.ok(aircraftService.searchAircraftsByOwner(userId, search, status, pageable));
+	}
+
+	@GetMapping("/summary")
+	@Operation(summary = "Get owned fleet summary", description = "Returns fleet totals for the authenticated airline owner.")
+	public ResponseEntity<ApiResponse<AircraftFleetSummary>> getFleetSummary(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+
+		return ResponseUtil.ok(aircraftService.getFleetSummary(userId));
+	}
+
+	@GetMapping("/dropdown")
+	@Operation(summary = "List owned aircraft options", description = "Returns all owned aircraft for selection controls without changing fleet table pagination.")
+	public ResponseEntity<ApiResponse<List<AircraftResponse>>> listAircraftOptions(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+
+		return ResponseUtil.ok(aircraftService.listAircraftOptions(userId));
 	}
 
 	// ---------- UPDATE ----------

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { listAllAircrafts, deleteAircraft } from '@/Redux/aircraft/aircraftThunks';
+import { listAllAircrafts } from '@/Redux/aircraft/aircraftThunks';
 import { setSearchKeyword, setStatusFilter, setCurrentPage, setPageSize, setSortBy, setSortDirection } from '@/Redux/aircraft/aircraftSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,12 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
   } = useSelector(state => state.aircraft);
 
   const [localSearchTerm, setLocalSearchTerm] = useState(searchKeyword);
+  const visibleAircrafts = Array.isArray(aircrafts)
+    ? aircrafts
+    : (Array.isArray(paginatedAircrafts?.content) ? paginatedAircrafts.content : []);
+  const totalAircrafts = paginatedAircrafts?.totalElements ?? visibleAircrafts.length;
+  const rangeStart = totalAircrafts === 0 ? 0 : currentPage * pageSize + 1;
+  const rangeEnd = Math.min((currentPage + 1) * pageSize, totalAircrafts);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -91,7 +97,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
-  if (loading && !paginatedAircrafts?.content?.length) {
+  if (loading && !visibleAircrafts.length) {
     return <Loader message="Loading aircraft data..." />;
   }
 
@@ -120,7 +126,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
               Aircraft Fleet
             </CardTitle>
             <Badge variant="outline">
-              {paginatedAircrafts.totalElements} total aircraft
+              {totalAircrafts} total aircraft
             </Badge>
           </div>
 
@@ -154,7 +160,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
       </CardHeader>
 
       <CardContent>
-        {paginatedAircrafts?.content?.length === 0 ? (
+        {visibleAircrafts.length === 0 ? (
           <EmptyState
             icon={Plane}
             title="No Aircraft Found"
@@ -195,7 +201,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {aircrafts.map((aircraft) => (
+                  {visibleAircrafts.map((aircraft) => (
                     <TableRow key={aircraft.id} className="hover:bg-gray-50">
                       <TableCell className="font-medium">{aircraft.code}</TableCell>
                       <TableCell>{aircraft.model}</TableCell>
@@ -261,9 +267,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
 
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">
-                  {paginatedAircrafts.first ? 1 : currentPage * pageSize + 1} - {' '}
-                  {Math.min((currentPage + 1) * pageSize, paginatedAircrafts.totalElements)} of{' '}
-                  {paginatedAircrafts.totalElements}
+                  {rangeStart} - {rangeEnd} of {totalAircrafts}
                 </span>
               </div>
 

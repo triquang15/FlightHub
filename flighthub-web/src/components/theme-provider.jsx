@@ -1,53 +1,127 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { useSelector } from "react-redux"
+import api from "@/utils/api"
 
-const themes = {
-  light: "light",
-  dark: "dark", 
-  green: "green",
-  yellow: "yellow",
-  maroon: "maroon"
-}
+const themePreferences = ["SYSTEM", "LIGHT", "DARK"]
 
 const initialState = {
+  preference: "SYSTEM",
   theme: "light",
-  setTheme: () => null,
-  themes,
+  isSaving: false,
+  syncError: null,
+  isAccountSynced: false,
+  setThemePreference: () => null,
 }
 
 const ThemeProviderContext = createContext(initialState)
 
+const normalizePreference = (value, fallback = "SYSTEM") => {
+  const normalized = String(value || "").toUpperCase()
+  return themePreferences.includes(normalized) ? normalized : fallback
+}
+
+const resolveTheme = (preference) => {
+  if (preference === "SYSTEM") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  }
+
+  return preference.toLowerCase()
+}
+
+const applyTheme = (theme) => {
+  const root = window.document.documentElement
+
+  root.classList.remove("light", "dark")
+  root.classList.add(theme)
+  root.setAttribute("data-theme", theme)
+}
+
 export function ThemeProvider({
   children,
-  defaultTheme = "light",
+  defaultTheme = "SYSTEM",
   storageKey = "airline-ui-theme",
   ...props
 }) {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem(storageKey) || defaultTheme
+  const { isAuthenticated, user } = useSelector((state) => state.auth)
+  const [preference, setPreference] = useState(() =>
+    normalizePreference(localStorage.getItem(storageKey), defaultTheme)
   )
+  const [systemTheme, setSystemTheme] = useState(() => resolveTheme("SYSTEM"))
+  const [isSaving, setIsSaving] = useState(false)
+  const [syncError, setSyncError] = useState(null)
+  const theme = preference === "SYSTEM" ? systemTheme : preference.toLowerCase()
 
   useEffect(() => {
-    const root = window.document.documentElement
-
-    // Remove all theme classes and data attributes
-    Object.values(themes).forEach(themeName => {
-      root.classList.remove(themeName)
-      root.removeAttribute(`data-theme`)
-    })
-
-    // Apply new theme
-    root.classList.add(theme)
-    root.setAttribute('data-theme', theme)
+    applyTheme(theme)
   }, [theme])
 
-  const value = {
+  useEffect(() => {
+    if (preference !== "SYSTEM") return undefined
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleSystemThemeChange = () => {
+      setSystemTheme(resolveTheme("SYSTEM"))
+    }
+
+    mediaQuery.addEventListener("change", handleSystemThemeChange)
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange)
+  }, [preference])
+
+  useEffect(() => {
+    let ignore = false
+
+    if (!isAuthenticated || !user?.id) return undefined
+
+    const loadPreferences = async () => {
+      try {
+        const response = await api.get("/api/users/preferences")
+        if (!ignore) {
+          const serverPreference = normalizePreference(response.data?.data?.theme, defaultTheme)
+          localStorage.setItem(storageKey, serverPreference)
+          setPreference(serverPreference)
+          setSyncError(null)
+        }
+      } catch {
+        if (!ignore) {
+          setSyncError("Unable to load account preference")
+        }
+      }
+    }
+
+    loadPreferences()
+
+    return () => {
+      ignore = true
+    }
+  }, [defaultTheme, isAuthenticated, storageKey, user?.id])
+
+  const setThemePreference = useCallback(async (nextPreference) => {
+    const normalized = normalizePreference(nextPreference, defaultTheme)
+
+    localStorage.setItem(storageKey, normalized)
+    setPreference(normalized)
+    setSyncError(null)
+
+    if (!isAuthenticated || !user?.id) return
+
+    try {
+      setIsSaving(true)
+      await api.patch("/api/users/preferences", { theme: normalized })
+    } catch {
+      setSyncError("Unable to save account preference")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [defaultTheme, isAuthenticated, storageKey, user?.id])
+
+  const value = useMemo(() => ({
+    preference,
     theme,
-    setTheme: (newTheme) => {
-      localStorage.setItem(storageKey, newTheme)
-      setTheme(newTheme)
-    },
-    themes,
-  }
+    isSaving,
+    syncError,
+    isAccountSynced: Boolean(isAuthenticated && user?.id),
+    setThemePreference,
+  }), [isAuthenticated, isSaving, preference, setThemePreference, syncError, theme, user?.id])
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>
@@ -56,11 +130,5 @@ export function ThemeProvider({
   )
 }
 
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext)
-
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider")
-
-  return context
-}
+// eslint-disable-next-line react-refresh/only-export-components
+export const useTheme = () => useContext(ThemeProviderContext)

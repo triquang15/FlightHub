@@ -26,6 +26,7 @@ import com.triquang.payload.request.UpdateProfileRequest;
 import com.triquang.repository.RefreshTokenRepository;
 import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
+import com.triquang.repository.UserPreferencesRepository;
 import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.service.UserService;
 import com.triquang.utils.TokenHashUtil;
@@ -45,6 +46,7 @@ public class UserServiceImpl implements UserService {
     private final RefreshTokenRepository refreshTokenRepo;
     private final SessionRepository sessionRepo;
     private final KnownDeviceRepository knownDeviceRepo;
+    private final UserPreferencesRepository userPreferencesRepository;
     private final TokenHashUtil tokenHashUtil;
     private final SecurityEventProducer securityEventProducer;
 
@@ -191,6 +193,7 @@ public class UserServiceImpl implements UserService {
         refreshTokenRepo.deleteByUserId(id);
         sessionRepo.deleteByUserId(id);
         knownDeviceRepo.deleteByUserId(id);
+        userPreferencesRepository.deleteByUserId(id);
         userRepository.delete(user);
 
         log.info("User deleted userId={} email={} role={}", id, user.getEmail(), user.getRole());

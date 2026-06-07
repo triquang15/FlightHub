@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Plane,
   Shield,
@@ -50,10 +49,6 @@ const Auth = ({ isLogin }) => {
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%232563eb' fill-opacity='0.08'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/svg%3E")`
         }}
       />
-
-      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
-        <ThemeToggle className="bg-background/80 backdrop-blur border-border shadow-sm" />
-      </div>
 
       <div className="relative z-10 flex min-h-screen flex-col lg:flex-row">
 

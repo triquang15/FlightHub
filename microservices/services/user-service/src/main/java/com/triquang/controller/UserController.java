@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -25,8 +26,11 @@ import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ForgotPasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
 import com.triquang.payload.request.UpdateProfileRequest;
+import com.triquang.payload.request.UpdateUserPreferencesRequest;
 import com.triquang.payload.response.ApiResponse;
+import com.triquang.payload.response.UserPreferencesResponse;
 import com.triquang.service.UserService;
+import com.triquang.service.UserPreferencesService;
 import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
@@ -38,6 +42,7 @@ import lombok.RequiredArgsConstructor;
 public class UserController {
 
     private final UserService userService;
+    private final UserPreferencesService userPreferencesService;
 
     // ================= GET MY PROFILE =================
     @GetMapping("/profile")
@@ -54,6 +59,21 @@ public class UserController {
             @Valid @RequestBody UpdateProfileRequest request) {
 
         return ResponseUtil.ok(userService.updateProfile(userId, request));
+    }
+
+    @GetMapping("/preferences")
+    public ResponseEntity<ApiResponse<UserPreferencesResponse>> getPreferences(
+            @RequestHeader("X-User-Id") Long userId) {
+
+        return ResponseUtil.ok(userPreferencesService.getPreferences(userId));
+    }
+
+    @PatchMapping("/preferences")
+    public ResponseEntity<ApiResponse<UserPreferencesResponse>> updatePreferences(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody UpdateUserPreferencesRequest request) {
+
+        return ResponseUtil.ok(userPreferencesService.updatePreferences(userId, request));
     }
 
     // ================= GET BY ID =================

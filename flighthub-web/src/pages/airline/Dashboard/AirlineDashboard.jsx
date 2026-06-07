@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { ThemeToggle } from "@/components/theme-toggle"
 import AirlineSidebar from "../Sidebar/AirlineSidebar"
 import AirlineRoutes from "../routes/AirlineRoutes"
 import { useSelector, useDispatch } from "react-redux"
@@ -271,9 +270,6 @@ const AirlineDashboard = () => {
                   </Badge>
                 </div>
                 <p className="mt-1 text-muted-foreground">{sectionDescription}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <ThemeToggle />
               </div>
             </div>
           </div>

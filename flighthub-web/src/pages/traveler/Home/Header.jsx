@@ -3,7 +3,6 @@ import { Plane, Menu, X, User, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "@/Redux/user/userThunks";
 import {
@@ -95,8 +94,6 @@ const Header = () => {
 
           {/* Desktop Right */}
           <div className="hidden md:flex items-center gap-4">
-            <ThemeToggle />
-
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -169,8 +166,6 @@ const Header = () => {
                 {link.name}
               </Link>
             ))}
-
-            <ThemeToggle className="w-full" />
 
             {isAuthenticated && user ? (
               <>

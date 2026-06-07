@@ -19,6 +19,7 @@ import com.triquang.model.KnownDevice;
 import com.triquang.model.RefreshToken;
 import com.triquang.model.Session;
 import com.triquang.model.User;
+import com.triquang.model.UserPreferences;
 import com.triquang.payload.request.SignupRequest;
 import com.triquang.payload.response.AuthResponse;
 import com.triquang.repository.LoginAuditRepository;
@@ -26,6 +27,7 @@ import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.repository.RefreshTokenRepository;
 import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
+import com.triquang.repository.UserPreferencesRepository;
 import com.triquang.service.AuthService;
 import com.triquang.service.SuspiciousLoginService;
 import com.triquang.utils.TokenHashUtil;
@@ -44,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final SessionRepository sessionRepo;
     private final KnownDeviceRepository knownDeviceRepo;
     private final LoginAuditRepository loginAuditRepo;
+    private final UserPreferencesRepository userPreferencesRepository;
 
     private final JwtProvider jwtProvider;
     private final AuthenticationManager authenticationManager;
@@ -80,6 +83,9 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         userRepository.save(user);
+        userPreferencesRepository.save(UserPreferences.builder()
+                .user(user)
+                .build());
 
         upsertKnownDevice(user, deviceId, ip, agent);
         upsertSession(user, deviceId, ip, agent);

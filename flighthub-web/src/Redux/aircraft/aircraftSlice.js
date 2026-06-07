@@ -3,12 +3,10 @@ import {
   createAircraft,
   getAircraftById,
   listAllAircrafts,
-  
-
+  getAircraftFleetSummary,
+  listAircraftOptions,
   updateAircraft,
   deleteAircraft,
-  
- 
 } from './aircraftThunks';
 
 const initialState = {
@@ -25,6 +23,13 @@ const initialState = {
     last: false,
     numberOfElements: 0
   },
+  fleetSummary: {
+    totalAircraft: 0,
+    activeAircraft: 0,
+    maintenanceAircraft: 0,
+    totalSeats: 0
+  },
+  aircraftOptions: [],
   
   // UI State
   loading: false,
@@ -52,6 +57,25 @@ const initialState = {
   validationLoading: false,
 };
 
+const createAircraftPage = (payload, pageSize) => {
+  if (payload?.content && Array.isArray(payload.content)) {
+    return payload;
+  }
+
+  const content = Array.isArray(payload) ? payload : [];
+
+  return {
+    content,
+    totalElements: content.length,
+    totalPages: content.length > 0 ? 1 : 0,
+    size: pageSize,
+    number: 0,
+    first: true,
+    last: true,
+    numberOfElements: content.length
+  };
+};
+
 const aircraftSlice = createSlice({
   name: 'aircraft',
   initialState,
@@ -77,6 +101,7 @@ const aircraftSlice = createSlice({
     },
     setSearchKeyword: (state, action) => {
       state.searchKeyword = action.payload;
+      state.currentPage = 0;
     },
     setStatusFilter: (state, action) => {
       state.statusFilter = action.payload;
@@ -92,9 +117,11 @@ const aircraftSlice = createSlice({
     },
     setSortBy: (state, action) => {
       state.sortBy = action.payload;
+      state.currentPage = 0;
     },
     setSortDirection: (state, action) => {
       state.sortDirection = action.payload;
+      state.currentPage = 0;
     },
     setValidationErrors: (state, action) => {
       state.validationErrors = action.payload;
@@ -144,19 +171,23 @@ const aircraftSlice = createSlice({
       })
       .addCase(listAllAircrafts.fulfilled, (state, action) => {
         state.loading = false;
-        state.paginatedAircrafts = action.payload;
-        state.aircrafts = action.payload || action.payload;
+        const page = createAircraftPage(action.payload, state.pageSize);
+        state.paginatedAircrafts = page;
+        state.aircrafts = page.content;
       })
       .addCase(listAllAircrafts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      
-      
-      
-      
-     
-      
+
+      .addCase(getAircraftFleetSummary.fulfilled, (state, action) => {
+        state.fleetSummary = action.payload;
+      })
+
+      .addCase(listAircraftOptions.fulfilled, (state, action) => {
+        state.aircraftOptions = Array.isArray(action.payload) ? action.payload : [];
+      })
+
       // Update Aircraft
       .addCase(updateAircraft.pending, (state) => {
         state.loading = true;

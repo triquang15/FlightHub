@@ -1,7 +1,6 @@
-# docker compose -f docker-compose.dev.yml up -d
-# docker compose -f docker-compose.dev.yml down
-
-version: "3.9"
+# From the FlightHub repository root:
+# docker compose --env-file .env.local -f microservices/docker-compose/docker-compose.dev.yml up -d
+# docker compose --env-file .env.local -f microservices/docker-compose/docker-compose.dev.yml down
 
 services:
 

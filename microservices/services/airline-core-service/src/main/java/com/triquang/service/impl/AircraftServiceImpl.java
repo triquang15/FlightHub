@@ -4,8 +4,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import com.triquang.enums.AircraftStatus;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
@@ -13,6 +17,7 @@ import com.triquang.mapper.AircraftMapper;
 import com.triquang.model.Aircraft;
 import com.triquang.model.Airline;
 import com.triquang.payload.request.AircraftRequest;
+import com.triquang.payload.response.AircraftFleetSummary;
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.repository.AircraftRepository;
 import com.triquang.repository.AirlineRepository;
@@ -71,11 +76,45 @@ public class AircraftServiceImpl implements AircraftService {
     }
 
     @Override
-    public List<AircraftResponse> listAllAircraftsByOwner(Long ownerId) {
+    public Page<AircraftResponse> searchAircraftsByOwner(
+            Long ownerId,
+            String search,
+            AircraftStatus status,
+            Pageable pageable) {
 
-        List<Airline> airlines = getAirlinesByOwner(ownerId);
+        Specification<Aircraft> spec = (root, query, cb) ->
+                cb.equal(root.get("airline").get("ownerId"), ownerId);
 
-        return aircraftRepository.findByAirlineIn(airlines)
+        if (search != null && !search.isBlank()) {
+            String keyword = "%" + search.trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) ->
+                    cb.or(
+                            cb.like(cb.lower(root.get("code")), keyword),
+                            cb.like(cb.lower(root.get("model")), keyword),
+                            cb.like(cb.lower(root.get("manufacturer")), keyword)
+                    ));
+        }
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+
+        return aircraftRepository.findAll(spec, pageable).map(AircraftMapper::toResponse);
+    }
+
+    @Override
+    public AircraftFleetSummary getFleetSummary(Long ownerId) {
+        return new AircraftFleetSummary(
+                aircraftRepository.countByAirlineOwnerId(ownerId),
+                aircraftRepository.countByAirlineOwnerIdAndStatus(ownerId, AircraftStatus.ACTIVE),
+                aircraftRepository.countByAirlineOwnerIdAndStatus(ownerId, AircraftStatus.MAINTENANCE),
+                aircraftRepository.sumSeatingCapacityByOwnerId(ownerId)
+        );
+    }
+
+    @Override
+    public List<AircraftResponse> listAircraftOptions(Long ownerId) {
+        return aircraftRepository.findByAirlineOwnerIdOrderByCodeAsc(ownerId)
                 .stream()
                 .map(AircraftMapper::toResponse)
                 .toList();

@@ -55,6 +55,24 @@ Username: postgres
 Password: 12345678
 ```
 
+## Local Environment File
+
+Create the local environment file once:
+
+```bash
+cp .env.local.example .env.local
+```
+
+`.env.local` is the single source for host-based Maven development and is
+ignored by Git. The local service runner maps service-specific values such as
+`USER_DATASOURCE_URL` to Spring variables such as `SPRING_DATASOURCE_URL`.
+
+Validate a service configuration without starting it:
+
+```bash
+FLIGHTHUB_DRY_RUN=true bash microservices/scripts/run-local-service.sh user-service
+```
+
 ## 2. Local Architecture and Ports
 
 ### Platform and Frontend
@@ -113,41 +131,37 @@ data.
 ### Step 1: Start Docker Infrastructure and Databases
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml up -d \
-  userdb airlinecoredb flightopsdb locationdb seatdb pricingdb ancillarydb \
-  bookingdb paymentdb subscriptiondb notificationdb redis kafka kafka-ui
+bash microservices/scripts/local-infra.sh up
 ```
 
 Check all containers:
 
 ```bash
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+bash microservices/scripts/local-infra.sh status
 ```
 
 Wait until the databases, Redis, and Kafka report `healthy`.
 
 ### Step 2: Start Platform Services
 
-Open three separate terminals.
+Open three separate terminals. Each command automatically loads `.env.local`.
 
 Terminal 1 - Eureka:
 
 ```bash
-mvn -f microservices/platform/service-registry/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh service-registry
 ```
 
 Terminal 2 - Config Server:
 
 ```bash
-mvn -f microservices/platform/config-server/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh config-server
 ```
 
 Terminal 3 - API Gateway:
 
 ```bash
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/platform/api-gateway/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh api-gateway
 ```
 
 Recommended startup order:
@@ -164,38 +178,19 @@ development.
 Terminal 4 - User Service:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:15432/airline_user \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/user-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh user-service
 ```
 
 Terminal 5 - Location Service:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5435/airline_location_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/location-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh location-service
 ```
 
 Terminal 6 - Airline Core Service:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/airline_core_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/airline-core-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh airline-core-service
 ```
 
 ### Step 4: Start the Frontend
@@ -235,101 +230,78 @@ Run each service in a separate terminal.
 ### Flight Ops Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5434/airline_flight_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/flight-ops-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh flight-ops-service
 ```
 
 ### Seat Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5436/airline_seat_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/seat-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh seat-service
 ```
 
 ### Pricing Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5437/airline_pricing_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/pricing-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh pricing-service
 ```
 
 ### Ancillary Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5438/airline_ancillary_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-mvn -f microservices/services/ancillary-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh ancillary-service
 ```
 
 ### Booking Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5439/airline_booking_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-mvn -f microservices/services/booking-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh booking-service
 ```
 
 ### Payment Service
 
-The payment service may require additional payment-provider environment
-variables in `microservices/services/payment-service/.env`.
+The payment service reads payment-provider variables from the root
+`.env.local` file.
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5440/airline_payment_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-mvn -f microservices/services/payment-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh payment-service
 ```
 
 ### Subscription Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5441/airline_subscription_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-mvn -f microservices/services/subscription-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh subscription-service
 ```
 
 ### Notification Service
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5442/airline_notification_db \
-SPRING_DATASOURCE_USERNAME=postgres \
-SPRING_DATASOURCE_PASSWORD=12345678 \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
-SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-SPRING_DATA_REDIS_HOST=localhost \
-SPRING_DATA_REDIS_PORT=6379 \
-mvn -f microservices/services/notification-service/pom.xml spring-boot:run
+bash microservices/scripts/run-local-service.sh notification-service
 ```
+
+## Run All Backend Services with Docker
+
+Use Docker Compose when you want the published backend images instead of local
+source debugging:
+
+```bash
+bash microservices/scripts/local-infra.sh stack-up
+```
+
+Docker services communicate through Compose service names such as `userdb`,
+`redis`, and `kafka`. Values containing `localhost` in `.env.local` are intended
+for Maven services running on the host and must not replace those internal
+Docker hostnames.
+
+Check or stop the Docker stack:
+
+```bash
+bash microservices/scripts/local-infra.sh stack-status
+bash microservices/scripts/local-infra.sh stack-stop
+```
+
+The Docker stack uses the images configured in `docker-compose.yml`. Rebuild or
+publish those images before expecting local source changes to appear inside the
+containers.
 
 ## 5. Initialize Schemas and Seed Data
 

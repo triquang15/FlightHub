@@ -8,7 +8,7 @@ export const createAircraft = createAsyncThunk(
     try {
       const res = await api.post("/api/aircrafts", aircraftData);
       console.log("Create aircraft success:", res.data);
-      return res.data;
+      return res.data?.data ?? res.data;
     } catch (err) {
       console.error("Create aircraft error:", err);
       return rejectWithValue(
@@ -25,7 +25,7 @@ export const getAircraftById = createAsyncThunk(
     try {
       const res = await api.get(`/api/aircrafts/${aircraftId}`);
       console.log("Get aircraft by ID success:", res.data);
-      return res.data;
+      return res.data?.data ?? res.data;
     } catch (err) {
       console.error("Get aircraft by ID error:", err);
       return rejectWithValue(
@@ -44,7 +44,7 @@ export const listAllAircrafts = createAsyncThunk(
         params
       });
       console.log("List all aircrafts success:", res.data);
-      return res.data;
+      return res.data?.data ?? res.data;
     } catch (err) {
       console.error("List all aircrafts error:", err);
       return rejectWithValue(
@@ -58,6 +58,34 @@ export const listAllAircrafts = createAsyncThunk(
 
 
 
+export const getAircraftFleetSummary = createAsyncThunk(
+  "aircraft/getFleetSummary",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/api/aircrafts/summary");
+      return res.data?.data ?? res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch fleet summary"
+      );
+    }
+  }
+);
+
+export const listAircraftOptions = createAsyncThunk(
+  "aircraft/listOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/api/aircrafts/dropdown");
+      return res.data?.data ?? [];
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch aircraft options"
+      );
+    }
+  }
+);
+
 // ✅ Update Aircraft
 export const updateAircraft = createAsyncThunk(
   "aircraft/update",
@@ -65,7 +93,7 @@ export const updateAircraft = createAsyncThunk(
     try {
       const res = await api.put(`/api/aircrafts/${aircraftId}`, aircraftData);
       console.log("Update aircraft success:", res.data);
-      return res.data;
+      return res.data?.data ?? res.data;
     } catch (err) {
       console.error("Update aircraft error:", err);
       return rejectWithValue(
@@ -91,8 +119,5 @@ export const deleteAircraft = createAsyncThunk(
     }
   }
 );
-
-
-
 
 
