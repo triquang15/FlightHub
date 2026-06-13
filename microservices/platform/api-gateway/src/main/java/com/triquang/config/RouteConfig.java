@@ -108,6 +108,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/airline-core-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/airline-core-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("airline-core-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("booking-openapi-docs")
+                        .route(RequestPredicates.path("/docs/booking-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/booking-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("booking-service"))
                         .build());
     }
 
@@ -130,6 +135,17 @@ public class RouteConfig {
                 .route(RequestPredicates.path("/api/aircrafts/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
+                .build();
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> bookingServiceRoutes() {
+        return routeWithoutCB("booking-service", "booking-service")
+                .route(RequestPredicates.path("/api/bookings/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/tickets/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/passengers/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter)
                 .build();
     }
 

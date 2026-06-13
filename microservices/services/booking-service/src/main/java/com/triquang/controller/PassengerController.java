@@ -13,11 +13,18 @@ import com.triquang.payload.request.PassengerRequest;
 import com.triquang.service.PassengerService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/passengers")
+@Tag(name = "Passengers", description = "Manage passenger profiles and lookup for booking creation.")
 @RequiredArgsConstructor
 public class PassengerController {
 
@@ -26,9 +33,14 @@ public class PassengerController {
 	// =========================
 	// CREATE PASSENGER
 	// =========================
+	@Operation(summary = "Create passenger", description = "Creates a passenger profile for the authenticated user.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "201", description = "Passenger created"),
+		@ApiResponse(responseCode = "400", description = "Invalid passenger data")
+	})
 	@PostMapping
 	public ResponseEntity<?> createPassenger(@Valid @RequestBody PassengerRequest request,
-			@RequestHeader("X-User-Id") Long userId) {
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		return ResponseUtil.created(passengerService.createPassenger(request, userId));
 	}
@@ -36,6 +48,11 @@ public class PassengerController {
 	// =========================
 	// FIND EXISTING PASSENGER
 	// =========================
+	@Operation(summary = "Find existing passenger", description = "Searches for an existing passenger using the provided contact and identity details.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Passenger search results returned"),
+		@ApiResponse(responseCode = "400", description = "Invalid search criteria")
+	})
 	@PostMapping("/find")
 	public ResponseEntity<?> findExistingPassenger(@RequestBody PassengerRequest request) {
 
@@ -45,6 +62,11 @@ public class PassengerController {
 	// =========================
 	// CHECK EXISTS
 	// =========================
+	@Operation(summary = "Check passenger exists", description = "Returns true when a passenger with the specified ID exists.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Passenger existence returned"),
+		@ApiResponse(responseCode = "404", description = "Passenger not found")
+	})
 	@GetMapping("/{id}/exists")
 	public ResponseEntity<?> existsById(@PathVariable Long id) {
 
@@ -54,6 +76,10 @@ public class PassengerController {
 	// =========================
 	// COUNT
 	// =========================
+	@Operation(summary = "Count passengers", description = "Returns the total number of passenger profiles.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Passenger count returned")
+	})
 	@GetMapping("/count")
 	public ResponseEntity<?> countPassengers() {
 

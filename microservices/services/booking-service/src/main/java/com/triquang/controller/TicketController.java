@@ -17,10 +17,17 @@ import com.triquang.payload.response.TicketResponse;
 import com.triquang.service.TicketService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/tickets")
+@Tag(name = "Tickets", description = "Manage ticket retrieval, cancellation, usage, and refund flows.")
 @RequiredArgsConstructor
 public class TicketController {
 
@@ -29,6 +36,11 @@ public class TicketController {
 	// =========================
 	// GET BY TICKET NUMBER
 	// =========================
+	@Operation(summary = "Get ticket by number", description = "Returns a ticket by its ticket number.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Ticket returned"),
+		@ApiResponse(responseCode = "404", description = "Ticket not found")
+	})
 	@GetMapping("/{ticketNumber}")
 	public ResponseEntity<?> getTicketByNumber(@PathVariable String ticketNumber) {
 
@@ -40,6 +52,11 @@ public class TicketController {
 	// =========================
 	// GET BY BOOKING
 	// =========================
+	@Operation(summary = "Get tickets by booking", description = "Returns all tickets associated with a specific booking.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Tickets returned"),
+		@ApiResponse(responseCode = "404", description = "Booking not found")
+	})
 	@GetMapping("/booking/{bookingId}")
 	public ResponseEntity<?> getTicketsByBooking(@PathVariable Long bookingId) {
 
@@ -52,6 +69,11 @@ public class TicketController {
 	// =========================
 	// GET BY PASSENGER
 	// =========================
+	@Operation(summary = "Get tickets by passenger", description = "Returns all tickets for a specific passenger.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Tickets returned"),
+		@ApiResponse(responseCode = "404", description = "Passenger not found")
+	})
 	@GetMapping("/passenger/{passengerId}")
 	public ResponseEntity<?> getTicketsByPassenger(@PathVariable Long passengerId) {
 
@@ -64,8 +86,13 @@ public class TicketController {
 	// =========================
 	// CANCEL TICKET
 	// =========================
+	@Operation(summary = "Cancel ticket", description = "Cancels a ticket and updates inventory or refund eligibility.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Ticket canceled successfully"),
+		@ApiResponse(responseCode = "404", description = "Ticket not found")
+	})
 	@PutMapping("/{ticketId}/cancel")
-	public ResponseEntity<?> cancelTicket(@PathVariable Long ticketId, @RequestHeader("X-User-Id") Long userId) {
+	public ResponseEntity<?> cancelTicket(@PathVariable Long ticketId, @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		Ticket ticket = ticketService.cancelTicket(ticketId);
 
@@ -75,8 +102,13 @@ public class TicketController {
 	// =========================
 	// MARK AS USED
 	// =========================
+	@Operation(summary = "Mark ticket as used", description = "Marks a ticket as used after boarding.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Ticket marked as used"),
+		@ApiResponse(responseCode = "404", description = "Ticket not found")
+	})
 	@PutMapping("/{ticketId}/use")
-	public ResponseEntity<?> markTicketAsUsed(@PathVariable Long ticketId, @RequestHeader("X-User-Id") Long userId) {
+	public ResponseEntity<?> markTicketAsUsed(@PathVariable Long ticketId, @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		Ticket ticket = ticketService.markTicketAsUsed(ticketId);
 
@@ -86,8 +118,13 @@ public class TicketController {
 	// =========================
 	// REFUND
 	// =========================
+	@Operation(summary = "Refund ticket", description = "Processes a refund for the specified ticket.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Ticket refunded successfully"),
+		@ApiResponse(responseCode = "404", description = "Ticket not found")
+	})
 	@PutMapping("/{ticketId}/refund")
-	public ResponseEntity<?> refundTicket(@PathVariable Long ticketId, @RequestHeader("X-User-Id") Long userId) {
+	public ResponseEntity<?> refundTicket(@PathVariable Long ticketId, @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		Ticket ticket = ticketService.refundTicket(ticketId);
 
