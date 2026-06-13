@@ -55,6 +55,7 @@ const initialState = {
   deleteLoading: false,
   searchLoading: false,
   validationLoading: false,
+  latestListRequestId: null,
 };
 
 const createAircraftPage = (payload, pageSize) => {
@@ -165,17 +166,21 @@ const aircraftSlice = createSlice({
       })
       
       // List All Aircrafts
-      .addCase(listAllAircrafts.pending, (state) => {
+      .addCase(listAllAircrafts.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        state.latestListRequestId = action.meta.requestId;
       })
       .addCase(listAllAircrafts.fulfilled, (state, action) => {
+        if (state.latestListRequestId !== action.meta.requestId) return;
         state.loading = false;
         const page = createAircraftPage(action.payload, state.pageSize);
         state.paginatedAircrafts = page;
         state.aircrafts = page.content;
+        state.currentPage = page.number;
       })
       .addCase(listAllAircrafts.rejected, (state, action) => {
+        if (state.latestListRequestId !== action.meta.requestId) return;
         state.loading = false;
         state.error = action.payload;
       })
@@ -244,6 +249,12 @@ const aircraftSlice = createSlice({
       .addMatcher(
         (action) => action.type.startsWith('aircraft/') && action.type.endsWith('/rejected'),
         (state, action) => {
+          if (
+            action.type === listAllAircrafts.rejected.type
+            && state.latestListRequestId !== action.meta.requestId
+          ) {
+            return;
+          }
           state.error = action.payload;
         }
       );

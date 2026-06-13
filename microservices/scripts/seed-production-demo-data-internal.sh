@@ -7,13 +7,15 @@ SQL_DIR="${SQL_DIR:-/seed-sql}"
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-12345678}"
 SEED_BASE_DATA="${SEED_BASE_DATA:-true}"
+SEED_FLIGHT_OPS="${SEED_FLIGHT_OPS:-true}"
 
 USER_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-users.sql"
 CITY_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-cities.sql"
 AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
+FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
 
-for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL"; do
+for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL"; do
   if [ ! -f "$file" ]; then
     echo "Required SQL seed file not found: $file" >&2
     exit 1
@@ -64,6 +66,7 @@ set_seed_setting() {
 
 echo "FlightHub Docker production-style demo data init"
 echo "Seed base data: $SEED_BASE_DATA"
+echo "Seed flight ops: $SEED_FLIGHT_OPS"
 echo
 
 if [ "$SEED_BASE_DATA" = "true" ]; then
@@ -170,6 +173,69 @@ echo "==> Seeding airline_core_db with $(basename "$AIRLINE_CORE_SEED_SQL")"
   printf "\n"
   cat "$AIRLINE_CORE_SEED_SQL"
 } | psql_exec airlinecoredb airline_core_db -v ON_ERROR_STOP=1
+
+if [ "$SEED_FLIGHT_OPS" = "true" ]; then
+  echo "==> Resolving airline-core IDs for flight-ops"
+
+  airline_vn="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VN';")"
+  airline_vj="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VJ';")"
+  airline_sq="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'SQ';")"
+  airline_tg="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'TG';")"
+  airline_cx="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'CX';")"
+  airline_jl="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'JL';")"
+  airline_ek="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'EK';")"
+  airline_qr="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'QR';")"
+
+  aircraft_vn_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-A359-01';")"
+  aircraft_vn_b789="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-B789-02';")"
+  aircraft_vj_a321="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VJ-A321-01';")"
+  aircraft_sq_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'SQ-A359-01';")"
+  aircraft_tg_b77w="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'TG-B77W-01';")"
+  aircraft_cx_a35k="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'CX-A35K-01';")"
+  aircraft_jl_b789="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'JL-B789-01';")"
+  aircraft_ek_a388="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'EK-A388-01';")"
+  aircraft_qr_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'QR-A359-01';")"
+
+  for required in \
+    airline_vn airline_vj airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
+    aircraft_vn_a359 aircraft_vn_b789 aircraft_vj_a321 aircraft_sq_a359 aircraft_tg_b77w \
+    aircraft_cx_a35k aircraft_jl_b789 aircraft_ek_a388 aircraft_qr_a359; do
+    eval "required_value=\${$required}"
+    require_value "$required" "$required_value"
+  done
+
+  echo "==> Seeding airline_flight_db with $(basename "$FLIGHT_OPS_SEED_SQL")"
+  {
+    set_seed_setting airline_vn "$airline_vn"
+    set_seed_setting airline_vj "$airline_vj"
+    set_seed_setting airline_sq "$airline_sq"
+    set_seed_setting airline_tg "$airline_tg"
+    set_seed_setting airline_cx "$airline_cx"
+    set_seed_setting airline_jl "$airline_jl"
+    set_seed_setting airline_ek "$airline_ek"
+    set_seed_setting airline_qr "$airline_qr"
+    set_seed_setting aircraft_vn_a359 "$aircraft_vn_a359"
+    set_seed_setting aircraft_vn_b789 "$aircraft_vn_b789"
+    set_seed_setting aircraft_vj_a321 "$aircraft_vj_a321"
+    set_seed_setting aircraft_sq_a359 "$aircraft_sq_a359"
+    set_seed_setting aircraft_tg_b77w "$aircraft_tg_b77w"
+    set_seed_setting aircraft_cx_a35k "$aircraft_cx_a35k"
+    set_seed_setting aircraft_jl_b789 "$aircraft_jl_b789"
+    set_seed_setting aircraft_ek_a388 "$aircraft_ek_a388"
+    set_seed_setting aircraft_qr_a359 "$aircraft_qr_a359"
+    set_seed_setting apt_sgn "$apt_sgn"
+    set_seed_setting apt_han "$apt_han"
+    set_seed_setting apt_dad "$apt_dad"
+    set_seed_setting apt_sin "$apt_sin"
+    set_seed_setting apt_bkk "$apt_bkk"
+    set_seed_setting apt_hkg "$apt_hkg"
+    set_seed_setting apt_hnd "$apt_hnd"
+    set_seed_setting apt_dxb "$apt_dxb"
+    set_seed_setting apt_doh "$apt_doh"
+    printf "\n"
+    cat "$FLIGHT_OPS_SEED_SQL"
+  } | psql_exec flightopsdb airline_flight_db -v ON_ERROR_STOP=1
+fi
 
 echo
 echo "Seed complete."

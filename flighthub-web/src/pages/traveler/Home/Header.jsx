@@ -1,10 +1,21 @@
-import * as React from "react";
-import { Plane, Menu, X, User, LogOut } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useSelector, useDispatch } from "react-redux";
-import { logout } from "@/Redux/user/userThunks";
+import * as React from "react"
+import {
+  BookOpen,
+  ChevronDown,
+  Clock3,
+  Loader2,
+  LogOut,
+  Menu,
+  Plane,
+  Search,
+  User,
+  X,
+} from "lucide-react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { useDispatch, useSelector } from "react-redux"
+import { logout } from "@/Redux/user/userThunks"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,198 +23,247 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { toast } from "sonner"
+import { refreshAccessToken } from "@/utils/api"
+import { useSessionExpiry } from "@/components/auth/useSessionExpiry"
+
+const getInitials = (name) => {
+  if (!name) return "U"
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+}
 
 const Header = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const { isAuthenticated, user } = useSelector((state) => state.auth)
+  const { formattedRemainingTime, isExpiringSoon, remainingTime } = useSessionExpiry()
+  const [isExtendingSession, setIsExtendingSession] = React.useState(false)
 
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
-
-  // Dynamic navigation
   const navigationLinks = [
-    { name: "Home", href: "/", current: location.pathname === "/" },
+    {
+      name: "Search flights",
+      href: "/traveler",
+      icon: Search,
+      current: ["/traveler", "/search"].includes(location.pathname),
+    },
     ...(isAuthenticated
-      ? [
-          {
-            name: "My Bookings",
-            href: "/bookings",
-            current: location.pathname === "/bookings",
-          },
-        ]
+      ? [{
+          name: "My bookings",
+          href: "/bookings",
+          icon: BookOpen,
+          current: ["/bookings", "/view-ticket", "/ticket"].some((path) => location.pathname.startsWith(path)),
+        }]
       : []),
-  ];
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen((prev) => !prev);
-  };
+  ]
 
   const handleLogout = async () => {
     try {
-      await dispatch(logout()).unwrap();
-    } catch (e) {
-      console.error("Logout failed:", e);
+      await dispatch(logout()).unwrap()
+    } catch (error) {
+      console.error("Logout failed:", error)
     } finally {
-      setIsMobileMenuOpen(false);
-      navigate("/");
+      setIsMobileMenuOpen(false)
+      navigate("/")
     }
-  };
+  }
 
-  const getInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
+  const handleExtendSession = async () => {
+    try {
+      setIsExtendingSession(true)
+      await refreshAccessToken()
+      toast.success("Session extended")
+    } catch (error) {
+      console.error("Failed to extend session:", error)
+      toast.error("Could not extend your session")
+    } finally {
+      setIsExtendingSession(false)
+    }
+  }
 
   return (
-    <header className="bg-background border-b border-border sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-primary p-2 rounded-lg">
-              <Plane className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold">FlightHub</span>
+    <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="FlightHub home">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <Plane className="h-5 w-5" />
+            </span>
+            <span className="text-lg font-bold tracking-tight">FlightHub</span>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center space-x-6">
-            {navigationLinks.map((link) => (
+          <nav className="hidden h-full items-center gap-1 md:flex" aria-label="Traveler navigation">
+            {navigationLinks.map(({ name, href, icon: Icon, current }) => (
               <Link
-                key={link.name}
-                to={link.href}
+                key={name}
+                to={href}
+                aria-current={current ? "page" : undefined}
                 className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition",
-                  link.current
-                    ? "text-primary bg-primary/10"
-                    : "hover:bg-accent"
+                  "relative flex h-full items-center gap-2 px-4 text-sm font-medium text-muted-foreground transition hover:text-foreground",
+                  current && "text-foreground after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
                 )}
               >
-                {link.name}
+                <Icon className={cn("h-4 w-4", current && "text-primary")} />
+                {name}
               </Link>
             ))}
           </nav>
 
-          {/* Desktop Right */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden items-center gap-2 md:flex">
             {isAuthenticated && user ? (
-              <DropdownMenu>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleExtendSession}
+                  disabled={isExtendingSession || remainingTime === null}
+                  title="Extend your signed-in session"
+                  className={cn(
+                    "h-10 rounded-full px-3 font-mono text-xs tabular-nums",
+                    isExpiringSoon && "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
+                  )}
+                >
+                  {isExtendingSession ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock3 className="mr-1.5 h-3.5 w-3.5" />}
+                  {formattedRemainingTime}
+                  <span className="ml-1 hidden font-sans font-medium lg:inline">Extend</span>
+                </Button>
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-9 w-9 rounded-full">
-                    <Avatar>
-                      <AvatarImage src={user.profilePicture} />
-                      <AvatarFallback>
-                        {getInitials(user.fullName)}
-                      </AvatarFallback>
+                  <Button variant="ghost" className="h-11 max-w-56 justify-start gap-2 rounded-full px-2 pr-3">
+                    <Avatar size="lg">
+                      <AvatarImage src={user.profilePicture} alt="" />
+                      <AvatarFallback className="bg-primary/10 font-semibold text-primary">{getInitials(user.fullName)}</AvatarFallback>
                     </Avatar>
+                    <span className="min-w-0 text-left">
+                      <span className="block truncate text-xs text-muted-foreground">Traveler account</span>
+                      <span className="block truncate text-sm font-semibold">{user.fullName || "My account"}</span>
+                    </span>
+                    <ChevronDown className="ml-1 h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <p className="font-medium">{user.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-64 rounded-xl p-2">
+                  <DropdownMenuLabel className="px-2 py-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{user.fullName || "Traveler"}</p>
+                    <p className="mt-1 truncate text-xs font-normal text-muted-foreground">{user.email}</p>
                   </DropdownMenuLabel>
-
                   <DropdownMenuSeparator />
-
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
+                  <DropdownMenuItem asChild className="px-2 py-2">
+                    <Link to="/profile"><User className="mr-2 h-4 w-4" />Profile and settings</Link>
                   </DropdownMenuItem>
-
+                  <DropdownMenuItem asChild className="px-2 py-2">
+                    <Link to="/bookings"><BookOpen className="mr-2 h-4 w-4" />My bookings</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                  <DropdownMenuItem variant="destructive" onClick={handleLogout} className="px-2 py-2">
+                    <LogOut className="mr-2 h-4 w-4" />Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenu>
+              </>
             ) : (
               <>
-                <Button variant="outline" asChild>
-                  <Link to="/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/register">Sign Up</Link>
-                </Button>
+                <Button variant="ghost" asChild><Link to="/login">Sign in</Link></Button>
+                <Button asChild className="rounded-full px-5"><Link to="/register">Create account</Link></Button>
               </>
             )}
           </div>
 
-          {/* Mobile Button */}
-          <div className="md:hidden">
-            <Button variant="ghost" onClick={toggleMobileMenu}>
-              {isMobileMenuOpen ? <X /> : <Menu />}
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setIsMobileMenuOpen((open) => !open)}
+            aria-label={isMobileMenuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={isMobileMenuOpen}
+          >
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </Button>
         </div>
 
-        {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t pt-4 space-y-2">
-
-            {navigationLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-md"
-              >
-                {link.name}
-              </Link>
-            ))}
-
-            {isAuthenticated && user ? (
-              <>
-                <div className="px-3 py-2">
-                  <p>{user.fullName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.email}
-                  </p>
+          <div className="border-t py-4 md:hidden">
+            {isAuthenticated && user && (
+              <div className="mb-4 space-y-3 rounded-2xl bg-muted/60 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar size="lg">
+                    <AvatarImage src={user.profilePicture} alt="" />
+                    <AvatarFallback className="bg-primary/10 font-semibold text-primary">{getInitials(user.fullName)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{user.fullName || "Traveler"}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
+                  </div>
                 </div>
-
-                <Button asChild className="w-full">
-                  <Link to="/profile">Profile</Link>
-                </Button>
-
                 <Button
                   variant="outline"
-                  onClick={handleLogout}
-                  className="w-full"
+                  onClick={handleExtendSession}
+                  disabled={isExtendingSession || remainingTime === null}
+                  className={cn("h-9 w-full justify-between", isExpiringSoon && "border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-300")}
                 >
-                  Log out
+                  <span className="flex items-center gap-2 text-xs font-medium">
+                    {isExtendingSession ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock3 className="h-3.5 w-3.5" />}
+                    Session remaining
+                  </span>
+                  <span className="font-mono text-xs font-bold tabular-nums">{formattedRemainingTime} · Extend</span>
                 </Button>
-              </>
-            ) : (
-              <>
-                <Button asChild className="w-full">
-                  <Link to="/login">Login</Link>
-                </Button>
-
-                <Button asChild className="w-full">
-                  <Link to="/register">Sign Up</Link>
-                </Button>
-              </>
+              </div>
             )}
+
+            <nav className="space-y-1" aria-label="Mobile traveler navigation">
+              {navigationLinks.map(({ name, href, icon: Icon, current }) => (
+                <Link
+                  key={name}
+                  to={href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  aria-current={current ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                    current ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {name}
+                </Link>
+              ))}
+              {isAuthenticated && (
+                <Link
+                  to="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition",
+                    location.pathname === "/profile" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <User className="h-4 w-4" />Profile and settings
+                </Link>
+              )}
+            </nav>
+
+            <div className="mt-4 grid gap-2 border-t pt-4">
+              {isAuthenticated ? (
+                <Button variant="outline" onClick={handleLogout} className="h-10 justify-center">
+                  <LogOut className="mr-2 h-4 w-4" />Sign out
+                </Button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" asChild><Link to="/login">Sign in</Link></Button>
+                  <Button asChild><Link to="/register">Create account</Link></Button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
     </header>
-  );
-};
+  )
+}
 
-export default Header;
+export default Header

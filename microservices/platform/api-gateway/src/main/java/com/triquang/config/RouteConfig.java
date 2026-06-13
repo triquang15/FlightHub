@@ -158,6 +158,8 @@ public class RouteConfig {
     public RouterFunction<ServerResponse> flightRoutes() {
         return routeWithCB("flight", "flight-ops-service", "flight-cb", "forward:/fallback/flight")
                 .route(RequestPredicates.path("/api/flights/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/flight-schedules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/flight-instances/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
                 .build();

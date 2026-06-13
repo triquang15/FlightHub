@@ -26,7 +26,7 @@ public class Flight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, unique = true, length = 10)
     private String flightNumber;
 
     // Cross-service ref: Airline is in airline-core-service

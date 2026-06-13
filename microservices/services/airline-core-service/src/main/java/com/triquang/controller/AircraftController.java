@@ -59,7 +59,7 @@ public class AircraftController {
 	@Operation(summary = "Get an aircraft by ID", description = "Returns aircraft details when the authenticated user is authorized to view them.")
 	public ResponseEntity<ApiResponse<AircraftResponse>> getAircraftById(
 			@PathVariable Long id,
-			@Parameter(hidden = true) @RequestHeader(value = "X-User-Id", required = false) Long userId,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
 			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
 
 		return ResponseUtil.ok(aircraftService.getAircraftById(id, userId, roles));

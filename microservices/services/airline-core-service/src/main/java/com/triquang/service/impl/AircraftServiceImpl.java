@@ -236,7 +236,7 @@ public class AircraftServiceImpl implements AircraftService {
     }
 
     private void validateReadAccess(Aircraft aircraft, Long requesterId, String roles) {
-        if (requesterId == null || isSystemAdmin(roles)) {
+        if (isSystemAdmin(roles)) {
             return;
         }
 

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useSelector } from "react-redux"
 import api from "@/utils/api"
 
@@ -49,6 +49,8 @@ export function ThemeProvider({
   const [systemTheme, setSystemTheme] = useState(() => resolveTheme("SYSTEM"))
   const [isSaving, setIsSaving] = useState(false)
   const [syncError, setSyncError] = useState(null)
+  const saveQueueRef = useRef(Promise.resolve())
+  const pendingSavesRef = useRef(0)
   const theme = preference === "SYSTEM" ? systemTheme : preference.toLowerCase()
 
   useEffect(() => {
@@ -104,13 +106,25 @@ export function ThemeProvider({
 
     if (!isAuthenticated || !user?.id) return
 
+    pendingSavesRef.current += 1
+    setIsSaving(true)
+
+    const saveRequest = saveQueueRef.current
+      .catch(() => undefined)
+      .then(() => api.patch("/api/users/preferences", { theme: normalized }))
+
+    saveQueueRef.current = saveRequest
+
     try {
-      setIsSaving(true)
-      await api.patch("/api/users/preferences", { theme: normalized })
+      await saveRequest
+      setSyncError(null)
     } catch {
       setSyncError("Unable to save account preference")
     } finally {
-      setIsSaving(false)
+      pendingSavesRef.current -= 1
+      if (pendingSavesRef.current === 0) {
+        setIsSaving(false)
+      }
     }
   }, [defaultTheme, isAuthenticated, storageKey, user?.id])
 

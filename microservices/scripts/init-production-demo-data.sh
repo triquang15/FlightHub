@@ -15,13 +15,14 @@ USER_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-users.sql"
 CITY_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-cities.sql"
 AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
+FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required to run this seed script." >&2
   exit 1
 fi
 
-for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL"; do
+for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL"; do
   if [[ ! -f "$file" ]]; then
     echo "Required SQL seed file not found: $file" >&2
     exit 1
@@ -201,6 +202,65 @@ run_sql_file_with_settings \
   apt_sin="$apt_sin" \
   apt_bkk="$apt_bkk" \
   apt_kul="$apt_kul" \
+  apt_hkg="$apt_hkg" \
+  apt_hnd="$apt_hnd" \
+  apt_dxb="$apt_dxb" \
+  apt_doh="$apt_doh"
+
+echo "==> Resolving airline-core IDs for flight-ops"
+
+airline_vn="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VN';")"
+airline_vj="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VJ';")"
+airline_sq="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'SQ';")"
+airline_tg="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'TG';")"
+airline_cx="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'CX';")"
+airline_jl="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'JL';")"
+airline_ek="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'EK';")"
+airline_qr="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'QR';")"
+
+aircraft_vn_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-A359-01';")"
+aircraft_vn_b789="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-B789-02';")"
+aircraft_vj_a321="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VJ-A321-01';")"
+aircraft_sq_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'SQ-A359-01';")"
+aircraft_tg_b77w="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'TG-B77W-01';")"
+aircraft_cx_a35k="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'CX-A35K-01';")"
+aircraft_jl_b789="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'JL-B789-01';")"
+aircraft_ek_a388="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'EK-A388-01';")"
+aircraft_qr_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'QR-A359-01';")"
+
+for required in \
+  airline_vn airline_vj airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
+  aircraft_vn_a359 aircraft_vn_b789 aircraft_vj_a321 aircraft_sq_a359 aircraft_tg_b77w \
+  aircraft_cx_a35k aircraft_jl_b789 aircraft_ek_a388 aircraft_qr_a359; do
+  require_value "$required" "${!required}"
+done
+
+run_sql_file_with_settings \
+  flightopsdb \
+  airline_flight_db \
+  "$FLIGHT_OPS_SEED_SQL" \
+  airline_vn="$airline_vn" \
+  airline_vj="$airline_vj" \
+  airline_sq="$airline_sq" \
+  airline_tg="$airline_tg" \
+  airline_cx="$airline_cx" \
+  airline_jl="$airline_jl" \
+  airline_ek="$airline_ek" \
+  airline_qr="$airline_qr" \
+  aircraft_vn_a359="$aircraft_vn_a359" \
+  aircraft_vn_b789="$aircraft_vn_b789" \
+  aircraft_vj_a321="$aircraft_vj_a321" \
+  aircraft_sq_a359="$aircraft_sq_a359" \
+  aircraft_tg_b77w="$aircraft_tg_b77w" \
+  aircraft_cx_a35k="$aircraft_cx_a35k" \
+  aircraft_jl_b789="$aircraft_jl_b789" \
+  aircraft_ek_a388="$aircraft_ek_a388" \
+  aircraft_qr_a359="$aircraft_qr_a359" \
+  apt_sgn="$apt_sgn" \
+  apt_han="$apt_han" \
+  apt_dad="$apt_dad" \
+  apt_sin="$apt_sin" \
+  apt_bkk="$apt_bkk" \
   apt_hkg="$apt_hkg" \
   apt_hnd="$apt_hnd" \
   apt_dxb="$apt_dxb" \

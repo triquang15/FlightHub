@@ -17,7 +17,6 @@ import {
   FiltersSkeleton,
 } from "./LoadingStates";
 
-import FlightSearchBar from "@/pages/traveler/Home/FlightSearchBar";
 import { searchFlightsAvailability } from "@/Redux/flightSearch/flightSearchThunk";
 // import { listAllAirports } from "@/Redux/airports/airportsThunk"
 import "./animations.css";
@@ -52,6 +51,8 @@ const SearchResults = () => {
       : null,
     passengers: parseInt(searchParams.get("numberOfTravellers") || "1"),
     cabinClass: searchParams.get("cabinClass") || "ECONOMY",
+    tripType: searchParams.get("tripType") || "oneWay",
+    directOnly: searchParams.get("directOnly") === "true",
   };
 
   // console.log("Search Data: ----- ", searchData);
@@ -59,7 +60,7 @@ const SearchResults = () => {
   const [sortBy, setSortBy] = React.useState("price");
   const [sortOrder, setSortOrder] = React.useState("asc");
   const [viewMode, setViewMode] = React.useState("list");
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading] = React.useState(false);
   const [showMobileFilters, setShowMobileFilters] = React.useState(false);
   const [bookmarkedFlights, setBookmarkedFlights] = React.useState(new Set());
 
@@ -150,7 +151,7 @@ const SearchResults = () => {
         }),
       );
 
-      navigate(`/search-results?${searchParams.toString()}`);
+      navigate(`/search?${searchParams.toString()}`);
     } catch (error) {
       console.error("Search failed:", error);
     }
@@ -256,6 +257,11 @@ const SearchResults = () => {
     airports.find((a) => a.id === searchData.departureAirportId);
   const getArrivalAirport = () =>
     airports.find((a) => a.id === searchData.arrivalAirportId);
+  const visibleFlights = searchData.directOnly
+    ? searchResults?.content?.filter(
+        (flight) => (flight.totalStops ?? flight.stops ?? 0) === 0,
+      )
+    : searchResults?.content;
 
   if (searchLoading) {
     return <SearchingFlights />;
@@ -421,7 +427,7 @@ const SearchResults = () => {
                   sortOrder={sortOrder}
                   onSortChange={setSortBy}
                   onSortOrderChange={setSortOrder}
-                  resultsCount={searchResults?.content?.length}
+                  resultsCount={visibleFlights?.length}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                   className="animate-slide-in-top bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg"
@@ -432,7 +438,7 @@ const SearchResults = () => {
             {/* Flight Results with enhanced cards */}
             {isLoading ? (
               <SearchResultsLoading count={5} />
-            ) : searchResults?.content?.length === 0 ? (
+            ) : visibleFlights?.length === 0 ? (
               <NoResultsFound onClearFilters={clearAllFilters} />
             ) : (
               <div
@@ -442,7 +448,7 @@ const SearchResults = () => {
                     : "space-y-4",
                 )}
               >
-                {searchResults?.content?.map((flight, index) => (
+                {visibleFlights?.map((flight, index) => (
                   <div
                     key={flight.id}
                     className="animate-fade-in relative group"
@@ -466,7 +472,7 @@ const SearchResults = () => {
             )}
 
             {/* Load More Button - for pagination simulation */}
-            {searchResults?.content?.length > 0 && !isLoading && (
+            {visibleFlights?.length > 0 && !isLoading && (
               <div className="flex justify-center pt-8">
                 <div className="relative group">
                   <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-300"></div>

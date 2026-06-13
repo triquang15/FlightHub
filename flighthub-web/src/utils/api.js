@@ -20,8 +20,6 @@ export const AUTH_SESSION_EXPIRED_EVENT = "flighthub:auth-session-expired";
 
 const notifySessionExpired = (reason = "Session expired") => {
   clearSession();
-  isRefreshing = false;
-  processQueue(new Error(reason), null);
   window.dispatchEvent(
     new CustomEvent(AUTH_SESSION_EXPIRED_EVENT, {
       detail: { reason },
@@ -61,15 +59,35 @@ api.interceptors.request.use(
 // ============================
 // REFRESH CONTROL
 // ============================
-let isRefreshing = false;
-let queue = [];
+let refreshPromise = null;
 
-const processQueue = (error, token = null) => {
-  queue.forEach((p) => {
-    if (error) p.reject(error);
-    else p.resolve(token);
-  });
-  queue = [];
+export const refreshAccessToken = async () => {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) throw new Error("Missing refresh token");
+
+    const res = await axios.post(
+      `${BASE_URL}/api/auth/refresh`,
+      { refreshToken },
+      { headers: { "X-Device-Id": getDeviceId() } }
+    );
+
+    const authResponse = res.data.data;
+    updateAuthTokens({
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+    });
+
+    return authResponse.accessToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
 };
 
 // ============================
@@ -107,9 +125,7 @@ api.interceptors.response.use(
       const sessionInvalidated =
         normalizedMessage.includes("invalid token") ||
         normalizedMessage.includes("token invalidated") ||
-        normalizedMessage.includes("token revoked") ||
-        normalizedMessage.includes("token expired") ||
-        normalizedMessage.includes("jwt expired");
+        normalizedMessage.includes("token revoked");
 
       if (sessionInvalidated) {
         notifySessionExpired(message || "Token invalidated");
@@ -122,68 +138,19 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // ============================
-      // QUEUE WHEN REFRESHING
-      // ============================
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          queue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        const refreshToken = getRefreshToken();
-
-        // ❗ nếu không có refresh token → logout luôn
-        if (!refreshToken) {
-          notifySessionExpired("Missing refresh token");
-          return Promise.reject(error);
-        }
-
-        const res = await axios.post(
-          `${BASE_URL}/api/auth/refresh`,
-          { refreshToken },
-          {
-            headers: {
-              "X-Device-Id": getDeviceId(),
-            },
-          }
-        );
-
-        const authResponse = res.data.data;
-        const newAccessToken = authResponse.accessToken;
-        const newRefreshToken = authResponse.refreshToken;
-
-        updateAuthTokens({
-          accessToken: newAccessToken,
-          refreshToken: newRefreshToken,
-        });
-
-        // release queue
-        processQueue(null, newAccessToken);
-
-        // retry request
+        const newAccessToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
         return api(originalRequest);
-
       } catch (err) {
-        processQueue(err, null);
-
         notifySessionExpired(
           err.response?.data?.message ||
             err.response?.data?.error ||
             "Refresh token expired"
         );
         return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
       }
     }
 

@@ -566,10 +566,13 @@ services:
         condition: service_healthy
       airlinecoredb:
         condition: service_healthy
+      flightopsdb:
+        condition: service_healthy
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       SEED_BASE_DATA: "true"
+      SEED_FLIGHT_OPS: "true"
     volumes:
       - ../Documentation/sql:/seed-sql:ro
       - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro
@@ -592,6 +595,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       SEED_BASE_DATA: "false"
+      SEED_FLIGHT_OPS: "false"
     volumes:
       - ../Documentation/sql:/seed-sql:ro
       - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro

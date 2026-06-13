@@ -311,7 +311,8 @@ Run the seed script when:
 
 - The databases are newly created and do not contain demo data.
 - Production-style demo data needs to be reset or updated.
-- Users, cities, airports, airlines, or aircraft records are missing.
+- Users, cities, airports, airlines, aircraft, flights, schedules, or flight
+  instance records are missing.
 
 The seed scripts are safe to run repeatedly because they use upsert and
 conflict-handling logic.
@@ -323,8 +324,8 @@ tables.
 
 1. Start the databases, Redis, and Kafka.
 2. Start `service-registry` and `config-server`.
-3. Start at least `user-service`, `location-service`, and
-   `airline-core-service`.
+3. Start at least `user-service`, `location-service`, `airline-core-service`,
+   and `flight-ops-service`.
 4. Wait for the services to start successfully so Hibernate can create the
    schemas.
 5. Run the seed script.
@@ -341,6 +342,9 @@ The script performs the following actions:
 2. Seeds cities and airports into `airline_location_db`.
 3. Resolves user, city, and airport IDs across service databases.
 4. Seeds airlines and aircraft into `airline_core_db`.
+5. Resolves airline, aircraft, and airport IDs across service databases.
+6. Seeds flights, recurring schedules, operating days, and the next 30 days of
+   flight instances into `airline_flight_db`.
 
 Do not run this file directly:
 
@@ -348,9 +352,9 @@ Do not run this file directly:
 microservices/Documentation/sql/2026-06-05-seed-production-airline-core.sql
 ```
 
-The airline-core seed file requires `flighthub_seed.*` session settings created
-by `init-production-demo-data.sh`. Running it directly in a SQL editor causes a
-missing seed context error.
+The airline-core and flight-ops seed files require `flighthub_seed.*` session
+settings created by `init-production-demo-data.sh`. Running either file
+directly in a SQL editor causes a missing seed context error.
 
 ### Run the Seed as a Docker One-Shot Job
 
@@ -484,6 +488,17 @@ Cities: 84
 Airports: 67
 Airlines: 10
 Aircrafts: 12
+Flights: 12
+Flight schedules: 12
+Flight instances: varies by operating day; approximately 230 for the next 30 days
+```
+
+Flights, schedules, and instances:
+
+```bash
+docker compose -f microservices/docker-compose/docker-compose.yml exec -T flightopsdb \
+  psql -U postgres -d airline_flight_db \
+  -c 'SELECT (SELECT COUNT(*) FROM flights) AS flights, (SELECT COUNT(*) FROM flight_schedules) AS schedules, (SELECT COUNT(*) FROM flight_instances) AS instances;'
 ```
 
 ## 7. Stop the System

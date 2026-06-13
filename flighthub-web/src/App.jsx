@@ -41,6 +41,7 @@ import { clearUserState } from "./Redux/user/userSlice.js";
 
 import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
+import SessionExpiryWarning from "./components/auth/SessionExpiryWarning.jsx";
 
 // ============================
 // ROLE REDIRECT
@@ -112,6 +113,7 @@ function App() {
       <Router>
         <div className="min-h-screen bg-background transition-colors">
           <SessionExpiredHandler />
+          <SessionExpiryWarning />
           <Toaster />
           <GlobalThemeControl />
 

@@ -2,6 +2,13 @@ import { jwtDecode } from "jwt-decode";
 
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
+export const AUTH_TOKENS_CHANGED_EVENT = "flighthub:auth-tokens-changed";
+
+const notifyAuthTokensChanged = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_TOKENS_CHANGED_EVENT));
+  }
+};
 
 const getStorageWithToken = (key) => {
   if (localStorage.getItem(key)) return localStorage;
@@ -45,6 +52,8 @@ export const setAuthTokens = ({ accessToken, refreshToken }, rememberMe = true) 
   if (refreshToken) {
     targetStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }
+
+  notifyAuthTokensChanged();
 };
 
 export const updateAuthTokens = ({ accessToken, refreshToken }) => {
@@ -57,6 +66,8 @@ export const updateAuthTokens = ({ accessToken, refreshToken }) => {
   if (refreshToken) {
     targetStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }
+
+  notifyAuthTokensChanged();
 };
 
 export const clearAuthTokens = () => {
@@ -64,4 +75,5 @@ export const clearAuthTokens = () => {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  notifyAuthTokensChanged();
 };
