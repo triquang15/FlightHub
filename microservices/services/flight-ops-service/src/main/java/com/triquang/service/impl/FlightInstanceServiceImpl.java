@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.triquang.client.AirlineClient;
 import com.triquang.client.LocationClient;
 import com.triquang.enums.ErrorCode;
+import com.triquang.enums.FlightStatus;
 import com.triquang.event.FlightInstanceEventProducer;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.FlightInstanceMapper;
@@ -30,6 +31,7 @@ import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.repository.FlightInstanceRepository;
 import com.triquang.repository.FlightRepository;
 import com.triquang.service.FlightInstanceService;
+import com.triquang.service.FlightStatusTransitionPolicy;
 
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +54,7 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	private final AirlineClient airlineClient;
 	private final FlightInstanceEventProducer flightInstanceEventProducer;
 	private final LocationClient locationClient;
+	private final FlightStatusTransitionPolicy statusTransitionPolicy;
 
 	@Override
 	@Transactional
@@ -60,8 +63,16 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 		Long airlineId = getAirlineForUser(userId);
 
-		Flight flight = flightRepository.findById(request.getFlightId())
+		Flight flight = flightRepository.findByIdForUpdate(request.getFlightId())
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+		requireOwnership(flight, airlineId);
+		validateInstance(request, flight);
+
+		var existing = flightInstanceRepository.findByFlightIdAndDepartureDateTime(
+				flight.getId(), request.getDepartureDateTime());
+		if (existing.isPresent()) {
+			return getFlightInstance(existing.get());
+		}
 
 		AircraftResponse aircraft = getAircraftById(flight.getAircraftId());
 
@@ -79,8 +90,6 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 		flightInstanceEventProducer
 				.sendFlightInstanceCreated(FlightInstanceCreatedEvent.builder().flightInstanceId(flightInstance.getId())
 						.aircraftId(flight.getAircraftId()).flightId(flight.getId()).build());
-
-		System.out.println("Publish event for seat-service to create FlightInstanceCabins ----- ");
 
 		return getFlightInstance(instance);
 	}
@@ -126,9 +135,11 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 	@Override
 	@CacheEvict(cacheNames = "flightInstances", key = "#id")
-	public FlightInstanceResponse updateFlightInstance(Long id, FlightInstanceRequest request) throws BaseException {
+	public FlightInstanceResponse updateFlightInstance(Long userId, Long id, FlightInstanceRequest request) throws BaseException {
 		FlightInstance existing = flightInstanceRepository.findById(id)
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+		requireOwnership(existing.getFlight(), getAirlineForUser(userId));
+		validateInstance(request, existing.getFlight());
 
 		FlightInstanceMapper.updateEntity(request, existing);
 		return getFlightInstance(flightInstanceRepository.save(existing));
@@ -136,9 +147,30 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 	@Override
 	@CacheEvict(cacheNames = "flightInstances", key = "#id")
-	public void deleteFlightInstance(Long id) {
+	public FlightInstanceResponse changeStatus(Long userId, Long id, FlightStatus status) {
+		var instance = flightInstanceRepository.findById(id)
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+		requireOwnership(instance.getFlight(), getAirlineForUser(userId));
+		statusTransitionPolicy.validate(instance.getStatus(), status);
+		instance.setStatus(status);
+		if (status == FlightStatus.CANCELLED || status == FlightStatus.ARRIVED) {
+			instance.setIsActive(false);
+		}
+		return getFlightInstance(flightInstanceRepository.save(instance));
+	}
+
+	@Override
+	@CacheEvict(cacheNames = "flightInstances", key = "#id")
+	public void deleteFlightInstance(Long userId, Long id) {
 		var fi = flightInstanceRepository.findById(id)
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
+		requireOwnership(fi.getFlight(), getAirlineForUser(userId));
+		if (fi.getStatus() != FlightStatus.SCHEDULED) {
+			throw new BaseException(ErrorCode.INVALID_FLIGHT_STATUS_TRANSITION);
+		}
+		if (!fi.getAvailableSeats().equals(fi.getTotalSeats())) {
+			throw new BaseException(ErrorCode.FLIGHT_INSTANCE_HAS_BOOKINGS);
+		}
 		flightInstanceRepository.delete(fi);
 	}
 
@@ -201,5 +233,24 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	            departureAirport,
 	            arrivalAirport
 	    );
+	}
+
+	private void requireOwnership(Flight flight, Long airlineId) {
+		if (!flight.getAirlineId().equals(airlineId)) {
+			throw new BaseException(ErrorCode.FLIGHT_RESOURCE_NOT_OWNED);
+		}
+	}
+
+	private void validateInstance(FlightInstanceRequest request, Flight flight) {
+		Long departureId = request.getDepartureAirportId() != null
+				? request.getDepartureAirportId() : flight.getDepartureAirportId();
+		Long arrivalId = request.getArrivalAirportId() != null
+				? request.getArrivalAirportId() : flight.getArrivalAirportId();
+		if (!departureId.equals(flight.getDepartureAirportId())
+				|| !arrivalId.equals(flight.getArrivalAirportId())
+				|| departureId.equals(arrivalId)
+				|| !request.getArrivalDateTime().isAfter(request.getDepartureDateTime())) {
+			throw new BaseException(ErrorCode.INVALID_INPUT);
+		}
 	}
 }

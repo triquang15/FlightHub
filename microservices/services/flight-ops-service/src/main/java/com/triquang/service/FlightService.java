@@ -23,11 +23,11 @@ public interface FlightService {
 	Page<FlightResponse> getFlightsByAirline(Long userId, Long departureAirportId, Long arrivalAirportId,
 			Pageable pageable);
 
-	FlightResponse updateFlight(Long id, FlightRequest request);
+	FlightResponse updateFlight(Long userId, Long id, FlightRequest request);
 
-	FlightResponse changeStatus(Long id, FlightStatus status);
+	FlightResponse changeStatus(Long userId, Long id, FlightStatus status);
 
-	void deleteFlight(Long id);
+	void deleteFlight(Long userId, Long id);
 
 	Map<Long, FlightResponse> getFlightsByIds(List<Long> ids);
 }

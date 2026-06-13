@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import com.triquang.enums.FlightStatus;
 import com.triquang.model.Flight;
@@ -16,6 +18,10 @@ import com.triquang.model.Flight;
 public interface FlightRepository extends JpaRepository<Flight, Long> {
 
     Optional<Flight> findByFlightNumber(String flightNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT f FROM Flight f WHERE f.id = :id")
+    Optional<Flight> findByIdForUpdate(@Param("id") Long id);
     boolean existsByFlightNumber(String flightNumber);
     boolean existsByFlightNumberAndIdNot(String flightNumber, Long id);
 

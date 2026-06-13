@@ -5,7 +5,8 @@ import {
   getAllFlightInstances,
  
   updateFlightInstance,
-  deleteFlightInstance
+  deleteFlightInstance,
+  changeFlightInstanceStatus,
 } from "./flightInstanceThunk.js";
 
 const initialState = {
@@ -150,6 +151,26 @@ const flightInstanceSlice = createSlice({
       })
       .addCase(updateFlightInstance.rejected, (state, action) => {
         state.loading = false;
+        state.updateLoading = false;
+        state.error = action.payload;
+      });
+
+    builder
+      .addCase(changeFlightInstanceStatus.pending, (state) => {
+        state.updateLoading = true;
+        state.error = null;
+      })
+      .addCase(changeFlightInstanceStatus.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        state.flightInstance = action.payload;
+        const index = state.flightInstances.findIndex((item) => item.id === action.payload.id);
+        if (index !== -1) state.flightInstances[index] = action.payload;
+        const pageIndex = state.paginatedFlightInstances.content.findIndex(
+          (item) => item.id === action.payload.id,
+        );
+        if (pageIndex !== -1) state.paginatedFlightInstances.content[pageIndex] = action.payload;
+      })
+      .addCase(changeFlightInstanceStatus.rejected, (state, action) => {
         state.updateLoading = false;
         state.error = action.payload;
       });

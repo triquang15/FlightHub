@@ -80,6 +80,11 @@ public enum ErrorCode {
     FLIGHT_NOT_FOUND("FLT_001", "Flight not found", HttpStatus.NOT_FOUND),
     FLIGHT_ALREADY_EXISTS("FLT_002", "Flight already exists", HttpStatus.BAD_REQUEST),
     FLIGHT_INSTANCE_NOT_FOUND("FLT_003", "Flight instance not found", HttpStatus.NOT_FOUND),
+    FLIGHT_SCHEDULE_NOT_FOUND("FLT_004", "Flight schedule not found", HttpStatus.NOT_FOUND),
+    INVALID_FLIGHT_ROUTE("FLT_005", "Departure and arrival airports must be different", HttpStatus.BAD_REQUEST),
+    INVALID_FLIGHT_STATUS_TRANSITION("FLT_006", "Invalid flight status transition", HttpStatus.CONFLICT),
+    FLIGHT_RESOURCE_NOT_OWNED("FLT_007", "Flight resource does not belong to this airline", HttpStatus.FORBIDDEN),
+    FLIGHT_INSTANCE_HAS_BOOKINGS("FLT_008", "Flight instance with bookings cannot be deleted", HttpStatus.CONFLICT),
 
     // =========================
     // EXTERNAL SERVICE (Feign)

@@ -64,4 +64,6 @@ Long countByFlightIdAndStatus(Long flightId, FlightStatus status);
 
 @Query("SELECT fi FROM FlightInstance fi JOIN FETCH fi.flight WHERE fi.id IN :ids")
 List<FlightInstance> findAllByIdInWithFlight(@Param("ids") Collection<Long> ids);
+
+Optional<FlightInstance> findByFlightIdAndDepartureDateTime(Long flightId, LocalDateTime departureDateTime);
 }

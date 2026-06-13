@@ -48,6 +48,7 @@ import {
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 import { daysOfWeek } from "./daysOfWeek";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
+import { ALL_OPERATING_DAYS } from "@/utils/flightOps";
 
 
 // Validation schema
@@ -69,15 +70,7 @@ const flightScheduleSchema = Yup.object().shape({
   recurrenceType: Yup.string()
     .required("Recurrence type is required")
     .oneOf(["DAILY", "WEEKLY", "CUSTOM"], "Invalid recurrence type"),
-  operatingDays: Yup.array().when("recurrenceType", {
-    is: "WEEKLY",
-    then: (schema) =>
-      schema.min(
-        1,
-        "At least one operating day is required for weekly schedule"
-      ),
-    otherwise: (schema) => schema,
-  }),
+  operatingDays: Yup.array().min(1, "Select at least one operating day"),
   startDate: Yup.date()
     .required("Start date is required")
     .min(new Date(), "Start date cannot be in the past"),
@@ -147,9 +140,17 @@ const FlightScheduleForm = () => {
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       const formData = {
-        ...values,
-        totalSeats: parseInt(values.totalSeats),
-        availableSeats: parseInt(values.availableSeats),
+        flightId: Number(values.flightId),
+        departureTime: values.departureTime,
+        arrivalTime: values.arrivalTime,
+        recurrenceType: values.recurrenceType,
+        operatingDays:
+          values.recurrenceType === "DAILY"
+            ? ALL_OPERATING_DAYS
+            : values.operatingDays,
+        isActive: values.isActive,
+        startDate: values.startDate,
+        endDate: values.endDate,
       };
 
       console.log("flight shedule form data ", formData)
@@ -384,8 +385,8 @@ const FlightScheduleForm = () => {
                         value={values.recurrenceType}
                         onValueChange={(value) => {
                           setFieldValue("recurrenceType", value);
-                          if (value !== "WEEKLY") {
-                            setFieldValue("operatingDays", []);
+                          if (value === "DAILY") {
+                            setFieldValue("operatingDays", ALL_OPERATING_DAYS);
                           }
                         }}
                       >
@@ -406,7 +407,7 @@ const FlightScheduleForm = () => {
                     </div>
 
                     {/* Operating Days (for Weekly) */}
-                    {values.recurrenceType === "WEEKLY" && (
+                    {values.recurrenceType !== "DAILY" && (
                       <div>
                         <Label>Operating Days *</Label>
                         <div className="mt-2 grid grid-cols-4 sm:grid-cols-7 gap-2">
@@ -482,7 +483,7 @@ const FlightScheduleForm = () => {
                                   selected={values.startDate ? new Date(values.startDate) : undefined}
                                   onSelect={(date) => {
                                     if (date) {
-                                      setFieldValue("startDate", date.toISOString().split('T')[0]);
+                                      setFieldValue("startDate", format(date, "yyyy-MM-dd"));
                                     }
                                   }}
                                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
@@ -530,7 +531,7 @@ const FlightScheduleForm = () => {
                                   selected={values.endDate ? new Date(values.endDate) : undefined}
                                   onSelect={(date) => {
                                     if (date) {
-                                      setFieldValue("endDate", date.toISOString().split('T')[0]);
+                                      setFieldValue("endDate", format(date, "yyyy-MM-dd"));
                                     }
                                   }}
                                   disabled={(date) => {

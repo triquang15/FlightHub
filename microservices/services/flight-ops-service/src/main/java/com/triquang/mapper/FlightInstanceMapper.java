@@ -26,7 +26,7 @@ public class FlightInstanceMapper {
                 .totalSeats(request.getTotalSeats())
                 .availableSeats(request.getAvailableSeats() != null ?
                         request.getAvailableSeats() : request.getTotalSeats())
-                .status(request.getStatus() != null ? request.getStatus() : FlightStatus.SCHEDULED)
+                .status(FlightStatus.SCHEDULED)
                 .minAdvanceBookingDays(request.getMinAdvanceBookingDays())
                 .maxAdvanceBookingDays(request.getMaxAdvanceBookingDays())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
@@ -44,6 +44,7 @@ public class FlightInstanceMapper {
         return FlightInstanceResponse.builder()
                 .id(fi.getId())
                 .flightId(fi.getFlight() != null ? fi.getFlight().getId() : null)
+                .scheduleId(fi.getScheduleId())
                 .flightNumber(fi.getFlight() != null ? fi.getFlight().getFlightNumber() : null)
                 .aircraftId(fi.getFlight().getAircraftId())
                 .aircraftModal(aircraftResponse.getModel())
@@ -74,9 +75,6 @@ public class FlightInstanceMapper {
         if (request.getArrivalAirportId() != null) existing.setArrivalAirportId(request.getArrivalAirportId());
         if (request.getDepartureDateTime() != null) existing.setDepartureDateTime(request.getDepartureDateTime());
         if (request.getArrivalDateTime() != null) existing.setArrivalDateTime(request.getArrivalDateTime());
-        if (request.getTotalSeats() != null) existing.setTotalSeats(request.getTotalSeats());
-        if (request.getAvailableSeats() != null) existing.setAvailableSeats(request.getAvailableSeats());
-        if (request.getStatus() != null) existing.setStatus(request.getStatus());
         if (request.getMinAdvanceBookingDays() != null) existing.setMinAdvanceBookingDays(request.getMinAdvanceBookingDays());
         if (request.getMaxAdvanceBookingDays() != null) existing.setMaxAdvanceBookingDays(request.getMaxAdvanceBookingDays());
         if (request.getIsActive() != null) existing.setIsActive(request.getIsActive());

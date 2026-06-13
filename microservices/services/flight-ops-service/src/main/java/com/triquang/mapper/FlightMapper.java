@@ -13,11 +13,11 @@ public class FlightMapper {
     public static Flight toEntity(FlightRequest request) {
         if (request == null) return null;
         return Flight.builder()
-                .flightNumber(request.getFlightNumber())
+                .flightNumber(request.getFlightNumber().trim().toUpperCase())
                 .aircraftId(request.getAircraftId())
                 .departureAirportId(request.getDepartureAirportId())
                 .arrivalAirportId(request.getArrivalAirportId())
-                .status(request.getStatus() != null ? request.getStatus() : FlightStatus.SCHEDULED)
+                .status(FlightStatus.SCHEDULED)
                 .build();
     }
 
@@ -42,11 +42,9 @@ public class FlightMapper {
 
     public static void updateEntity(FlightRequest request, Flight existing) {
         if (request == null || existing == null) return;
-        if (request.getFlightNumber() != null) existing.setFlightNumber(request.getFlightNumber());
-        if (request.getAirlineId() != null) existing.setAirlineId(request.getAirlineId());
+        if (request.getFlightNumber() != null) existing.setFlightNumber(request.getFlightNumber().trim().toUpperCase());
         if (request.getAircraftId() != null) existing.setAircraftId(request.getAircraftId());
         if (request.getDepartureAirportId() != null) existing.setDepartureAirportId(request.getDepartureAirportId());
         if (request.getArrivalAirportId() != null) existing.setArrivalAirportId(request.getArrivalAirportId());
-        if (request.getStatus() != null) existing.setStatus(request.getStatus());
     }
 }

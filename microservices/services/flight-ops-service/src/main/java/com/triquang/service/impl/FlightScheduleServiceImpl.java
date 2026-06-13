@@ -1,8 +1,7 @@
 package com.triquang.service.impl;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +24,7 @@ import com.triquang.repository.FlightScheduleRepository;
 import com.triquang.service.AirlineIntegrationService;
 import com.triquang.service.FlightInstanceService;
 import com.triquang.service.FlightScheduleService;
+import com.triquang.service.ScheduleDateTimePolicy;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +38,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	private final FlightInstanceService flightInstanceService;
 	private final AirlineIntegrationService airlineIntegrationService;
 	private final LocationClient locationClient;
+	private final ScheduleDateTimePolicy dateTimePolicy;
 
 	// ---------- CREATE ----------
 	@Override
@@ -45,22 +46,25 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 
 		Flight flight = flightRepository.findById(request.getFlightId())
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
-
-		if (request.getEndDate().isBefore(request.getStartDate())) {
-			throw new BaseException(ErrorCode.INVALID_INPUT);
-		}
+		requireOwnership(userId, flight);
+		validateSchedule(request, flight);
 
 		FlightSchedule schedule = FlightScheduleMapper.toEntity(request, flight);
 		FlightSchedule savedSchedule = flightScheduleRepository.save(schedule);
 
 		AircraftResponse aircraft = airlineIntegrationService.getAircraftById(flight.getAircraftId());
 
-		List<DayOfWeek> operatingDays = schedule.getOperatingDays();
-		LocalDate startDate = schedule.getStartDate();
-		LocalDate endDate = schedule.getEndDate();
+		generateInstances(userId, savedSchedule, aircraft);
 
+		return getFlightScheduleResponse(savedSchedule);
+	}
+
+	private void generateInstances(Long userId, FlightSchedule schedule, AircraftResponse aircraft) {
+		Flight flight = schedule.getFlight();
+		ZoneId departureZone = ZoneId.of(locationClient.getAirportById(schedule.getDepartureAirportId()).getTimeZone());
+		ZoneId arrivalZone = ZoneId.of(locationClient.getAirportById(schedule.getArrivalAirportId()).getTimeZone());
 		var flightInstanceRequest = FlightInstanceRequest.builder()
-				.scheduleId(savedSchedule.getId())
+				.scheduleId(schedule.getId())
 				.flightId(flight.getId())
 				.arrivalAirportId(flight.getArrivalAirportId())
 				.departureAirportId(flight.getDepartureAirportId())
@@ -68,19 +72,18 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 				.status(FlightStatus.SCHEDULED)
 				.build();
 
-		for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-			if (operatingDays.contains(date.getDayOfWeek())) {
+		for (LocalDate date = schedule.getStartDate(); !date.isAfter(schedule.getEndDate()); date = date.plusDays(1)) {
+			if (schedule.getOperatingDays().contains(date.getDayOfWeek())) {
 				flightInstanceRequest.setDepartureDateTime(
-						LocalDateTime.of(date, schedule.getDepartureTime()));
+						dateTimePolicy.departure(date, schedule.getDepartureTime()));
 
 				flightInstanceRequest.setArrivalDateTime(
-						LocalDateTime.of(date, schedule.getArrivalTime()));
+						dateTimePolicy.arrival(date, schedule.getDepartureTime(), departureZone,
+								schedule.getArrivalTime(), arrivalZone));
 
 				flightInstanceService.createFlightInstanceWithCabins(userId, flightInstanceRequest);
 			}
 		}
-
-		return getFlightScheduleResponse(savedSchedule);
 	}
 
 	// ---------- GET BY ID ----------
@@ -88,7 +91,7 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 	public FlightScheduleResponse getFlightScheduleById(Long id) {
 
 		var schedule = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
 
 		return getFlightScheduleResponse(schedule);
 	}
@@ -115,26 +118,63 @@ public class FlightScheduleServiceImpl implements FlightScheduleService {
 
 	// ---------- UPDATE ----------
 	@Override
-	public FlightScheduleResponse updateFlightSchedule(Long id, FlightScheduleRequest request) {
+	public FlightScheduleResponse updateFlightSchedule(Long userId, Long id, FlightScheduleRequest request) {
 
 		var existing = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
+		requireOwnership(userId, existing.getFlight());
+		validateSchedule(request, existing.getFlight());
 
 		FlightScheduleMapper.updateEntity(request, existing);
 
 		FlightSchedule saved = flightScheduleRepository.save(existing);
+		if (Boolean.TRUE.equals(saved.getIsActive())) {
+			generateInstances(userId, saved, airlineIntegrationService.getAircraftById(saved.getFlight().getAircraftId()));
+		}
 
 		return getFlightScheduleResponse(saved);
 	}
 
 	// ---------- DELETE ----------
 	@Override
-	public void deleteFlightSchedule(Long id) {
+	public void deleteFlightSchedule(Long userId, Long id) {
 
 		FlightSchedule schedule = flightScheduleRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
+		requireOwnership(userId, schedule.getFlight());
 
-		flightScheduleRepository.delete(schedule);
+		schedule.setIsActive(false);
+		flightScheduleRepository.save(schedule);
+	}
+
+	private void requireOwnership(Long userId, Flight flight) {
+		if (!flight.getAirlineId().equals(airlineIntegrationService.getAirlineIdForUser(userId))) {
+			throw new BaseException(ErrorCode.FLIGHT_RESOURCE_NOT_OWNED);
+		}
+	}
+
+	private void validateSchedule(FlightScheduleRequest request, Flight flight) {
+		if (request.getEndDate().isBefore(request.getStartDate())
+				|| request.getOperatingDays() == null || request.getOperatingDays().isEmpty()) {
+			throw new BaseException(ErrorCode.INVALID_INPUT);
+		}
+		Long departureId = request.getDepartureAirportId() != null
+				? request.getDepartureAirportId() : flight.getDepartureAirportId();
+		Long arrivalId = request.getArrivalAirportId() != null
+				? request.getArrivalAirportId() : flight.getArrivalAirportId();
+		if (!departureId.equals(flight.getDepartureAirportId()) || !arrivalId.equals(flight.getArrivalAirportId())) {
+			throw new BaseException(ErrorCode.INVALID_FLIGHT_ROUTE);
+		}
+		validateTimeZone(locationClient.getAirportById(departureId).getTimeZone());
+		validateTimeZone(locationClient.getAirportById(arrivalId).getTimeZone());
+	}
+
+	private void validateTimeZone(String timeZone) {
+		try {
+			ZoneId.of(timeZone);
+		} catch (Exception e) {
+			throw new BaseException(ErrorCode.INVALID_TIMEZONE);
+		}
 	}
 
 	// ---------- RESPONSE MAPPER ----------

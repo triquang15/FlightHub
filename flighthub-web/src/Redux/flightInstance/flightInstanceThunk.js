@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
+import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
 
 const API_URL = "/api/flight-instances";
 
@@ -10,7 +11,7 @@ export const createFlightInstance = createAsyncThunk(
     try {
       const res = await api.post(API_URL, data);
       console.log("✅ createFlightInstance success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ createFlightInstance error:",
@@ -31,7 +32,7 @@ export const getFlightInstanceById = createAsyncThunk(
       const res = await api.get(`${API_URL}/${id}`, {
         });
       console.log("✅ getFlightInstanceById success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ getFlightInstanceById error:",
@@ -74,7 +75,7 @@ export const getAllFlightInstances = createAsyncThunk(
         params: queryParams,
         });
       console.log("✅ getAllFlightInstances success:", res.data);
-      return res.data; // Returns Page object with content, totalPages, totalElements, etc.
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ getAllFlightInstances error:",
@@ -95,7 +96,7 @@ export const updateFlightInstance = createAsyncThunk(
       const res = await api.put(`${API_URL}/${id}`, data, {
         });
       console.log("✅ updateFlightInstance success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ updateFlightInstance error:",
@@ -108,6 +109,17 @@ export const updateFlightInstance = createAsyncThunk(
   },
 );
 
+export const changeFlightInstanceStatus = createAsyncThunk(
+  "flightInstance/changeStatus",
+  async ({ id, status }, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`${API_URL}/${id}/status`, null, { params: { status } });
+      return unwrapApiData(res);
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to change flight status"));
+    }
+  },
+);
 
 
 // ✅ Delete Flight Instance

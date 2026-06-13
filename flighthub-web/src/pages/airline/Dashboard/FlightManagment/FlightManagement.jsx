@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import FlightCard from './FlightCard';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { toast } from "sonner";
 
 const FlightManagement = () => {
   const dispatch = useDispatch();
@@ -29,10 +30,9 @@ const FlightManagement = () => {
       await dispatch(deleteFlight(flightId)).unwrap();
       // Refresh flights list
       dispatch(getFlightsByAirline());
-      console.log('Flight deleted successfully:', flightId);
+      toast.success("Flight cancelled. Operational history was preserved.");
     } catch (error) {
-      console.error('Error deleting flight:', error);
-      // TODO: Show error notification
+      toast.error(error || "Unable to cancel flight");
     }
   };
 

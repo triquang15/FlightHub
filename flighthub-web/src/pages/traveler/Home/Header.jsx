@@ -2,8 +2,6 @@ import * as React from "react"
 import {
   BookOpen,
   ChevronDown,
-  Clock3,
-  Loader2,
   LogOut,
   Menu,
   Plane,
@@ -25,9 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { toast } from "sonner"
-import { refreshAccessToken } from "@/utils/api"
-import { useSessionExpiry } from "@/components/auth/useSessionExpiry"
+import SessionCountdownControl from "@/components/auth/SessionCountdownControl"
 
 const getInitials = (name) => {
   if (!name) return "U"
@@ -45,8 +41,6 @@ const Header = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { isAuthenticated, user } = useSelector((state) => state.auth)
-  const { formattedRemainingTime, isExpiringSoon, remainingTime } = useSessionExpiry()
-  const [isExtendingSession, setIsExtendingSession] = React.useState(false)
 
   const navigationLinks = [
     {
@@ -73,19 +67,6 @@ const Header = () => {
     } finally {
       setIsMobileMenuOpen(false)
       navigate("/")
-    }
-  }
-
-  const handleExtendSession = async () => {
-    try {
-      setIsExtendingSession(true)
-      await refreshAccessToken()
-      toast.success("Session extended")
-    } catch (error) {
-      console.error("Failed to extend session:", error)
-      toast.error("Could not extend your session")
-    } finally {
-      setIsExtendingSession(false)
     }
   }
 
@@ -120,20 +101,7 @@ const Header = () => {
           <div className="hidden items-center gap-2 md:flex">
             {isAuthenticated && user ? (
               <>
-                <Button
-                  variant="outline"
-                  onClick={handleExtendSession}
-                  disabled={isExtendingSession || remainingTime === null}
-                  title="Extend your signed-in session"
-                  className={cn(
-                    "h-10 rounded-full px-3 font-mono text-xs tabular-nums",
-                    isExpiringSoon && "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
-                  )}
-                >
-                  {isExtendingSession ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Clock3 className="mr-1.5 h-3.5 w-3.5" />}
-                  {formattedRemainingTime}
-                  <span className="ml-1 hidden font-sans font-medium lg:inline">Extend</span>
-                </Button>
+                <SessionCountdownControl className="[&>span]:hidden lg:[&>span]:inline" />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-11 max-w-56 justify-start gap-2 rounded-full px-2 pr-3">
@@ -202,18 +170,7 @@ const Header = () => {
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleExtendSession}
-                  disabled={isExtendingSession || remainingTime === null}
-                  className={cn("h-9 w-full justify-between", isExpiringSoon && "border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-300")}
-                >
-                  <span className="flex items-center gap-2 text-xs font-medium">
-                    {isExtendingSession ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock3 className="h-3.5 w-3.5" />}
-                    Session remaining
-                  </span>
-                  <span className="font-mono text-xs font-bold tabular-nums">{formattedRemainingTime} · Extend</span>
-                </Button>
+                <SessionCountdownControl className="h-9 w-full justify-center" />
               </div>
             )}
 

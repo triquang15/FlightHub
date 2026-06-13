@@ -113,6 +113,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/booking-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/booking-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("booking-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("flight-ops-openapi-docs")
+                        .route(RequestPredicates.path("/docs/flight-ops-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/flight-ops-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("flight-ops-service"))
                         .build());
     }
 
@@ -171,6 +176,29 @@ public class RouteConfig {
     }
 
     @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> flightMutationRoutes() {
+        return routeWithCB("flight-mutations", "flight-ops-service", "flight-cb", "forward:/fallback/flight")
+                .route(RequestPredicates.POST("/api/flights"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flights/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flights/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/flights/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flights/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-schedules"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flight-schedules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flight-schedules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-instances"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flight-instances/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/flight-instances/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flight-instances/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     public RouterFunction<ServerResponse> flightRoutes() {
         return routeWithCB("flight", "flight-ops-service", "flight-cb", "forward:/fallback/flight")
                 .route(RequestPredicates.path("/api/flights/**"), HandlerFunctions.http())
@@ -319,4 +347,5 @@ public class RouteConfig {
 
         return request;
     }
+
 }

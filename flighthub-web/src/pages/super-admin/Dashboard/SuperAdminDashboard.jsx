@@ -20,6 +20,7 @@ import {
 } from "../utils/routingUtils";
 import { SIDEBAR_COLLAPSE_KEY } from "../constants";
 import api from "@/utils/api";
+import SessionCountdownControl from "@/components/auth/SessionCountdownControl";
 
 const emptyPlatformStats = {
   loading: true,
@@ -191,6 +192,7 @@ const SuperAdminDashboard = () => {
                 </p>
               </div>
               <div className="flex items-center gap-4">
+                <SessionCountdownControl className="shrink-0" />
                 <Button variant="outline" className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
                   System Alerts

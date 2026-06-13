@@ -25,8 +25,6 @@ import java.util.Set;
  *   <li>Departure date range (startOfDay … endOfDay)</li>
  *   <li>Total available seats &ge; requested passengers (general guard)</li>
  *   <li>Airline IDs (pre-resolved from IATA codes / alliance in the service layer)</li>
- *   <li>Departure / arrival time-range buckets (MORNING, AFTERNOON, EVENING, NIGHT)</li>
- *   <li>Maximum flight duration in minutes</li>
  * </ul>
  *
  * <h3>What this class does NOT handle</h3>
@@ -37,9 +35,8 @@ import java.util.Set;
  *       seat-service; the {@code availableSeats} guard here is aggregate.</li>
  * </ul>
  *
- * <p><b>DB assumption:</b> {@code TIMESTAMPDIFF} and {@code HOUR} are MySQL functions.
- * For PostgreSQL use {@code EXTRACT(EPOCH FROM age(...))/60} and
- * {@code EXTRACT(HOUR FROM ...)}.
+ * Time-bucket and duration filters are intentionally handled in the service layer
+ * so this specification remains portable across PostgreSQL and H2.
  */
 public class FlightInstanceSpecification {
 
@@ -111,68 +108,9 @@ public class FlightInstanceSpecification {
                 predicates.add(root.get("airlineId").in(request.getAirlines()));
             }
 
-            // 9. Departure time-range bucket
-            if (isFilterableTimeRange(request.getDepartureTimeRange())) {
-                applyTimeRangePredicate(predicates, root, cb,
-                        "departureDateTime", request.getDepartureTimeRange());
-            }
-
-            // 10. Arrival time-range bucket
-            if (isFilterableTimeRange(request.getArrivalTimeRange())) {
-                applyTimeRangePredicate(predicates, root, cb,
-                        "arrivalDateTime", request.getArrivalTimeRange());
-            }
-
-            // 11. Maximum flight duration in minutes (MySQL TIMESTAMPDIFF)
-            if (request.getMaxDuration() != null) {
-                Expression<Integer> durationMinutes = cb.function(
-                        "TIMESTAMPDIFF",
-                        Integer.class,
-                        cb.literal("MINUTE"),
-                        root.get("departureDateTime"),
-                        root.get("arrivalDateTime")
-                );
-                predicates.add(cb.lessThanOrEqualTo(durationMinutes, request.getMaxDuration()));
-            }
-
             query.distinct(true);
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
-
-    private static boolean isFilterableTimeRange(String range) {
-        return range != null && !range.isBlank() && !range.equalsIgnoreCase("any");
-    }
-
-    /**
-     * Restricts the hour-of-day of a datetime column to a named bucket.
-     *
-     * <pre>
-     * morning   →  06:00 – 11:59
-     * afternoon →  12:00 – 17:59
-     * evening   →  18:00 – 20:59
-     * night     →  21:00 – 05:59
-     * </pre>
-     */
-    private static void applyTimeRangePredicate(
-            List<Predicate> predicates,
-            Root<FlightInstance> root,
-            CriteriaBuilder cb,
-            String dateTimeField,
-            String timeRange) {
-
-        Expression<Integer> hour = cb.function("HOUR", Integer.class, root.get(dateTimeField));
-
-        switch (timeRange.toLowerCase()) {
-            case "morning"   -> predicates.add(cb.between(hour, 6,  11));
-            case "afternoon" -> predicates.add(cb.between(hour, 12, 17));
-            case "evening"   -> predicates.add(cb.between(hour, 18, 20));
-            case "night"     -> predicates.add(cb.or(
-                    cb.greaterThanOrEqualTo(hour, 21),
-                    cb.lessThanOrEqualTo(hour, 5)));
-            default          -> { /* unknown bucket → no-op */ }
-        }
-    }
 }

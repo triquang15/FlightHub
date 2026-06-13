@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.triquang.payload.request.FlightInstanceRequest;
 import com.triquang.payload.response.FlightInstanceResponse;
+import com.triquang.enums.FlightStatus;
 
 public interface FlightInstanceService {
 
@@ -21,9 +22,11 @@ public interface FlightInstanceService {
 	Page<FlightInstanceResponse> getByAirlineId(Long airlineId, Long departureAirportId, Long arrivalAirportId,
 			Long flightId, LocalDate onDate, Pageable pageable);
 
-	FlightInstanceResponse updateFlightInstance(Long id, FlightInstanceRequest request);
+	FlightInstanceResponse updateFlightInstance(Long userId, Long id, FlightInstanceRequest request);
 
-	void deleteFlightInstance(Long id);
+	FlightInstanceResponse changeStatus(Long userId, Long id, FlightStatus status);
+
+	void deleteFlightInstance(Long userId, Long id);
 
 	Map<Long, FlightInstanceResponse> getFlightInstancesByIds(List<Long> ids);
 }

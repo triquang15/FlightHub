@@ -8,6 +8,7 @@ import AirlineRoutes from "../routes/AirlineRoutes"
 import { useSelector, useDispatch } from "react-redux"
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk"
 import { getAirlineByAdmin } from "@/Redux/airline/airlineThunks"
+import SessionCountdownControl from "@/components/auth/SessionCountdownControl"
 
 const sectionMeta = {
   overview: ["Operations Overview", "Monitor your airline configuration and operational readiness"],
@@ -271,6 +272,7 @@ const AirlineDashboard = () => {
                 </div>
                 <p className="mt-1 text-muted-foreground">{sectionDescription}</p>
               </div>
+              <SessionCountdownControl className="shrink-0" />
             </div>
           </div>
         </div>

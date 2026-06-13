@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
+import { unwrapApiData } from "@/utils/flightOps";
 
 const API_URL = "/api/flight-schedules";
 
@@ -10,7 +11,7 @@ export const createFlightSchedule = createAsyncThunk(
     try {
       const res = await api.post(API_URL, data);
       console.log("✅ createFlightSchedule success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ createFlightSchedule error:", 
         err.response);
@@ -26,7 +27,7 @@ export const getFlightScheduleById = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightScheduleById success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getFlightScheduleById error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Flight schedule not found");
@@ -41,7 +42,7 @@ export const getAllFlightSchedules = createAsyncThunk(
     try {
       const res = await api.get(API_URL);
       console.log("✅ getAllFlightSchedules success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getAllFlightSchedules error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch flight schedules");
@@ -56,7 +57,7 @@ export const updateFlightSchedule = createAsyncThunk(
     try {
       const res = await api.put(`${API_URL}/${id}`, data);
       console.log("✅ updateFlightSchedule success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ updateFlightSchedule error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to update flight schedule");
@@ -78,4 +79,3 @@ export const deleteFlightSchedule = createAsyncThunk(
     }
   }
 );
-

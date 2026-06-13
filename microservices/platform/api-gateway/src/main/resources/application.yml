@@ -51,6 +51,8 @@ springdoc:
         url: /docs/airline-core-service/v3/api-docs
       - name: Booking Service
         url: /docs/booking-service/v3/api-docs
+      - name: Flight Operations Service
+        url: /docs/flight-ops-service/v3/api-docs
 
 # ================= RESILIENCE4J =================
 resilience4j:

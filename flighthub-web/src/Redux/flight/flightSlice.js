@@ -6,6 +6,7 @@ import {
   deleteFlight,
   getFlightsByAirline,
   getFlightsByAircraft,
+  changeFlightStatus,
 } from "./flightThunk.js";
 
 
@@ -95,6 +96,12 @@ const flightSlice = createSlice({
         state.error = action.payload;
       });
 
+    builder.addCase(changeFlightStatus.fulfilled, (state, action) => {
+      const index = state.flights.findIndex((flight) => flight.id === action.payload.id);
+      if (index !== -1) state.flights[index] = action.payload;
+      if (state.flight?.id === action.payload.id) state.flight = action.payload;
+    });
+
     // ---------- DELETE ----------
     builder
       .addCase(deleteFlight.pending, (state) => {
@@ -103,8 +110,9 @@ const flightSlice = createSlice({
       })
       .addCase(deleteFlight.fulfilled, (state, action) => {
         state.loading = false;
-        state.flights = state.flights.filter(f => f.id !== action.payload);
-        if (state.flight?.id === action.payload) state.flight = null;
+        const index = state.flights.findIndex((flight) => flight.id === action.payload);
+        if (index !== -1) state.flights[index].status = "CANCELLED";
+        if (state.flight?.id === action.payload) state.flight.status = "CANCELLED";
       })
       .addCase(deleteFlight.rejected, (state, action) => {
         state.loading = false;

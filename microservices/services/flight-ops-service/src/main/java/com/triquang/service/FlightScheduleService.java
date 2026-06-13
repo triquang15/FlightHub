@@ -13,7 +13,7 @@ public interface FlightScheduleService {
 
 	List<FlightScheduleResponse> getFlightScheduleByAirline(Long userId);
 
-	FlightScheduleResponse updateFlightSchedule(Long id, FlightScheduleRequest request);
+	FlightScheduleResponse updateFlightSchedule(Long userId, Long id, FlightScheduleRequest request);
 
-	void deleteFlightSchedule(Long id);
+	void deleteFlightSchedule(Long userId, Long id);
 }

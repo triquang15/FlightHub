@@ -25,6 +25,21 @@ import { listAircraftOptions } from "@/Redux/aircraft/aircraftThunks";
 import { getAllFareRules } from "@/Redux/fareRules/fareRulesThunk";
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
 import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
+import * as Yup from "yup";
+import { toast } from "sonner";
+
+const flightSchema = Yup.object({
+  flightNumber: Yup.string()
+    .trim()
+    .uppercase()
+    .max(10, "Flight number must be at most 10 characters")
+    .required("Flight number is required"),
+  aircraftId: Yup.number().required("Aircraft is required"),
+  departureAirportId: Yup.number().required("Departure airport is required"),
+  arrivalAirportId: Yup.number()
+    .required("Arrival airport is required")
+    .notOneOf([Yup.ref("departureAirportId")], "Arrival airport must differ from departure"),
+});
 
 const FlightForm = () => {
   const { airports } = useSelector((state) => state.airport);
@@ -83,15 +98,16 @@ const FlightForm = () => {
         await dispatch(
           updateFlight({ id: flightId, flightData: values })
         ).unwrap();
+        toast.success("Flight updated");
         navigate("/airline/flights");
       } else {
         console.log("flight data ", values);
         await dispatch(createFlight(values)).unwrap();
+        toast.success("Flight created");
         navigate("/airline/flights");
       }
     } catch (error) {
-      console.error("Error saving flight:", error);
-      // TODO: Show error notification
+      toast.error(error || "Unable to save flight");
     } finally {
       setSubmitting(false);
     }
@@ -189,7 +205,7 @@ const FlightForm = () => {
         <div className="p-10">
           <Formik
             initialValues={initialValues}
-            // validationSchema={validationSchema}
+            validationSchema={flightSchema}
             onSubmit={handleSubmit}
             enableReinitialize
           >

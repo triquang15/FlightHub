@@ -44,6 +44,7 @@ public class FlightServiceImpl implements FlightService {
 	// =========================
 	@Override
 	public FlightResponse createFlight(Long userId, FlightRequest request) {
+		normalizeAndValidateRoute(request);
 
 		if (flightRepository.existsByFlightNumber(request.getFlightNumber())) {
 			throw new BaseException(ErrorCode.FLIGHT_ALREADY_EXISTS);
@@ -51,7 +52,7 @@ public class FlightServiceImpl implements FlightService {
 
 		Long airlineId = getAirlineForUser(userId);
 
-		validateAircraftExists(request.getAircraftId());
+		validateAircraftOwnership(request.getAircraftId(), airlineId);
 
 		Flight flight = FlightMapper.toEntity(request);
 		flight.setAirlineId(airlineId);
@@ -68,19 +69,21 @@ public class FlightServiceImpl implements FlightService {
 	public List<FlightResponse> createFlights(Long userId, List<FlightRequest> requests) {
 
 		Long airlineId = getAirlineForUser(userId);
+		requests.forEach(this::normalizeAndValidateRoute);
 
 		Set<String> existingNumbers = flightRepository.findExistingFlightNumbers(
 				requests.stream().map(FlightRequest::getFlightNumber).toList()
 		);
 
 		Set<Long> validatedAircraftIds = new HashSet<>();
+		Set<String> incomingNumbers = new HashSet<>();
 
 		List<Flight> toSave = requests.stream()
 				.filter(req -> !existingNumbers.contains(req.getFlightNumber()))
+				.filter(req -> incomingNumbers.add(req.getFlightNumber()))
 				.map(req -> {
-
 					if (validatedAircraftIds.add(req.getAircraftId())) {
-						validateAircraftExists(req.getAircraftId());
+						validateAircraftOwnership(req.getAircraftId(), airlineId);
 					}
 
 					Flight flight = FlightMapper.toEntity(req);
@@ -168,16 +171,17 @@ public class FlightServiceImpl implements FlightService {
 	// UPDATE FLIGHT
 	// =========================
 	@Override
-	public FlightResponse updateFlight(Long id, FlightRequest request) {
+	public FlightResponse updateFlight(Long userId, Long id, FlightRequest request) {
 
-		Flight existing = flightRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+		Flight existing = requireOwnedFlight(userId, id);
+		normalizeAndValidateRoute(request);
 
 		if (request.getFlightNumber() != null
 				&& flightRepository.existsByFlightNumberAndIdNot(request.getFlightNumber(), id)) {
 			throw new BaseException(ErrorCode.FLIGHT_ALREADY_EXISTS);
 		}
 
+		validateAircraftOwnership(request.getAircraftId(), existing.getAirlineId());
 		FlightMapper.updateEntity(request, existing);
 
 		Flight saved = flightRepository.save(existing);
@@ -189,10 +193,12 @@ public class FlightServiceImpl implements FlightService {
 	// CHANGE STATUS
 	// =========================
 	@Override
-	public FlightResponse changeStatus(Long id, FlightStatus status) {
+	public FlightResponse changeStatus(Long userId, Long id, FlightStatus status) {
 
-		Flight flight = flightRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+		Flight flight = requireOwnedFlight(userId, id);
+		if (status != FlightStatus.SCHEDULED && status != FlightStatus.CANCELLED) {
+			throw new BaseException(ErrorCode.INVALID_FLIGHT_STATUS_TRANSITION);
+		}
 
 		flight.setStatus(status);
 
@@ -203,12 +209,11 @@ public class FlightServiceImpl implements FlightService {
 	// DELETE
 	// =========================
 	@Override
-	public void deleteFlight(Long id) {
+	public void deleteFlight(Long userId, Long id) {
 
-		Flight flight = flightRepository.findById(id)
-				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
-
-		flightRepository.delete(flight);
+		Flight flight = requireOwnedFlight(userId, id);
+		flight.setStatus(FlightStatus.CANCELLED);
+		flightRepository.save(flight);
 	}
 
 	// =========================
@@ -277,14 +282,35 @@ public class FlightServiceImpl implements FlightService {
 		}
 	}
 
-	private void validateAircraftExists(Long aircraftId) {
+	private void validateAircraftOwnership(Long aircraftId, Long airlineId) {
 		try {
-			airlineClient.getAircraftById(aircraftId);
+			AircraftResponse aircraft = airlineClient.getAircraftById(aircraftId);
+			if (!airlineId.equals(aircraft.getAirlineId())) {
+				throw new BaseException(ErrorCode.FLIGHT_RESOURCE_NOT_OWNED);
+			}
 		} catch (FeignException.NotFound e) {
 			throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
 		} catch (FeignException e) {
 			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 		}
+	}
+
+	private Flight requireOwnedFlight(Long userId, Long id) {
+		Flight flight = flightRepository.findById(id)
+				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_NOT_FOUND));
+		if (!flight.getAirlineId().equals(getAirlineForUser(userId))) {
+			throw new BaseException(ErrorCode.FLIGHT_RESOURCE_NOT_OWNED);
+		}
+		return flight;
+	}
+
+	private void normalizeAndValidateRoute(FlightRequest request) {
+		request.setFlightNumber(request.getFlightNumber().trim().toUpperCase());
+		if (request.getDepartureAirportId().equals(request.getArrivalAirportId())) {
+			throw new BaseException(ErrorCode.INVALID_FLIGHT_ROUTE);
+		}
+		getAirport(request.getDepartureAirportId());
+		getAirport(request.getArrivalAirportId());
 	}
 
 	private FlightResponse getFlightResponse(Flight flight) {
@@ -297,4 +323,3 @@ public class FlightServiceImpl implements FlightService {
 		return FlightMapper.toResponse(flight, aircraft, airline, departure, arrival);
 	}
 }
-

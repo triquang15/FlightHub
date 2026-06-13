@@ -15,16 +15,21 @@ import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.service.FlightSearchService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.LocalDate;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Flight Search", description = "Search bookable flight instances by route, date, cabin, pricing, and operational filters.")
 public class FlightSearchController {
 
     private final FlightSearchService flightSearchService;
 
+    @Operation(summary = "Search available flights", description = "Returns paginated, bookable flight instances matching route, operating date, passenger count, cabin class, and optional filters.")
     @GetMapping("/api/flights/search")
     public ResponseEntity<?> searchFlights(
             @RequestParam Long departureAirportId,

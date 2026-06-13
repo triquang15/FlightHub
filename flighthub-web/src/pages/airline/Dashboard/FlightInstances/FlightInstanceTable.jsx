@@ -59,12 +59,14 @@ import { useEffect } from "react";
 import {
   getAllFlightInstances,
   deleteFlightInstance,
+  changeFlightInstanceStatus,
 } from "@/Redux/flightInstance/flightInstanceThunk";
 import { useSelector } from "react-redux";
 
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 import { toast } from "sonner";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
+import FlightLifecycleControl from "@/components/flight-ops/FlightLifecycleControl";
 
 const FlightInstanceTable = () => {
   const navigate = useNavigate();
@@ -147,35 +149,19 @@ const FlightInstanceTable = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      Active: {
-        color: "bg-green-100 text-green-800 border-green-200",
-        icon: "✓",
-      },
-      "On-time": {
-        color: "bg-green-100 text-green-800 border-green-200",
-        icon: "✓",
-      },
-      Delayed: {
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        icon: "!",
-      },
-      Cancelled: { color: "bg-red-100 text-red-800 border-red-200", icon: "✗" },
-      Boarding: {
-        color: "bg-blue-100 text-blue-800 border-blue-200",
-        icon: "→",
-      },
-      Landed: {
-        color: "bg-purple-100 text-purple-800 border-purple-200",
-        icon: "↓",
-      },
+      SCHEDULED: { color: "bg-blue-100 text-blue-800 border-blue-200", icon: "○" },
+      BOARDING: { color: "bg-cyan-100 text-cyan-800 border-cyan-200", icon: "→" },
+      DEPARTED: { color: "bg-violet-100 text-violet-800 border-violet-200", icon: "↑" },
+      ARRIVED: { color: "bg-green-100 text-green-800 border-green-200", icon: "✓" },
+      CANCELLED: { color: "bg-red-100 text-red-800 border-red-200", icon: "✗" },
     };
 
-    const config = statusConfig[status] || statusConfig["Active"];
+    const config = statusConfig[status] || statusConfig.SCHEDULED;
 
     return (
       <Badge className={cn("flex items-center gap-1 border", config.color)}>
         <span>{config.icon}</span>
-        {status}
+        {status?.charAt(0) + status?.slice(1).toLowerCase()}
       </Badge>
     );
   };
@@ -199,12 +185,16 @@ const FlightInstanceTable = () => {
 
   const handleDelete = async (id) => {
     try {
-      await dispatch(deleteFlightInstance(id));
-      toast.success("deleted successfuly");
+      await dispatch(deleteFlightInstance(id)).unwrap();
+      toast.success("Flight instance deleted");
     } catch (error) {
       console.log("error ", error);
       toast.error("An error occurred while deleting the flight instance");
     }
+  };
+
+  const handleStatusTransition = async (id, status) => {
+    await dispatch(changeFlightInstanceStatus({ id, status })).unwrap();
   };
 
   return (
@@ -503,7 +493,14 @@ const FlightInstanceTable = () => {
 
                       {/* Status */}
                       <TableCell>
-                        <div>{getStatusBadge(instance.status)}</div>
+                        <div className="space-y-2">
+                          {getStatusBadge(instance.status)}
+                          <FlightLifecycleControl
+                            compact
+                            status={instance.status}
+                            onTransition={(status) => handleStatusTransition(instance.id, status)}
+                          />
+                        </div>
                       </TableCell>
 
                       {/* Actions */}
@@ -538,6 +535,10 @@ const FlightInstanceTable = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={
+                                  instance.status !== "SCHEDULED" ||
+                                  instance.availableSeats !== instance.totalSeats
+                                }
                                 className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -550,7 +551,7 @@ const FlightInstanceTable = () => {
                                   Are you sure?
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete the flight
+                                  Only an unbooked Scheduled instance can be permanently deleted. This will delete the flight
                                   instance{" "}
                                   <strong>
                                     {instance.flight?.flightNumber}

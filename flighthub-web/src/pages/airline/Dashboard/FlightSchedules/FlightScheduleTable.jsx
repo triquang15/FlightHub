@@ -38,6 +38,7 @@ import {
   getAllFlightSchedules,
   deleteFlightSchedule,
 } from "@/Redux/flightSchedule/flightScheduleThunk";
+import { toast } from "sonner";
 
 const tableRow = [
   "Flight",
@@ -117,13 +118,14 @@ const FlightScheduleTable = () => {
 
   const handleDelete = async (scheduleId) => {
     if (
-      window.confirm("Are you sure you want to delete this flight schedule?")
+      window.confirm("Deactivate this schedule? Existing flight instances and history will be preserved.")
     ) {
       try {
-        await dispatch(deleteFlightSchedule(scheduleId));
+        await dispatch(deleteFlightSchedule(scheduleId)).unwrap();
         dispatch(getAllFlightSchedules());
+        toast.success("Schedule deactivated");
       } catch (error) {
-        console.error("Error deleting schedule:", error);
+        toast.error(error || "Unable to deactivate schedule");
       }
     }
   };
@@ -292,7 +294,7 @@ const FlightScheduleTable = () => {
                             className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Delete
+                            Deactivate
                           </Button>
                         </div>
                       </TableCell>

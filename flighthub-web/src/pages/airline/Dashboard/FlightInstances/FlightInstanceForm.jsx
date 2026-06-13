@@ -42,6 +42,7 @@ import {
 import { getAllFlightSchedules } from "@/Redux/flightSchedule/flightScheduleThunk";
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
+import { toLocalDateTimePayload } from "@/utils/flightOps";
 
 const formatDateTimeLocal = (date) => format(date, "yyyy-MM-dd'T'HH:mm"); // local datetime string
 
@@ -75,12 +76,6 @@ const createFlightInstanceSchema = Yup.object().shape({
         );
       }
     ),
-  status: Yup.string()
-    .required("Status is required")
-    .oneOf(
-      ["SCHEDULED", "ACTIVE", "DELAYED", "CANCELLED", "COMPLETED"],
-      "Invalid status"
-    ),
 });
 
 // Validation schema for edit mode - only status and times can be updated
@@ -102,12 +97,6 @@ const editFlightInstanceSchema = Yup.object().shape({
         );
       }
     ),
-  status: Yup.string()
-    .required("Status is required")
-    .oneOf(
-      ["SCHEDULED", "ACTIVE", "DELAYED", "CANCELLED", "COMPLETED"],
-      "Invalid status"
-    ),
 });
 
 const statusOptions = [
@@ -116,18 +105,10 @@ const statusOptions = [
     label: "Scheduled",
     color: "bg-blue-100 text-blue-800",
   },
-  { value: "ACTIVE", label: "Active", color: "bg-green-100 text-green-800" },
-  {
-    value: "DELAYED",
-    label: "Delayed",
-    color: "bg-yellow-100 text-yellow-800",
-  },
+  { value: "BOARDING", label: "Boarding", color: "bg-cyan-100 text-cyan-800" },
+  { value: "DEPARTED", label: "Departed", color: "bg-violet-100 text-violet-800" },
+  { value: "ARRIVED", label: "Arrived", color: "bg-green-100 text-green-800" },
   { value: "CANCELLED", label: "Cancelled", color: "bg-red-100 text-red-800" },
-  {
-    value: "COMPLETED",
-    label: "Completed",
-    color: "bg-purple-100 text-purple-800",
-  },
 ];
 
 const FlightInstanceForm = () => {
@@ -176,8 +157,8 @@ const FlightInstanceForm = () => {
           setInitialValues({
             scheduleId: instance.scheduleId || "",
             flightId: instance.flightId || "",
-            departureAirportId: instance.departureAirportId || "",
-            arrivalAirportId: instance.arrivalAirportId || "",
+            departureAirportId: instance.departureAirport?.id || "",
+            arrivalAirportId: instance.arrivalAirport?.id || "",
             departureDateTime: instance.departureDateTime
               ? formatDateTimeLocal(new Date(instance.departureDateTime))
               : "",
@@ -196,16 +177,24 @@ const FlightInstanceForm = () => {
     try {
       let formData = {
         ...values,
-        departureDateTime: new Date(values.departureDateTime).toISOString(),
-        arrivalDateTime: new Date(values.arrivalDateTime).toISOString(),
+        scheduleId: Number(values.scheduleId),
+        flightId: Number(values.flightId),
+        departureAirportId: Number(values.departureAirportId),
+        arrivalAirportId: Number(values.arrivalAirportId),
+        departureDateTime: toLocalDateTimePayload(values.departureDateTime),
+        arrivalDateTime: toLocalDateTimePayload(values.arrivalDateTime),
+        totalSeats: getSelectedFlight(values.flightId)?.aircraft?.totalSeats,
       };
 
       // In edit mode, only send editable fields
       if (isEditMode) {
         formData = {
+          flightId: Number(values.flightId),
+          departureAirportId: Number(values.departureAirportId),
+          arrivalAirportId: Number(values.arrivalAirportId),
           departureDateTime: formData.departureDateTime,
           arrivalDateTime: formData.arrivalDateTime,
-          status: formData.status,
+          totalSeats: getSelectedFlight(values.flightId)?.aircraft?.totalSeats,
         };
       }
 
@@ -260,8 +249,8 @@ const FlightInstanceForm = () => {
     const schedule = getSelectedSchedule(scheduleId);
     if (schedule) {
       setFieldValue("flightId", schedule.flightId || "");
-      setFieldValue("departureAirportId", schedule.departureAirportId || "");
-      setFieldValue("arrivalAirportId", schedule.arrivalAirportId || "");
+      setFieldValue("departureAirportId", schedule.departureAirport?.id || "");
+      setFieldValue("arrivalAirportId", schedule.arrivalAirport?.id || "");
     }
   };
 
@@ -1052,6 +1041,7 @@ const FlightInstanceForm = () => {
                         onValueChange={(value) =>
                           setFieldValue("status", value)
                         }
+                        disabled
                       >
                         <SelectTrigger
                           className={cn(
@@ -1084,8 +1074,8 @@ const FlightInstanceForm = () => {
                       />
                       {isEditMode && (
                         <p className="text-sm text-muted-foreground mt-2">
-                          Only flight status and times can be updated in edit
-                          mode
+                          Status changes use the lifecycle control on the instance
+                          list or detail page.
                         </p>
                       )}
                     </div>

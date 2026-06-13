@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/utils/formateDateTime";
 import { formatCurrency } from "@/utils/formateCurrency";
 import { useSelector, useDispatch } from "react-redux";
-import { getFlightInstanceById } from "@/Redux/flightInstance/flightInstanceThunk";
+import { changeFlightInstanceStatus, getFlightInstanceById } from "@/Redux/flightInstance/flightInstanceThunk";
 
 import {
 
@@ -56,6 +56,7 @@ import EmptyCabin from "./EmptyCabin";
 import { getOccupancyColor, getOccupancyPercentage } from "@/utils/occupancy";
 import FlightInstanceCabinCard from "./FlightInstanceCabinCard";
 import { CabinManagementFAB } from "@/components/navigation/FloatingActionButton";
+import FlightLifecycleControl from "@/components/flight-ops/FlightLifecycleControl";
 
 const FlightInstanceDetail = () => {
   const { id } = useParams();
@@ -261,6 +262,12 @@ const FlightInstanceDetail = () => {
           </div>
 
           <div className="flex items-center gap-3 animate-slide-in-right">
+            <FlightLifecycleControl
+              status={flightInstance.status}
+              onTransition={(status) =>
+                dispatch(changeFlightInstanceStatus({ id: flightInstance.id, status })).unwrap()
+              }
+            />
             <Button
               variant="outline"
               size="sm"
