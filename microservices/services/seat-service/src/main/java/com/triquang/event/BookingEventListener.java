@@ -6,8 +6,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.triquang.enums.SeatAvailabilityStatus;
 import com.triquang.message.BookingConfirmedEvent;
+import com.triquang.payload.request.SeatConfirmRequest;
 import com.triquang.service.SeatInstanceService;
 
 @Service
@@ -28,15 +28,16 @@ public class BookingEventListener {
 			return;
 		}
 
-		for (Long seatInstanceId : event.getSeatInstanceIds()) {
-			try {
-				seatInstanceService.updateSeatInstanceStatus(seatInstanceId, SeatAvailabilityStatus.BOOKED);
-				log.info("Seat instance {} marked as BOOKED for booking {}", seatInstanceId,
-						event.getBookingReference());
-			} catch (Exception e) {
-				log.error("Failed to update seat instance {} for booking {}: {}", seatInstanceId,
-						event.getBookingReference(), e.getMessage());
-			}
+		try {
+			seatInstanceService.confirmSeats(SeatConfirmRequest.builder()
+					.seatInstanceIds(event.getSeatInstanceIds())
+					.bookingReference(event.getBookingReference())
+					.build());
+			log.info("Seat instances {} marked as BOOKED for booking {}",
+					event.getSeatInstanceIds(), event.getBookingReference());
+		} catch (Exception e) {
+			log.error("Failed to confirm seat instances for booking {}: {}",
+					event.getBookingReference(), e.getMessage());
 		}
 	}
 }

@@ -17,11 +17,14 @@ import com.triquang.payload.request.CabinClassRequest;
 import com.triquang.service.CabinClassService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/cabin-classes")
+@Tag(name = "Cabin Classes", description = "Manage aircraft cabin products such as economy, premium economy, business, and first class.")
 @RequiredArgsConstructor
 public class CabinClassController {
 
@@ -30,6 +33,7 @@ public class CabinClassController {
 	// =========================
 	// CREATE
 	// =========================
+	@Operation(summary = "Create cabin class", description = "Creates a cabin product for an aircraft and defines capacity, base price, and active status.")
 	@PostMapping
 	public ResponseEntity<?> createCabinClass(@Valid @RequestBody CabinClassRequest request) {
 
@@ -39,6 +43,7 @@ public class CabinClassController {
 	// =========================
 	// BULK CREATE
 	// =========================
+	@Operation(summary = "Create cabin classes in bulk")
 	@PostMapping("/bulk")
 	public ResponseEntity<?> createCabinClasses(@Valid @RequestBody List<CabinClassRequest> requests) {
 
@@ -48,6 +53,7 @@ public class CabinClassController {
 	// =========================
 	// GET BY ID
 	// =========================
+	@Operation(summary = "Get cabin class by ID")
 	@GetMapping("/{id}")
 	public ResponseEntity<?> getCabinClassById(@PathVariable Long id) {
 
@@ -57,6 +63,7 @@ public class CabinClassController {
 	// =========================
 	// GET BY AIRCRAFT + NAME
 	// =========================
+	@Operation(summary = "Get cabin class by aircraft and type")
 	@GetMapping("/aircraft/{aircraftId}/name/{cabinClass}")
 	public ResponseEntity<?> getCabinClassByAircraftIdAndName(@PathVariable Long aircraftId,
 			@PathVariable CabinClassType cabinClass) {
@@ -67,6 +74,7 @@ public class CabinClassController {
 	// =========================
 	// GET BY AIRCRAFT
 	// =========================
+	@Operation(summary = "List cabin classes by aircraft")
 	@GetMapping("/aircraft/{aircraftId}")
 	public ResponseEntity<?> getCabinClassesByAircraftId(@PathVariable Long aircraftId) {
 
@@ -76,6 +84,7 @@ public class CabinClassController {
 	// =========================
 	// UPDATE
 	// =========================
+	@Operation(summary = "Update cabin class")
 	@PutMapping("/{id}")
 	public ResponseEntity<?> updateCabinClass(@PathVariable Long id, @Valid @RequestBody CabinClassRequest request) {
 
@@ -85,6 +94,7 @@ public class CabinClassController {
 	// =========================
 	// DELETE
 	// =========================
+	@Operation(summary = "Delete cabin class")
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deleteCabinClass(@PathVariable Long id) {
 

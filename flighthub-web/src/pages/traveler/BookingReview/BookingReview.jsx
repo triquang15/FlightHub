@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CreditCard, X, AlertCircle } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -53,15 +53,32 @@ const BookingReview = () => {
   const [selectedSeats, setSelectedSeats] = useState([]); // Changed to array for multiple passengers
   const [selectedMeals, setSelectedMeals] = useState([]);
   const [selectedBaggage, setSelectedBaggage] = useState([]);
- 
+
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
   const [loading, setLoading] = useState(true);
-  const [flightId, setFlightId] = useState(null);
-  const [fareId, setFareId] = useState(null);
-  const [totalPassengers, setTotalPassagners] = useState(1);
+  const bookingParams = useMemo(() => {
+    const passengerCount = parseInt(searchParams.get("numberOfTravellers"), 10) || 1;
+    return {
+      passengerCount,
+      totalPassengers: passengerCount,
+      flightId: searchParams.get("flightId"),
+      fareId: searchParams.get("fareId"),
+      flightInstanceId: searchParams.get("flightInstanceId"),
+      cabinClass: searchParams.get("cabinClass") || "ECONOMY",
+      tripType: searchParams.get("tripType") || "ONE_WAY",
+    };
+  }, [searchParams]);
 
-  const [flightInstanceId, setFlightInstanceId] = useState(null);
+  const {
+    passengerCount,
+    totalPassengers,
+    flightId,
+    fareId,
+    flightInstanceId,
+    cabinClass,
+    tripType,
+  } = bookingParams;
 
   // Helper function to calculate seat price
   const getSeatPrice = (seat) => {
@@ -100,13 +117,6 @@ const BookingReview = () => {
       // Get URL parameters
       const itineraryId = searchParams.get("itineraryId");
       const xflt = searchParams.get("xflt");
-      const numberOfTravellers = searchParams.get("numberOfTravellers");
-      const cabinClass = searchParams.get("cabinClass");
-      const flight_instance_id = searchParams.get("flightInstanceId");
-      const flightId = searchParams.get("flightId");
-
-      const fare_id = searchParams.get("fareId");
-
       console.log("BookingReview URL Params: -------------------", {
         itineraryId,
         cur: searchParams.get("cur"),
@@ -114,24 +124,13 @@ const BookingReview = () => {
         crId: searchParams.get("crId"),
         rKey: searchParams.get("rKey"),
         xflt,
-        numberOfTravellers,
+        numberOfTravellers: passengerCount,
         cabinClass,
-        fareId: fare_id,
+        fareId,
         passengerCount,
         flightId,
+        flightInstanceId,
       });
-
-      // Extract IDs from booking data
-      if (flightId) {
-        setFlightId(flightId);
-      }
-      if (fare_id) {
-        setFareId(fare_id);
-      }
-      if (flight_instance_id) {
-        setFlightInstanceId(flight_instance_id);
-      }
-      if (totalPassengers) setTotalPassagners(totalPassengers);
 
       // Decode search filter if available
       if (xflt) {
@@ -155,7 +154,7 @@ const BookingReview = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchParams]);
+  }, [searchParams, passengerCount, cabinClass, fareId, flightId, flightInstanceId]);
 
   useEffect(() => {
     if (fareId) {
@@ -210,9 +209,6 @@ const BookingReview = () => {
     }
   }, [flightId, selectedFare, dispatch]);
 
-  // Get passenger count from URL params or mock data
-  const passengerCount = parseInt(searchParams.get("numberOfTravellers"));
- 
   const handleProceedToPayment = async () => {
     // Validate traveller data
     const isAllTravellersComplete =
@@ -325,8 +321,8 @@ const BookingReview = () => {
     const bookingDataForAPI = {
       flightId: parseInt(flightId) || null,
       flightInstanceId: parseInt(flightInstanceId) || null,
-      cabinClass: searchParams.get("cabinClass") || "ECONOMY",
-      tripType: searchParams.get("tripType") || "ONE_WAY",
+      cabinClass,
+      tripType,
       fareId: parseInt(fareId) || null,
       passengers: travellerData.passengers.map((t, index) => ({
         firstName: t.firstName || "",
@@ -542,6 +538,7 @@ const BookingReview = () => {
                   selectedSeats={selectedSeats}
                   onSelectSeat={handleSeatSelection}
                   passengerCount={passengerCount}
+                  flightInstanceId={flightInstanceId}
                 />
 
                 {/* Meal Selection */}

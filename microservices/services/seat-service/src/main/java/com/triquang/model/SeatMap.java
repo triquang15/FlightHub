@@ -36,6 +36,9 @@ public class SeatMap {
     @OneToMany(mappedBy = "seatMap", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Seat> seats;
 
+    @OneToMany(mappedBy = "seatMap", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SeatMapZone> zones;
+
     @OneToOne
     @JoinColumn(name = "cabin_class_id")
     private CabinClass cabinClass;

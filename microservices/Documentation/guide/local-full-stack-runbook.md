@@ -145,7 +145,7 @@ Email: admin@flighthub.local
 Password: Password@123
 ```
 
-Do not run individual airline-core or flight-ops seed SQL files directly.
+Do not run individual airline-core, seat-service, or flight-ops seed SQL files directly.
 They require seed context prepared by `init-production-demo-data.sh`.
 
 ## 4. Verify
@@ -329,5 +329,6 @@ Service ownership, business rules, API usage, and detailed smoke tests belong
 in the business overview documents:
 
 - `microservices/Documentation/business-overview/flight-ops-service-overview.md`
+- `microservices/Documentation/business-overview/seat-service-overview.md`
 - `microservices/Documentation/business-overview/airline-core-service-overview.md`
 - `microservices/Documentation/business-overview/location-service-overview.md`

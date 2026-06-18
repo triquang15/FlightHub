@@ -47,10 +47,22 @@ public class FlightInstanceEventConsumer {
         log.info("Received FlightInstanceCreatedEvent: flightInstanceId={}, aircraftId={}",
                 event.getFlightInstanceId(), event.getAircraftId());
 
+        if (flightInstanceCabinRepository.existsByFlightInstanceId(event.getFlightInstanceId())) {
+            log.info("Seat inventory already exists for flightInstanceId={}, skipping duplicate event",
+                    event.getFlightInstanceId());
+            return;
+        }
+
         List<CabinClass> cabinClasses = cabinClassRepository.findByAircraftId(event.getAircraftId());
         int totalSeatInstances = 0;
 
         for (CabinClass cabinClass : cabinClasses) {
+            if (!Boolean.TRUE.equals(cabinClass.getIsActive()) || !Boolean.TRUE.equals(cabinClass.getIsBookable())) {
+                log.info("Skipping inactive or non-bookable cabinClassId={} for flightInstanceId={}",
+                        cabinClass.getId(), event.getFlightInstanceId());
+                continue;
+            }
+
             List<Seat> seats = cabinClass.getSeatMap() != null
                     ? seatRepository.findBySeatMapId(cabinClass.getSeatMap().getId())
                     : List.of();

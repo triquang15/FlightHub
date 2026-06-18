@@ -9,12 +9,15 @@ import com.triquang.client.AirlineClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.SeatMapMapper;
+import com.triquang.mapper.SeatMapZoneMapper;
 import com.triquang.model.CabinClass;
 import com.triquang.model.SeatMap;
+import com.triquang.model.SeatMapZone;
 import com.triquang.payload.request.SeatMapRequest;
 import com.triquang.payload.response.SeatMapResponse;
 import com.triquang.repository.CabinClassRepository;
 import com.triquang.repository.SeatMapRepository;
+import com.triquang.repository.SeatMapZoneRepository;
 import com.triquang.service.SeatMapService;
 import com.triquang.service.SeatService;
 
@@ -30,6 +33,7 @@ public class SeatMapServiceImpl implements SeatMapService {
     private final CabinClassRepository cabinClassRepository;
     private final AirlineClient airlineClient;
     private final SeatService seatService;
+    private final SeatMapZoneRepository seatMapZoneRepository;
 
     @Override
     public SeatMapResponse createSeatMap(Long userId, SeatMapRequest request) {
@@ -48,6 +52,7 @@ public class SeatMapServiceImpl implements SeatMapService {
         seatMap.setAirlineId(airlineId);
 
         SeatMap saved = seatMapRepository.save(seatMap);
+        saveZones(saved, request);
 
         seatService.generateSeats(saved.getId());
 
@@ -77,7 +82,10 @@ public class SeatMapServiceImpl implements SeatMapService {
 
         List<SeatMap> saved = seatMapRepository.saveAll(toSave);
 
-        saved.forEach(sm -> seatService.generateSeats(sm.getId()));
+        for (int i = 0; i < saved.size(); i++) {
+            saveZones(saved.get(i), requests.get(i));
+            seatService.generateSeats(saved.get(i).getId());
+        }
 
         return saved.stream()
                 .map(SeatMapMapper::toResponse)
@@ -126,6 +134,7 @@ public class SeatMapServiceImpl implements SeatMapService {
         SeatMapMapper.updateEntity(request, existing);
 
         SeatMap saved = seatMapRepository.save(existing);
+        replaceZones(saved, request);
 
         return SeatMapMapper.toResponse(saved);
     }
@@ -151,6 +160,57 @@ public class SeatMapServiceImpl implements SeatMapService {
 
         } catch (FeignException e) {
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
+    }
+
+    private void saveZones(SeatMap seatMap, SeatMapRequest request) {
+        if (request.getZones() == null || request.getZones().isEmpty()) {
+            return;
+        }
+
+        validateZones(request);
+
+        List<SeatMapZone> zones = request.getZones().stream()
+                .map(zone -> SeatMapZoneMapper.toEntity(zone, seatMap))
+                .toList();
+        seatMapZoneRepository.saveAll(zones);
+        seatMap.setZones(zones);
+    }
+
+    private void replaceZones(SeatMap seatMap, SeatMapRequest request) {
+        seatMapZoneRepository.deleteBySeatMapId(seatMap.getId());
+        saveZones(seatMap, request);
+    }
+
+    private void validateZones(SeatMapRequest request) {
+        int previousEndRow = 0;
+
+        for (var zone : request.getZones().stream()
+                .sorted((left, right) -> {
+                    Integer leftOrder = left.getDisplayOrder() != null ? left.getDisplayOrder() : 0;
+                    Integer rightOrder = right.getDisplayOrder() != null ? right.getDisplayOrder() : 0;
+                    int orderCompare = leftOrder.compareTo(rightOrder);
+                    return orderCompare != 0 ? orderCompare : left.getStartRow().compareTo(right.getStartRow());
+                })
+                .toList()) {
+            if (zone.getEndRow() < zone.getStartRow()) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+
+            if (zone.getStartRow() <= previousEndRow) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+
+            int seatsPerRow = zone.getLeftSeatsPerRow() + zone.getRightSeatsPerRow();
+            if (seatsPerRow <= 0) {
+                throw new BaseException(ErrorCode.SEAT_MAP_EMPTY);
+            }
+
+            if (zone.getSeatsInLastRow() != null && zone.getSeatsInLastRow() > seatsPerRow) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+
+            previousEndRow = zone.getEndRow();
         }
     }
 }

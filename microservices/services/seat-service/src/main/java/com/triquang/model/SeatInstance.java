@@ -10,7 +10,15 @@ import com.triquang.enums.SeatAvailabilityStatus;
 import java.time.Instant;
 
 @Entity
-@Table(name = "seat_instances")
+@Table(
+        name = "seat_instances",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_seat_instance_flight_instance_seat",
+                        columnNames = {"flight_instance_id", "seat_id"}
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,14 +48,21 @@ public class SeatInstance {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private SeatAvailabilityStatus status = SeatAvailabilityStatus.AVAILABLE;
 
+    @Builder.Default
     private boolean isBooked = false;
+    @Builder.Default
     private boolean isAvailable = true;
 
     private String mealPreference;
     private Double fare;
     private Double premiumSurcharge;
+    private String holdToken;
+    private Long heldByUserId;
+    private String bookingReference;
+    private Instant holdExpiresAt;
 
     @Version
     private Long version;

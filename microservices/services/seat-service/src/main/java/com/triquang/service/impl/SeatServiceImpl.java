@@ -10,6 +10,7 @@ import com.triquang.mapper.SeatMapper;
 import com.triquang.model.CabinClass;
 import com.triquang.model.Seat;
 import com.triquang.model.SeatMap;
+import com.triquang.model.SeatMapZone;
 import com.triquang.payload.request.SeatRequest;
 import com.triquang.payload.response.SeatResponse;
 import com.triquang.repository.CabinClassRepository;
@@ -48,29 +49,65 @@ public class SeatServiceImpl implements SeatService {
         int rows = seatMap.getTotalRows();
         int seatsPerRow = leftSeatsPerRow + rightSeatsPerRow;
 
-        if (rows <= 0 || seatsPerRow <= 0) {
+        if ((seatMap.getZones() == null || seatMap.getZones().isEmpty()) && (rows <= 0 || seatsPerRow <= 0)) {
             throw new BaseException(ErrorCode.SEAT_MAP_EMPTY);
         }
 
         List<Seat> seats = new ArrayList<>();
 
-        for (int row = 1; row <= rows; row++) {
-            for (int col = 0; col < seatsPerRow; col++) {
+        if (seatMap.getZones() != null && !seatMap.getZones().isEmpty()) {
+            seatMap.getZones().stream()
+                    .sorted((left, right) -> {
+                        int orderCompare = left.getDisplayOrder().compareTo(right.getDisplayOrder());
+                        return orderCompare != 0 ? orderCompare : left.getStartRow().compareTo(right.getStartRow());
+                    })
+                    .forEach(zone -> generateZoneSeats(seatMap, seats, zone));
+        } else {
+            for (int row = 1; row <= rows; row++) {
+                for (int col = 0; col < seatsPerRow; col++) {
 
-                String seatNum = row + getSeatLetter(col);
-                SeatType type = getSeatType(col, leftSeatsPerRow, rightSeatsPerRow);
+                    String seatNum = row + getSeatLetter(col);
+                    SeatType type = getSeatType(col, leftSeatsPerRow, rightSeatsPerRow);
 
-                seats.add(Seat.builder()
-                        .seatNumber(seatNum)
-                        .seatRow(row)
-                        .columnLetter(getSeatLetter(col).charAt(0))
-                        .seatType(type)
-                        .seatMap(seatMap)
-                        .build());
+                    seats.add(buildSeat(seatMap, row, col, seatNum, type));
+                }
             }
         }
 
         seatRepository.saveAll(seats);
+    }
+
+    private void generateZoneSeats(SeatMap seatMap, List<Seat> seats, SeatMapZone zone) {
+        int standardSeatsPerRow = zone.getSeatsPerStandardRow();
+        if (zone.getStartRow() == null
+                || zone.getEndRow() == null
+                || zone.getEndRow() < zone.getStartRow()
+                || standardSeatsPerRow <= 0) {
+            throw new BaseException(ErrorCode.SEAT_MAP_EMPTY);
+        }
+
+        for (int row = zone.getStartRow(); row <= zone.getEndRow(); row++) {
+            int seatsInRow = row == zone.getEndRow() && zone.getSeatsInLastRow() != null
+                    ? zone.getSeatsInLastRow()
+                    : standardSeatsPerRow;
+
+            for (int col = 0; col < seatsInRow; col++) {
+                String seatNum = row + getSeatLetter(col);
+                SeatType type = getSeatType(col, zone.getLeftSeatsPerRow(), zone.getRightSeatsPerRow(), seatsInRow);
+                seats.add(buildSeat(seatMap, row, col, seatNum, type));
+            }
+        }
+    }
+
+    private Seat buildSeat(SeatMap seatMap, int row, int col, String seatNum, SeatType type) {
+        return Seat.builder()
+                .seatNumber(seatNum)
+                .seatRow(row)
+                .columnLetter(getSeatLetter(col).charAt(0))
+                .seatType(type)
+                .seatMap(seatMap)
+                .cabinClass(seatMap.getCabinClass())
+                .build();
     }
 
     // =========================
@@ -87,7 +124,10 @@ public class SeatServiceImpl implements SeatService {
 
     private SeatType getSeatType(int seatIndex, int leftBlockSeats, int rightBlockSeats) {
         int totalSeats = leftBlockSeats + rightBlockSeats;
+        return getSeatType(seatIndex, leftBlockSeats, rightBlockSeats, totalSeats);
+    }
 
+    private SeatType getSeatType(int seatIndex, int leftBlockSeats, int rightBlockSeats, int totalSeats) {
         if (seatIndex == 0 || seatIndex == totalSeats - 1) return SeatType.WINDOW;
         if (seatIndex == leftBlockSeats - 1) return SeatType.AISLE;
         if (seatIndex == leftBlockSeats) return SeatType.AISLE;

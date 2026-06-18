@@ -12,11 +12,14 @@ import com.triquang.payload.request.SeatRequest;
 import com.triquang.service.SeatService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/seats")
+@Tag(name = "Seats", description = "Read and update generated physical seat templates.")
 @RequiredArgsConstructor
 public class SeatController {
 
@@ -25,6 +28,7 @@ public class SeatController {
 	// =========================
 	// GET ALL
 	// =========================
+	@Operation(summary = "List physical seats")
 	@GetMapping
 	public ResponseEntity<?> getAllSeats() {
 
@@ -34,6 +38,7 @@ public class SeatController {
 	// =========================
 	// GET BY ID
 	// =========================
+	@Operation(summary = "Get physical seat by ID")
 	@GetMapping("/{id}")
 	public ResponseEntity<?> getSeatById(@PathVariable Long id) {
 
@@ -43,6 +48,7 @@ public class SeatController {
 	// =========================
 	// UPDATE
 	// =========================
+	@Operation(summary = "Update physical seat")
 	@PutMapping("/{id}")
 	public ResponseEntity<?> updateSeat(@PathVariable Long id, @Valid @RequestBody SeatRequest request) {
 

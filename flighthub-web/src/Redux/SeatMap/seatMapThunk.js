@@ -2,6 +2,13 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const getErrorMessage = (err, fallback) =>
+  err.response?.data?.message ||
+  err.response?.data?.error ||
+  err.message ||
+  fallback;
+
 // ================= THUNKS =================
 
 // Create Seat Map
@@ -10,11 +17,9 @@ export const createSeatMap = createAsyncThunk(
   async (data, { rejectWithValue }) => {
     try {
       const res = await api.post("/api/seat-maps", data);
-      console.log("✅ createSeatMap success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
-      console.error("❌ createSeatMap error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to create seat map");
+      return rejectWithValue(getErrorMessage(err, "Failed to create seat map"));
     }
   }
 );
@@ -25,11 +30,9 @@ export const updateSeatMap = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const res = await api.put(`/api/seat-maps/${id}`, data);
-      console.log("✅ updateSeatMap success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
-      console.error("❌ updateSeatMap error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to update seat map");
+      return rejectWithValue(getErrorMessage(err, "Failed to update seat map"));
     }
   }
 );
@@ -40,11 +43,9 @@ export const getSeatMapsByCabinClass = createAsyncThunk(
   async (cabinClassId, { rejectWithValue }) => {
     try {
       const res = await api.get(`/api/seat-maps/cabin-class/${cabinClassId}`);
-      console.log("✅ getSeatMapsByCabinClass success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
-      console.error("❌ getSeatMapsByCabinClass error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch seat map by cabin class");
+      return rejectWithValue(getErrorMessage(err, "Failed to fetch seat map by cabin class"));
     }
   }
 );
@@ -55,13 +56,10 @@ export const deleteSeatMap = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       await api.delete(`/api/seat-maps/${id}`);
-      console.log("✅ deleteSeatMap success:", id);
       return id;
     } catch (err) {
-      console.error("❌ deleteSeatMap error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to delete seat map");
+      return rejectWithValue(getErrorMessage(err, "Failed to delete seat map"));
     }
   }
 );
-
 

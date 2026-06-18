@@ -18,7 +18,7 @@ public interface SeatMapRepository extends JpaRepository<SeatMap, Long> {
 
 	boolean existsByAirlineIdAndNameAndIdNot(Long airlineId, String name, Long id);
 
-	@Query("SELECT sm FROM SeatMap sm LEFT JOIN FETCH sm.cabinClass WHERE sm.id = :id")
+	@Query("SELECT sm FROM SeatMap sm LEFT JOIN FETCH sm.cabinClass LEFT JOIN FETCH sm.zones WHERE sm.id = :id")
 	Optional<SeatMap> findByIdWithDetails(@Param("id") Long id);
 
 	@Query("SELECT sm FROM SeatMap sm LEFT JOIN FETCH sm.seats WHERE sm.id = :id")

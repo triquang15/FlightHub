@@ -1,39 +1,71 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User, RefreshCw } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { toast } from 'sonner';
+import {
+  fetchSeatInstancesByFlightInstance,
+  holdSeatInstances,
+  releaseSeatInstances,
+} from '@/Redux/seat/seatThunk';
 
-const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 }) => {
+const SeatSelection = ({
+  selectedSeats = [],
+  onSelectSeat,
+  passengerCount = 1,
+  flightInstanceId,
+}) => {
+  const dispatch = useDispatch();
   const [showSeatMap, setShowSeatMap] = useState(false);
   const [currentPassengerIndex, setCurrentPassengerIndex] = useState(0);
-  const {cabin} = useSelector((state) => state.flightInstanceCabin);
+  const [seatHoldByPassenger, setSeatHoldByPassenger] = useState({});
 
-  // Get seat data from Redux
   const { flightInstance, loading } = useSelector((state) => state.flightInstance);
+  const {
+    seats = [],
+    loading: seatsLoading,
+    holdLoading,
+    error: seatError,
+  } = useSelector((state) => state.seat || {});
 
-  // Extract seats and seatMap from flightInstance
-  const seats = cabin?.seats || [];
-  const seatMap = cabin?.seatMap || {};
+  useEffect(() => {
+    if (flightInstanceId) {
+      dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId));
+    }
+  }, [dispatch, flightInstanceId]);
 
-  // Get seat map configuration
-  const totalRows = seatMap.totalRows || 15;
-  const leftSeatsPerRow = seatMap.leftSeatsPerRow || 3;
-  const rightSeatsPerRow = seatMap.rightSeatsPerRow || 3;
-  const seatsPerRow = leftSeatsPerRow + rightSeatsPerRow;
+  const seatsByRow = useMemo(() => {
+    return seats.reduce((acc, seat) => {
+      const rowNumber = parseInt(seat.seatNumber?.match(/\d+/)?.[0] || '0', 10);
+      if (!acc[rowNumber]) acc[rowNumber] = [];
+      acc[rowNumber].push(seat);
+      return acc;
+    }, {});
+  }, [seats]);
 
-  // Group seats by row number (extract row from seatNumber like "1A" -> 1)
-  const seatsByRow = seats.reduce((acc, seat) => {
-    const rowNumber = parseInt(seat.seatNumber.match(/\d+/)?.[0] || '0');
-    if (!acc[rowNumber]) acc[rowNumber] = [];
-    acc[rowNumber].push(seat);
-    return acc;
-  }, {});
+  const sortedRows = useMemo(() => {
+    return Object.entries(seatsByRow)
+      .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+      .map(([row, rowSeats]) => [
+        row,
+        [...rowSeats].sort((a, b) => {
+          const letterA = a.seatNumber?.replace(/\d+/g, '') || '';
+          const letterB = b.seatNumber?.replace(/\d+/g, '') || '';
+          return letterA.localeCompare(letterB);
+        }),
+      ]);
+  }, [seatsByRow]);
+
+  const maxSeatsPerRow = Math.max(
+    0,
+    ...sortedRows.map(([, rowSeats]) => rowSeats.length),
+  );
+  const totalRows = sortedRows.length;
 
   const getSeatColor = (seat) => {
-    // Check if this seat is already selected by any passenger
     const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
 
-    if (!seat.isAvailable || seat.isOccupied || seat.booked) {
+    if (!isSeatAvailable(seat)) {
       return 'bg-gray-300 cursor-not-allowed text-gray-500';
     }
     if (isSelectedByAnyPassenger) {
@@ -48,8 +80,9 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
     return 'bg-gray-50 hover:bg-blue-50 border-gray-300 text-gray-700';
   };
 
-  // Get seat price
   const getSeatPrice = (seat) => {
+    if (typeof seat.price === 'number') return seat.price;
+    if (typeof seat.fare === 'number') return seat.fare;
     if (seat.seatCharacteristics?.includes('EXTRA_LEGROOM') || seat.seatType === 'EMERGENCY_EXIT') {
       return 800;
     }
@@ -59,24 +92,78 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
     return 150; // Middle seat
   };
 
-  const handleSeatClick = (seat) => {
-    const isAvailable = seat.isAvailable && !seat.isOccupied && !seat.booked;
+  const isSeatAvailable = (seat) => {
+    return seat.status === 'AVAILABLE'
+      || (seat.isAvailable && !seat.isOccupied && !seat.isBooked && !seat.booked);
+  };
+
+  const handleSeatClick = async (seat) => {
+    const isAvailable = isSeatAvailable(seat);
     const isAlreadySelected = selectedSeats.some(s => s?.id === seat.id);
 
     if (isAvailable && !isAlreadySelected) {
-      onSelectSeat(currentPassengerIndex, seat);
+      try {
+        const previousHold = seatHoldByPassenger[currentPassengerIndex];
+        if (previousHold?.seatInstanceId) {
+          await dispatch(releaseSeatInstances({
+            seatInstanceIds: [previousHold.seatInstanceId],
+            holdToken: previousHold.holdToken,
+          })).unwrap();
+        }
 
-      // Auto-advance to next passenger if not the last one
-      if (currentPassengerIndex < passengerCount - 1) {
-        setCurrentPassengerIndex(currentPassengerIndex + 1);
-      } else {
-        // Close modal after last passenger selects seat
-        setShowSeatMap(false);
+        const hold = await dispatch(holdSeatInstances({
+          flightInstanceId: Number(flightInstanceId),
+          seatInstanceIds: [seat.id],
+          holdMinutes: 10,
+        })).unwrap();
+
+        const heldSeat = hold?.seats?.[0] || seat;
+        setSeatHoldByPassenger((current) => ({
+          ...current,
+          [currentPassengerIndex]: {
+            seatInstanceId: heldSeat.id,
+            holdToken: hold?.holdToken,
+            holdExpiresAt: hold?.holdExpiresAt,
+          },
+        }));
+
+        onSelectSeat(currentPassengerIndex, {
+          ...heldSeat,
+          price: getSeatPrice(heldSeat),
+          holdToken: hold?.holdToken,
+          holdExpiresAt: hold?.holdExpiresAt,
+        });
+
+        if (currentPassengerIndex < passengerCount - 1) {
+          setCurrentPassengerIndex(currentPassengerIndex + 1);
+        } else {
+          setShowSeatMap(false);
+        }
+      } catch (error) {
+        toast.error(error || 'Seat is no longer available. Please choose another seat.');
+        if (flightInstanceId) dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId));
       }
     }
   };
 
-  const handleRemoveSeat = (passengerIndex) => {
+  const handleRemoveSeat = async (passengerIndex) => {
+    const hold = seatHoldByPassenger[passengerIndex];
+    if (hold?.seatInstanceId) {
+      try {
+        await dispatch(releaseSeatInstances({
+          seatInstanceIds: [hold.seatInstanceId],
+          holdToken: hold.holdToken,
+        })).unwrap();
+      } catch (error) {
+        toast.error(error || 'Unable to release the selected seat');
+      }
+    }
+
+    setSeatHoldByPassenger((current) => {
+      const next = { ...current };
+      delete next[passengerIndex];
+      return next;
+    });
     onSelectSeat(passengerIndex, null);
   };
 
@@ -85,7 +172,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
     setShowSeatMap(true);
   };
 
-  if (loading) {
+  if (loading || seatsLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-md p-6">
         <div className="flex items-center justify-center h-40">
@@ -109,12 +196,23 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-800">Seat Selection</h2>
-            <p className="text-sm text-gray-600">Choose your preferred seats</p>
+          <p className="text-sm text-gray-600">Choose your preferred seats</p>
           </div>
         </div>
         <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl text-center">
           <Armchair className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-sm text-gray-600">No seats available for this flight</p>
+          <p className="text-sm text-gray-600">
+            {seatError || 'No seats available for this flight yet'}
+          </p>
+          {flightInstanceId && (
+            <button
+              onClick={() => dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId))}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reload seats
+            </button>
+          )}
         </div>
       </motion.div>
     );
@@ -145,7 +243,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
           <div className="text-right hidden sm:block">
             <p className="text-xs text-gray-500">Available Seats</p>
             <p className="text-lg font-bold text-indigo-600">
-              {seats.filter(s => s.isAvailable && !s.isOccupied && !s.booked).length}
+              {seats.filter(isSeatAvailable).length}
             </p>
           </div>
         </div>
@@ -305,7 +403,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
                       {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft Layout'}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {totalRows} Rows • {seatsPerRow} Seats per Row • {seats.length} Total Seats
+                      {totalRows} Rows • up to {maxSeatsPerRow} seats per row • {seats.length} Total Seats
                     </p>
                   </div>
                 </div>
@@ -337,19 +435,11 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
 
               {/* Seat Map */}
               <div className="space-y-2 max-h-[50vh] overflow-y-auto px-2">
-                {Object.entries(seatsByRow)
-                  .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                  .map(([row, rowSeats]) => {
-                    // Sort seats by letter (A, B, C, D, E, F)
-                    const sortedSeats = rowSeats.sort((a, b) => {
-                      const letterA = a.seatNumber.replace(/\d+/g, '');
-                      const letterB = b.seatNumber.replace(/\d+/g, '');
-                      return letterA.localeCompare(letterB);
-                    });
-
-                    // Split into left and right sections for aisle
-                    const leftSeats = sortedSeats.slice(0, leftSeatsPerRow);
-                    const rightSeats = sortedSeats.slice(leftSeatsPerRow);
+                {sortedRows
+                  .map(([row, sortedSeats]) => {
+                    const splitIndex = Math.ceil(sortedSeats.length / 2);
+                    const leftSeats = sortedSeats.slice(0, splitIndex);
+                    const rightSeats = sortedSeats.slice(splitIndex);
 
                     return (
                       <div key={row} className="flex items-center gap-3">
@@ -361,7 +451,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
                         {/* Left Section */}
                         <div className="flex gap-1">
                           {leftSeats.map((seat) => {
-                            const isAvailable = seat.isAvailable && !seat.isOccupied && !seat.booked;
+                            const isAvailable = isSeatAvailable(seat);
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
                             const canSelect = isAvailable && !isSelectedByAnyPassenger;
 
@@ -371,7 +461,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
                                 whileHover={canSelect ? { scale: 1.1 } : {}}
                                 whileTap={canSelect ? { scale: 0.95 } : {}}
                                 onClick={() => handleSeatClick(seat)}
-                                disabled={!canSelect}
+                                disabled={!canSelect || holdLoading}
                                 className={`relative p-2 rounded-lg border-2 transition-all min-w-[60px] ${getSeatColor(seat)}`}
                               >
                                 <div className="flex flex-col items-center">
@@ -411,7 +501,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
                         {/* Right Section */}
                         <div className="flex gap-1">
                           {rightSeats.map((seat) => {
-                            const isAvailable = seat.isAvailable && !seat.isOccupied && !seat.booked;
+                            const isAvailable = isSeatAvailable(seat);
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
                             const canSelect = isAvailable && !isSelectedByAnyPassenger;
 
@@ -421,7 +511,7 @@ const SeatSelection = ({ selectedSeats = [], onSelectSeat, passengerCount = 1 })
                                 whileHover={canSelect ? { scale: 1.1 } : {}}
                                 whileTap={canSelect ? { scale: 0.95 } : {}}
                                 onClick={() => handleSeatClick(seat)}
-                                disabled={!canSelect}
+                                disabled={!canSelect || holdLoading}
                                 className={`relative p-2 rounded-lg border-2 transition-all min-w-[60px] ${getSeatColor(seat)}`}
                               >
                                 <div className="flex flex-col items-center">

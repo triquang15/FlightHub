@@ -23,7 +23,15 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(name = "flight_instance_cabins")
+@Table(
+        name = "flight_instance_cabins",
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(
+                        name = "uk_flight_instance_cabin",
+                        columnNames = {"flight_instance_id", "cabin_class_id"}
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,6 +56,7 @@ public class FlightInstanceCabin {
     @Column(nullable = false)
     private Integer totalSeats;
 
+    @Builder.Default
     private Integer bookedSeats = 0;
 
     @Builder.Default
@@ -57,6 +66,6 @@ public class FlightInstanceCabin {
     private List<SeatInstance> seats = new ArrayList<>();
 
     public Integer getAvailableSeats() {
-        return totalSeats - bookedSeats;
+        return (totalSeats == null ? 0 : totalSeats) - (bookedSeats == null ? 0 : bookedSeats);
     }
 }

@@ -15,6 +15,7 @@ import java.util.Optional;
 
 public interface FlightInstanceCabinRepository extends JpaRepository<FlightInstanceCabin, Long> {
     Page<FlightInstanceCabin> findByFlightInstanceId(Long flightInstanceId, Pageable pageable);
+    boolean existsByFlightInstanceId(Long flightInstanceId);
 
     @Query("SELECT fic FROM FlightInstanceCabin fic WHERE fic.flightInstanceId = :flightInstanceId AND fic.cabinClass.name = :cabinClass")
     Optional<FlightInstanceCabin> findByFlightInstanceIdAndCabinClassName(

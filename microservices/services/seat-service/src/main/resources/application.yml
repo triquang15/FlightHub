@@ -67,6 +67,18 @@ management:
         include: health, info
 
 # =========================
+# OPENAPI / SWAGGER
+# =========================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+
+# =========================
 # INFO
 # =========================
 info:

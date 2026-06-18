@@ -53,6 +53,8 @@ springdoc:
         url: /docs/booking-service/v3/api-docs
       - name: Flight Operations Service
         url: /docs/flight-ops-service/v3/api-docs
+      - name: Seat Service
+        url: /docs/seat-service/v3/api-docs
 
 # ================= RESILIENCE4J =================
 resilience4j:

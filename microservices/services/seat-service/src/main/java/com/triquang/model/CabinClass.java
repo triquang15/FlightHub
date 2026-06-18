@@ -58,6 +58,7 @@ public class CabinClass {
     @Column(name = "aircraft_id")
     private Long aircraftId;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer displayOrder = 0;
 

@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import com.triquang.model.CabinClass;
 import com.triquang.model.Seat;
 import com.triquang.model.SeatMap;
+import com.triquang.model.SeatMapZone;
 import com.triquang.payload.request.SeatMapRequest;
 import com.triquang.payload.response.SeatMapResponse;
 
@@ -31,6 +32,7 @@ public class SeatMapMapper {
 
     public static SeatMapResponse toResponse(SeatMap seatMap) {
         List<Seat> seats = seatMap.getSeats();
+        List<SeatMapZone> zones = seatMap.getZones();
 
         int totalSeats = seats != null ? seats.size() : 0;
         int availableSeats = seats != null ? (int) seats.stream().filter(seat ->
@@ -65,6 +67,9 @@ public class SeatMapMapper {
                 .availableSeats(availableSeats)
                 .occupiedSeats(totalSeats - availableSeats)
                 .seats(seats != null ? seats.stream().map(SeatMapper::toResponse)
+                        .collect(Collectors.toList()) : null)
+                .zones(zones != null ? zones.stream()
+                        .map(SeatMapZoneMapper::toResponse)
                         .collect(Collectors.toList()) : null)
                 .windowSeats(windowSeats)
                 .aisleSeats(aisleSeats)

@@ -15,6 +15,7 @@ USER_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-users.sql"
 CITY_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-cities.sql"
 AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
+SEAT_SERVICE_SEED_SQL="$SQL_DIR/2026-06-08-seed-production-seat-service.sql"
 FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -22,7 +23,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL"; do
+for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" "$SEAT_SERVICE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL"; do
   if [[ ! -f "$file" ]]; then
     echo "Required SQL seed file not found: $file" >&2
     exit 1
@@ -236,6 +237,30 @@ for required in \
   aircraft_cx_a35k aircraft_jl_b789 aircraft_ek_a388 aircraft_qr_a359; do
   require_value "$required" "${!required}"
 done
+
+run_sql_file_with_settings \
+  seatdb \
+  airline_seat_db \
+  "$SEAT_SERVICE_SEED_SQL" \
+  airline_vn="$airline_vn" \
+  airline_vj="$airline_vj" \
+  airline_ak="$airline_ak" \
+  airline_sq="$airline_sq" \
+  airline_tg="$airline_tg" \
+  airline_cx="$airline_cx" \
+  airline_jl="$airline_jl" \
+  airline_ek="$airline_ek" \
+  airline_qr="$airline_qr" \
+  aircraft_vn_a359="$aircraft_vn_a359" \
+  aircraft_vn_b789="$aircraft_vn_b789" \
+  aircraft_vj_a321="$aircraft_vj_a321" \
+  aircraft_ak_a320="$aircraft_ak_a320" \
+  aircraft_sq_a359="$aircraft_sq_a359" \
+  aircraft_tg_b77w="$aircraft_tg_b77w" \
+  aircraft_cx_a35k="$aircraft_cx_a35k" \
+  aircraft_jl_b789="$aircraft_jl_b789" \
+  aircraft_ek_a388="$aircraft_ek_a388" \
+  aircraft_qr_a359="$aircraft_qr_a359"
 
 run_sql_file_with_settings \
   flightopsdb \

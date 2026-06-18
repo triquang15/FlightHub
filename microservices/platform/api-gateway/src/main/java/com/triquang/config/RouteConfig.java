@@ -118,6 +118,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/flight-ops-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/flight-ops-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("flight-ops-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("seat-openapi-docs")
+                        .route(RequestPredicates.path("/docs/seat-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/seat-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("seat-service"))
                         .build());
     }
 
@@ -169,7 +174,11 @@ public class RouteConfig {
     @Bean
     public RouterFunction<ServerResponse> seatRoutes() {
         return routeWithCB("seat", "seat-service", "seat-cb", "forward:/fallback/seat")
+                .route(RequestPredicates.path("/api/cabin-classes/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/seat-maps/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/seats/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/seat-instances/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/flight-instance-cabins/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
                 .build();

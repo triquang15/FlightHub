@@ -34,6 +34,10 @@ public class SeatInstanceResponse {
 
     private String mealPreference;
     private Double fare;
+    private String holdToken;
+    private Long heldByUserId;
+    private String bookingReference;
+    private Instant holdExpiresAt;
 
     private Long version;
     private Instant createdAt;

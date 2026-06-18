@@ -25,6 +25,7 @@ public class SeatMapResponse {
     private Integer occupiedSeats;
 
     private List<SeatResponse> seats;
+    private List<SeatMapZoneResponse> zones;
 
     private Integer windowSeats;
     private Integer aisleSeats;

@@ -3,6 +3,8 @@ package com.triquang.payload.request;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,4 +27,5 @@ public class SeatMapRequest {
     private Integer rightSeatsPerRow;
 
     private Long cabinClassId;
+    private List<SeatMapZoneRequest> zones;
 }
