@@ -19,6 +19,13 @@ ALTER TABLE IF EXISTS seat_instances
     ADD COLUMN IF NOT EXISTS booking_reference varchar(255),
     ADD COLUMN IF NOT EXISTS hold_expires_at timestamptz;
 
+ALTER TABLE IF EXISTS seat_instances
+    DROP CONSTRAINT IF EXISTS seat_instances_status_check;
+
+ALTER TABLE IF EXISTS seat_instances
+    ADD CONSTRAINT seat_instances_status_check
+    CHECK (status IN ('AVAILABLE', 'HELD', 'BOOKED', 'OCCUPIED', 'BLOCKED'));
+
 CREATE TABLE IF NOT EXISTS seat_map_zones (
     id bigserial PRIMARY KEY,
     name varchar(255) NOT NULL,
@@ -180,6 +187,76 @@ JOIN cabin_classes cabin
   ON cabin.aircraft_id = seed.aircraft_id
  AND cabin.code = seed.code
 WHERE existing.cabin_class_id = cabin.id;
+
+WITH cabin_seed (
+    aircraft_id,
+    airline_id,
+    cabin_name,
+    code,
+    target_seats,
+    left_seats_per_row,
+    right_seats_per_row
+) AS (
+    VALUES
+        (current_setting('flighthub_seed.aircraft_vn_a359', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'BUSINESS', 'BUS', 29, 2, 4),
+        (current_setting('flighthub_seed.aircraft_vn_a359', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 45, 3, 3),
+        (current_setting('flighthub_seed.aircraft_vn_a359', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'ECONOMY', 'ECO', 231, 3, 3),
+        (current_setting('flighthub_seed.aircraft_vn_b789', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'BUSINESS', 'BUS', 28, 2, 4),
+        (current_setting('flighthub_seed.aircraft_vn_b789', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 35, 3, 3),
+        (current_setting('flighthub_seed.aircraft_vn_b789', true)::bigint, current_setting('flighthub_seed.airline_vn', true)::bigint, 'ECONOMY', 'ECO', 211, 3, 3),
+        (current_setting('flighthub_seed.aircraft_vj_a321', true)::bigint, current_setting('flighthub_seed.airline_vj', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 20, 3, 3),
+        (current_setting('flighthub_seed.aircraft_vj_a321', true)::bigint, current_setting('flighthub_seed.airline_vj', true)::bigint, 'ECONOMY', 'ECO', 220, 3, 3),
+        (current_setting('flighthub_seed.aircraft_ak_a320', true)::bigint, current_setting('flighthub_seed.airline_ak', true)::bigint, 'ECONOMY', 'ECO', 186, 3, 3),
+        (current_setting('flighthub_seed.aircraft_sq_a359', true)::bigint, current_setting('flighthub_seed.airline_sq', true)::bigint, 'BUSINESS', 'BUS', 42, 2, 4),
+        (current_setting('flighthub_seed.aircraft_sq_a359', true)::bigint, current_setting('flighthub_seed.airline_sq', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 24, 3, 3),
+        (current_setting('flighthub_seed.aircraft_sq_a359', true)::bigint, current_setting('flighthub_seed.airline_sq', true)::bigint, 'ECONOMY', 'ECO', 187, 3, 3),
+        (current_setting('flighthub_seed.aircraft_tg_b77w', true)::bigint, current_setting('flighthub_seed.airline_tg', true)::bigint, 'BUSINESS', 'BUS', 42, 2, 4),
+        (current_setting('flighthub_seed.aircraft_tg_b77w', true)::bigint, current_setting('flighthub_seed.airline_tg', true)::bigint, 'ECONOMY', 'ECO', 306, 3, 3),
+        (current_setting('flighthub_seed.aircraft_cx_a35k', true)::bigint, current_setting('flighthub_seed.airline_cx', true)::bigint, 'BUSINESS', 'BUS', 46, 2, 4),
+        (current_setting('flighthub_seed.aircraft_cx_a35k', true)::bigint, current_setting('flighthub_seed.airline_cx', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 32, 3, 3),
+        (current_setting('flighthub_seed.aircraft_cx_a35k', true)::bigint, current_setting('flighthub_seed.airline_cx', true)::bigint, 'ECONOMY', 'ECO', 256, 3, 3),
+        (current_setting('flighthub_seed.aircraft_jl_b789', true)::bigint, current_setting('flighthub_seed.airline_jl', true)::bigint, 'FIRST', 'FST', 4, 2, 2),
+        (current_setting('flighthub_seed.aircraft_jl_b789', true)::bigint, current_setting('flighthub_seed.airline_jl', true)::bigint, 'BUSINESS', 'BUS', 44, 2, 2),
+        (current_setting('flighthub_seed.aircraft_jl_b789', true)::bigint, current_setting('flighthub_seed.airline_jl', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 35, 2, 3),
+        (current_setting('flighthub_seed.aircraft_jl_b789', true)::bigint, current_setting('flighthub_seed.airline_jl', true)::bigint, 'ECONOMY', 'ECO', 156, 3, 3),
+        (current_setting('flighthub_seed.aircraft_ek_a388', true)::bigint, current_setting('flighthub_seed.airline_ek', true)::bigint, 'BUSINESS', 'BUS', 42, 2, 4),
+        (current_setting('flighthub_seed.aircraft_ek_a388', true)::bigint, current_setting('flighthub_seed.airline_ek', true)::bigint, 'PREMIUM_ECONOMY', 'PRE', 76, 3, 3),
+        (current_setting('flighthub_seed.aircraft_ek_a388', true)::bigint, current_setting('flighthub_seed.airline_ek', true)::bigint, 'ECONOMY', 'ECO', 399, 3, 3),
+        (current_setting('flighthub_seed.aircraft_qr_a359', true)::bigint, current_setting('flighthub_seed.airline_qr', true)::bigint, 'BUSINESS', 'BUS', 36, 2, 4),
+        (current_setting('flighthub_seed.aircraft_qr_a359', true)::bigint, current_setting('flighthub_seed.airline_qr', true)::bigint, 'ECONOMY', 'ECO', 247, 3, 3)
+),
+normalized_seed AS (
+    SELECT
+        *,
+        ((target_seats + left_seats_per_row + right_seats_per_row - 1)
+            / (left_seats_per_row + right_seats_per_row)) AS total_rows
+    FROM cabin_seed
+)
+INSERT INTO seat_maps (
+    name,
+    total_rows,
+    right_seats_per_row,
+    left_seats_per_row,
+    airline_id,
+    cabin_class_id
+)
+SELECT
+    seed.cabin_name || ' ' || seed.code || ' layout',
+    seed.total_rows,
+    seed.right_seats_per_row,
+    seed.left_seats_per_row,
+    seed.airline_id,
+    cabin.id
+FROM normalized_seed seed
+JOIN cabin_classes cabin
+  ON cabin.aircraft_id = seed.aircraft_id
+ AND cabin.code = seed.code
+ON CONFLICT (cabin_class_id) DO UPDATE SET
+    name = EXCLUDED.name,
+    total_rows = EXCLUDED.total_rows,
+    right_seats_per_row = EXCLUDED.right_seats_per_row,
+    left_seats_per_row = EXCLUDED.left_seats_per_row,
+    airline_id = EXCLUDED.airline_id;
 
 WITH cabin_seed (
     aircraft_id,
