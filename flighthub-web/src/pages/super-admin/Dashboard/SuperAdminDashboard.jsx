@@ -1,13 +1,6 @@
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Bell,
-  Crown,
-  AlertTriangle,
-  Shield,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import SuperAdminSidebar from "../Sidebar/SuperAdminSidebar";
@@ -20,7 +13,7 @@ import {
 } from "../utils/routingUtils";
 import { SIDEBAR_COLLAPSE_KEY } from "../constants";
 import api from "@/utils/api";
-import SessionCountdownControl from "@/components/auth/SessionCountdownControl";
+import WorkspaceHeader from "@/components/navigation/WorkspaceHeader";
 
 const emptyPlatformStats = {
   loading: true,
@@ -71,6 +64,7 @@ const SuperAdminDashboard = () => {
       return false;
     }
   });
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = React.useState(false);
   const [platformStats, setPlatformStats] = React.useState(emptyPlatformStats);
 
   // Handle sidebar section changes using the utility function
@@ -169,56 +163,29 @@ const SuperAdminDashboard = () => {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         platformStats={platformStats}
+        isMobileOpen={isMobileNavigationOpen}
+        onMobileClose={() => setIsMobileNavigationOpen(false)}
       />
 
       {/* Main Content Area */}
       <div
         className={cn(
-          "flex-1 transition-all duration-300 ease-in-out",
-          isSidebarCollapsed ? "ml-16" : "ml-80"
+          "min-w-0 flex-1 transition-all duration-300 ease-in-out",
+          isSidebarCollapsed ? "lg:ml-16" : "lg:ml-80"
         )}
       >
-        {/* Header */}
-        <div className="bg-background border-b border-border sticky top-0 z-30">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <Crown className="h-6 w-6 text-primary" />
-                  {getSectionTitle(activeSection)}
-                </h1>
-                <p className="text-muted-foreground">
-                  {getSectionDescription(activeSection)}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <SessionCountdownControl className="shrink-0" />
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  System Alerts
-                  <Badge className="ml-1 bg-red-100 text-red-800">
-                    {platformStats.loading ? "…" : platformStats.securityAlerts ?? "N/A"}
-                  </Badge>
-                </Button>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Pending Approvals
-                  <Badge className="ml-1 bg-yellow-100 text-yellow-800">
-                    {platformStats.loading ? "…" : platformStats.pendingApprovals ?? "N/A"}
-                  </Badge>
-                </Button>
-                <Button className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Admin Actions
-                </Button>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <WorkspaceHeader
+          title={getSectionTitle(activeSection)}
+          description={getSectionDescription(activeSection)}
+          badge="System Admin"
+          badgeClassName="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300"
+          icon={Shield}
+          iconClassName="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+          onOpenNavigation={() => setIsMobileNavigationOpen(true)}
+        />
 
         {/* Main Content */}
-        <ScrollArea className="flex-1 p-6">
+        <ScrollArea className="flex-1 p-4 sm:p-6">
           <SuperAdminRoutes platformStats={platformStats} />
         </ScrollArea>
       </div>

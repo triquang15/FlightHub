@@ -1,736 +1,337 @@
-
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Formik, Form, Field, ErrorMessage } from "formik";
-import * as Yup from "yup";
-import {
-  ArrowLeft,
-  Save,
-  Calendar as CalendarIcon,
-  Clock,
-  MapPin,
-  Plane,
-  Users,
-  RotateCcw,
-  CheckCircle,
-  Settings,
-  ChevronDownIcon,
-} from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { AlertCircle, ArrowLeft, CalendarDays, Clock, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import {
-  createFlightSchedule,
-  updateFlightSchedule,
-  getFlightScheduleById,
-
-} from "@/Redux/flightSchedule/flightScheduleThunk";
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
-import { daysOfWeek } from "./daysOfWeek";
-import { listAllAirports } from "@/Redux/airport/airportThunk";
+import { createFlightSchedule, getFlightScheduleById, updateFlightSchedule } from "@/Redux/flightSchedule/flightScheduleThunk";
 import { ALL_OPERATING_DAYS } from "@/utils/flightOps";
+import { daysOfWeek } from "./daysOfWeek";
 
+const EMPTY_FORM = {
+  flightId: "",
+  departureTime: "",
+  arrivalTime: "",
+  recurrenceType: "DAILY",
+  operatingDays: ALL_OPERATING_DAYS,
+  startDate: "",
+  endDate: "",
+  isActive: true,
+};
 
-// Validation schema
-const flightScheduleSchema = Yup.object().shape({
-  flightId: Yup.string().required("Flight is required"),
-
-  departureTime: Yup.string()
-    .required("Departure time is required")
-    .matches(
-      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-      "Invalid time format (HH:MM)"
-    ),
-  arrivalTime: Yup.string()
-    .required("Arrival time is required")
-    .matches(
-      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-      "Invalid time format (HH:MM)"
-    ),
-  recurrenceType: Yup.string()
-    .required("Recurrence type is required")
-    .oneOf(["DAILY", "WEEKLY", "CUSTOM"], "Invalid recurrence type"),
-  operatingDays: Yup.array().min(1, "Select at least one operating day"),
-  startDate: Yup.date()
-    .required("Start date is required")
-    .min(new Date(), "Start date cannot be in the past"),
-  endDate: Yup.date()
-    .required("End date is required")
-    .min(Yup.ref('startDate'), "End date must be after start date"),
+const toForm = (schedule) => ({
+  flightId: schedule?.flightId ? String(schedule.flightId) : "",
+  departureTime: schedule?.departureTime?.slice(0, 5) || "",
+  arrivalTime: schedule?.arrivalTime?.slice(0, 5) || "",
+  recurrenceType: schedule?.recurrenceType || "DAILY",
+  operatingDays: schedule?.operatingDays?.length ? schedule.operatingDays : ALL_OPERATING_DAYS,
+  startDate: schedule?.startDate || "",
+  endDate: schedule?.endDate || "",
+  isActive: schedule?.isActive !== false,
 });
 
+const localToday = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+};
+
+const validate = (form, editing) => {
+  const errors = {};
+  const today = localToday();
+
+  if (!form.flightId) errors.flightId = "Select a flight definition.";
+  if (!form.departureTime) errors.departureTime = "Departure time is required.";
+  if (!form.arrivalTime) errors.arrivalTime = "Arrival time is required.";
+  if (!form.startDate) errors.startDate = "Start date is required.";
+  else if (!editing && form.startDate < today) errors.startDate = "A new schedule cannot start in the past.";
+  if (!form.endDate) errors.endDate = "End date is required.";
+  else if (form.startDate && form.endDate < form.startDate) errors.endDate = "End date cannot be before start date.";
+  if (!form.operatingDays.length) errors.operatingDays = "Select at least one operating day.";
+
+  return errors;
+};
+
+const ErrorText = ({ message }) => message ? <p className="text-xs text-destructive">{message}</p> : null;
+
 const FlightScheduleForm = () => {
+  const { id } = useParams();
+  const editing = Boolean(id);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { id } = useParams();
-  const isEditMode = Boolean(id);
-  // const { airports } = useSelector((state) => state.airport);
 
-  const { flights} = useSelector(
-    (state) => state.flight
-  );
-  const { loading: scheduleLoading } = useSelector(
-    (state) => state.flightSchedule || {}
-  );
+  const { flights: flightPayload = [], loading: flightsLoading } = useSelector((state) => state.flight);
+  const { currentFlightSchedule, loading: scheduleLoading } = useSelector((state) => state.flightSchedule);
+  const flights = Array.isArray(flightPayload) ? flightPayload : [];
+  const scheduleMatchesRoute = String(currentFlightSchedule?.id) === String(id);
 
-  const [initialValues, setInitialValues] = useState({
-    flightId: "",
-    
-    
-    departureTime: "",
-    arrivalTime: "",
-    recurrenceType: "DAILY",
-    operatingDays: [],
-    isActive: true,
-    totalSeats: "",
-    availableSeats: "",
-    startDate: "",
-    endDate: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [hydratedScheduleId, setHydratedScheduleId] = useState(null);
 
-  // Fetch flights on component mount
   useEffect(() => {
     dispatch(getFlightsByAirline());
+    if (editing) dispatch(getFlightScheduleById(id));
+  }, [dispatch, editing, id]);
 
-    if (isEditMode) {
-      dispatch(getFlightScheduleById(id)).then((result) => {
-        if (result.payload) {
-          const schedule = result.payload;
-          setInitialValues({
-            flightId: schedule.flightId || "",
-         
-            
-            arrivalAirportId: schedule.arrivalAirportId || "",
-            departureTime: schedule.departureTime || "",
-            arrivalTime: schedule.arrivalTime || "",
-            recurrenceType: schedule.recurrenceType || "DAILY",
-            operatingDays: schedule.operatingDays || [],
-            isActive:
-              schedule.isActive !== undefined ? schedule.isActive : true,
-            totalSeats: schedule.totalSeats || "",
-            availableSeats: schedule.availableSeats || "",
-            startDate: schedule.startDate || "",
-            endDate: schedule.endDate || "",
-          });
-        }
-      });
+  if (editing && scheduleMatchesRoute && hydratedScheduleId !== currentFlightSchedule.id) {
+    setHydratedScheduleId(currentFlightSchedule.id);
+    setForm(toForm(currentFlightSchedule));
+    setErrors({});
+  }
+
+  const selectedFlight = flights.find((flight) => String(flight.id) === form.flightId);
+  const activeFlight = editing && scheduleMatchesRoute && !selectedFlight
+    ? {
+        id: currentFlightSchedule.flightId,
+        flightNumber: currentFlightSchedule.flightNumber,
+        departureAirport: currentFlightSchedule.departureAirport,
+        arrivalAirport: currentFlightSchedule.arrivalAirport,
+      }
+    : selectedFlight;
+
+  const setField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const setRecurrence = (value) => {
+    setForm((current) => ({
+      ...current,
+      recurrenceType: value,
+      operatingDays: value === "DAILY" ? ALL_OPERATING_DAYS : current.recurrenceType === "DAILY" ? [] : current.operatingDays,
+    }));
+    setErrors((current) => ({ ...current, operatingDays: undefined }));
+  };
+
+  const toggleDay = (day, checked) => {
+    const operatingDays = checked
+      ? [...new Set([...form.operatingDays, day])]
+      : form.operatingDays.filter((item) => item !== day);
+    setField("operatingDays", operatingDays);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const validationErrors = validate(form, editing);
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors);
+      return;
     }
-  }, [dispatch, id, isEditMode]);
 
-  const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
+    const payload = {
+      flightId: Number(form.flightId),
+      departureTime: form.departureTime,
+      arrivalTime: form.arrivalTime,
+      recurrenceType: form.recurrenceType,
+      operatingDays: form.recurrenceType === "DAILY" ? ALL_OPERATING_DAYS : form.operatingDays,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      isActive: form.isActive,
+    };
+
+    setSaving(true);
     try {
-      const formData = {
-        flightId: Number(values.flightId),
-        departureTime: values.departureTime,
-        arrivalTime: values.arrivalTime,
-        recurrenceType: values.recurrenceType,
-        operatingDays:
-          values.recurrenceType === "DAILY"
-            ? ALL_OPERATING_DAYS
-            : values.operatingDays,
-        isActive: values.isActive,
-        startDate: values.startDate,
-        endDate: values.endDate,
-      };
-
-      console.log("flight shedule form data ", formData)
-
-      let result;
-      if (isEditMode) {
-        result = await dispatch(updateFlightSchedule({ id, data: formData }));
+      if (editing) {
+        await dispatch(updateFlightSchedule({ id, data: payload })).unwrap();
+        toast.success("Flight schedule updated and instances synchronized");
+        navigate(`/airline/schedules/${id}`);
       } else {
-        result = await dispatch(createFlightSchedule(formData));
-      }
-
-      if (result.type.endsWith("/fulfilled")) {
+        await dispatch(createFlightSchedule(payload)).unwrap();
+        toast.success("Flight schedule created and instances generated");
         navigate("/airline/schedules");
-      } else {
-        // Handle API errors
-        const errorMessage = result.payload || "An error occurred";
-        setFieldError("submit", errorMessage);
       }
-    } catch (error) {
-      setFieldError("submit error occurred - ", error);
+    } catch (saveError) {
+      toast.error(saveError || "Unable to save flight schedule");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const getSelectedFlight = (flightId) => {
-    return flights?.find((flight) => flight.id == flightId);
-  };
+  if (editing && scheduleLoading && !scheduleMatchesRoute) {
+    return <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">Loading flight schedule...</CardContent></Card>;
+  }
 
-  useEffect(() => {
-    dispatch(listAllAirports());
-  }, []);
+  if (editing && !scheduleLoading && !scheduleMatchesRoute) {
+    return <Alert variant="destructive"><AlertCircle /><AlertDescription>Flight schedule could not be loaded.</AlertDescription></Alert>;
+  }
+
+  const localClockSuggestsOvernight = form.departureTime && form.arrivalTime && form.arrivalTime <= form.departureTime;
+  const selectedDays = form.recurrenceType === "DAILY" ? ALL_OPERATING_DAYS : form.operatingDays;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/airline/schedules")}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Schedules
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <CalendarIcon className="h-8 w-8 text-primary" />
-              {isEditMode ? "Edit Flight Schedule" : "Create Flight Schedule"}
-            </h1>
-            <p className="text-muted-foreground">
-              {isEditMode
-                ? "Update existing flight schedule"
-                : "Define a new recurring flight schedule"}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-5xl space-y-5">
+      <Button variant="ghost" size="sm" onClick={() => navigate(editing ? `/airline/schedules/${id}` : "/airline/schedules")}>
+        <ArrowLeft /> {editing ? "Back to schedule" : "Back to schedules"}
+      </Button>
 
-      <Formik
-        initialValues={initialValues}
-        validationSchema={flightScheduleSchema}
-        onSubmit={handleSubmit}
-        enableReinitialize={true}
-      >
-        {({ values, errors, touched, setFieldValue, isSubmitting }) => (
-          <Form className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Flight Information */}
-              <div className="lg:col-span-2 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plane className="h-5 w-5" />
-                      Flight Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Flight Selection */}
-                    <div>
-                      <Label htmlFor="flightId">Flight *</Label>
-                      <Select
-                        value={values.flightId}
-                        onValueChange={(value) =>
-                          setFieldValue("flightId", value)
-                        }
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            "mt-1 w-full",
-                            errors.flightId &&
-                              touched.flightId &&
-                              "border-red-500"
-                          )}
-                        >
-                          <SelectValue placeholder="Select a flight" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {flights?.map((flight) => (
-                            <SelectItem key={flight.id} value={String(flight.id)}>
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <span className="font-medium">
-                                  {flight.flightNumber}
-                                </span>
-                                </div>
-                                <span className="text-muted-foreground">-</span>
-                                <div>
-                                  <p className="text-sm">{flight.departureAirport?.name}</p>
-                                  <p className="text-sm">{flight.arrivalAirport?.name}</p>
-                                </div>
-                                
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <ErrorMessage
-                        name="flightId"
-                        component="div"
-                        className="text-red-500 text-sm mt-1"
-                      />
-                    </div>
-
-                    {/* Flight Details Display */}
-                    {values.flightId && (
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h4 className="font-medium mb-2">
-                          Selected Flight Details
-                        </h4>
-                        {(() => {
-                          const flight = getSelectedFlight(values.flightId);
-
-                          console.log("selected flight --- ", values.flightId);
-                          return flight ? (
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Flight Number:
-                                </span>
-                                <span className="ml-2 font-medium">
-                                  {flight.flightNumber}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Aircraft:
-                                </span>
-                                <span className="ml-2">
-                                  {flight.aircraft?.code +" ("+flight.aircraft.manufacturer+")" || "Not specified"}
-                                </span>
-                              </div>
-                            </div>
-                          ) : null;
-                        })()}
-                      </div>
-                    )}
-
-                   
-                   
-            
-
-                    {/* Time Selection */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="departureTime">Departure Time *</Label>
-                        <div className="relative mt-1">
-                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Field
-                            name="departureTime"
-                            type="time"
-                            className={cn(
-                              "flex h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background",
-                              "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                              "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                              "disabled:cursor-not-allowed disabled:opacity-50",
-                              errors.departureTime &&
-                                touched.departureTime &&
-                                "border-red-500"
-                            )}
-                          />
-                        </div>
-                        <ErrorMessage
-                          name="departureTime"
-                          component="div"
-                          className="text-red-500 text-sm mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="arrivalTime">Arrival Time *</Label>
-                        <div className="relative mt-1">
-                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Field
-                            name="arrivalTime"
-                            type="time"
-                            className={cn(
-                              "flex h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background",
-                              "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                              "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                              "disabled:cursor-not-allowed disabled:opacity-50",
-                              errors.arrivalTime &&
-                                touched.arrivalTime &&
-                                "border-red-500"
-                            )}
-                          />
-                        </div>
-                        <ErrorMessage
-                          name="arrivalTime"
-                          component="div"
-                          className="text-red-500 text-sm mt-1"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Schedule Configuration */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <RotateCcw className="h-5 w-5" />
-                      Schedule Configuration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Recurrence Type */}
-                    <div>
-                      <Label htmlFor="recurrenceType">Recurrence Type *</Label>
-                      <Select
-                        value={values.recurrenceType}
-                        onValueChange={(value) => {
-                          setFieldValue("recurrenceType", value);
-                          if (value === "DAILY") {
-                            setFieldValue("operatingDays", ALL_OPERATING_DAYS);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="mt-1 w-full">
-                          <SelectValue placeholder="Select recurrence type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="DAILY">Daily</SelectItem>
-                          <SelectItem value="WEEKLY">Weekly</SelectItem>
-                          <SelectItem value="CUSTOM">Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <ErrorMessage
-                        name="recurrenceType"
-                        component="div"
-                        className="text-red-500 text-sm mt-1"
-                      />
-                    </div>
-
-                    {/* Operating Days (for Weekly) */}
-                    {values.recurrenceType !== "DAILY" && (
-                      <div>
-                        <Label>Operating Days *</Label>
-                        <div className="mt-2 grid grid-cols-4 sm:grid-cols-7 gap-2">
-                          {daysOfWeek.map((day) => (
-                            <div
-                              key={day.id}
-                              className="flex items-center space-x-2"
-                            >
-                              <Checkbox
-                                id={day.id}
-                                checked={values.operatingDays.includes(day.id)}
-                                onCheckedChange={(checked) => {
-                                  const updatedDays = checked
-                                    ? [...values.operatingDays, day.id]
-                                    : values.operatingDays.filter(
-                                        (d) => d !== day.id
-                                      );
-                                  setFieldValue("operatingDays", updatedDays);
-                                }}
-                              />
-                              <Label
-                                htmlFor={day.id}
-                                className="text-sm font-normal"
-                              >
-                                {day.short}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                        <ErrorMessage
-                          name="operatingDays"
-                          component="div"
-                          className="text-red-500 text-sm mt-1"
-                        />
-                      </div>
-                    )}
-
-                    {/* Schedule Duration */}
-                    <div className="space-y-4">
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                          <CalendarIcon className="h-4 w-4" />
-                          Schedule Duration
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Start Date */}
-                          <div>
-                            <Label htmlFor="startDate">Start Date *</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-between font-normal mt-1",
-                                    !values.startDate && "text-muted-foreground",
-                                    errors.startDate &&
-                                      touched.startDate &&
-                                      "border-red-500"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4" />
-                                    {values.startDate
-                                      ? format(new Date(values.startDate), "PPP")
-                                      : "Select start date"}
-                                  </div>
-                                  <ChevronDownIcon className="h-4 w-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={values.startDate ? new Date(values.startDate) : undefined}
-                                  onSelect={(date) => {
-                                    if (date) {
-                                      setFieldValue("startDate", format(date, "yyyy-MM-dd"));
-                                    }
-                                  }}
-                                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <ErrorMessage
-                              name="startDate"
-                              component="div"
-                              className="text-red-500 text-sm mt-1"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              First day this schedule becomes active
-                            </p>
-                          </div>
-
-                          {/* End Date */}
-                          <div>
-                            <Label htmlFor="endDate">End Date *</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-between font-normal mt-1",
-                                    !values.endDate && "text-muted-foreground",
-                                    errors.endDate &&
-                                      touched.endDate &&
-                                      "border-red-500"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4" />
-                                    {values.endDate
-                                      ? format(new Date(values.endDate), "PPP")
-                                      : "Select end date"}
-                                  </div>
-                                  <ChevronDownIcon className="h-4 w-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={values.endDate ? new Date(values.endDate) : undefined}
-                                  onSelect={(date) => {
-                                    if (date) {
-                                      setFieldValue("endDate", format(date, "yyyy-MM-dd"));
-                                    }
-                                  }}
-                                  disabled={(date) => {
-                                    const minDate = values.startDate
-                                      ? new Date(values.startDate)
-                                      : new Date(new Date().setHours(0, 0, 0, 0));
-                                    return date < minDate;
-                                  }}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <ErrorMessage
-                              name="endDate"
-                              component="div"
-                              className="text-red-500 text-sm mt-1"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Last day this schedule will be active
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Duration Info */}
-                        {values.startDate && values.endDate && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center gap-2 text-sm text-blue-800">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span className="font-medium">
-                                Duration: {(() => {
-                                  const start = new Date(values.startDate);
-                                  const end = new Date(values.endDate);
-                                  const diffTime = Math.abs(end - start);
-                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-                                  if (diffDays === 1) return "1 day";
-                                  if (diffDays < 7) return `${diffDays} days`;
-                                  if (diffDays < 30) {
-                                    const weeks = Math.floor(diffDays / 7);
-                                    const remainingDays = diffDays % 7;
-                                    return `${weeks} week${weeks > 1 ? 's' : ''}${remainingDays > 0 ? ` ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : ''}`;
-                                  }
-                                  if (diffDays < 365) {
-                                    const months = Math.floor(diffDays / 30);
-                                    return `~${months} month${months > 1 ? 's' : ''}`;
-                                  }
-                                  const years = Math.floor(diffDays / 365);
-                                  return `~${years} year${years > 1 ? 's' : ''}`;
-                                })()}
-                              </span>
-                            </div>
-                            <p className="text-xs text-blue-600 mt-1">
-                              Flight instances will be generated for this date range based on the recurrence pattern
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* Status */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5" />
-                      Schedule Status
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="isActive">Active Schedule</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Enable this schedule for flight instances
-                        </p>
-                      </div>
-                      <Switch
-                        checked={values.isActive}
-                        onCheckedChange={(checked) =>
-                          setFieldValue("isActive", checked)
-                        }
-                      />
-                    </div>
-                    <div className="mt-4 ">
-                      <Badge
-                        variant={values.isActive ? "default" : "secondary"}
-                        className="p-2 text-md px-5 gap-1"
-                      >
-                        <CheckCircle className=" pr-1" />
-                        {values.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Summary */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Schedule Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    
-                    {values.departureTime && values.arrivalTime && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {values.departureTime} - {values.arrivalTime}
-                        </span>
-                      </div>
-                    )}
-                    {values.recurrenceType && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                        <span>{values.recurrenceType}</span>
-                      </div>
-                    )}
-                    {values.startDate && values.endDate && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {new Date(values.startDate).toLocaleDateString()} - {new Date(values.endDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    {values.recurrenceType === "WEEKLY" && values.operatingDays.length > 0 && (
-                      <div className="flex items-start gap-2 text-sm">
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-1">Operating Days:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {values.operatingDays.map((dayId) => {
-                              const day = daysOfWeek.find(d => d.id === dayId);
-                              return day ? (
-                                <Badge key={dayId} variant="outline" className="text-xs px-1 py-0">
-                                  {day.short}
-                                </Badge>
-                              ) : null;
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {values.totalSeats && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {values.availableSeats || 0}/{values.totalSeats} seats
-                        </span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Actions */}
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="space-y-3">
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting || scheduleLoading}
-                        className="w-full"
-                      >
-                        {isSubmitting || scheduleLoading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                            {isEditMode ? "Updating..." : "Creating..."}
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            {isEditMode ? "Update Schedule" : "Create Schedule"}
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => navigate("/airline/schedules")}
-                        className="w-full"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                    {errors.submit && (
-                      <div className="mt-3 text-red-500 text-sm">
-                        {errors.submit}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+      <form onSubmit={submit} className="space-y-5">
+        <Card>
+          <CardHeader className="border-b">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><CalendarDays className="h-4 w-4" /></div>
+              <div>
+                <CardTitle>{editing ? "Edit flight schedule" : "Create flight schedule"}</CardTitle>
+                <CardDescription>Define recurring operating days and local airport times. Flight instances are generated idempotently.</CardDescription>
               </div>
             </div>
-          </Form>
-        )}
-      </Formik>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Flight definition</Label>
+              <Select value={form.flightId} onValueChange={(value) => setField("flightId", value)} disabled={editing}>
+                <SelectTrigger className="w-full" aria-invalid={Boolean(errors.flightId)}>
+                  <SelectValue placeholder={flightsLoading ? "Loading flights..." : "Select a scheduled flight definition"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeFlight && !flights.some((flight) => flight.id === activeFlight.id) ? (
+                    <SelectItem value={String(activeFlight.id)}>{activeFlight.flightNumber}</SelectItem>
+                  ) : null}
+                  {flights.filter((flight) => flight.status !== "CANCELLED").map((flight) => (
+                    <SelectItem key={flight.id} value={String(flight.id)}>
+                      {flight.flightNumber} · {flight.departureAirport?.iataCode || "---"} to {flight.arrivalAirport?.iataCode || "---"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ErrorText message={errors.flightId} />
+              {editing ? <p className="text-xs text-muted-foreground">Flight ownership and route cannot be changed after schedule creation.</p> : null}
+            </div>
+
+            {activeFlight ? (
+              <div className="grid gap-4 rounded-md border bg-muted/20 p-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Departure airport</p>
+                  <p className="mt-1 text-sm font-medium">{activeFlight.departureAirport?.iataCode || "---"} · {activeFlight.departureAirport?.name || "Unavailable"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{activeFlight.departureAirport?.timeZone || "Timezone unavailable"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Arrival airport</p>
+                  <p className="mt-1 text-sm font-medium">{activeFlight.arrivalAirport?.iataCode || "---"} · {activeFlight.arrivalAirport?.name || "Unavailable"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{activeFlight.arrivalAirport?.timeZone || "Timezone unavailable"}</p>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Operating pattern</CardTitle>
+              <CardDescription>Times are entered in each airport's local timezone.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="departureTime">Departure local time</Label>
+                  <Input id="departureTime" type="time" value={form.departureTime} onChange={(event) => setField("departureTime", event.target.value)} aria-invalid={Boolean(errors.departureTime)} />
+                  <ErrorText message={errors.departureTime} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="arrivalTime">Arrival local time</Label>
+                  <Input id="arrivalTime" type="time" value={form.arrivalTime} onChange={(event) => setField("arrivalTime", event.target.value)} aria-invalid={Boolean(errors.arrivalTime)} />
+                  <ErrorText message={errors.arrivalTime} />
+                </div>
+              </div>
+
+              {localClockSuggestsOvernight ? (
+                <Alert>
+                  <Clock />
+                  <AlertDescription>
+                    Arrival local time is not later than departure local time. The backend will resolve the arrival date using both airport timezones and roll forward when required.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              <Separator />
+
+              <div className="space-y-2">
+                <Label>Recurrence pattern</Label>
+                <Select value={form.recurrenceType} onValueChange={setRecurrence}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAILY">Daily</SelectItem>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="CUSTOM">Custom days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Operating days</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {daysOfWeek.map((day) => {
+                    const checked = selectedDays.includes(day.id);
+                    return (
+                      <label key={day.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${checked ? "border-primary/40 bg-primary/5" : ""}`}>
+                        <Checkbox checked={checked} disabled={form.recurrenceType === "DAILY"} onCheckedChange={(value) => toggleDay(day.id, value === true)} />
+                        {day.short}
+                      </label>
+                    );
+                  })}
+                </div>
+                <ErrorText message={errors.operatingDays} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Effective period</CardTitle>
+              <CardDescription>Instances are generated for matching operating days in this range.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start date</Label>
+                <Input id="startDate" type="date" value={form.startDate} onChange={(event) => setField("startDate", event.target.value)} aria-invalid={Boolean(errors.startDate)} />
+                <ErrorText message={errors.startDate} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End date</Label>
+                <Input id="endDate" type="date" value={form.endDate} min={form.startDate || undefined} onChange={(event) => setField("endDate", event.target.value)} aria-invalid={Boolean(errors.endDate)} />
+                <ErrorText message={errors.endDate} />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="isActive">Active schedule</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Active schedules generate missing flight instances when saved.</p>
+                </div>
+                <Switch id="isActive" checked={form.isActive} onCheckedChange={(value) => setField("isActive", value)} />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedDays.map((day) => <Badge key={day} variant="outline">{daysOfWeek.find((item) => item.id === day)?.short}</Badge>)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 rounded-md border bg-muted/30 p-4 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={() => navigate(editing ? `/airline/schedules/${id}` : "/airline/schedules")} disabled={saving}>Cancel</Button>
+          <Button type="submit" disabled={saving || flightsLoading}>
+            {saving ? <Loader2 className="animate-spin" /> : <Save />}
+            {saving ? "Saving" : editing ? "Update schedule" : "Create schedule"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

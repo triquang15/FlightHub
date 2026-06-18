@@ -72,9 +72,15 @@ public class FlightInstanceController {
 	// =========================
 	@Operation(summary = "List all flight instances", description = "Returns all flight instances for administrative read-only inventory views.")
 	@GetMapping("/list")
-	public ResponseEntity<?> getFlightInstances() {
+	public ResponseEntity<?> getFlightInstances(Pageable pageable) {
 
-		return ResponseUtil.ok(flightInstanceService.getFlightInstances());
+		return ResponseUtil.ok(flightInstanceService.getFlightInstances(pageable));
+	}
+
+	@Operation(summary = "Get flight instance inventory summary", description = "Returns system-wide totals for administrative inventory cards.")
+	@GetMapping("/inventory-summary")
+	public ResponseEntity<?> getInventorySummary() {
+		return ResponseUtil.ok(flightInstanceService.getInventorySummary());
 	}
 
 	// =========================

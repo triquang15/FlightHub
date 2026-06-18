@@ -2,19 +2,24 @@ package com.triquang.service.impl;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.client.AirlineClient;
-import com.triquang.client.LocationClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.FlightStatus;
 import com.triquang.event.FlightInstanceEventProducer;
@@ -27,14 +32,18 @@ import com.triquang.payload.request.FlightInstanceRequest;
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.AirportResponse;
+import com.triquang.payload.response.FlightInstanceInventorySummary;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.repository.FlightInstanceRepository;
 import com.triquang.repository.FlightRepository;
 import com.triquang.service.FlightInstanceService;
 import com.triquang.service.FlightStatusTransitionPolicy;
+import com.triquang.service.ReferenceDataService;
 
 import feign.FeignException;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service implementation for managing flight instances, including creation, retrieval, updating, and deletion.
@@ -47,14 +56,25 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class FlightInstanceServiceImpl implements FlightInstanceService {
+
+	private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+			"id",
+			"departureDateTime",
+			"arrivalDateTime",
+			"totalSeats",
+			"availableSeats",
+			"status",
+			"departureAirportId",
+			"arrivalAirportId");
 
 	private final FlightInstanceRepository flightInstanceRepository;
 	private final FlightRepository flightRepository;
 	private final AirlineClient airlineClient;
 	private final FlightInstanceEventProducer flightInstanceEventProducer;
-	private final LocationClient locationClient;
 	private final FlightStatusTransitionPolicy statusTransitionPolicy;
+	private final ReferenceDataService referenceDataService;
 
 	@Override
 	@Transactional
@@ -79,8 +99,8 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 		FlightInstance instance = FlightInstanceMapper.toEntity(request, flight);
 		instance.setAirlineId(airlineId);
 		instance.setFlight(flight);
-		instance.setDepartureAirportId(request.getDepartureAirportId());
-		instance.setArrivalAirportId(request.getArrivalAirportId());
+		instance.setDepartureAirportId(flight.getDepartureAirportId());
+		instance.setArrivalAirportId(flight.getArrivalAirportId());
 		instance.setTotalSeats(aircraft.getTotalSeats());
 		instance.setAvailableSeats(aircraft.getTotalSeats());
 
@@ -95,14 +115,20 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	}
 
 	@Override
-	public List<FlightInstanceResponse> getFlightInstances() {
-		return flightInstanceRepository.findAll().stream().map(fi -> {
-			try {
-				return getFlightInstance(fi);
-			} catch (BaseException e) {
-				throw new RuntimeException(e);
-			}
-		}).toList();
+	@Transactional(readOnly = true)
+	public Page<FlightInstanceResponse> getFlightInstances(Pageable pageable) {
+		Pageable safePageable = safePageable(pageable);
+		Page<FlightInstance> page = flightInstanceRepository.findAll(safePageable);
+		return new PageImpl<>(enrichInstances(page.getContent()), safePageable, page.getTotalElements());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public FlightInstanceInventorySummary getInventorySummary() {
+		return new FlightInstanceInventorySummary(
+				flightInstanceRepository.count(),
+				flightInstanceRepository.countByStatusIn(List.of(FlightStatus.BOARDING, FlightStatus.DEPARTED)),
+				flightInstanceRepository.countByStatusIn(List.of(FlightStatus.CANCELLED)));
 	}
 
 	@Override
@@ -122,15 +148,12 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 		Long airlineId = getAirlineForUser(userId);
 		LocalDateTime start = onDate != null ? onDate.atStartOfDay() : null;
 		LocalDateTime end = onDate != null ? onDate.plusDays(1).atStartOfDay() : null;
+		Pageable safePageable = safePageable(pageable);
 
-		return flightInstanceRepository.findByAirlineIdWithFilters(airlineId, departureAirportId, arrivalAirportId,
-				flightId, start, end, pageable).map(fi -> {
-					try {
-						return getFlightInstance(fi);
-					} catch (BaseException e) {
-						throw new RuntimeException(e);
-					}
-				});
+		Page<FlightInstance> page = flightInstanceRepository.findAll(
+				buildAirlineInstanceSpecification(airlineId, departureAirportId, arrivalAirportId, flightId, start, end),
+				safePageable);
+		return new PageImpl<>(enrichInstances(page.getContent()), safePageable, page.getTotalElements());
 	}
 
 	@Override
@@ -187,11 +210,11 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 		Map<Long, FlightInstanceResponse> result = new HashMap<>();
 		for (FlightInstance fi : instances) {
-			var airline = airlineCache.computeIfAbsent(fi.getAirlineId(), airlineClient::getAirlineById);
+			var airline = airlineCache.computeIfAbsent(fi.getAirlineId(), referenceDataService::getAirline);
 			var aircraft = aircraftCache.computeIfAbsent(fi.getFlight().getAircraftId(),
-					airlineClient::getAircraftById);
-			var departure = airportCache.computeIfAbsent(fi.getDepartureAirportId(), locationClient::getAirportById);
-			var arrival = airportCache.computeIfAbsent(fi.getArrivalAirportId(), locationClient::getAirportById);
+					referenceDataService::getAircraft);
+			var departure = airportCache.computeIfAbsent(fi.getDepartureAirportId(), referenceDataService::getAirport);
+			var arrival = airportCache.computeIfAbsent(fi.getArrivalAirportId(), referenceDataService::getAirport);
 			result.put(fi.getId(), FlightInstanceMapper.toResponse(fi, aircraft, airline, departure, arrival));
 		}
 		return result;
@@ -201,7 +224,11 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 
 	private AircraftResponse getAircraftById(Long aircraftId) {
 	    try {
-	        return airlineClient.getAircraftById(aircraftId);
+	        AircraftResponse aircraft = airlineClient.getAircraftById(aircraftId);
+	        if (aircraft == null) {
+	            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+	        }
+	        return aircraft;
 	    } catch (FeignException.NotFound e) {
 	        throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
 	    } catch (FeignException e) {
@@ -212,6 +239,9 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	private Long getAirlineForUser(Long userId) {
 	    try {
 	        AirlineResponse airline = airlineClient.getAirlineByOwner(userId);
+	        if (airline == null) {
+	            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+	        }
 	        return airline.getId();
 	    } catch (FeignException.NotFound e) {
 	        throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
@@ -221,10 +251,22 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	}
 
 	private FlightInstanceResponse getFlightInstance(FlightInstance fi) {
-	    var airline = airlineClient.getAirlineById(fi.getAirlineId());
-	    var departureAirport = locationClient.getAirportById(fi.getDepartureAirportId());
-	    var arrivalAirport = locationClient.getAirportById(fi.getArrivalAirportId());
-	    var aircraftResponse = airlineClient.getAircraftById(fi.getFlight().getAircraftId());
+	    var airline = referenceDataService.getAirline(fi.getAirlineId());
+	    var departureAirport = referenceDataService.getAirport(fi.getDepartureAirportId());
+	    var arrivalAirport = referenceDataService.getAirport(fi.getArrivalAirportId());
+	    var aircraftResponse = referenceDataService.getAircraft(fi.getFlight().getAircraftId());
+
+	    if (airline == null || departureAirport == null || arrivalAirport == null || aircraftResponse == null) {
+	        log.warn(
+	                "Returning partially enriched flight instance | instanceId={} flightId={} airlineResolved={} aircraftResolved={} departureResolved={} arrivalResolved={}",
+	                fi.getId(),
+	                fi.getFlight().getId(),
+	                airline != null,
+	                aircraftResponse != null,
+	                departureAirport != null,
+	                arrivalAirport != null
+	        );
+	    }
 
 	    return FlightInstanceMapper.toResponse(
 	            fi,
@@ -235,10 +277,69 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 	    );
 	}
 
+	private List<FlightInstanceResponse> enrichInstances(List<FlightInstance> instances) {
+		Map<Long, AirlineResponse> airlineCache = new HashMap<>();
+		Map<Long, AircraftResponse> aircraftCache = new HashMap<>();
+		Map<Long, AirportResponse> airportCache = new HashMap<>();
+
+		return instances.stream().map(fi -> {
+			var airline = airlineCache.computeIfAbsent(fi.getAirlineId(), referenceDataService::getAirline);
+			var aircraft = aircraftCache.computeIfAbsent(
+					fi.getFlight().getAircraftId(), referenceDataService::getAircraft);
+			var departure = airportCache.computeIfAbsent(
+					fi.getDepartureAirportId(), referenceDataService::getAirport);
+			var arrival = airportCache.computeIfAbsent(
+					fi.getArrivalAirportId(), referenceDataService::getAirport);
+			return FlightInstanceMapper.toResponse(fi, aircraft, airline, departure, arrival);
+		}).toList();
+	}
+
 	private void requireOwnership(Flight flight, Long airlineId) {
 		if (!flight.getAirlineId().equals(airlineId)) {
 			throw new BaseException(ErrorCode.FLIGHT_RESOURCE_NOT_OWNED);
 		}
+	}
+
+	private Pageable safePageable(Pageable pageable) {
+		List<Sort.Order> safeOrders = pageable.getSort().stream()
+				.filter(order -> ALLOWED_SORT_FIELDS.contains(order.getProperty()))
+				.map(order -> new Sort.Order(order.getDirection(), order.getProperty()))
+				.toList();
+
+		Sort safeSort = safeOrders.isEmpty()
+				? Sort.by(Sort.Direction.ASC, "departureDateTime")
+				: Sort.by(safeOrders);
+
+		return PageRequest.of(
+				Math.max(pageable.getPageNumber(), 0),
+				Math.clamp(pageable.getPageSize(), 1, 100),
+				safeSort);
+	}
+
+	private Specification<FlightInstance> buildAirlineInstanceSpecification(Long airlineId, Long departureAirportId,
+			Long arrivalAirportId, Long flightId, LocalDateTime start, LocalDateTime end) {
+		return (root, query, criteriaBuilder) -> {
+			List<Predicate> predicates = new ArrayList<>();
+			predicates.add(criteriaBuilder.equal(root.get("airlineId"), airlineId));
+
+			if (departureAirportId != null) {
+				predicates.add(criteriaBuilder.equal(root.get("departureAirportId"), departureAirportId));
+			}
+			if (arrivalAirportId != null) {
+				predicates.add(criteriaBuilder.equal(root.get("arrivalAirportId"), arrivalAirportId));
+			}
+			if (flightId != null) {
+				predicates.add(criteriaBuilder.equal(root.get("flight").get("id"), flightId));
+			}
+			if (start != null) {
+				predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("departureDateTime"), start));
+			}
+			if (end != null) {
+				predicates.add(criteriaBuilder.lessThan(root.get("departureDateTime"), end));
+			}
+
+			return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+		};
 	}
 
 	private void validateInstance(FlightInstanceRequest request, Flight flight) {

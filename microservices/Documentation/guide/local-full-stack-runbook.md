@@ -55,6 +55,11 @@ Wait until PostgreSQL databases, Redis, and Kafka report `healthy`.
 Run each command in a separate terminal, in this order:
 
 ```bash
+cd microservices
+bash mvn clean install -DskipTests
+```
+
+```bash
 bash microservices/scripts/run-local-service.sh service-registry
 ```
 

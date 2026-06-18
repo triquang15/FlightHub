@@ -41,7 +41,10 @@ export const getAirportById = createAsyncThunk(
 export const listAllAirports = createAsyncThunk(
   "airport/listAll",
   async (
-    {
+    params = {},
+    { rejectWithValue }
+  ) => {
+    const {
       page = 0,
       size = 20,
       sortBy = "name",
@@ -49,9 +52,8 @@ export const listAllAirports = createAsyncThunk(
       keyword,
       country,
       cityId
-    },
-    { rejectWithValue }
-  ) => {
+    } = params;
+
     try {
       const res = await api.get("/api/airports", {
         params: {
@@ -63,9 +65,9 @@ export const listAllAirports = createAsyncThunk(
           country,
           cityId
         },
-        });
+      });
 
-      return res.data; // ✅ Page<>
+      return res.data?.data ?? res.data; // Page<> or ApiResponse<Page<>>
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch airports"

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createAircraft } from '@/Redux/aircraft/aircraftThunks';
+import { Loader } from '@/components/common/Loader';
+import { createAircraft, getAircraftById, updateAircraft } from '@/Redux/aircraft/aircraftThunks';
 import { getAirlineByAdmin } from '@/Redux/airline/airlineThunks';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 // AircraftStatus enum values from the DTO
 const AIRCRAFT_STATUS = [
@@ -18,7 +19,6 @@ const AIRCRAFT_STATUS = [
 ];
 
 const AircraftForm = ({ 
-  onSave, 
   onCancel, 
   isEditMode = false, 
   aircraftData = null,
@@ -45,10 +45,23 @@ const AircraftForm = ({
     airlineId: null,
     currentAirportId: null,
   });
-  const [successMessage, setSuccessMessage] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { airlines = [] } = useSelector((state) => state.airline || {});
+  const { aircraftId } = useParams();
+  const routeEditMode = Boolean(aircraftId);
+  const effectiveEditMode = isEditMode || routeEditMode;
+  const { currentAirline, airlines = [] } = useSelector((state) => state.airline || {});
+  const {
+    currentAircraft,
+    createLoading = false,
+    updateLoading = false,
+  } = useSelector((state) => state.aircraft || {});
+  const routeAircraft = String(currentAircraft?.id) === String(aircraftId) ? currentAircraft : null;
+  const effectiveAircraftData = aircraftData || (routeEditMode ? routeAircraft : null);
+  const saving = loading || createLoading || updateLoading;
+  const airlineOptions = currentAirline
+    ? [currentAirline, ...airlines.filter((airline) => airline.id !== currentAirline.id)]
+    : airlines;
 
   const [errors, setErrors] = useState({});
 
@@ -58,33 +71,40 @@ const AircraftForm = ({
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isEditMode && airlines.length === 1 && !formData.airlineId) {
-      setFormData(prev => ({ ...prev, airlineId: airlines[0].id }));
+    if (routeEditMode) {
+      dispatch(getAircraftById(aircraftId));
     }
-  }, [airlines, formData.airlineId, isEditMode]);
+  }, [aircraftId, dispatch, routeEditMode]);
+
+  useEffect(() => {
+    const airlineId = currentAirline?.id || (airlines.length === 1 ? airlines[0].id : null);
+    if (!effectiveEditMode && airlineId && !formData.airlineId) {
+      setFormData(prev => ({ ...prev, airlineId }));
+    }
+  }, [airlines, currentAirline, effectiveEditMode, formData.airlineId]);
 
   // Initialize form with data when editing
   useEffect(() => {
-    if (isEditMode && aircraftData) {
+    if (effectiveEditMode && effectiveAircraftData) {
       setFormData({
-        code: aircraftData.code || '',
-        model: aircraftData.model || '',
-        manufacturer: aircraftData.manufacturer || '',
-        seatingCapacity: aircraftData.seatingCapacity || 0,
-        economySeats: aircraftData.economySeats || 0,
-        premiumEconomySeats: aircraftData.premiumEconomySeats || 0,
-        businessSeats: aircraftData.businessSeats || 0,
-        firstClassSeats: aircraftData.firstClassSeats || 0,
-        rangeKm: aircraftData.rangeKm || 0,
-        cruisingSpeedKmh: aircraftData.cruisingSpeedKmh || 0,
-        maxAltitudeFt: aircraftData.maxAltitudeFt || 0,
-        yearOfManufacture: aircraftData.yearOfManufacture || 0,
-        registrationDate: aircraftData.registrationDate ? new Date(aircraftData.registrationDate) : null,
-        nextMaintenanceDate: aircraftData.nextMaintenanceDate ? new Date(aircraftData.nextMaintenanceDate) : null,
-        status: aircraftData.status || 'ACTIVE',
-        isAvailable: aircraftData.isAvailable !== undefined ? aircraftData.isAvailable : true,
-        airlineId: aircraftData.airlineId || null,
-        currentAirportId: aircraftData.currentAirportId || null,
+        code: effectiveAircraftData.code || '',
+        model: effectiveAircraftData.model || '',
+        manufacturer: effectiveAircraftData.manufacturer || '',
+        seatingCapacity: effectiveAircraftData.seatingCapacity || 0,
+        economySeats: effectiveAircraftData.economySeats || 0,
+        premiumEconomySeats: effectiveAircraftData.premiumEconomySeats || 0,
+        businessSeats: effectiveAircraftData.businessSeats || 0,
+        firstClassSeats: effectiveAircraftData.firstClassSeats || 0,
+        rangeKm: effectiveAircraftData.rangeKm || 0,
+        cruisingSpeedKmh: effectiveAircraftData.cruisingSpeedKmh || 0,
+        maxAltitudeFt: effectiveAircraftData.maxAltitudeFt || 0,
+        yearOfManufacture: effectiveAircraftData.yearOfManufacture || 0,
+        registrationDate: effectiveAircraftData.registrationDate ? new Date(effectiveAircraftData.registrationDate) : null,
+        nextMaintenanceDate: effectiveAircraftData.nextMaintenanceDate ? new Date(effectiveAircraftData.nextMaintenanceDate) : null,
+        status: effectiveAircraftData.status || 'ACTIVE',
+        isAvailable: effectiveAircraftData.isAvailable !== undefined ? effectiveAircraftData.isAvailable : true,
+        airlineId: effectiveAircraftData.airlineId || currentAirline?.id || null,
+        currentAirportId: effectiveAircraftData.currentAirportId || null,
       });
     } else {
       // Reset form when not editing
@@ -111,7 +131,7 @@ const AircraftForm = ({
     }
     // Clear errors when form data changes
     setErrors({});
-  }, [isEditMode, aircraftData]);
+  }, [currentAirline?.id, effectiveAircraftData, effectiveEditMode]);
 
   // Validate form before submission
   const validateForm = () => {
@@ -196,18 +216,24 @@ const AircraftForm = ({
   const handleSubmit = async(e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log("Form data on submit:", formData, onSave);
-        // Handle create aircraft
-        
-          console.log("Creating aircraft with data:", formData);
+          const requestData = {
+            ...formData,
+            registrationDate: formData.registrationDate
+              ? formData.registrationDate.toISOString().split('T')[0]
+              : null,
+            nextMaintenanceDate: formData.nextMaintenanceDate
+              ? formData.nextMaintenanceDate.toISOString().split('T')[0]
+              : null,
+          };
+
           try {
-            await dispatch(createAircraft(formData)).unwrap();
-            
-            setSuccessMessage("Aircraft created successfully");
-            // dispatch(listAllAircrafts({ page: currentPage, limit: itemsPerPage }));
-            // Clear success message after 3 seconds
-            navigate('/airline/aircraft');
-            setTimeout(() => setSuccessMessage(""), 3000);
+            if (effectiveEditMode) {
+              await dispatch(updateAircraft({ aircraftId, aircraftData: requestData })).unwrap();
+              navigate(`/airline/aircraft/${aircraftId}`);
+            } else {
+              await dispatch(createAircraft(requestData)).unwrap();
+              navigate('/airline/aircraft');
+            }
           } catch (error) {
             console.error("Error creating aircraft:", error);
           }
@@ -216,10 +242,14 @@ const AircraftForm = ({
     
   };
 
+  if (effectiveEditMode && !effectiveAircraftData) {
+    return <Loader message="Loading aircraft form..." />;
+  }
+
   return (
-    <div className="w-full max-w-4xl mx-auto border rounded-md bg-white">
+    <div className="mx-auto w-full max-w-4xl rounded-md border bg-card">
       <div className="p-6 border-b">
-        <h2 className="text-xl font-bold">{isEditMode ? 'Edit Aircraft' : 'Create New Aircraft'}</h2>
+        <h2 className="text-xl font-bold">{effectiveEditMode ? 'Edit Aircraft' : 'Create New Aircraft'}</h2>
       </div>
       <div className="p-6">
         {error && (
@@ -248,7 +278,7 @@ const AircraftForm = ({
                       }))}
                     >
                       <option value="">Select airline</option>
-                      {airlines.map((airline) => (
+                      {airlineOptions.map((airline) => (
                         <option key={airline.id} value={airline.id}>
                           {airline.name} ({airline.iataCode || airline.icaoCode || airline.id})
                         </option>
@@ -541,11 +571,16 @@ const AircraftForm = ({
 
             {/* Form Actions */}
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel || (() => navigate(effectiveEditMode ? `/airline/aircraft/${aircraftId}` : '/airline/aircraft'))}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Saving...' : isEditMode ? 'Update Aircraft' : 'Create Aircraft'}
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving...' : effectiveEditMode ? 'Update Aircraft' : 'Create Aircraft'}
               </Button>
             </div>
           </form>

@@ -27,6 +27,12 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Flight Ops verification failed: instance is linked to the wrong schedule';
     END IF;
+    IF (SELECT count(*) FROM flights) < 38 THEN
+        RAISE EXCEPTION 'Flight Ops verification failed: expected at least 38 seeded flight definitions';
+    END IF;
+    IF (SELECT count(DISTINCT airline_id) FROM flights) < 9 THEN
+        RAISE EXCEPTION 'Flight Ops verification failed: expected flight coverage across at least 9 airlines';
+    END IF;
 END $$;
 
 SELECT 'flight_ops_seed_verified' AS result,

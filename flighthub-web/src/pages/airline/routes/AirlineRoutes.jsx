@@ -49,6 +49,7 @@ import CouponTable from "../Dashboard/Coupons/CouponTable";
 import CouponForm from "../Dashboard/Coupons/CouponForm";
 
 import AirlineAdminProfile from "../Airline Admin Profile/AirlineAdminProfile";
+import WorkspaceAccountProfile from "@/components/account/WorkspaceAccountProfile";
 import FlightInstanceCabinDetails from "../Dashboard/FlightInstances/FlightInstanceCabinDetails";
 import AirlineOwnerModulePlaceholder from "../Dashboard/AirlineOwnerModulePlaceholder";
 
@@ -92,7 +93,7 @@ const AirlineRoutes = ({
       <Route path="/aircraft/:aircraftId" element={<AircraftDetail />} />
       <Route
         path="/aircraft/:aircraftId/edit"
-        element={<div>Aircraft Edit Form (To be implemented)</div>}
+        element={<AircraftForm />}
       />
       <Route path="/aircraft/new" element={<AircraftForm />} />
 
@@ -253,8 +254,9 @@ const AirlineRoutes = ({
       {/* Settings Routes */}
       <Route
         path="/profile"
-        element={<AirlineAdminProfile  />}
+        element={<WorkspaceAccountProfile variant="owner" />}
       />
+      <Route path="/organization-profile" element={<AirlineAdminProfile />} />
       
 
       {/* Catch-all route */}

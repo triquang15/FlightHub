@@ -34,7 +34,7 @@ const AircraftListPage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
         <div>
@@ -42,7 +42,7 @@ const AircraftListPage = () => {
             <Plane className="h-8 w-8 mr-3" />
             Aircraft Management
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="mt-2 text-muted-foreground">
             Manage your airline's fleet of aircraft, cabin configurations, and seat layouts
           </p>
         </div>
@@ -61,7 +61,7 @@ const AircraftListPage = () => {
               <p className="text-2xl font-bold text-blue-600">
                 {fleetSummary.totalAircraft.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Total Aircraft</p>
+              <p className="text-sm text-muted-foreground">Total Aircraft</p>
             </div>
           </CardContent>
         </Card>
@@ -72,7 +72,7 @@ const AircraftListPage = () => {
               <p className="text-2xl font-bold text-green-600">
                 {fleetSummary.activeAircraft.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Active</p>
+              <p className="text-sm text-muted-foreground">Active</p>
             </div>
           </CardContent>
         </Card>
@@ -83,7 +83,7 @@ const AircraftListPage = () => {
               <p className="text-2xl font-bold text-yellow-600">
                 {fleetSummary.maintenanceAircraft.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Maintenance</p>
+              <p className="text-sm text-muted-foreground">Maintenance</p>
             </div>
           </CardContent>
         </Card>
@@ -94,7 +94,7 @@ const AircraftListPage = () => {
               <p className="text-2xl font-bold text-purple-600">
                 {fleetSummary.totalSeats.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600">Total Seats</p>
+              <p className="text-sm text-muted-foreground">Total Seats</p>
             </div>
           </CardContent>
         </Card>

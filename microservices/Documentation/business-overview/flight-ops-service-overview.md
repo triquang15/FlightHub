@@ -88,6 +88,10 @@ Price/cabin filters happen after the Flight Ops page query, so `totalElements` c
 
 Run production demo seed through `scripts/init-production-demo-data.sh`, then run:
 
+The demo dataset provides 38 flight definitions across 9 airlines and 29 route
+pairs. Schedules generate a rolling 30-day set of future instances and the seed
+is safe to re-run without duplicating flights, schedules, or instances.
+
 ```bash
 psql "$FLIGHT_OPS_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f Documentation/sql/verify-production-flight-ops.sql

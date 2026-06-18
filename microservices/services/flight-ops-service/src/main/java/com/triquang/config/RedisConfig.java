@@ -45,8 +45,12 @@ public class RedisConfig implements CachingConfigurer {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
-                // Individual flight instance lookups — 3 min (admin updates are infrequent)
-                "flightInstances", defaults.entryTtl(Duration.ofMinutes(3))
+                // Individual flight instance lookups - 3 min (admin updates are infrequent)
+                "flightInstances", defaults.entryTtl(Duration.ofMinutes(3)),
+                // Cross-service reference data changes infrequently; caching avoids repeated Feign calls.
+                "referenceAirlines", defaults.entryTtl(Duration.ofMinutes(15)),
+                "referenceAircraft", defaults.entryTtl(Duration.ofMinutes(15)),
+                "referenceAirports", defaults.entryTtl(Duration.ofMinutes(15))
         );
 
         return RedisCacheManager.builder(factory)

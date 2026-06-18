@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Formik, Form, Field } from "formik"
 import * as Yup from "yup"
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { changePassword, updateUserProfile } from "@/Redux/user/userThunks"
+import { changePassword, getUserProfile, updateUserProfile } from "@/Redux/user/userThunks"
 
 import {
   CalendarDays,
@@ -135,9 +135,16 @@ const PasswordField = ({ id, name, label, autoComplete, visible, onToggle }) => 
   </div>
 )
 
-const UserProfile = () => {
+const UserProfile = ({
+  embedded = false,
+  eyebrow = "Account settings",
+  title = "Profile",
+  description = "Manage your personal details and account security.",
+}) => {
   const dispatch = useDispatch()
-  const { user } = useSelector((state) => state.auth)
+  const authUser = useSelector((state) => state.auth.user)
+  const { userProfile, loading, profileError } = useSelector((state) => state.user)
+  const user = userProfile || authUser
 
   const [editMode, setEditMode] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -148,10 +155,18 @@ const UserProfile = () => {
     confirm: false,
   })
 
+  useEffect(() => {
+    if (!userProfile) {
+      dispatch(getUserProfile())
+    }
+  }, [dispatch, userProfile])
+
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-4">
-        <p className="text-sm text-muted-foreground">Loading profile...</p>
+      <main className="flex min-h-64 items-center justify-center rounded-xl border bg-card px-4">
+        <p className="text-sm text-muted-foreground">
+          {profileError || "Loading profile..."}
+        </p>
       </main>
     )
   }
@@ -203,32 +218,30 @@ const UserProfile = () => {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+    <main className={embedded ? "w-full" : "min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8"}>
       <div className="mx-auto max-w-6xl space-y-6">
-        <section className="flex flex-col gap-4 border-b pb-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Account settings</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-              Profile
-            </h1>
+        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="border-b bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-7 text-white sm:px-7">
+            <p className="text-sm font-medium text-slate-300">{eyebrow}</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-300">{description}</p>
           </div>
-
-          {!editMode ? (
-            <Button onClick={() => setEditMode(true)} className="w-full md:w-auto">
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit profile
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditMode(false)}
-              className="w-full md:w-auto"
-            >
-              <X className="mr-2 h-4 w-4" />
-              Cancel editing
-            </Button>
-          )}
+          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <p className="text-sm text-muted-foreground">
+              Email and role are managed by the platform and cannot be edited here.
+            </p>
+            {!editMode ? (
+              <Button onClick={() => setEditMode(true)} disabled={loading}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit profile
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => setEditMode(false)}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel editing
+              </Button>
+            )}
+          </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -281,7 +294,7 @@ const UserProfile = () => {
                 <div className="flex flex-col gap-1 border-b pb-5">
                   <h2 className="text-lg font-semibold">Personal information</h2>
                   <p className="text-sm text-muted-foreground">
-                    Keep your contact details current for booking updates and account recovery.
+                      Keep your contact details current for account recovery and operational communication.
                   </p>
                 </div>
 

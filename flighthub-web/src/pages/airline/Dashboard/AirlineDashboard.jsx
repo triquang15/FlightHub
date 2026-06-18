@@ -1,6 +1,6 @@
 import * as React from "react"
-import { useLocation, useNavigate } from "react-router-dom"
-import { Badge } from "@/components/ui/badge"
+import { useLocation } from "react-router-dom"
+import { PlaneTakeoff } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import AirlineSidebar from "../Sidebar/AirlineSidebar"
@@ -8,7 +8,7 @@ import AirlineRoutes from "../routes/AirlineRoutes"
 import { useSelector, useDispatch } from "react-redux"
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk"
 import { getAirlineByAdmin } from "@/Redux/airline/airlineThunks"
-import SessionCountdownControl from "@/components/auth/SessionCountdownControl"
+import WorkspaceHeader from "@/components/navigation/WorkspaceHeader"
 
 const sectionMeta = {
   overview: ["Operations Overview", "Monitor your airline configuration and operational readiness"],
@@ -26,7 +26,8 @@ const sectionMeta = {
   transactions: ["Transactions", "Review airline payment and settlement activity"],
   "route-performance": ["Route Performance", "Analyze performance across operated routes"],
   "airport-performance": ["Airport Performance", "Monitor performance across your airport network"],
-  profile: ["Airline Profile", "Manage airline identity, support contacts, and owner details"],
+  profile: ["Account Profile", "Manage your owner identity, contact details, and sign-in security"],
+  "organization-profile": ["Airline Profile", "Manage airline identity and customer support contacts"],
   settlements: ["Settlements", "Review airline-specific balances and settlement statements"],
   administration: ["Workspace Administration", "Manage airline-scoped access, activity, and integrations"],
 }
@@ -40,7 +41,6 @@ const statusClass = {
 
 const AirlineDashboard = () => {
   const location = useLocation()
-  const navigate = useNavigate()
   const dispatch = useDispatch()
 
   // Determine active section from URL
@@ -63,6 +63,7 @@ const AirlineDashboard = () => {
     if (pathname.includes('/transactions') || pathname.includes('/settlements')) return 'settlements'
     if (pathname.includes('/route-performance')) return 'route-performance'
     if (pathname.includes('/airport-performance')) return 'airport-performance';
+    if (pathname.includes('/organization-profile')) return 'organization-profile'
     if (pathname.includes('/profile')) return 'profile'
     if (pathname.includes('/administration')) return 'administration'
     if (pathname.includes('/reports')) return 'reports'
@@ -71,6 +72,7 @@ const AirlineDashboard = () => {
 
   const activeSection = getActiveSectionFromPath(location.pathname)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false)
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = React.useState(false)
   
   // Existing flight management state
   const {flights}=useSelector(state=>state.flight)
@@ -91,149 +93,6 @@ const AirlineDashboard = () => {
 
  
 
-  // Handle sidebar section changes
-  const handleSectionChange = (sectionId) => {
-    switch(sectionId) {
-      // Dashboard
-      case 'overview':
-        navigate('/airline/dashboard')
-        break
-
-      // Aircraft Management
-      case 'aircraft':
-        navigate('/airline/aircraft')
-        break
-      case 'create-aircraft':
-        navigate('/airline/aircraft/new')
-        break
-
-      // Flight Management
-      case 'flights':
-        navigate('/airline/flights')
-        break
-      case 'flights-create':
-        navigate('/airline/flights/new')
-        break
-      case 'flight-cabin-create':
-        navigate('/airline/flight-cabin/new')
-        break
-
-      // Flight Schedules
-      case 'schedules':
-        navigate('/airline/schedules')
-        break
-      case 'schedules-create':
-        navigate('/airline/schedules/new')
-        break
-
-      // Flight Instances
-      case 'instances':
-        navigate('/airline/instances')
-        break
-      case 'instances-create':
-        navigate('/airline/instances/new')
-        break
-
-      // Fare Management
-      case 'fare-create':
-        navigate('/airline/fare/new')
-        break
-
-      // Baggage Policy
-      case 'baggage-policy-create':
-        navigate('/airline/baggage-policies/new')
-        break
-      case 'baggage-policies':
-        navigate('/airline/baggage-policies')
-        break
-
-      // Fare Rules
-      case 'fare-rules':
-        navigate('/airline/fare-rules')
-        break
-      case 'fare-rules-create':
-        navigate('/airline/fare-rules/new')
-        break
-      case 'fare-rules-templates':
-        navigate('/airline/fare-rules/templates')
-        break
-
-      // Ancillaries
-      case 'ancillaries-catalog':
-        navigate('/airline/ancillaries')
-        break
-      case 'ancillaries-create':
-        navigate('/airline/ancillaries/create')
-        break
-      case 'insurance-coverages':
-        navigate('/airline/insurance-coverages')
-        break
-
-      // Meals
-      case 'meals-catalog':
-      case 'meals':
-        navigate('/airline/meals')
-        break
-
-      // Pricing & Discounts
-      case 'pricing-base':
-        navigate('/airline/pricing/base')
-        break
-      case 'pricing-dynamic':
-        navigate('/airline/pricing/dynamic')
-        break
-      case 'coupons':
-        navigate('/airline/coupons')
-        break
-      case 'coupons-create':
-        navigate('/airline/coupons/new')
-        break
-      case 'discounts-list':
-        navigate('/airline/pricing/discounts')
-        break
-      case 'discounts-create':
-        navigate('/airline/pricing/discounts/create')
-        break
-      case 'pricing-rules':
-        navigate('/airline/pricing/rules')
-        break
-
-      // Bookings
-      case 'bookings-list':
-        navigate('/airline/bookings')
-        break
-      case 'bookings-payments':
-        navigate('/airline/bookings/payments')
-        break
-
-      // Reports & Analytics
-      case 'reports-sales':
-        navigate('/airline/reports/sales')
-        break
-      case 'reports-occupancy':
-        navigate('/airline/reports/occupancy')
-        break
-      case 'reports-revenue':
-        navigate('/airline/reports/revenue')
-        break
-      case 'reports-performance':
-        navigate('/airline/reports/performance')
-        break
-      case 'route-performance':
-        navigate('/airline/route-performance')
-        break
-      case 'airport-performance':
-        navigate('/airline/airport-performance')
-        break
-      case 'reports-custom':
-        navigate('/airline/reports/custom')
-        break
-
-      default:
-        navigate('/airline/dashboard')
-    }
-  }
-
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed)
   }
@@ -246,39 +105,29 @@ const AirlineDashboard = () => {
       {/* Sidebar */}
       <AirlineSidebar
         activeSection={activeSection}
-        onSectionChange={handleSectionChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        isMobileOpen={isMobileNavigationOpen}
+        onMobileClose={() => setIsMobileNavigationOpen(false)}
       />
 
       {/* Main Content Area */}
       <div className={cn(
-        "flex-1 transition-all duration-300 ease-in-out",
-        isSidebarCollapsed ? "ml-16" : "ml-80"
+        "min-w-0 flex-1 transition-all duration-300 ease-in-out",
+        isSidebarCollapsed ? "lg:ml-16" : "lg:ml-80"
       )}>
-        {/* Header */}
-        <div className="bg-background border-b border-border sticky top-0 z-30">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold text-foreground">{sectionTitle}</h1>
-                  <Badge
-                    variant="outline"
-                    className={cn("rounded-md", statusClass[airlineStatus] || statusClass.INACTIVE)}
-                  >
-                    {airlineStatus}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-muted-foreground">{sectionDescription}</p>
-              </div>
-              <SessionCountdownControl className="shrink-0" />
-            </div>
-          </div>
-        </div>
+        <WorkspaceHeader
+          title={sectionTitle}
+          description={sectionDescription}
+          badge={airlineStatus}
+          badgeClassName={statusClass[airlineStatus] || statusClass.INACTIVE}
+          icon={PlaneTakeoff}
+          iconClassName="bg-sky-500/10 text-sky-600 dark:text-sky-400"
+          onOpenNavigation={() => setIsMobileNavigationOpen(true)}
+        />
 
         {/* Main Content */}
-        <ScrollArea className="flex-1 p-6">
+        <ScrollArea className="flex-1 p-4 sm:p-6">
           <AirlineRoutes
             flights={flights}
             statusFilter={statusFilter}

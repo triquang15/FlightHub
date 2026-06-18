@@ -47,6 +47,7 @@ export const ROUTE_MAP = {
   "users-policies": "/super-admin/users?tab=policies",
   "access-roles": "/super-admin/access/roles",
   "access-audit": "/super-admin/access/audit",
+  "account-profile": "/super-admin/profile",
 
   // Finance UI shells
   "finance-transactions": "/super-admin/finance/transactions",
@@ -135,6 +136,7 @@ export const SECTION_TITLES = {
   "users-policies": "User Policies",
   "access-roles": "Roles & Permissions",
   "access-audit": "Audit Logs",
+  "account-profile": "Account Profile",
   "finance-transactions": "Platform Transactions",
   "finance-settlements": "Airline Settlements",
   "finance-disputes": "Refunds & Chargebacks",
@@ -216,6 +218,7 @@ export const SECTION_DESCRIPTIONS = {
   "users-policies": "Configure global user policies and terms",
   "access-roles": "Define roles, permission scopes, and privileged access",
   "access-audit": "Review administrative and security-sensitive platform events",
+  "account-profile": "Manage your administrator identity and sign-in security",
   "finance-transactions": "Monitor payment activity across the platform",
   "finance-settlements": "Track settlement cycles and payable airline balances",
   "finance-disputes": "Manage refunds, chargebacks, and financial exceptions",
@@ -279,6 +282,7 @@ export const getActiveSectionFromPath = (pathname, urlParams = null) => {
 
   // Path section mapping with parameter-based sub-section detection
   const pathSectionMap = {
+    "/profile": () => "account-profile",
     "/airlines": () => {
       const filter = params.get("filter");
       const tab = params.get("tab");

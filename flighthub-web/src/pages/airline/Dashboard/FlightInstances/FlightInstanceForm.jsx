@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Formik, Form, Field, ErrorMessage } from "formik";
+import { Formik, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import {
   ArrowLeft,
@@ -44,7 +44,124 @@ import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
 import { toLocalDateTimePayload } from "@/utils/flightOps";
 
+const VALID_TIME_PATTERN = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
 const formatDateTimeLocal = (date) => format(date, "yyyy-MM-dd'T'HH:mm"); // local datetime string
+
+const roundUpToNextQuarterHour = (date = new Date()) => {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const nextQuarter = Math.ceil((minutes + 1) / 15) * 15;
+  rounded.setMinutes(nextQuarter);
+  return rounded;
+};
+
+const parseTimeParts = (timeValue) => {
+  if (!VALID_TIME_PATTERN.test(timeValue || "")) return null;
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  return { hours, minutes };
+};
+
+const setTimeOnDate = (date, timeValue) => {
+  const parts = parseTimeParts(timeValue);
+  const updated = new Date(date);
+
+  if (parts) {
+    updated.setHours(parts.hours, parts.minutes, 0, 0);
+  }
+
+  return updated;
+};
+
+const addMinutes = (date, minutes) => {
+  const updated = new Date(date);
+  updated.setMinutes(updated.getMinutes() + minutes);
+  return updated;
+};
+
+const getScheduleTime = (schedule, field) =>
+  typeof schedule?.[field] === "string" ? schedule[field].slice(0, 5) : "";
+
+const normalizeOperatingDay = (date) =>
+  date.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+
+const isScheduleOperatingOn = (schedule, date) => {
+  const days = asArray(schedule?.operatingDays);
+  if (!days.length) return true;
+  return days.includes(normalizeOperatingDay(date));
+};
+
+const isWithinScheduleWindow = (schedule, date) => {
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+
+  if (schedule?.startDate) {
+    const start = new Date(schedule.startDate);
+    start.setHours(0, 0, 0, 0);
+    if (day < start) return false;
+  }
+
+  if (schedule?.endDate) {
+    const end = new Date(schedule.endDate);
+    end.setHours(23, 59, 59, 999);
+    if (day > end) return false;
+  }
+
+  return true;
+};
+
+const getNextDepartureFromSchedule = (schedule) => {
+  const departureTime = getScheduleTime(schedule, "departureTime");
+  const now = new Date();
+  let candidate = schedule?.startDate ? new Date(schedule.startDate) : new Date();
+  candidate.setHours(0, 0, 0, 0);
+
+  if (candidate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+    candidate = new Date(now);
+    candidate.setHours(0, 0, 0, 0);
+  }
+
+  for (let i = 0; i < 370; i += 1) {
+    if (isWithinScheduleWindow(schedule, candidate) && isScheduleOperatingOn(schedule, candidate)) {
+      const departure = departureTime
+        ? setTimeOnDate(candidate, departureTime)
+        : roundUpToNextQuarterHour(now);
+
+      if (departure > now) return departure;
+    }
+
+    candidate.setDate(candidate.getDate() + 1);
+  }
+
+  return roundUpToNextQuarterHour(now);
+};
+
+const getArrivalFromDeparture = (departure, schedule, previousArrival, previousDeparture) => {
+  const scheduleArrivalTime = getScheduleTime(schedule, "arrivalTime");
+
+  if (scheduleArrivalTime) {
+    const arrival = setTimeOnDate(departure, scheduleArrivalTime);
+    if (arrival <= departure) arrival.setDate(arrival.getDate() + 1);
+    return arrival;
+  }
+
+  if (previousArrival && previousDeparture) {
+    const durationMinutes = Math.max(
+      30,
+      Math.round((new Date(previousArrival) - new Date(previousDeparture)) / 60000)
+    );
+    return addMinutes(departure, durationMinutes);
+  }
+
+  return addMinutes(departure, 120);
+};
+
+const ensureFutureDeparture = (departure) => {
+  const now = new Date();
+  if (departure > now) return departure;
+  return roundUpToNextQuarterHour(now);
+};
 
 // Validation schema for create mode
 const createFlightInstanceSchema = Yup.object().shape({
@@ -62,7 +179,11 @@ const createFlightInstanceSchema = Yup.object().shape({
     ),
   departureDateTime: Yup.date()
     .required("Departure date and time is required")
-    .min(new Date(), "Departure date must be in the future"),
+    .test(
+      "future-departure",
+      "Choose a future departure time",
+      (value) => !value || new Date(value) > new Date()
+    ),
   arrivalDateTime: Yup.date()
     .required("Arrival date and time is required")
     .test(
@@ -111,6 +232,39 @@ const statusOptions = [
   { value: "CANCELLED", label: "Cancelled", color: "bg-red-100 text-red-800" },
 ];
 
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+};
+
+const mergeById = (...lists) => {
+  const byId = new Map();
+
+  lists.flat().forEach((item) => {
+    if (!item?.id) return;
+    byId.set(String(item.id), { ...byId.get(String(item.id)), ...item });
+  });
+
+  return Array.from(byId.values());
+};
+
+const getAirportLabel = (airport) => {
+  if (!airport) return "Airport unavailable";
+
+  const code = airport.iataCode || airport.code || `Airport ${airport.id}`;
+  const city = airport.city?.name || airport.cityName;
+  const name = airport.name || airport.airportName || city || "Airport";
+
+  return `${code} - ${name}`;
+};
+
+const getFlightRouteIds = (flight) => ({
+  departureAirportId: flight?.departureAirport?.id,
+  arrivalAirportId: flight?.arrivalAirport?.id,
+});
+
 const FlightInstanceForm = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -128,6 +282,14 @@ const FlightInstanceForm = () => {
     (state) => state.flightInstance || {}
   );
 
+  const flightOptions = asArray(flights);
+  const scheduleOptions = asArray(schedules);
+  const scheduleAirports = scheduleOptions.flatMap((schedule) => [
+    schedule.departureAirport,
+    schedule.arrivalAirport,
+  ]);
+  const airportOptions = mergeById(asArray(airports), scheduleAirports);
+
   const [initialValues, setInitialValues] = useState({
     scheduleId: "",
     flightId: "",
@@ -142,8 +304,6 @@ const FlightInstanceForm = () => {
   const [departureTime, setDepartureTime] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
 
-  console.log("Initial Values: ", id);
-
   // Fetch required data on component mount
   useEffect(() => {
     dispatch(getFlightsByAirline());
@@ -153,12 +313,15 @@ const FlightInstanceForm = () => {
       dispatch(getFlightInstanceById(id)).then((result) => {
         if (result.payload) {
           const instance = result.payload;
-          console.log("Fetched instance: ", instance);
           setInitialValues({
-            scheduleId: instance.scheduleId || "",
-            flightId: instance.flightId || "",
-            departureAirportId: instance.departureAirport?.id || "",
-            arrivalAirportId: instance.arrivalAirport?.id || "",
+            scheduleId: instance.scheduleId ? String(instance.scheduleId) : "",
+            flightId: instance.flightId ? String(instance.flightId) : "",
+            departureAirportId: instance.departureAirport?.id
+              ? String(instance.departureAirport.id)
+              : "",
+            arrivalAirportId: instance.arrivalAirport?.id
+              ? String(instance.arrivalAirport.id)
+              : "",
             departureDateTime: instance.departureDateTime
               ? formatDateTimeLocal(new Date(instance.departureDateTime))
               : "",
@@ -168,6 +331,16 @@ const FlightInstanceForm = () => {
 
             status: instance.status || "SCHEDULED",
           });
+          if (instance.departureDateTime) {
+            setDepartureTime(
+              formatDateTimeLocal(new Date(instance.departureDateTime)).slice(11, 16)
+            );
+          }
+          if (instance.arrivalDateTime) {
+            setArrivalTime(
+              formatDateTimeLocal(new Date(instance.arrivalDateTime)).slice(11, 16)
+            );
+          }
         }
       });
     }
@@ -175,30 +348,43 @@ const FlightInstanceForm = () => {
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
+      const selectedFlight = getSelectedFlight(values.flightId);
+      const routeIds = getFlightRouteIds(selectedFlight);
+      const totalSeats =
+        selectedFlight?.aircraft?.totalSeats ||
+        selectedFlight?.aircraft?.seatingCapacity ||
+        selectedFlight?.totalSeats;
+
+      if (!routeIds.departureAirportId || !routeIds.arrivalAirportId) {
+        setFieldError(
+          "submit",
+          "Selected flight is missing route data. Please refresh flights or choose another flight."
+        );
+        return;
+      }
+
       let formData = {
         ...values,
         scheduleId: Number(values.scheduleId),
         flightId: Number(values.flightId),
-        departureAirportId: Number(values.departureAirportId),
-        arrivalAirportId: Number(values.arrivalAirportId),
+        departureAirportId: Number(routeIds.departureAirportId),
+        arrivalAirportId: Number(routeIds.arrivalAirportId),
         departureDateTime: toLocalDateTimePayload(values.departureDateTime),
         arrivalDateTime: toLocalDateTimePayload(values.arrivalDateTime),
-        totalSeats: getSelectedFlight(values.flightId)?.aircraft?.totalSeats,
+        totalSeats,
       };
 
       // In edit mode, only send editable fields
       if (isEditMode) {
         formData = {
           flightId: Number(values.flightId),
-          departureAirportId: Number(values.departureAirportId),
-          arrivalAirportId: Number(values.arrivalAirportId),
+          departureAirportId: Number(routeIds.departureAirportId),
+          arrivalAirportId: Number(routeIds.arrivalAirportId),
           departureDateTime: formData.departureDateTime,
           arrivalDateTime: formData.arrivalDateTime,
-          totalSeats: getSelectedFlight(values.flightId)?.aircraft?.totalSeats,
+          totalSeats,
         };
       }
-
-      console.log("form data ", formData);
 
       let result;
       if (isEditMode) {
@@ -211,47 +397,90 @@ const FlightInstanceForm = () => {
         navigate("/airline/instances");
       } else {
         // Handle API errors
-        const errorMessage = result.payload || "An error occurred";
+        const errorMessage =
+          typeof result.payload === "string"
+            ? result.payload
+            : result.payload?.message || "An error occurred";
         setFieldError("submit", errorMessage);
       }
     } catch (error) {
-      setFieldError("submit error occurred - ", error);
+      setFieldError("submit", error?.message || "Unable to save flight instance");
     } finally {
       setSubmitting(false);
     }
   };
 
   useEffect(() => {
-    dispatch(listAllAirports());
-  }, []);
-
-  useEffect(() => {
-    if (initialValues.departureDateTime) {
-      setDepartureTime(initialValues.departureDateTime.slice(11, 16)); // HH:mm
-    }
-  }, [initialValues.departureDateTime]);
-
-  useEffect(() => {
-    if (initialValues.arrivalDateTime) {
-      setArrivalTime(initialValues.arrivalDateTime.slice(11, 16)); // HH:mm
-    }
-  }, [initialValues.arrivalDateTime]);
+    dispatch(
+      listAllAirports({
+        page: 0,
+        size: 500,
+        sortBy: "iataCode",
+        sortDirection: "asc",
+      })
+    );
+  }, [dispatch]);
 
   const getSelectedFlight = (flightId) => {
-    return flights?.find((flight) => flight.id == flightId);
+    return flightOptions.find((flight) => String(flight.id) === String(flightId));
   };
 
   const getSelectedSchedule = (scheduleId) => {
-    return schedules?.find((schedule) => schedule.id == scheduleId);
+    return scheduleOptions.find(
+      (schedule) => String(schedule.id) === String(scheduleId)
+    );
+  };
+
+  const applyDateTimePair = (setFieldValue, departure, arrival) => {
+    setDepartureTime(format(departure, "HH:mm"));
+    setArrivalTime(format(arrival, "HH:mm"));
+    setFieldValue("departureDateTime", formatDateTimeLocal(departure));
+    setFieldValue("arrivalDateTime", formatDateTimeLocal(arrival));
+  };
+
+  const updateDepartureDateTime = (setFieldValue, departure, values, schedule) => {
+    const safeDeparture = ensureFutureDeparture(departure);
+    const arrival = getArrivalFromDeparture(
+      safeDeparture,
+      schedule,
+      values.arrivalDateTime,
+      values.departureDateTime
+    );
+    applyDateTimePair(setFieldValue, safeDeparture, arrival);
   };
 
   const handleScheduleChange = (scheduleId, setFieldValue) => {
     const schedule = getSelectedSchedule(scheduleId);
     if (schedule) {
-      setFieldValue("flightId", schedule.flightId || "");
-      setFieldValue("departureAirportId", schedule.departureAirport?.id || "");
-      setFieldValue("arrivalAirportId", schedule.arrivalAirport?.id || "");
+      setFieldValue("flightId", schedule.flightId ? String(schedule.flightId) : "");
+      setFieldValue(
+        "departureAirportId",
+        schedule.departureAirport?.id ? String(schedule.departureAirport.id) : ""
+      );
+      setFieldValue(
+        "arrivalAirportId",
+        schedule.arrivalAirport?.id ? String(schedule.arrivalAirport.id) : ""
+      );
+
+      const departure = getNextDepartureFromSchedule(schedule);
+      const arrival = getArrivalFromDeparture(departure, schedule);
+      applyDateTimePair(setFieldValue, departure, arrival);
     }
+  };
+
+  const handleFlightChange = (flightId, setFieldValue) => {
+    const flight = getSelectedFlight(flightId);
+    const routeIds = getFlightRouteIds(flight);
+
+    setFieldValue("flightId", flightId);
+    setFieldValue(
+      "departureAirportId",
+      routeIds.departureAirportId ? String(routeIds.departureAirportId) : ""
+    );
+    setFieldValue(
+      "arrivalAirportId",
+      routeIds.arrivalAirportId ? String(routeIds.arrivalAirportId) : ""
+    );
   };
 
   return (
@@ -325,7 +554,7 @@ const FlightInstanceForm = () => {
                             <SelectValue placeholder="Select a flight schedule" />
                           </SelectTrigger>
                           <SelectContent>
-                            {schedules?.map((schedule) => (
+                            {scheduleOptions.map((schedule) => (
                               <SelectItem
                                 key={schedule.id}
                                 value={String(schedule.id)}
@@ -338,8 +567,13 @@ const FlightInstanceForm = () => {
                                     -
                                   </span>
                                   <span className="text-sm">
-                                    {schedule.departureAirport.city?.cityCode} →{" "}
-                                    {schedule.arrivalAirport.city?.cityCode}
+                                    {schedule.departureAirport?.city?.cityCode ||
+                                      schedule.departureAirport?.iataCode ||
+                                      "DEP"}{" "}
+                                    →{" "}
+                                    {schedule.arrivalAirport?.city?.cityCode ||
+                                      schedule.arrivalAirport?.iataCode ||
+                                      "ARR"}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
                                     ({schedule.recurrenceType})
@@ -362,7 +596,7 @@ const FlightInstanceForm = () => {
                         <Select
                           value={values.flightId}
                           onValueChange={(value) =>
-                            setFieldValue("flightId", value)
+                            handleFlightChange(value, setFieldValue)
                           }
                         >
                           <SelectTrigger
@@ -376,7 +610,7 @@ const FlightInstanceForm = () => {
                             <SelectValue placeholder="Select a flight" />
                           </SelectTrigger>
                           <SelectContent>
-                            {flights?.map((flight) => (
+                            {flightOptions.map((flight) => (
                               <SelectItem
                                 key={flight.id}
                                 value={String(flight.id)}
@@ -485,9 +719,7 @@ const FlightInstanceForm = () => {
                           </Label>
                           <Select
                             value={String(values.departureAirportId)}
-                            onValueChange={(value) =>
-                              setFieldValue("departureAirportId", value)
-                            }
+                            disabled
                           >
                             <SelectTrigger
                               className={cn(
@@ -500,20 +732,20 @@ const FlightInstanceForm = () => {
                               <SelectValue placeholder="Select departure" />
                             </SelectTrigger>
                             <SelectContent>
-                              {airports.map((airport) => (
+                              {airportOptions.map((airport) => (
                                 <SelectItem
                                   key={airport.id}
                                   value={String(airport.id)}
                                 >
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium">
-                                      {airport.iataCode}
+                                      {airport.iataCode || airport.code}
                                     </span>
                                     <span className="text-muted-foreground">
                                       -
                                     </span>
                                     <span className="text-sm">
-                                      {airport.name}
+                                      {airport.name || airport.city?.name || "Airport"}
                                     </span>
                                   </div>
                                 </SelectItem>
@@ -532,10 +764,8 @@ const FlightInstanceForm = () => {
                             Arrival Airport *
                           </Label>
                           <Select
-                            value={values.arrivalAirportId}
-                            onValueChange={(value) =>
-                              setFieldValue("arrivalAirportId", value)
-                            }
+                            value={String(values.arrivalAirportId)}
+                            disabled
                           >
                             <SelectTrigger
                               className={cn(
@@ -548,20 +778,20 @@ const FlightInstanceForm = () => {
                               <SelectValue placeholder="Select arrival" />
                             </SelectTrigger>
                             <SelectContent>
-                              {airports.map((airport) => (
+                              {airportOptions.map((airport) => (
                                 <SelectItem
                                   key={airport.id}
                                   value={String(airport.id)}
                                 >
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium">
-                                      {airport.iataCode}
+                                      {airport.iataCode || airport.code}
                                     </span>
                                     <span className="text-muted-foreground">
                                       -
                                     </span>
                                     <span className="text-sm">
-                                      {airport.name}
+                                      {airport.name || airport.city?.name || "Airport"}
                                     </span>
                                   </div>
                                 </SelectItem>
@@ -584,9 +814,13 @@ const FlightInstanceForm = () => {
                           <Label>Departure Airport</Label>
                           <Input
                             value={
-                              airports.find(
-                                (a) => a.id == values.departureAirportId
-                              )?.name || "N/A"
+                              getAirportLabel(
+                                airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.departureAirportId)
+                                )
+                              )
                             }
                             disabled
                             className="mt-1 bg-muted"
@@ -596,9 +830,13 @@ const FlightInstanceForm = () => {
                           <Label>Arrival Airport</Label>
                           <Input
                             value={
-                              airports.find(
-                                (a) => a.id == values.arrivalAirportId
-                              )?.name || "N/A"
+                              getAirportLabel(
+                                airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.arrivalAirportId)
+                                )
+                              )
                             }
                             disabled
                             className="mt-1 bg-muted"
@@ -649,20 +887,26 @@ const FlightInstanceForm = () => {
                               }
                               onSelect={(date) => {
                                 if (date) {
-                                  const existingDate = values.departureDateTime
+                                  const schedule = getSelectedSchedule(values.scheduleId);
+                                  const scheduleDepartureTime = getScheduleTime(
+                                    schedule,
+                                    "departureTime"
+                                  );
+                                  const currentDeparture = values.departureDateTime
                                     ? new Date(values.departureDateTime)
-                                    : new Date();
-                                  const updated = new Date(date); // clone
-                                  updated.setHours(
-                                    existingDate.getHours(),
-                                    existingDate.getMinutes(),
-                                    0,
-                                    0
+                                    : roundUpToNextQuarterHour();
+                                  const selectedDate = new Date(date);
+                                  const departure = setTimeOnDate(
+                                    selectedDate,
+                                    scheduleDepartureTime ||
+                                      format(currentDeparture, "HH:mm")
                                   );
 
-                                  setFieldValue(
-                                    "departureDateTime",
-                                    formatDateTimeLocal(updated)
+                                  updateDepartureDateTime(
+                                    setFieldValue,
+                                    departure,
+                                    values,
+                                    schedule
                                   );
                                 }
                               }}
@@ -713,62 +957,35 @@ const FlightInstanceForm = () => {
 
                                 // If complete and valid HH:MM → update Formik
                                 if (
-                                  /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(
-                                    timeValue
-                                  )
+                                  VALID_TIME_PATTERN.test(timeValue)
                                 ) {
-                                  if (values.departureDateTime) {
-                                    const date = new Date(
-                                      values.departureDateTime
-                                    );
-                                    const [hours, minutes] =
-                                      timeValue.split(":");
-                                    date.setHours(
-                                      parseInt(hours),
-                                      parseInt(minutes),
-                                      0,
-                                      0
-                                    );
-                                    setFieldValue(
-                                      "departureDateTime",
-                                      formatDateTimeLocal(date)
-                                    );
-                                  } else {
-                                    const date = new Date();
-                                    const [hours, minutes] =
-                                      timeValue.split(":");
-                                    date.setHours(
-                                      parseInt(hours),
-                                      parseInt(minutes),
-                                      0,
-                                      0
-                                    );
-                                    setFieldValue(
-                                      "departureDateTime",
-                                      formatDateTimeLocal(date)
-                                    );
-                                  }
+                                  const schedule = getSelectedSchedule(values.scheduleId);
+                                  const date = values.departureDateTime
+                                    ? new Date(values.departureDateTime)
+                                    : new Date();
+                                  const departure = setTimeOnDate(date, timeValue);
+                                  updateDepartureDateTime(
+                                    setFieldValue,
+                                    departure,
+                                    values,
+                                    schedule
+                                  );
                                 }
                               }}
                               onBlur={() => {
                                 // If invalid on blur, snap back to the last valid Formik time or set a default
                                 if (
-                                  !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(
-                                    departureTime
-                                  )
+                                  !VALID_TIME_PATTERN.test(departureTime)
                                 ) {
                                   if (values.departureDateTime) {
                                     setDepartureTime(
                                       values.departureDateTime.slice(11, 16)
                                     );
                                   } else {
-                                    setDepartureTime("12:00");
-                                    const date = new Date();
-                                    date.setHours(12, 0, 0, 0);
-                                    setFieldValue(
-                                      "departureDateTime",
-                                      formatDateTimeLocal(date)
-                                    );
+                                    const schedule = getSelectedSchedule(values.scheduleId);
+                                    const departure = getNextDepartureFromSchedule(schedule);
+                                    const arrival = getArrivalFromDeparture(departure, schedule);
+                                    applyDateTimePair(setFieldValue, departure, arrival);
                                   }
                                 }
                               }}
@@ -857,6 +1074,14 @@ const FlightInstanceForm = () => {
                                     0
                                   );
 
+                                  if (
+                                    values.departureDateTime &&
+                                    updated <= new Date(values.departureDateTime)
+                                  ) {
+                                    updated.setDate(updated.getDate() + 1);
+                                  }
+
+                                  setArrivalTime(format(updated, "HH:mm"));
                                   setFieldValue(
                                     "arrivalDateTime",
                                     formatDateTimeLocal(updated)
@@ -910,43 +1135,42 @@ const FlightInstanceForm = () => {
 
                                 // If time fully valid → update Formik datetime field
                                 if (
-                                  /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(
-                                    timeValue
-                                  )
+                                  VALID_TIME_PATTERN.test(timeValue)
                                 ) {
                                   const date = values.arrivalDateTime
                                     ? new Date(values.arrivalDateTime)
                                     : new Date();
 
-                                  const [hours, minutes] = timeValue.split(":");
-                                  date.setHours(
-                                    parseInt(hours),
-                                    parseInt(minutes),
-                                    0,
-                                    0
-                                  );
+                                  const arrival = setTimeOnDate(date, timeValue);
+                                  if (
+                                    values.departureDateTime &&
+                                    arrival <= new Date(values.departureDateTime)
+                                  ) {
+                                    arrival.setDate(arrival.getDate() + 1);
+                                  }
 
                                   setFieldValue(
                                     "arrivalDateTime",
-                                    formatDateTimeLocal(date)
+                                    formatDateTimeLocal(arrival)
                                   );
                                 }
                               }}
                               onBlur={() => {
                                 // Reset to valid Formik or default if invalid format on blur
                                 if (
-                                  !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(
-                                    arrivalTime
-                                  )
+                                  !VALID_TIME_PATTERN.test(arrivalTime)
                                 ) {
                                   if (values.arrivalDateTime) {
                                     setArrivalTime(
                                       values.arrivalDateTime.slice(11, 16)
                                     );
                                   } else {
-                                    setArrivalTime("18:00");
-                                    const date = new Date();
-                                    date.setHours(18, 0, 0, 0);
+                                    const schedule = getSelectedSchedule(values.scheduleId);
+                                    const departure = values.departureDateTime
+                                      ? new Date(values.departureDateTime)
+                                      : getNextDepartureFromSchedule(schedule);
+                                    const date = getArrivalFromDeparture(departure, schedule);
+                                    setArrivalTime(format(date, "HH:mm"));
                                     setFieldValue(
                                       "arrivalDateTime",
                                       formatDateTimeLocal(date)
@@ -1130,13 +1354,17 @@ const FlightInstanceForm = () => {
                                 From
                               </div>
                               <div className="font-medium text-sm">
-                                {airports.find(
-                                  (a) => a.id == values.departureAirportId
+                                {airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.departureAirportId)
                                 )?.iataCode || values.departureAirportId}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {airports.find(
-                                  (a) => a.id == values.departureAirportId
+                                {airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.departureAirportId)
                                 )?.city?.name || ""}
                               </div>
                             </div>
@@ -1148,13 +1376,17 @@ const FlightInstanceForm = () => {
                                 To
                               </div>
                               <div className="font-medium text-sm">
-                                {airports.find(
-                                  (a) => a.id == values.arrivalAirportId
+                                {airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.arrivalAirportId)
                                 )?.iataCode || values.arrivalAirportId}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {airports.find(
-                                  (a) => a.id == values.arrivalAirportId
+                                {airportOptions.find(
+                                  (a) =>
+                                    String(a.id) ===
+                                    String(values.arrivalAirportId)
                                 )?.city?.name || ""}
                               </div>
                             </div>

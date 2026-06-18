@@ -44,7 +44,7 @@ const statusStyles = {
   BANNED: "border-red-400/30 bg-red-400/10 text-red-300",
 }
 
-const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
+const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }) => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
@@ -57,6 +57,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
   const airlineName = currentAirline?.name || "Airline workspace"
   const airlineCode = currentAirline?.iataCode || currentAirline?.icaoCode || "FH"
   const airlineStatus = currentAirline?.status || "INACTIVE"
+  const sidebarCollapsed = isCollapsed && !isMobileOpen
 
   const activeSectionId = React.useMemo(
     () =>
@@ -74,6 +75,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
 
   const handleNavigate = (item) => {
     navigate(item.path)
+    onMobileClose?.()
   }
 
   const handleLogout = async () => {
@@ -87,16 +89,26 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
   }
 
   return (
+    <>
+    {isMobileOpen && (
+      <button
+        type="button"
+        aria-label="Close navigation"
+        onClick={onMobileClose}
+        className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+      />
+    )}
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-[width] duration-200",
-        isCollapsed ? "w-16" : "w-80"
+        "fixed inset-y-0 left-0 z-50 flex w-80 border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-transform duration-200 lg:transition-[width]",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        sidebarCollapsed ? "lg:w-16" : "lg:w-80"
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cn("border-b border-slate-800", isCollapsed ? "p-2" : "p-4")}>
-          <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between gap-3")}>
-            {!isCollapsed && (
+        <div className={cn("border-b border-slate-800", sidebarCollapsed ? "p-2" : "p-4")}>
+          <div className={cn("flex items-center", sidebarCollapsed ? "justify-center" : "justify-between gap-3")}>
+            {!sidebarCollapsed && (
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500 text-sm font-bold text-white">
                   {airlineCode}
@@ -110,16 +122,16 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={onToggleCollapse}
-              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={isMobileOpen ? onMobileClose : onToggleCollapse}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className="h-9 w-9 shrink-0 text-slate-400 hover:bg-slate-800 hover:text-white"
             >
-              {isCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
           </div>
 
-          {!isCollapsed && (
+          {!sidebarCollapsed && (
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
               <div className="flex min-w-0 items-center gap-2">
                 <Building2 className="h-4 w-4 shrink-0 text-slate-500" />
@@ -149,17 +161,17 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      isCollapsed
+                      sidebarCollapsed
                         ? handleNavigate(section.items[0])
                         : setExpandedSections((previous) => ({
                             ...previous,
                             [section.id]: !previous[section.id],
                           }))
                     }
-                    title={isCollapsed ? section.title : undefined}
+                    title={sidebarCollapsed ? section.title : undefined}
                     className={cn(
                       "flex h-10 w-full items-center rounded-md text-sm transition-colors",
-                      isCollapsed ? "justify-center px-2" : "justify-between px-3",
+                      sidebarCollapsed ? "justify-center px-2" : "justify-between px-3",
                       hasActiveItem
                         ? "bg-slate-800 text-white"
                         : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
@@ -167,16 +179,16 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       <SectionIcon className={cn("h-4 w-4 shrink-0", hasActiveItem && "text-sky-400")} />
-                      {!isCollapsed && <span className="truncate font-medium">{section.title}</span>}
+                      {!sidebarCollapsed && <span className="truncate font-medium">{section.title}</span>}
                     </span>
-                    {!isCollapsed && (
+                    {!sidebarCollapsed && (
                       isExpanded
                         ? <ChevronDown className="h-4 w-4 shrink-0" />
                         : <ChevronRight className="h-4 w-4 shrink-0" />
                     )}
                   </button>
 
-                  {!isCollapsed && isExpanded && (
+                  {!sidebarCollapsed && isExpanded && (
                     <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-3">
                       {section.items.map((item) => {
                         const ItemIcon = item.icon
@@ -211,8 +223,8 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
           </nav>
         </ScrollArea>
 
-        <div className={cn("border-t border-slate-800", isCollapsed ? "p-2" : "p-3")}>
-          {!isCollapsed && (
+        <div className={cn("border-t border-slate-800", sidebarCollapsed ? "p-2" : "p-3")}>
+          {!sidebarCollapsed && (
             <button
               type="button"
               onClick={() => navigate("/airline/profile")}
@@ -233,13 +245,13 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
           <button
             type="button"
             onClick={handleLogout}
-            title={isCollapsed ? "Sign out" : undefined}
+            title={sidebarCollapsed ? "Sign out" : undefined}
             className={cn(
               "flex h-10 w-full items-center rounded-md text-sm text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
-              isCollapsed ? "justify-center" : "gap-3 px-3"
+              sidebarCollapsed ? "justify-center" : "gap-3 px-3"
             )}
           >
-            {isCollapsed ? <LogOut className="h-4 w-4" /> : (
+            {sidebarCollapsed ? <LogOut className="h-4 w-4" /> : (
               <>
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span>Sign out</span>
@@ -247,7 +259,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
             )}
           </button>
 
-          {isCollapsed && (
+          {sidebarCollapsed && (
             <button
               type="button"
               onClick={() => navigate("/airline/profile")}
@@ -260,6 +272,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse }) => {
         </div>
       </div>
     </aside>
+    </>
   )
 }
 

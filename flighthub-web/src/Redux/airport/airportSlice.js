@@ -53,9 +53,12 @@ const airportSlice = createSlice({
       .addCase(listAllAirports.fulfilled, (state, action) => {
         state.loading = false;
 
-        state.airports = action.payload.content || [];
-        state.total = action.payload.totalElements || 0;
-        state.totalPages = action.payload.totalPages || 1;
+        const payload = action.payload?.data ?? action.payload;
+        const items = Array.isArray(payload) ? payload : payload?.content || [];
+
+        state.airports = items;
+        state.total = payload?.totalElements ?? items.length;
+        state.totalPages = payload?.totalPages ?? 1;
       })
       .addCase(listAllAirports.rejected, (state, action) => {
         state.loading = false;

@@ -1,402 +1,298 @@
-import * as React from "react";
-import { Plane, Save, ArrowLeft, DollarSign, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import {
-  createFlight,
-  updateFlight,
-  getFlightById,
-} from "@/Redux/flight/flightThunk";
-import { getAllCities } from "@/Redux/city/cityThunk";
-import { listAllAirports } from "@/Redux/airport/airportThunk";
-import { listAircraftOptions } from "@/Redux/aircraft/aircraftThunks";
-import { getAllFareRules } from "@/Redux/fareRules/fareRulesThunk";
-import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
-import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
-import * as Yup from "yup";
+import { AlertCircle, ArrowLeft, ArrowRight, Loader2, MapPin, Plane, Save } from "lucide-react";
 import { toast } from "sonner";
 
-const flightSchema = Yup.object({
-  flightNumber: Yup.string()
-    .trim()
-    .uppercase()
-    .max(10, "Flight number must be at most 10 characters")
-    .required("Flight number is required"),
-  aircraftId: Yup.number().required("Aircraft is required"),
-  departureAirportId: Yup.number().required("Departure airport is required"),
-  arrivalAirportId: Yup.number()
-    .required("Arrival airport is required")
-    .notOneOf([Yup.ref("departureAirportId")], "Arrival airport must differ from departure"),
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { listAircraftOptions } from "@/Redux/aircraft/aircraftThunks";
+import { listAllAirports } from "@/Redux/airport/airportThunk";
+import { createFlight, getFlightById, updateFlight } from "@/Redux/flight/flightThunk";
+
+const EMPTY_FORM = {
+  flightNumber: "",
+  aircraftId: "",
+  departureAirportId: "",
+  arrivalAirportId: "",
+};
+
+const toForm = (flight) => ({
+  flightNumber: flight?.flightNumber || "",
+  aircraftId: flight?.aircraft?.id ? String(flight.aircraft.id) : "",
+  departureAirportId: flight?.departureAirport?.id ? String(flight.departureAirport.id) : "",
+  arrivalAirportId: flight?.arrivalAirport?.id ? String(flight.arrivalAirport.id) : "",
 });
 
-const FlightForm = () => {
-  const { airports } = useSelector((state) => state.airport);
-  const { aircraftOptions: aircrafts } = useSelector((state) => state.aircraft);
-  const [initialValues, setInitialValues] = React.useState({
-    flightNumber:  "",
-    aircraftId: "",
-    departureAirportId: "",
-    arrivalAirportId: "",
-    departureTime: "",
-  });
+const validate = (form) => {
+  const errors = {};
+  const number = form.flightNumber.trim().toUpperCase();
 
-  const { flight } = useSelector((state) => state.flight);
+  if (!number) errors.flightNumber = "Flight number is required.";
+  else if (number.length > 10) errors.flightNumber = "Flight number must be at most 10 characters.";
+  if (!form.aircraftId) errors.aircraftId = "Select an aircraft.";
+  if (!form.departureAirportId) errors.departureAirportId = "Select a departure airport.";
+  if (!form.arrivalAirportId) errors.arrivalAirportId = "Select an arrival airport.";
+  if (form.departureAirportId && form.departureAirportId === form.arrivalAirportId) {
+    errors.arrivalAirportId = "Arrival airport must differ from departure.";
+  }
+
+  return errors;
+};
+
+function FieldError({ message }) {
+  return message ? <p className="text-xs text-destructive">{message}</p> : null;
+}
+
+const FlightForm = () => {
+  const { flightId } = useParams();
+  const editing = Boolean(flightId);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { flightId } = useParams();
 
-  const [selectedAircraftId, setSelectedAircraftId] = React.useState("");
+  const { flight, loading: flightLoading } = useSelector((state) => state.flight);
+  const { airports = [], loading: airportsLoading, error: airportError } = useSelector((state) => state.airport);
+  const { aircraftOptions = [] } = useSelector((state) => state.aircraft);
 
-  const [isLoadingFlight, setIsLoadingFlight] = React.useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [hydratedFlightId, setHydratedFlightId] = useState(null);
+  const flightMatchesRoute = String(flight?.id) === String(flightId);
 
-  // Fetch flight data if editing
-  React.useEffect(() => {
-    if (flightId) {
-      setIsLoadingFlight(true);
-      dispatch(getFlightById(flightId))
-        .unwrap()
-        .finally(() => {
-          setIsLoadingFlight(false);
-        });
-    }
-  }, [flightId, dispatch]);
+  const aircrafts = editing
+    && flightMatchesRoute
+    && flight?.aircraft
+    && !aircraftOptions.some((item) => item.id === flight.aircraft.id)
+    ? [flight.aircraft, ...aircraftOptions]
+    : aircraftOptions;
 
+  const selectedDeparture = airports.find((airport) => String(airport.id) === form.departureAirportId);
+  const selectedArrival = airports.find((airport) => String(airport.id) === form.arrivalAirportId);
+  const selectedAircraft = aircrafts.find((aircraft) => String(aircraft.id) === form.aircraftId);
 
-  // Update selectedAircraftId when flight data is loaded
-  React.useEffect(() => {
-    if (flight) {
-      setSelectedAircraftId(flight?.aircraft?.id);
-      const initialValues = {
-        flightNumber: flight?.flightNumber || "",
-        aircraftId: flight?.aircraft?.id || "",
-        departureAirportId: flight?.departureAirport?.id || "",
-        arrivalAirportId: flight?.arrivalAirport?.id || "",
-        departureTime: flight?.departureTime || "",
-      };
-      setInitialValues(initialValues);
-    }
-  }, [flight]);
-
-  // Initial form values
-
-  // Handle form submission
-  const handleSubmit = async (values, { setSubmitting }) => {
-    try {
-      if (flightId) {
-        await dispatch(
-          updateFlight({ id: flightId, flightData: values })
-        ).unwrap();
-        toast.success("Flight updated");
-        navigate("/airline/flights");
-      } else {
-        console.log("flight data ", values);
-        await dispatch(createFlight(values)).unwrap();
-        toast.success("Flight created");
-        navigate("/airline/flights");
-      }
-    } catch (error) {
-      toast.error(error || "Unable to save flight");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Handle aircraft selection change
-  const handleAircraftChange = async (aircraftId, setFieldValue) => {
-    setSelectedAircraftId(aircraftId);
-    setFieldValue("aircraftId", parseInt(aircraftId));
-
-    if (aircraftId) {
-      try {
-        await dispatch(getCabinClassesByAircraft(aircraftId)).unwrap();
-
-        // Reset fares when aircraft changes
-        setFieldValue("fares", []);
-      } catch (error) {
-        console.error("Failed to fetch cabin classes:", error);
-      }
-    } else {
-      setFieldValue("fares", []);
-    }
-  };
-
-  React.useEffect(() => {
-    dispatch(getAllCities());
+  useEffect(() => {
     dispatch(listAircraftOptions());
-    dispatch(listAllAirports());
-    dispatch(getAllFareRules());
-  }, []);
+    dispatch(listAllAirports({ page: 0, size: 500, sortBy: "iataCode", sortDirection: "asc" }));
+    if (editing) dispatch(getFlightById(flightId));
+  }, [dispatch, editing, flightId]);
 
-  // Load cabin classes if aircraft is pre-selected
-  React.useEffect(() => {
-    if (selectedAircraftId) {
-      const aircraftId = selectedAircraftId;
-      dispatch(getCabinClassesByAircraft(aircraftId));
+  if (editing && flightMatchesRoute && hydratedFlightId !== flight.id) {
+    setHydratedFlightId(flight.id);
+    setForm(toForm(flight));
+    setErrors({});
+  }
+
+  const setField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => {
+      if (!current[field] && field !== "departureAirportId") return current;
+      const next = { ...current };
+      delete next[field];
+      if (field === "departureAirportId") delete next.arrivalAirportId;
+      return next;
+    });
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const validationErrors = validate(form);
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors);
+      return;
     }
-  }, [selectedAircraftId, dispatch, aircrafts]);
 
-  if (isLoadingFlight) {
+    const payload = {
+      flightNumber: form.flightNumber.trim().toUpperCase(),
+      aircraftId: Number(form.aircraftId),
+      departureAirportId: Number(form.departureAirportId),
+      arrivalAirportId: Number(form.arrivalAirportId),
+    };
+
+    setSaving(true);
+    try {
+      if (editing) {
+        await dispatch(updateFlight({ id: flightId, flightData: payload })).unwrap();
+        toast.success("Flight definition updated");
+        navigate(`/airline/flights/${flightId}`);
+      } else {
+        await dispatch(createFlight(payload)).unwrap();
+        toast.success("Flight definition created");
+        navigate("/airline/flights");
+      }
+    } catch (saveError) {
+      toast.error(saveError || "Unable to save flight definition");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing && flightLoading && !flightMatchesRoute) {
+    return <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">Loading flight definition...</CardContent></Card>;
+  }
+
+  if (editing && !flightLoading && !flightMatchesRoute) {
     return (
-      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading flight data...</p>
-        </div>
-      </div>
+      <Alert variant="destructive">
+        <AlertCircle />
+        <AlertDescription>Flight definition could not be loaded.</AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="bg-white rounded-lg shadow-sm border w-full">
-        <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/airline/flights")}
-            className="flex items-center hover:bg-gray-100"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Flights
-          </Button>
-          <div className="text-sm text-gray-500 font-medium">
-            / Flight Management / {flightId ? "Edit" : "New Flight"}
-          </div>
-        </div>
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10 ">
-          <div className="flex items-center justify-between">
+    <div className="mx-auto w-full max-w-4xl space-y-5">
+      <Button variant="ghost" size="sm" onClick={() => navigate(editing ? `/airline/flights/${flightId}` : "/airline/flights")}>
+        <ArrowLeft /> {editing ? "Back to flight" : "Back to flights"}
+      </Button>
+
+      <Card>
+        <CardHeader className="border-b">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Plane className="h-4 w-4" />
+            </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <Plane className="h-6 w-6 text-primary" />
-                </div>
-                {flightId ? "Edit Flight" : "Create New Flight"}
-              </h2>
-              <p className="text-gray-600 mt-2">
-                Configure all flight details, aircraft selection, and dynamic
-                fare pricing
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-blue-900">
-                  💡 Smart Pricing
-                </p>
-                <p className="text-xs text-blue-700">
-                  Fares will automatically adapt based on selected aircraft
-                  cabin classes
-                </p>
-              </div>
+              <CardTitle>{editing ? "Edit flight definition" : "Create flight definition"}</CardTitle>
+              <CardDescription>
+                Configure the reusable route and assigned aircraft. Schedules and travel dates are managed separately.
+              </CardDescription>
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        <div className="p-10">
-          <Formik
-            initialValues={initialValues}
-            validationSchema={flightSchema}
-            onSubmit={handleSubmit}
-            enableReinitialize
-          >
-            {({ isSubmitting, values, setFieldValue }) => (
-              <Form className="space-y-8">
-                {/* Basic Flight Information */}
-                <div className="">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <Label htmlFor="flightNumber">Flight Number *</Label>
-                        <Field
-                          as={Input}
-                          id="flightNumber"
-                          name="flightNumber"
-                          placeholder="e.g., ZA123"
-                        />
-                        <ErrorMessage
-                          name="flightNumber"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                      </div>
-                      <div className="space-y-3">
-                        <Label htmlFor="aircraftId">Aircraft *</Label>
-                        <Field name="aircraftId">
-                          {({ field }) => (
-                            <Select
-                              value={field.value.toString()}
-                              onValueChange={(value) =>
-                                handleAircraftChange(value, setFieldValue)
-                              }
-                            >
-                              <SelectTrigger className={"w-full"}>
-                                <SelectValue placeholder="Select aircraft" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {aircrafts.map((aircraft) => (
-                                  <SelectItem
-                                    key={aircraft?.id}
-                                    value={aircraft?.id.toString()}
-                                  >
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">
-                                        {aircraft.code} ({aircraft.manufacturer}
-                                        )
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {aircraft.model} -{" "}
-                                        {aircraft.seatingCapacity} seats
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </Field>
-                        <ErrorMessage
-                          name="aircraftId"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                      </div>
-                    </div>
+        <form onSubmit={submit}>
+          <CardContent className="space-y-7">
+            {airportError ? (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>{airportError}</AlertDescription>
+              </Alert>
+            ) : null}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <Label htmlFor="departureAirportId">
-                          Departure Airport *
-                        </Label>
-                        <Field name="departureAirportId">
-                          {({ field }) => (
-                            <Select
-                              value={field.value.toString()}
-                              onValueChange={(value) =>
-                                setFieldValue(
-                                  "departureAirportId",
-                                  parseInt(value)
-                                )
-                              }
-                            >
-                              <SelectTrigger className={"w-full"}>
-                                <SelectValue placeholder="Select departure airport" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {airports.map((airport) => (
-                                  <SelectItem
-                                    key={airport?.id}
-                                    value={airport?.id.toString()}
-                                  >
-                                    {airport.iataCode} - {airport.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </Field>
-                        <ErrorMessage
-                          name="departureAirportId"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                      </div>
-                      <div className="space-y-3">
-                        <Label htmlFor="arrivalAirportId">
-                          Arrival Airport *
-                        </Label>
-                        <Field name="arrivalAirportId">
-                          {({ field }) => (
-                            <Select
-                              value={field.value.toString()}
-                              onValueChange={(value) =>
-                                setFieldValue(
-                                  "arrivalAirportId",
-                                  parseInt(value)
-                                )
-                              }
-                            >
-                              <SelectTrigger className={"w-full"}>
-                                <SelectValue placeholder="Select arrival airport" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {airports.map((airport) => (
-                                  <SelectItem
-                                    key={airport?.id}
-                                    value={airport?.id.toString()}
-                                  >
-                                    {airport.iataCode} - {airport.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </Field>
-                        <ErrorMessage
-                          name="arrivalAirportId"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold">Definition identity</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Flight numbers must be unique across FlightHub.</p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="flightNumber">Flight number</Label>
+                  <Input
+                    id="flightNumber"
+                    value={form.flightNumber}
+                    onChange={(event) => setField("flightNumber", event.target.value.toUpperCase())}
+                    placeholder="e.g. VN210"
+                    maxLength={10}
+                    aria-invalid={Boolean(errors.flightNumber)}
+                  />
+                  <FieldError message={errors.flightNumber} />
                 </div>
 
-                {/* Dynamic Fares Section */}
-
-                {/* Form Actions */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 z-10 ">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      {selectedAircraftId && (
-                        <span className="ml-2 text-gray-500">
-                          • Aircraft:{" "}
-                          {
-                            aircrafts.find(
-                              (a) => a.id === parseInt(selectedAircraftId)
-                            )?.code
-                          }
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => navigate("/airline/flights")}
-                        className="min-w-[100px]"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={!selectedAircraftId}
-                        className="flex items-center gap-2 min-w-[140px] bg-primary hover:bg-primary/90"
-                      >
-                        <Save className="h-4 w-4" />
-                        {isSubmitting
-                          ? "Saving..."
-                          : flightId
-                          ? "Update Flight"
-                          : "Create Flight"}
-                      </Button>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Assigned aircraft</Label>
+                  <Select value={form.aircraftId} onValueChange={(value) => setField("aircraftId", value)}>
+                    <SelectTrigger className="w-full" aria-invalid={Boolean(errors.aircraftId)}>
+                      <SelectValue placeholder="Select an owned aircraft" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aircrafts.map((aircraft) => (
+                        <SelectItem key={aircraft.id} value={String(aircraft.id)}>
+                          {aircraft.code} · {aircraft.manufacturer} {aircraft.model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError message={errors.aircraftId} />
                 </div>
-              </Form>
-            )}
-          </Formik>
-        </div>
-      </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold">Route</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Departure and arrival airports must be different.</p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Departure airport</Label>
+                  <Select value={form.departureAirportId} onValueChange={(value) => setField("departureAirportId", value)}>
+                    <SelectTrigger className="w-full" aria-invalid={Boolean(errors.departureAirportId)}>
+                      <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select departure airport"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {airports.map((airport) => <SelectItem key={airport.id} value={String(airport.id)}>{airport.iataCode} · {airport.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FieldError message={errors.departureAirportId} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Arrival airport</Label>
+                  <Select value={form.arrivalAirportId} onValueChange={(value) => setField("arrivalAirportId", value)}>
+                    <SelectTrigger className="w-full" aria-invalid={Boolean(errors.arrivalAirportId)}>
+                      <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select arrival airport"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {airports.map((airport) => (
+                        <SelectItem key={airport.id} value={String(airport.id)} disabled={String(airport.id) === form.departureAirportId}>
+                          {airport.iataCode} · {airport.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError message={errors.arrivalAirportId} />
+                </div>
+              </div>
+
+              <div className="grid items-center gap-3 rounded-md border bg-muted/20 p-4 sm:grid-cols-[1fr_auto_1fr]">
+                <div>
+                  <p className="text-xs text-muted-foreground">Departure</p>
+                  <p className="mt-1 font-medium">{selectedDeparture?.iataCode || "---"} · {selectedDeparture?.city?.name || "Select airport"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{selectedDeparture?.timeZone || "Timezone unavailable"}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <div className="sm:text-right">
+                  <p className="text-xs text-muted-foreground">Arrival</p>
+                  <p className="mt-1 font-medium">{selectedArrival?.iataCode || "---"} · {selectedArrival?.city?.name || "Select airport"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{selectedArrival?.timeZone || "Timezone unavailable"}</p>
+                </div>
+              </div>
+            </section>
+
+            {selectedAircraft ? (
+              <div className="flex items-start gap-3 rounded-md border p-4">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">{selectedAircraft.code} · {selectedAircraft.manufacturer} {selectedAircraft.model}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selectedAircraft.seatingCapacity || selectedAircraft.totalSeats || 0} seats. Aircraft ownership is validated by the backend.
+                  </p>
+                </div>
+                {editing ? <Badge variant="outline" className="ml-auto">{flight.status}</Badge> : null}
+              </div>
+            ) : null}
+          </CardContent>
+
+          <div className="flex flex-col-reverse gap-2 border-t bg-muted/30 p-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => navigate(editing ? `/airline/flights/${flightId}` : "/airline/flights")} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || airportsLoading || aircrafts.length === 0}>
+              {saving ? <Loader2 className="animate-spin" /> : <Save />}
+              {saving ? "Saving" : editing ? "Update definition" : "Create definition"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 };

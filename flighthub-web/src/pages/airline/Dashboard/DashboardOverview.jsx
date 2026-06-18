@@ -50,7 +50,7 @@ const DashboardOverview = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/airline/profile")}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/airline/organization-profile")}>
             Review profile
           </Button>
         </div>
@@ -125,7 +125,7 @@ const DashboardOverview = () => {
             {[
               { label: "Manage fleet", path: "/airline/aircraft", icon: PlaneTakeoff },
               { label: "Manage schedules", path: "/airline/schedules", icon: CalendarDays },
-              { label: "Review airline profile", path: "/airline/profile", icon: Settings },
+              { label: "Review airline profile", path: "/airline/organization-profile", icon: Settings },
             ].map(({ label, path, icon: Icon }) => (
               <Button
                 key={path}

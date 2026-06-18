@@ -127,7 +127,9 @@ const flightSlice = createSlice({
       })
       .addCase(getFlightsByAirline.fulfilled, (state, action) => {
         state.loading = false;
-        state.flights = action.payload.content;
+        state.flights = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload?.content || []);
       })
       .addCase(getFlightsByAirline.rejected, (state, action) => {
         state.loading = false;

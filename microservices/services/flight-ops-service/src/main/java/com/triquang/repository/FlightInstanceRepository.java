@@ -62,6 +62,8 @@ Optional<FlightInstance> findByIdForUpdate(@Param("id") Long id);
 
 Long countByFlightIdAndStatus(Long flightId, FlightStatus status);
 
+long countByStatusIn(Collection<FlightStatus> statuses);
+
 @Query("SELECT fi FROM FlightInstance fi JOIN FETCH fi.flight WHERE fi.id IN :ids")
 List<FlightInstance> findAllByIdInWithFlight(@Param("ids") Collection<Long> ids);
 

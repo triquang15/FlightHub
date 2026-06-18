@@ -211,6 +211,7 @@ echo "==> Resolving airline-core IDs for flight-ops"
 
 airline_vn="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VN';")"
 airline_vj="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'VJ';")"
+airline_ak="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'AK';")"
 airline_sq="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'SQ';")"
 airline_tg="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'TG';")"
 airline_cx="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airlines WHERE iata_code = 'CX';")"
@@ -221,6 +222,7 @@ airline_qr="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM airline
 aircraft_vn_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-A359-01';")"
 aircraft_vn_b789="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VN-B789-02';")"
 aircraft_vj_a321="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'VJ-A321-01';")"
+aircraft_ak_a320="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'AK-A320-01';")"
 aircraft_sq_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'SQ-A359-01';")"
 aircraft_tg_b77w="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'TG-B77W-01';")"
 aircraft_cx_a35k="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'CX-A35K-01';")"
@@ -229,8 +231,8 @@ aircraft_ek_a388="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM a
 aircraft_qr_a359="$(query_scalar airlinecoredb airline_core_db "SELECT id FROM aircrafts WHERE aircraft_code = 'QR-A359-01';")"
 
 for required in \
-  airline_vn airline_vj airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
-  aircraft_vn_a359 aircraft_vn_b789 aircraft_vj_a321 aircraft_sq_a359 aircraft_tg_b77w \
+  airline_vn airline_vj airline_ak airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
+  aircraft_vn_a359 aircraft_vn_b789 aircraft_vj_a321 aircraft_ak_a320 aircraft_sq_a359 aircraft_tg_b77w \
   aircraft_cx_a35k aircraft_jl_b789 aircraft_ek_a388 aircraft_qr_a359; do
   require_value "$required" "${!required}"
 done
@@ -241,6 +243,7 @@ run_sql_file_with_settings \
   "$FLIGHT_OPS_SEED_SQL" \
   airline_vn="$airline_vn" \
   airline_vj="$airline_vj" \
+  airline_ak="$airline_ak" \
   airline_sq="$airline_sq" \
   airline_tg="$airline_tg" \
   airline_cx="$airline_cx" \
@@ -250,6 +253,7 @@ run_sql_file_with_settings \
   aircraft_vn_a359="$aircraft_vn_a359" \
   aircraft_vn_b789="$aircraft_vn_b789" \
   aircraft_vj_a321="$aircraft_vj_a321" \
+  aircraft_ak_a320="$aircraft_ak_a320" \
   aircraft_sq_a359="$aircraft_sq_a359" \
   aircraft_tg_b77w="$aircraft_tg_b77w" \
   aircraft_cx_a35k="$aircraft_cx_a35k" \
@@ -261,6 +265,7 @@ run_sql_file_with_settings \
   apt_dad="$apt_dad" \
   apt_sin="$apt_sin" \
   apt_bkk="$apt_bkk" \
+  apt_kul="$apt_kul" \
   apt_hkg="$apt_hkg" \
   apt_hnd="$apt_hnd" \
   apt_dxb="$apt_dxb" \

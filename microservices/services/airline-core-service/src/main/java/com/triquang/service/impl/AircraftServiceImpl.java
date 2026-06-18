@@ -236,6 +236,11 @@ public class AircraftServiceImpl implements AircraftService {
     }
 
     private void validateReadAccess(Aircraft aircraft, Long requesterId, String roles) {
+        // Service-to-service reference lookups do not carry an end-user identity.
+        if (requesterId == null) {
+            return;
+        }
+
         if (isSystemAdmin(roles)) {
             return;
         }

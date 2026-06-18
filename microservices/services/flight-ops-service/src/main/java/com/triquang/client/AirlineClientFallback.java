@@ -7,22 +7,23 @@ import org.springframework.stereotype.Component;
 
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.payload.response.AirlineResponse;
+import com.triquang.payload.response.ApiResponse;
 
 @Component
 public class AirlineClientFallback implements AirlineClient {
 
 	@Override
-	public AirlineResponse getAirlineByOwner(Long userId) {
+	public ApiResponse<List<AirlineResponse>> getAirlinesByOwnerResponse(Long userId) {
 		return null;
 	}
 
 	@Override
-	public AirlineResponse getAirlineById(Long airlineId) {
+	public ApiResponse<AirlineResponse> getAirlineByIdResponse(Long airlineId) {
 		return null;
 	}
 
 	@Override
-	public AircraftResponse getAircraftById(Long id) {
+	public ApiResponse<AircraftResponse> getAircraftByIdResponse(Long id) {
 		return null;
 	}
 

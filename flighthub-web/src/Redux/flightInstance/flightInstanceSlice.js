@@ -9,6 +9,22 @@ import {
   changeFlightInstanceStatus,
 } from "./flightInstanceThunk.js";
 
+const toPage = (payload, fallbackSize = 10) => {
+  const data = payload?.data ?? payload;
+  const content = Array.isArray(data) ? data : data?.content || [];
+
+  return {
+    content,
+    totalElements: data?.totalElements ?? content.length,
+    totalPages: data?.totalPages ?? (content.length ? 1 : 0),
+    size: data?.size ?? fallbackSize,
+    number: data?.number ?? 0,
+    first: data?.first ?? true,
+    last: data?.last ?? true,
+    numberOfElements: data?.numberOfElements ?? content.length,
+  };
+};
+
 const initialState = {
   // Data
   flightInstances: [],
@@ -125,8 +141,9 @@ const flightInstanceSlice = createSlice({
       })
       .addCase(getAllFlightInstances.fulfilled, (state, action) => {
         state.loading = false;
-        state.flightInstances = action.payload.content || action.payload;
-        state.paginatedFlightInstances = action.payload;
+        const page = toPage(action.payload, state.pageSize);
+        state.flightInstances = page.content;
+        state.paginatedFlightInstances = page;
       })
       .addCase(getAllFlightInstances.rejected, (state, action) => {
         state.loading = false;
@@ -187,6 +204,7 @@ const flightInstanceSlice = createSlice({
         state.deleteLoading = false;
         state.flightInstances = state.flightInstances.filter(fi => fi.id !== action.payload);
         state.paginatedFlightInstances.content = state.paginatedFlightInstances.content.filter(fi => fi.id !== action.payload);
+        state.paginatedFlightInstances.totalElements = Math.max(0, state.paginatedFlightInstances.totalElements - 1);
         if (state.paginatedFlightInstances.numberOfElements > 0) state.paginatedFlightInstances.numberOfElements -= 1;
       })
       .addCase(deleteFlightInstance.rejected, (state, action) => {

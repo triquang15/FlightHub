@@ -17,6 +17,7 @@ import SecurityCompliance from '../Dashboard/SecurityCompliance';
 import CityManagement from '../city/CityManagement';
 import PlatformOverview from '../Dashboard/PlateformOverview';
 import PlatformModulePlaceholder from '../Dashboard/PlatformModulePlaceholder';
+import WorkspaceAccountProfile from '@/components/account/WorkspaceAccountProfile';
 
 // Platform Overview Component
 
@@ -58,6 +59,7 @@ const SuperAdminRoutes = ({ platformStats }) => {
       {/* User Management */}
       <Route path="/users" element={<UserManagement />} />
       <Route path="/users/:userId" element={<UserManagement />} />
+      <Route path="/profile" element={<WorkspaceAccountProfile variant="admin" />} />
       <Route path="/agents" element={<UserManagement />} />
       <Route path="/access/roles" element={<PlatformModulePlaceholder module="roles" />} />
       <Route path="/access/audit" element={<PlatformModulePlaceholder module="audit" />} />

@@ -1,670 +1,441 @@
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Plane, Phone, Mail, Users, Shield, Edit2, X, Check, Loader2, AlertCircle, Clock } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { getAirlineByAdmin, updateAirline } from '@/Redux/airline/airlineThunks';
-import { getUserProfile } from '@/Redux/user/userThunks';
+import { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  AlertCircle,
+  Building2,
+  ExternalLink,
+  Headphones,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plane,
+  Save,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 
-const emptyAirlineData = {
-  name: '',
-  iataCode: '',
-  icaoCode: '',
-  alias: '',
-  logoUrl: '',
-  website: '',
-  alliance: '',
-  headquartersCityId: '',
-  countryName: '',
-  supportEmail: '',
-  supportPhone: '',
-  supportHours: ''
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { getAirlineByAdmin, updateAirline } from "@/Redux/airline/airlineThunks";
+
+const EMPTY_PROFILE = {
+  name: "",
+  iataCode: "",
+  icaoCode: "",
+  alias: "",
+  logoUrl: "",
+  website: "",
+  alliance: "",
+  headquartersCityId: "",
+  countryName: "",
+  supportEmail: "",
+  supportPhone: "",
+  supportHours: "",
 };
 
-const toAirlineFormData = (airline) => {
-  if (!airline) return emptyAirlineData;
+const EDITABLE_FIELDS = [
+  "alias",
+  "logoUrl",
+  "website",
+  "alliance",
+  "supportEmail",
+  "supportPhone",
+  "supportHours",
+];
 
-  return {
-    name: airline.name || '',
-    iataCode: airline.iataCode || '',
-    icaoCode: airline.icaoCode || '',
-    alias: airline.alias || '',
-    logoUrl: airline.logoUrl || '',
-    website: airline.website || '',
-    alliance: airline.alliance || '',
-    headquartersCityId: airline.headquartersCityId || '',
-    countryName: airline.countryName || '',
-    supportEmail: airline.support?.email || airline.supportEmail || '',
-    supportPhone: airline.support?.phone || airline.supportPhone || '',
-    supportHours: airline.support?.hours || airline.supportHours || ''
-  };
+const statusClass = {
+  ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+  INACTIVE: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+  SUSPENDED: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300",
+  BANNED: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
 };
 
-const FormField = ({ name, label, value, onChange, type = "text", disabled = false, as = null, rows = null, error }) => (
-  <div className="space-y-2">
-    <Label htmlFor={name}>{label}</Label>
-    {as === 'textarea' ? (
-      <Textarea
-        id={name}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        rows={rows}
-        className={error ? 'border-red-500' : ''}
-      />
-    ) : (
+const toProfile = (airline) => ({
+  ...EMPTY_PROFILE,
+  ...airline,
+  headquartersCityId: airline?.headquartersCityId || "",
+  countryName: airline?.countryName || "",
+  supportEmail: airline?.support?.email || airline?.supportEmail || "",
+  supportPhone: airline?.support?.phone || airline?.supportPhone || "",
+  supportHours: airline?.support?.hours || airline?.supportHours || "",
+});
+
+const normalizeProfile = (profile) =>
+  Object.fromEntries(
+    Object.entries(profile).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value.trim() : value,
+    ])
+  );
+
+const isValidUrl = (value) => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+};
+
+const validate = (profile) => {
+  const errors = {};
+
+  if (profile.website && !isValidUrl(profile.website)) {
+    errors.website = "Enter a complete http(s) website URL.";
+  }
+  if (profile.logoUrl && !isValidUrl(profile.logoUrl)) {
+    errors.logoUrl = "Enter a complete http(s) image URL.";
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.supportEmail)) {
+    errors.supportEmail = "Enter a valid support email.";
+  }
+  if (profile.supportPhone.replace(/[^\d]/g, "").length < 7) {
+    errors.supportPhone = "Enter a valid support phone number.";
+  }
+  if (profile.supportHours.length < 3) {
+    errors.supportHours = "Enter the support team's availability.";
+  }
+
+  return errors;
+};
+
+function AirlineLogo({ profile }) {
+  const fallback = profile.iataCode || profile.name?.slice(0, 2).toUpperCase() || "AL";
+
+  return (
+    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-primary text-lg font-semibold text-primary-foreground">
+      {fallback}
+      {profile.logoUrl ? (
+        <img
+          src={profile.logoUrl}
+          alt={`${profile.name || "Airline"} logo`}
+          className="absolute inset-0 h-full w-full bg-white object-contain p-2"
+          onError={(event) => {
+            event.currentTarget.hidden = true;
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function IdentityItem({ icon: Icon, label, value }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        {label}
+      </div>
+      <p className="mt-1 truncate text-sm font-medium">{value || "Not configured"}</p>
+    </div>
+  );
+}
+
+function FormField({ id, label, value, onChange, disabled, error, placeholder, type = "text", description }) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
       <Input
-        id={name}
+        id={id}
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(id, event.target.value)}
         disabled={disabled}
-        className={error ? 'border-red-500' : ''}
+        placeholder={placeholder}
+        aria-invalid={Boolean(error)}
       />
-    )}
-    {error && <p className="text-sm text-red-500">{error}</p>}
-  </div>
-);
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : description ? (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export default function AirlineAdminProfile() {
   const dispatch = useDispatch();
   const { currentAirline, loading, error, updateLoading } = useSelector((state) => state.airline);
-  const { userProfile } = useSelector((state) => state.user);
+  const profile = useMemo(() => toProfile(currentAirline), [currentAirline]);
 
-  const [editMode, setEditMode] = useState({
-    airline: false,
-    support: false
-  });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_PROFILE);
+  const [formErrors, setFormErrors] = useState({});
 
-  const [airlineData, setAirlineData] = useState(emptyAirlineData);
+  const displayed = editing ? draft : profile;
+  const dirty = editing && EDITABLE_FIELDS.some((field) => draft[field] !== profile[field]);
+  const status = String(currentAirline?.status || "INACTIVE").toUpperCase();
 
-  const [errors, setErrors] = useState({});
-  const [tempData, setTempData] = useState({});
-  const [saveMessage, setSaveMessage] = useState('');
-  const currentAirlineData = toAirlineFormData(currentAirline);
-  const hasActiveEdit = editMode.airline || editMode.support;
-  const displayData = hasActiveEdit ? airlineData : currentAirlineData;
-
-  // Fetch airline data on component mount
   useEffect(() => {
     dispatch(getAirlineByAdmin());
-    dispatch(getUserProfile());
   }, [dispatch]);
 
-  const ownerSource = userProfile || currentAirline?.owner;
-  const ownerData = ownerSource ? {
-    name: ownerSource.fullName || '',
-    title: 'Airline Administrator',
-    email: ownerSource.email || '',
-    phone: ownerSource.phone || '',
-    joined: ownerSource.createdAt
-      ? new Date(ownerSource.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-      : ownerSource.lastLogin
-        ? new Date(ownerSource.lastLogin).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-        : 'N/A',
-    role: ownerSource.role || 'AIRLINE_OWNER'
-  } : {
-    name: 'Airline Owner',
-    title: 'Administrator',
-    email: '',
-    phone: '',
-    joined: '',
-    role: ''
+  const startEditing = () => {
+    setDraft(profile);
+    setFormErrors({});
+    setEditing(true);
   };
 
-  const validateAirline = (data) => {
-    const newErrors = {};
-
-    if (!data.iataCode || data.iataCode.trim().length !== 2) {
-      newErrors.iataCode = 'IATA code must be exactly 2 characters';
-    }
-
-    if (!data.icaoCode || data.icaoCode.trim().length !== 3) {
-      newErrors.icaoCode = 'ICAO code must be exactly 3 characters';
-    }
-
-    if (!data.name || data.name.trim().length < 2) {
-      newErrors.name = 'Airline name is required (min 2 characters)';
-    }
-
-    if (data.website && data.website.trim() && !isValidUrl(data.website)) {
-      newErrors.website = 'Valid website URL is required';
-    }
-
-    if (data.logoUrl && data.logoUrl.trim() && !isValidUrl(data.logoUrl)) {
-      newErrors.logoUrl = 'Valid logo URL is required';
-    }
-
-    return newErrors;
+  const cancelEditing = () => {
+    setDraft(profile);
+    setFormErrors({});
+    setEditing(false);
   };
 
-  const validateSupport = (data) => {
-    const newErrors = {};
-
-    if (data.supportEmail && data.supportEmail.trim() && !isValidEmail(data.supportEmail)) {
-      newErrors.supportEmail = 'Please enter a valid support email';
-    }
-
-    if (!data.supportPhone || data.supportPhone.trim().length === 0) {
-      newErrors.supportPhone = 'Support phone is required';
-    }
-
-    if (!data.supportHours || data.supportHours.trim().length === 0) {
-      newErrors.supportHours = 'Support hours are required';
-    }
-
-    return newErrors;
+  const changeField = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setFormErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   };
 
-  const isValidEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  const saveProfile = async () => {
+    const normalized = normalizeProfile(draft);
+    const validationErrors = validate(normalized);
 
-  const isValidUrl = (url) => {
+    if (Object.keys(validationErrors).length) {
+      setFormErrors(validationErrors);
+      return;
+    }
+
     try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const toggleEdit = (section) => {
-    if (!editMode[section]) {
-      // Entering edit mode - store current data
-      setAirlineData({ ...currentAirlineData });
-      setTempData({ ...currentAirlineData });
-    } else {
-      // Canceling edit mode - restore original data
-      setAirlineData({ ...tempData });
-      setErrors({});
-    }
-    setEditMode(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const handleSave = async (section) => {
-    try {
-      setErrors({});
-      setSaveMessage('');
-
-      if (!currentAirline?.id) {
-        setErrors({ submit: 'Airline profile is not ready yet. Please refresh and try again.' });
-        return;
-      }
-
-      let validationErrors = {};
-
-      if (section === 'airline') {
-        validationErrors = validateAirline(airlineData);
-      } else if (section === 'support') {
-        validationErrors = validateSupport(airlineData);
-      }
-
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
-      }
-
-      const headquartersCityId = airlineData.headquartersCityId
-        ? Number(airlineData.headquartersCityId)
-        : null;
-
-      const updateData = {
-        id: currentAirline.id,
-        iataCode: airlineData.iataCode.trim().toUpperCase(),
-        icaoCode: airlineData.icaoCode.trim().toUpperCase(),
-        name: airlineData.name.trim(),
-        alias: airlineData.alias.trim(),
-        logoUrl: airlineData.logoUrl.trim(),
-        website: airlineData.website.trim(),
-        alliance: airlineData.alliance.trim(),
-        supportEmail: airlineData.supportEmail.trim(),
-        supportPhone: airlineData.supportPhone.trim(),
-        supportHours: airlineData.supportHours.trim()
-      };
-
-      if (headquartersCityId) {
-        updateData.headquartersCityId = headquartersCityId;
-      }
-
-      await dispatch(updateAirline(updateData)).unwrap();
-
-      setTempData({});
-      setSaveMessage(`${section === 'airline' ? 'Airline' : 'Support'} information updated successfully!`);
-      setEditMode(prev => ({ ...prev, [section]: false }));
-
-      setTimeout(() => {
-        setSaveMessage('');
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error updating airline:', error);
-      setErrors({ submit: typeof error === 'string' ? error : 'Failed to update airline information' });
-    }
-  };
-
-  const handleFieldChange = (field, value) => {
-    setAirlineData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error for this field when user types
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
+      await dispatch(
+        updateAirline({
+          id: currentAirline.id,
+          iataCode: profile.iataCode,
+          icaoCode: profile.icaoCode,
+          name: profile.name,
+          headquartersCityId: profile.headquartersCityId
+            ? Number(profile.headquartersCityId)
+            : null,
+          alias: normalized.alias,
+          logoUrl: normalized.logoUrl,
+          website: normalized.website,
+          alliance: normalized.alliance,
+          supportEmail: normalized.supportEmail,
+          supportPhone: normalized.supportPhone,
+          supportHours: normalized.supportHours,
+        })
+      ).unwrap();
+      setEditing(false);
+      setFormErrors({});
+      toast.success("Airline profile updated");
+    } catch (saveError) {
+      setFormErrors({
+        submit: typeof saveError === "string" ? saveError : "Unable to update airline profile.",
       });
     }
   };
 
-  const handleRefresh = () => {
-    dispatch(getAirlineByAdmin());
-    dispatch(getUserProfile());
-  };
-
-  // Loading state
   if (loading && !currentAirline) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading airline profile...</p>
+      <div className="flex min-h-64 items-center justify-center rounded-lg border bg-card">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading airline profile...
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error && !currentAirline) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 flex items-center justify-center">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                Error loading airline profile
-              </h3>
-              <p className="text-sm mt-1">{error}</p>
-            </div>
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              Retry
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Alert variant="destructive" className="mx-auto max-w-2xl">
+        <AlertCircle />
+        <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span>{error || "Unable to load airline profile."}</span>
+          <Button variant="outline" size="sm" onClick={() => dispatch(getAirlineByAdmin())}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
-                  {displayData.logoUrl ? (
-                    <img
-                      src={displayData.logoUrl}
-                      alt={displayData.name}
-                      className="w-full h-full object-cover rounded-lg"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/150';
-                        e.target.className = 'w-full h-full object-contain rounded-lg p-2';
-                      }}
-                    />
-                  ) : (
-                    currentAirline?.iataCode || 'AL'
-                  )}
+    <div className="mx-auto w-full max-w-4xl space-y-5">
+      {formErrors.submit ? (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertDescription>{formErrors.submit}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <Card>
+        <CardContent className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <AirlineLogo profile={displayed} />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-lg font-semibold">{profile.name || "Airline organization"}</h2>
+                  <Badge variant="outline" className={statusClass[status] || statusClass.INACTIVE}>
+                    {status}
+                  </Badge>
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-800">{displayData.name}</h1>
-                  <p className="text-gray-600">Admin Dashboard</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {currentAirline?.status || 'ACTIVE'}
-                    </Badge>
-                    <Button onClick={handleRefresh} variant="outline" size="sm">
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  {profile.alias || "Public brand name not configured"}
+                </p>
               </div>
             </div>
-            {saveMessage && (
-              <Alert className="mt-4 bg-green-100 border-green-400">
-                <Check className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  {saveMessage}
-                </AlertDescription>
-              </Alert>
+
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {profile.website ? (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={profile.website} target="_blank" rel="noreferrer">
+                    <ExternalLink />
+                    Website
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <IdentityItem icon={Plane} label="Airline codes" value={`${profile.iataCode || "--"} / ${profile.icaoCode || "---"}`} />
+            <IdentityItem icon={MapPin} label="Country" value={profile.countryName} />
+            <IdentityItem icon={Building2} label="Headquarters ID" value={profile.headquartersCityId} />
+            <IdentityItem icon={ShieldCheck} label="Organization ID" value={currentAirline?.id} />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Airline identity, codes, country, headquarters, and status are verified by FlightHub platform operations.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b sm:grid-cols-[1fr_auto]">
+          <div className="min-w-0">
+            <CardTitle>Public information</CardTitle>
+            <CardDescription>Brand and support information visible to travelers.</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {editing ? (
+              <>
+                <Button variant="outline" size="sm" onClick={cancelEditing} disabled={updateLoading}>
+                  <X />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveProfile} disabled={updateLoading || !dirty}>
+                  {updateLoading ? <Loader2 className="animate-spin" /> : <Save />}
+                  {updateLoading ? "Saving" : "Save changes"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={startEditing}>
+                <Pencil />
+                Edit profile
+              </Button>
             )}
-            {errors.submit && (
-              <Alert className="mt-4 bg-red-100 border-red-400">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  {errors.submit}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        </CardHeader>
 
-        {/* Tabs */}
-        <Tabs defaultValue="airline" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="airline" className="flex items-center gap-2">
-              <Plane size={18} />
-              <span className="hidden sm:inline">Airline</span>
-            </TabsTrigger>
-            <TabsTrigger value="support" className="flex items-center gap-2">
-              <Phone size={18} />
-              <span className="hidden sm:inline">Support</span>
-            </TabsTrigger>
-            <TabsTrigger value="owner" className="flex items-center gap-2">
-              <Shield size={18} />
-              <span className="hidden sm:inline">Owner</span>
-            </TabsTrigger>
-          </TabsList>
+        <CardContent className="space-y-7">
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold">Brand</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Public-facing brand details used throughout search and booking.
+              </p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FormField
+                id="alias"
+                label="Public brand name"
+                value={displayed.alias}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder={profile.name || "Airline brand name"}
+              />
+              <FormField
+                id="alliance"
+                label="Airline alliance"
+                value={displayed.alliance}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="e.g. SkyTeam"
+              />
+              <FormField
+                id="website"
+                label="Public website"
+                type="url"
+                value={displayed.website}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="https://airline.example"
+                error={formErrors.website}
+              />
+              <FormField
+                id="logoUrl"
+                label="Logo URL"
+                type="url"
+                value={displayed.logoUrl}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="https://cdn.example/logo.png"
+                error={formErrors.logoUrl}
+              />
+            </div>
+          </section>
 
-          {/* Airline Details Tab */}
-          <TabsContent value="airline">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plane className="text-blue-600" />
-                      Airline Details
-                    </CardTitle>
-                    <CardDescription>Manage your airline information</CardDescription>
-                  </div>
-                  {!editMode.airline ? (
-                    <Button onClick={() => toggleEdit('airline')}>
-                      <Edit2 className="mr-2" size={18} />
-                      Edit
-                    </Button>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Airline Logo URL</Label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
-                        {displayData.logoUrl ? (
-                          <img
-                            src={displayData.logoUrl}
-                            alt="Airline Logo" 
-                            className="w-full h-full object-cover rounded-lg"
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/150';
-                              e.target.className = 'w-full h-full object-contain rounded-lg p-2';
-                            }}
-                          />
-                        ) : (
-                          currentAirline?.iataCode || 'AL'
-                        )}
-                      </div>
-                      {editMode.airline && (
-                        <div className="flex-1">
-                          <Input
-                            type="url"
-                            value={displayData.logoUrl}
-                            onChange={(e) => handleFieldChange('logoUrl', e.target.value)}
-                            placeholder="Enter logo URL"
-                            className={errors.logoUrl ? 'border-red-500' : ''}
-                          />
-                          {errors.logoUrl && <p className="text-sm text-red-500 mt-1">{errors.logoUrl}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+          <Separator />
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField 
-                      name="name" 
-                      label="Airline Name" 
-                      value={displayData.name}
-                      onChange={(val) => handleFieldChange('name', val)}
-                      disabled={!editMode.airline}
-                      error={errors.name}
-                    />
-                    <FormField 
-                      name="iataCode" 
-                      label="IATA Code" 
-                      value={displayData.iataCode}
-                      onChange={(val) => handleFieldChange('iataCode', val)}
-                      disabled={!editMode.airline}
-                      error={errors.iataCode}
-                    />
-                    <FormField 
-                      name="icaoCode" 
-                      label="ICAO Code" 
-                      value={displayData.icaoCode}
-                      onChange={(val) => handleFieldChange('icaoCode', val)}
-                      disabled={!editMode.airline}
-                      error={errors.icaoCode}
-                    />
-                    <FormField 
-                      name="alias" 
-                      label="Alias" 
-                      value={displayData.alias}
-                      onChange={(val) => handleFieldChange('alias', val)}
-                      disabled={!editMode.airline}
-                    />
-                    <FormField
-                      name="countryName"
-                      label="Country"
-                      value={displayData.countryName}
-                      onChange={() => {}}
-                      disabled
-                    />
-                    <FormField 
-                      name="alliance" 
-                      label="Alliance" 
-                      value={displayData.alliance}
-                      onChange={(val) => handleFieldChange('alliance', val)}
-                      disabled={!editMode.airline}
-                    />
-                    <FormField 
-                      name="website" 
-                      label="Website" 
-                      value={displayData.website}
-                      onChange={(val) => handleFieldChange('website', val)}
-                      disabled={!editMode.airline}
-                      error={errors.website}
-                    />
-                    <FormField 
-                      name="headquartersCityId" 
-                      label="Headquarters City ID" 
-                      type="number"
-                      value={displayData.headquartersCityId}
-                      onChange={(val) => handleFieldChange('headquartersCityId', val)}
-                      disabled={!editMode.airline}
-                    />
-                  </div>
-
-                  {editMode.airline && (
-                    <div className="flex gap-2 pt-4">
-                      <Button onClick={() => handleSave('airline')} disabled={updateLoading}>
-                        {updateLoading ? (
-                          <Loader2 className="mr-2 animate-spin" size={18} />
-                        ) : (
-                          <Check className="mr-2" size={18} />
-                        )}
-                        {updateLoading ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                      <Button variant="outline" onClick={() => toggleEdit('airline')} disabled={updateLoading}>
-                        <X className="mr-2" size={18} />
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Support Details Tab */}
-          <TabsContent value="support">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Phone className="text-green-600" />
-                      Support Details
-                    </CardTitle>
-                    <CardDescription>Manage customer support information</CardDescription>
-                  </div>
-                  {!editMode.support ? (
-                    <Button onClick={() => toggleEdit('support')}>
-                      <Edit2 className="mr-2" size={18} />
-                      Edit
-                    </Button>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField 
-                      name="supportEmail" 
-                      label="Support Email" 
-                      type="email"
-                      value={displayData.supportEmail}
-                      onChange={(val) => handleFieldChange('supportEmail', val)}
-                      disabled={!editMode.support}
-                      error={errors.supportEmail}
-                    />
-                    <FormField 
-                      name="supportPhone" 
-                      label="Support Phone"
-                      value={displayData.supportPhone}
-                      onChange={(val) => handleFieldChange('supportPhone', val)}
-                      disabled={!editMode.support}
-                      error={errors.supportPhone}
-                    />
-                    <FormField 
-                      name="supportHours" 
-                      label="Support Hours"
-                      value={displayData.supportHours}
-                      onChange={(val) => handleFieldChange('supportHours', val)}
-                      disabled={!editMode.support}
-                      error={errors.supportHours}
-                    />
-                  </div>
-
-                  {editMode.support && (
-                    <div className="flex gap-2 pt-4">
-                      <Button onClick={() => handleSave('support')} disabled={updateLoading}>
-                        {updateLoading ? (
-                          <Loader2 className="mr-2 animate-spin" size={18} />
-                        ) : (
-                          <Check className="mr-2" size={18} />
-                        )}
-                        {updateLoading ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                      <Button variant="outline" onClick={() => toggleEdit('support')} disabled={updateLoading}>
-                        <X className="mr-2" size={18} />
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Owner Details Tab */}
-          <TabsContent value="owner">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="text-amber-600" />
-                    Owner Details
-                  </CardTitle>
-                  <Badge variant="secondary">View Only</Badge>
-                </div>
-                <CardDescription>Owner information is protected and cannot be modified</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-6 border-2 border-amber-200">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-20 h-20 bg-amber-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                      {ownerData.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-800">{ownerData.name}</h3>
-                      <p className="text-amber-700 font-medium">{ownerData.title}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-2 text-gray-600 mb-1">
-                          <Mail size={18} />
-                          <span className="text-sm font-medium">Email</span>
-                        </div>
-                        <p className="text-gray-800 font-medium">{ownerData.email}</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-2 text-gray-600 mb-1">
-                          <Phone size={18} />
-                          <span className="text-sm font-medium">Phone</span>
-                        </div>
-                        <p className="text-gray-800 font-medium">{ownerData.phone}</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-2 text-gray-600 mb-1">
-                          <Users size={18} />
-                          <span className="text-sm font-medium">Joined</span>
-                        </div>
-                        <p className="text-gray-800 font-medium">{ownerData.joined}</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-2 text-gray-600 mb-1">
-                          <Shield size={18} />
-                          <span className="text-sm font-medium">Role</span>
-                        </div>
-                        <p className="text-gray-800 font-medium">{ownerData.role}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Alert className="mt-4 bg-amber-100 border-amber-300">
-                    <Shield className="h-4 w-4 text-amber-800" />
-                    <AlertDescription className="text-amber-800">
-                      <span className="font-medium">Note:</span> Owner information is protected and cannot be modified.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+          <section className="space-y-4">
+            <div className="flex items-start gap-2">
+              <Headphones className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div>
+                <h3 className="text-sm font-semibold">Customer support</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Keep these contacts monitored for booking and disruption assistance.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FormField
+                id="supportEmail"
+                label="Support email"
+                type="email"
+                value={displayed.supportEmail}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="support@airline.example"
+                error={formErrors.supportEmail}
+              />
+              <FormField
+                id="supportPhone"
+                label="Support phone"
+                type="tel"
+                value={displayed.supportPhone}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="+84 28 1234 5678"
+                error={formErrors.supportPhone}
+              />
+              <FormField
+                id="supportHours"
+                label="Support availability"
+                value={displayed.supportHours}
+                onChange={changeField}
+                disabled={!editing}
+                placeholder="24/7 or Mon-Fri, 08:00-18:00 ICT"
+                description="Include a timezone when support is not available 24/7."
+                error={formErrors.supportHours}
+              />
+            </div>
+          </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }

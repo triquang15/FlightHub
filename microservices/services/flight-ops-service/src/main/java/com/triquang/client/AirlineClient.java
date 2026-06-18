@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.triquang.payload.response.AircraftResponse;
 import com.triquang.payload.response.AirlineResponse;
+import com.triquang.payload.response.ApiResponse;
 
 import java.util.List;
 
@@ -15,13 +16,26 @@ import java.util.List;
 public interface AirlineClient {
 
 	@GetMapping("/api/airlines/admin")
-	AirlineResponse getAirlineByOwner(@RequestHeader("X-User-Id") Long userId);
+	ApiResponse<List<AirlineResponse>> getAirlinesByOwnerResponse(@RequestHeader("X-User-Id") Long userId);
 
 	@GetMapping("/api/airlines/{airlineId}")
-	AirlineResponse getAirlineById(@PathVariable Long airlineId);
+	ApiResponse<AirlineResponse> getAirlineByIdResponse(@PathVariable Long airlineId);
 
 	@GetMapping("/api/aircrafts/{id}")
-	AircraftResponse getAircraftById(@PathVariable("id") Long id);
+	ApiResponse<AircraftResponse> getAircraftByIdResponse(@PathVariable("id") Long id);
+
+	default AirlineResponse getAirlineByOwner(Long userId) {
+		List<AirlineResponse> airlines = data(getAirlinesByOwnerResponse(userId));
+		return airlines == null || airlines.isEmpty() ? null : airlines.getFirst();
+	}
+
+	default AirlineResponse getAirlineById(Long airlineId) {
+		return data(getAirlineByIdResponse(airlineId));
+	}
+
+	default AircraftResponse getAircraftById(Long id) {
+		return data(getAircraftByIdResponse(id));
+	}
 
 	/**
 	 * Bulk-resolves a list of IATA codes to {@link AirlineResponse} objects. Used
@@ -36,4 +50,8 @@ public interface AirlineClient {
 	 */
 	@GetMapping("/api/airlines/by-alliance")
 	List<AirlineResponse> getAirlinesByAlliance(@RequestParam("alliance") String alliance);
+
+	private static <T> T data(ApiResponse<T> response) {
+		return response != null ? response.data() : null;
+	}
 }

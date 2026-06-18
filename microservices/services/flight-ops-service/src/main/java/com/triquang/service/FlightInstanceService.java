@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.triquang.payload.request.FlightInstanceRequest;
+import com.triquang.payload.response.FlightInstanceInventorySummary;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.enums.FlightStatus;
 
@@ -15,7 +16,9 @@ public interface FlightInstanceService {
 
 	FlightInstanceResponse createFlightInstanceWithCabins(Long userId, FlightInstanceRequest request);
 
-	List<FlightInstanceResponse> getFlightInstances();
+	Page<FlightInstanceResponse> getFlightInstances(Pageable pageable);
+
+	FlightInstanceInventorySummary getInventorySummary();
 
 	FlightInstanceResponse getFlightInstanceById(Long id);
 

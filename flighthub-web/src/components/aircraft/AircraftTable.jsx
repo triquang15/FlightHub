@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Filter, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Plane, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
 
@@ -80,21 +80,23 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300';
       case 'maintenance':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300';
       case 'inactive':
-        return 'bg-red-100 text-red-800';
+        return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300';
       case 'retired':
-        return 'bg-gray-100 text-gray-800';
+        return 'border-border bg-muted text-muted-foreground';
       default:
-        return 'bg-blue-100 text-blue-800';
+        return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300';
     }
   };
 
   const getSortIcon = (field) => {
-    if (sortBy !== field) return '↕️';
-    return sortDirection === 'asc' ? '↑' : '↓';
+    if (sortBy !== field) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/70" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3.5 w-3.5 text-foreground" />
+      : <ArrowDown className="h-3.5 w-3.5 text-foreground" />;
   };
 
   if (loading && !visibleAircrafts.length) {
@@ -105,7 +107,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-red-600 text-center">
+          <div className="text-center text-destructive">
             <p>Error loading aircraft data: {error}</p>
             <Button onClick={() => window.location.reload()} className="mt-2">
               Retry
@@ -133,7 +135,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
           {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by code, model, or manufacturer..."
                 value={localSearchTerm}
@@ -173,27 +175,27 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
         ) : (
           <>
             {/* Table */}
-            <div className="rounded-md border overflow-hidden">
+            <div className="overflow-hidden rounded-md border bg-card">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead
-                      className="cursor-pointer hover:bg-gray-50"
+                      className="cursor-pointer select-none transition-colors hover:bg-muted"
                       onClick={() => handleSort('code')}
                     >
-                      Code {getSortIcon('code')}
+                      <span className="flex items-center gap-1.5">Code {getSortIcon('code')}</span>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-gray-50"
+                      className="cursor-pointer select-none transition-colors hover:bg-muted"
                       onClick={() => handleSort('model')}
                     >
-                      Model {getSortIcon('model')}
+                      <span className="flex items-center gap-1.5">Model {getSortIcon('model')}</span>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-gray-50"
+                      className="cursor-pointer select-none transition-colors hover:bg-muted"
                       onClick={() => handleSort('manufacturer')}
                     >
-                      Manufacturer {getSortIcon('manufacturer')}
+                      <span className="flex items-center gap-1.5">Manufacturer {getSortIcon('manufacturer')}</span>
                     </TableHead>
                     <TableHead className="text-center">Total Seats</TableHead>
                     <TableHead className="text-center">Status</TableHead>
@@ -202,7 +204,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
                 </TableHeader>
                 <TableBody>
                   {visibleAircrafts.map((aircraft) => (
-                    <TableRow key={aircraft.id} className="hover:bg-gray-50">
+                    <TableRow key={aircraft.id} className="hover:bg-muted/40">
                       <TableCell className="font-medium">{aircraft.code}</TableCell>
                       <TableCell>{aircraft.model}</TableCell>
                       <TableCell>{aircraft.manufacturer}</TableCell>
@@ -210,7 +212,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
                         {aircraft.seatingCapacity || aircraft.totalSeats || '-'}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className={getStatusColor(aircraft.status)}>
+                        <Badge variant="outline" className={getStatusColor(aircraft.status)}>
                           {aircraft.status || 'Unknown'}
                         </Badge>
                       </TableCell>
@@ -236,7 +238,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
                             variant="ghost"
                             size="sm"
                             onClick={() => onDelete(aircraft)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -251,7 +253,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 space-y-2 sm:space-y-0">
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Rows per page:</span>
+                <span className="text-sm text-muted-foreground">Rows per page:</span>
                 <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
@@ -266,7 +268,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
               </div>
 
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   {rangeStart} - {rangeEnd} of {totalAircrafts}
                 </span>
               </div>

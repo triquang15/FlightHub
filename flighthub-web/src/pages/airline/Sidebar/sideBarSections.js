@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpenCheck,
+  Building2,
   CalendarDays,
   ChartNoAxesCombined,
   CircleDollarSign,
@@ -12,9 +13,7 @@ import {
   Tags,
   UtensilsCrossed,
   Users,
-  FileClock,
-  Plug,
-  WalletCards,
+  UserRound,
 } from "lucide-react";
 
 export const sidebarSections = [
@@ -123,12 +122,6 @@ export const sidebarSections = [
         icon: ChartNoAxesCombined,
         path: "/airline/bookings/statistics",
       },
-      {
-        id: "transactions",
-        label: "Settlements",
-        icon: WalletCards,
-        path: "/airline/settlements",
-      },
     ],
   },
   {
@@ -156,28 +149,16 @@ export const sidebarSections = [
     icon: ShieldCheck,
     items: [
       {
-        id: "airline-profile",
-        label: "Airline Profile",
-        icon: ShieldCheck,
+        id: "account-profile",
+        label: "Account Profile",
+        icon: UserRound,
         path: "/airline/profile",
       },
       {
-        id: "team-access",
-        label: "Team & Access",
-        icon: Users,
-        path: "/airline/administration/team",
-      },
-      {
-        id: "activity-log",
-        label: "Activity Log",
-        icon: FileClock,
-        path: "/airline/administration/activity",
-      },
-      {
-        id: "integrations",
-        label: "Integrations",
-        icon: Plug,
-        path: "/airline/administration/integrations",
+        id: "airline-profile",
+        label: "Airline Profile",
+        icon: Building2,
+        path: "/airline/organization-profile",
       },
     ],
   },
