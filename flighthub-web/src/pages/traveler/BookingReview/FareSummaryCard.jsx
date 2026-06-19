@@ -26,11 +26,7 @@ const FareSummaryCard = ({
   const baggageCharges = selectedBaggage.reduce((sum, bag) => sum + ((bag.price || 0) * (bag.quantity || 0)), 0);
 
   // Get insurance price from Redux data
-  const travelProtectionCharge = travelProtection && travelProtection.price;
-
-  console.log("travel protection",travelProtection,selectedMeals)
-
-  
+  const travelProtectionCharge = travelProtection?.price || 0;
 
   // Base fare calculations
   const baseFare = fareData?.baseFare || 0;

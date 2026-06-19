@@ -83,23 +83,53 @@ const BookingReview = () => {
   // Helper function to calculate seat price
   const getSeatPrice = (seat) => {
     if (!seat) return 0;
-    if (
-      seat.seatCharacteristics?.includes("EXTRA_LEGROOM") ||
-      seat.seatType === "EMERGENCY_EXIT"
-    ) {
-      return 800;
-    }
-    if (seat.seatType === "WINDOW" || seat.seatType === "AISLE") {
-      return 300;
-    }
-    return 150; // Middle seat
+    const value =
+      seat.price ??
+      seat.fare ??
+      seat.seat?.totalPrice ??
+      seat.seat?.premiumSurcharge ??
+      seat.premiumSurcharge ??
+      0;
+
+    return Number.isFinite(Number(value)) ? Number(value) : 0;
   };
+
+  const pricingSummary = useMemo(() => {
+    const seatCharges = selectedSeats.reduce(
+      (sum, seat) => sum + (seat?.price || 0),
+      0,
+    );
+    const mealCharges = selectedMeals.reduce(
+      (sum, meal) => sum + (meal.price || 0),
+      0,
+    );
+    const baggageCharges = selectedBaggage.reduce(
+      (sum, bag) => sum + (bag.price || 0) * (bag.quantity || 0),
+      0,
+    );
+    const travelProtectionCharge = selectedTravelProtection?.price || 0;
+    const baseFare = selectedFare?.baseFare || 0;
+    const taxes = selectedFare?.taxes || 0;
+
+    return {
+      seatCharges,
+      mealCharges,
+      baggageCharges,
+      travelProtectionCharge,
+      grandTotal:
+        baseFare +
+        taxes +
+        seatCharges +
+        mealCharges +
+        baggageCharges +
+        travelProtectionCharge,
+    };
+  }, [selectedBaggage, selectedFare, selectedMeals, selectedSeats, selectedTravelProtection]);
 
   // Handle seat selection with price calculation for multiple passengers
   const handleSeatSelection = (passengerIndex, seat) => {
     const updatedSeats = [...selectedSeats];
 
-    console.log("seat --------- ))))))))) ",seat)
     if (seat) {
       updatedSeats[passengerIndex] = {
         ...seat,
@@ -111,43 +141,26 @@ const BookingReview = () => {
     setSelectedSeats(updatedSeats);
   };
 
+  useEffect(() => {
+    setSelectedSeats((current) =>
+      Array.from({ length: passengerCount }, (_, index) => current[index] || null),
+    );
+  }, [passengerCount]);
+
   // Load booking data from URL parameters and sessionStorage
   useEffect(() => {
     try {
-      // Get URL parameters
-      const itineraryId = searchParams.get("itineraryId");
       const xflt = searchParams.get("xflt");
-      console.log("BookingReview URL Params: -------------------", {
-        itineraryId,
-        cur: searchParams.get("cur"),
-        ccde: searchParams.get("ccde"),
-        crId: searchParams.get("crId"),
-        rKey: searchParams.get("rKey"),
-        xflt,
-        numberOfTravellers: passengerCount,
-        cabinClass,
-        fareId,
-        passengerCount,
-        flightId,
-        flightInstanceId,
-      });
 
       // Decode search filter if available
       if (xflt) {
-        const searchFilter = JSON.parse(atob(xflt));
-        console.log("Decoded Search Filter:", searchFilter);
+        JSON.parse(atob(xflt));
       }
 
       // Get booking data from sessionStorage
       const storedBookingData = sessionStorage.getItem("bookingData");
       if (storedBookingData) {
-        const parsedData = JSON.parse(storedBookingData);
-
-        console.log("Loaded Booking Data:", parsedData);
-      } else {
-        console.warn(
-          "No booking data found in sessionStorage, using mock data",
-        );
+        JSON.parse(storedBookingData);
       }
     } catch (error) {
       console.error("Error loading booking data:", error);
@@ -167,7 +180,6 @@ const BookingReview = () => {
   // Fetch flight instance data when flightInstanceId is available
   useEffect(() => {
     if (flightInstanceId) {
-      console.log("Fetching flight instance:", flightInstanceId);
       dispatch(getFlightInstanceById(flightInstanceId));
       dispatch(
         getFlightInstanceCabinsByFlightInstanceAndCabinClass({
@@ -187,7 +199,7 @@ const BookingReview = () => {
 
     if (flightId && selectedFare?.cabinClassId) {
       const cabinClassId = selectedFare?.cabinClassId;
-     
+
 
       // Fetch Travel Protection (flexibility, cancellation protection)
       dispatch(
@@ -211,24 +223,27 @@ const BookingReview = () => {
 
   const handleProceedToPayment = async () => {
     // Validate traveller data
+    const passengers = travellerData?.passengers || [];
+    const contactInfo = travellerData?.contactInfo || {};
     const isAllTravellersComplete =
-      travellerData?.passengers.length === passengerCount &&
-      travellerData.passengers.every(
-        (t) => t.title && t.firstName && t.lastName && t.gender,
+      passengers.length === passengerCount &&
+      passengers.every(
+        (t) => t.title && t.firstName && t.lastName && t.gender && t.dob,
       );
 
-    console.log("Traveller Data Validation:", travellerData);
-
     if (!isAllTravellersComplete) {
-      toast.error("Please fill all required traveller details");
+      toast.error("Please fill all required traveller details, including date of birth");
       return;
     }
 
-    if (
-      travellerData[0] &&
-      (!travellerData[0].email || !travellerData[0].phone)
-    ) {
+    if (!contactInfo.email || !contactInfo.phone) {
       toast.error("Please provide contact email and phone number");
+      return;
+    }
+
+    const selectedSeatCount = selectedSeats.filter(Boolean).length;
+    if (selectedSeatCount !== passengerCount) {
+      toast.error(`Please select seats for all ${passengerCount} passenger(s)`);
       return;
     }
 
@@ -249,7 +264,7 @@ const BookingReview = () => {
     const travelProtectionData = ancillariesByType?.TRAVEL_PROTECTION || {};
     const travelProtectionCharge =
       selectedTravelProtection && travelProtectionData?.price ? travelProtectionData.price : 0;
-   
+
 
     const baseFare = selectedFare?.baseFare || 0;
     const taxes = selectedFare?.taxes || 0;
@@ -293,8 +308,8 @@ const BookingReview = () => {
       ancillaryIds.push(travelProtectionData.id);
     }
 
-    
-   
+
+
 
     // Get seat numbers array for all passengers
     const seatNumbers = selectedSeats
@@ -324,11 +339,13 @@ const BookingReview = () => {
       cabinClass,
       tripType,
       fareId: parseInt(fareId) || null,
-      passengers: travellerData.passengers.map((t, index) => ({
+      passengers: passengers.map((t, index) => ({
         firstName: t.firstName || "",
         lastName: t.lastName || "",
-        email: t.email || "",
-        phone: t.phone ? `${t.countryCode || "+91"}${t.phone}` : "",
+        email: t.email || contactInfo.email || "",
+        phone: t.phone
+          ? `${t.countryCode || contactInfo.countryCode || "+91"}${t.phone}`
+          : `${contactInfo.countryCode || "+91"}${contactInfo.phone}`,
         dateOfBirth: t.dob || null,
         gender: t.gender ? t.gender.toUpperCase() : null,
         seatNumber: selectedSeats[index]
@@ -342,52 +359,18 @@ const BookingReview = () => {
         dietaryPreferences: getDietaryPreference(index),
         medicalConditions: t.medicalConditions || null,
       })),
-      contactInfo:travellerData.contactInfo,
+      contactInfo,
       ancillaryIds: ancillaryIds,
       mealIds: mealIds,
       promoCode: searchParams.get("promoCode") || null,
       seatNumbers: seatNumbers,
     };
 
-    console.log("\n═══════════════════════════════════════════════════");
-    console.log("🎫 BOOKING DATA FOR BACKEND API");
-    console.log("═══════════════════════════════════════════════════\n");
-    console.log(JSON.stringify(bookingDataForAPI, null, 2));
-    console.log("\n═══════════════════════════════════════════════════");
-    console.log("💰 PAYMENT SUMMARY");
-    console.log("═══════════════════════════════════════════════════");
-    console.log(`Passengers:          ${passengerCount}`);
-    console.log(`Base Fare:           ₹${baseFare.toLocaleString()}`);
-    console.log(`Taxes & Fees:        ₹${taxes.toLocaleString()}`);
-    console.log(`Seat:                ₹${seatCharges.toLocaleString()}`);
-    console.log(
-      `Meals (${selectedMeals}):          ₹${mealCharges.toLocaleString()}  ${mealIds}`,
-    );
-    console.log(
-      `Baggage (${selectedBaggage.reduce(
-        (sum, b) => sum + b.quantity,
-        0,
-      )}):        ₹${baggageCharges.toLocaleString()}`,
-    );
-
-    console.log("───────────────────────────────────────────────────");
-    console.log(`TOTAL:               ₹${grandTotal.toLocaleString()}`);
-    console.log("═══════════════════════════════════════════════════");
-    console.log(`\n📋 Ancillary IDs: [${ancillaryIds.join(", ")}]`);
-    console.log(
-      `💺 Seat Numbers: [${seatNumbers.map((s) => `"${s}"`).join(", ")}]`,
-    );
-    console.log("═══════════════════════════════════════════════════\n");
-
-    console.log("Submitting booking data to backend API...",bookingDataForAPI);
-
     // Call the booking API
     try {
       toast.loading("Creating your booking...", { id: "booking-toast" });
 
       const result = await dispatch(createBooking(bookingDataForAPI)).unwrap();
-
-      console.log("✅ Booking created successfully:", result);
 
       // Check for payment redirect URL
       const checkoutUrl = result.checkoutUrl || result.payment_link_url;
@@ -539,6 +522,8 @@ const BookingReview = () => {
                   onSelectSeat={handleSeatSelection}
                   passengerCount={passengerCount}
                   flightInstanceId={flightInstanceId}
+                  cabinClassId={selectedFare?.cabinClassId}
+                  cabinClass={cabinClass}
                 />
 
                 {/* Meal Selection */}
@@ -584,7 +569,7 @@ const BookingReview = () => {
               <div>
                 <p className="text-xs text-gray-600">Total Amount</p>
                 <p className="text-lg font-bold text-gray-900">
-                  ₹{1000000000000000000}
+                  ₹{pricingSummary.grandTotal.toLocaleString()}
                 </p>
               </div>
               <button

@@ -14,12 +14,15 @@ const SeatSelection = ({
   onSelectSeat,
   passengerCount = 1,
   flightInstanceId,
+  cabinClassId,
+  cabinClass,
 }) => {
   const dispatch = useDispatch();
   const [showSeatMap, setShowSeatMap] = useState(false);
   const [currentPassengerIndex, setCurrentPassengerIndex] = useState(0);
   const [seatHoldByPassenger, setSeatHoldByPassenger] = useState({});
 
+  const { user } = useSelector((state) => state.auth || {});
   const { flightInstance, loading } = useSelector((state) => state.flightInstance);
   const {
     seats = [],
@@ -34,14 +37,31 @@ const SeatSelection = ({
     }
   }, [dispatch, flightInstanceId]);
 
+  const visibleSeats = useMemo(() => {
+    const normalizedCabin = cabinClass?.toString().toUpperCase();
+
+    return seats.filter((seat) => {
+      if (cabinClassId && Number(seat.seat?.cabinClassId) === Number(cabinClassId)) {
+        return true;
+      }
+
+      if (!normalizedCabin) return true;
+
+      return (
+        seat.flightCabinClassType?.toString().toUpperCase() === normalizedCabin ||
+        seat.seat?.cabinClassName?.toString().toUpperCase() === normalizedCabin
+      );
+    });
+  }, [cabinClass, cabinClassId, seats]);
+
   const seatsByRow = useMemo(() => {
-    return seats.reduce((acc, seat) => {
+    return visibleSeats.reduce((acc, seat) => {
       const rowNumber = parseInt(seat.seatNumber?.match(/\d+/)?.[0] || '0', 10);
       if (!acc[rowNumber]) acc[rowNumber] = [];
       acc[rowNumber].push(seat);
       return acc;
     }, {});
-  }, [seats]);
+  }, [visibleSeats]);
 
   const sortedRows = useMemo(() => {
     return Object.entries(seatsByRow)
@@ -71,7 +91,7 @@ const SeatSelection = ({
     if (isSelectedByAnyPassenger) {
       return 'bg-blue-600 text-white border-blue-600';
     }
-    if (seat.seatCharacteristics?.includes('EXTRA_LEGROOM') || seat.seatType === 'EMERGENCY_EXIT') {
+    if (hasExtraLegroom(seat)) {
       return 'bg-green-100 hover:bg-green-200 border-green-400 text-green-800';
     }
     if (seat.seatType === 'WINDOW') {
@@ -81,20 +101,30 @@ const SeatSelection = ({
   };
 
   const getSeatPrice = (seat) => {
-    if (typeof seat.price === 'number') return seat.price;
-    if (typeof seat.fare === 'number') return seat.fare;
-    if (seat.seatCharacteristics?.includes('EXTRA_LEGROOM') || seat.seatType === 'EMERGENCY_EXIT') {
-      return 800;
-    }
-    if (seat.seatType === 'WINDOW' || seat.seatType === 'AISLE') {
-      return 300;
-    }
-    return 150; // Middle seat
+    const value =
+      seat?.price ??
+      seat?.fare ??
+      seat?.seat?.totalPrice ??
+      seat?.seat?.premiumSurcharge ??
+      seat?.premiumSurcharge ??
+      0;
+
+    return Number.isFinite(Number(value)) ? Number(value) : 0;
   };
 
   const isSeatAvailable = (seat) => {
-    return seat.status === 'AVAILABLE'
-      || (seat.isAvailable && !seat.isOccupied && !seat.isBooked && !seat.booked);
+    if (seat.status) return seat.status === 'AVAILABLE';
+    return Boolean(seat.isAvailable && !seat.isOccupied && !seat.isBooked && !seat.booked);
+  };
+
+  const hasExtraLegroom = (seat) => {
+    const characteristics = seat?.seatCharacteristics?.toString().toUpperCase() || '';
+    return Boolean(
+      seat?.seat?.hasExtraLegroom ||
+      seat?.seatType === 'EMERGENCY_EXIT' ||
+      characteristics.includes('EXTRA_LEGROOM') ||
+      characteristics.includes('EXTRA LEGROOM')
+    );
   };
 
   const handleSeatClick = async (seat) => {
@@ -114,6 +144,7 @@ const SeatSelection = ({
         const hold = await dispatch(holdSeatInstances({
           flightInstanceId: Number(flightInstanceId),
           seatInstanceIds: [seat.id],
+          userId: user?.id,
           holdMinutes: 10,
         })).unwrap();
 
@@ -182,7 +213,7 @@ const SeatSelection = ({
     );
   }
 
-  if (!seats || seats.length === 0) {
+  if (!visibleSeats || visibleSeats.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -202,7 +233,7 @@ const SeatSelection = ({
         <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl text-center">
           <Armchair className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-sm text-gray-600">
-            {seatError || 'No seats available for this flight yet'}
+            {seatError || 'No seats available for this cabin yet'}
           </p>
           {flightInstanceId && (
             <button
@@ -243,7 +274,7 @@ const SeatSelection = ({
           <div className="text-right hidden sm:block">
             <p className="text-xs text-gray-500">Available Seats</p>
             <p className="text-lg font-bold text-indigo-600">
-              {seats.filter(isSeatAvailable).length}
+              {visibleSeats.filter(isSeatAvailable).length}
             </p>
           </div>
         </div>
@@ -282,8 +313,7 @@ const SeatSelection = ({
                         <span className="text-xs px-2 py-0.5 bg-white rounded-full text-gray-700 border border-gray-200">
                           {passengerSeat.seatType}
                         </span>
-                        {(passengerSeat.seatCharacteristics?.includes('EXTRA_LEGROOM') ||
-                          passengerSeat.seatType === 'EMERGENCY_EXIT') && (
+                        {hasExtraLegroom(passengerSeat) && (
                           <span className="text-xs px-2 py-0.5 bg-green-200 text-green-800 rounded-full font-medium">
                             Extra Legroom
                           </span>
@@ -403,7 +433,7 @@ const SeatSelection = ({
                       {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft Layout'}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {totalRows} Rows • up to {maxSeatsPerRow} seats per row • {seats.length} Total Seats
+                      {totalRows} Rows • up to {maxSeatsPerRow} seats per row • {visibleSeats.length} Total Seats
                     </p>
                   </div>
                 </div>
@@ -475,8 +505,7 @@ const SeatSelection = ({
                                     </span>
                                   )}
                                 </div>
-                                {(seat.seatCharacteristics?.includes('EXTRA_LEGROOM') ||
-                                  seat.seatType === 'EMERGENCY_EXIT') && (
+                                {hasExtraLegroom(seat) && (
                                   <div className="absolute -top-1 -right-1">
                                     <Sparkles className="w-3 h-3 text-green-600" />
                                   </div>
@@ -525,8 +554,7 @@ const SeatSelection = ({
                                     </span>
                                   )}
                                 </div>
-                                {(seat.seatCharacteristics?.includes('EXTRA_LEGROOM') ||
-                                  seat.seatType === 'EMERGENCY_EXIT') && (
+                                {hasExtraLegroom(seat) && (
                                   <div className="absolute -top-1 -right-1">
                                     <Sparkles className="w-3 h-3 text-green-600" />
                                   </div>
