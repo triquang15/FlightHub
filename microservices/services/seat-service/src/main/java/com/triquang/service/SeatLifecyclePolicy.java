@@ -17,7 +17,9 @@ public final class SeatLifecyclePolicy {
     }
 
     public static boolean canRelease(SeatAvailabilityStatus status) {
-        return status != SeatAvailabilityStatus.BOOKED;
+        return status == SeatAvailabilityStatus.AVAILABLE
+                || status == SeatAvailabilityStatus.HELD
+                || status == SeatAvailabilityStatus.BOOKED;
     }
 
     public static boolean canConfirm(SeatAvailabilityStatus status) {

@@ -10,6 +10,8 @@ import java.util.Optional;
 
 public interface FlightMealRepository extends JpaRepository<FlightMeal, Long>, JpaSpecificationExecutor<FlightMeal> {
 
+	boolean existsByMealId(Long mealId);
+
 	Optional<FlightMeal> findByFlightIdAndMeal(Long flightId, Meal meal);
 
 	void deleteByFlightId(Long flightId);

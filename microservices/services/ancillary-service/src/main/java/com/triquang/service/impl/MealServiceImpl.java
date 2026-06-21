@@ -11,8 +11,10 @@ import com.triquang.model.Meal;
 import com.triquang.payload.request.MealRequest;
 import com.triquang.payload.response.MealResponse;
 import com.triquang.repository.MealRepository;
+import com.triquang.repository.FlightMealRepository;
 import com.triquang.service.AirlineIntegrationService;
 import com.triquang.service.MealService;
+import com.triquang.service.AncillaryOwnershipService;
 import com.triquang.utils.MealSpecification;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,8 @@ public class MealServiceImpl implements MealService {
 
     private final MealRepository mealRepository;
     private final AirlineIntegrationService airlineIntegrationService;
+    private final AncillaryOwnershipService ownershipService;
+    private final FlightMealRepository flightMealRepository;
 
     @Override
     @Transactional
@@ -55,7 +59,7 @@ public class MealServiceImpl implements MealService {
                                 ? request.getRequiresAdvanceBooking()
                                 : false
                 )
-                .advanceBookingHours(request.getAdvanceBookingHours())
+                .advanceBookingHours(normalizeAdvanceBookingHours(request))
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .airlineId(airlineId)
                 .build();
@@ -97,7 +101,7 @@ public class MealServiceImpl implements MealService {
                                     ? request.getRequiresAdvanceBooking()
                                     : false
                     )
-                    .advanceBookingHours(request.getAdvanceBookingHours())
+                    .advanceBookingHours(normalizeAdvanceBookingHours(request))
                     .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                     .airlineId(airlineId)
                     .build();
@@ -112,9 +116,8 @@ public class MealServiceImpl implements MealService {
 
     @Override
     @Transactional(readOnly = true)
-    public MealResponse getById(Long id) {
-        Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.MEAL_NOT_FOUND)); 
+    public MealResponse getById(Long userId, Long id) {
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
         return MealMapper.toResponse(meal);
     }
 
@@ -136,9 +139,7 @@ public class MealServiceImpl implements MealService {
         log.debug("Updating meal with id: {}", id);
 
         Long airlineId = airlineIntegrationService.getAirlineIdForUser(userId);
-
-        Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
 
         if (!meal.getCode().equals(request.getCode())) {
             Specification<Meal> spec = MealSpecification.hasCodeAndAirlineId(request.getCode(), airlineId);
@@ -156,8 +157,8 @@ public class MealServiceImpl implements MealService {
         meal.setImageUrl(request.getImageUrl());
         meal.setAvailable(request.getAvailable());
         meal.setRequiresAdvanceBooking(request.getRequiresAdvanceBooking());
-        meal.setAdvanceBookingHours(request.getAdvanceBookingHours());
-        meal.setDisplayOrder(request.getDisplayOrder());
+        meal.setAdvanceBookingHours(normalizeAdvanceBookingHours(request));
+        meal.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0);
 
         Meal updatedMeal = mealRepository.save(meal);
         log.info("Meal updated successfully with id: {}", updatedMeal.getId());
@@ -167,20 +168,19 @@ public class MealServiceImpl implements MealService {
 
     @Override
     @Transactional
-    public void delete(Long id) {
-        if (!mealRepository.existsById(id)) {
-            throw new BaseException(ErrorCode.ANCILLARY_NOT_FOUND);
+    public void delete(Long userId, Long id) {
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
+        if (flightMealRepository.existsByMealId(id)) {
+            throw new BaseException(ErrorCode.MEAL_IN_USE);
         }
-
-        mealRepository.deleteById(id);
+        mealRepository.delete(meal);
         log.info("Meal deleted successfully with id: {}", id);
     }
 
     @Override
     @Transactional
-    public MealResponse updateAvailability(Long id, Boolean available) {
-        Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+    public MealResponse updateAvailability(Long userId, Long id, Boolean available) {
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
 
         meal.setAvailable(available);
 
@@ -188,5 +188,15 @@ public class MealServiceImpl implements MealService {
         log.info("Meal availability updated successfully for id: {}", updatedMeal.getId());
 
         return MealMapper.toResponse(updatedMeal);
+    }
+
+    private Integer normalizeAdvanceBookingHours(MealRequest request) {
+        if (!Boolean.TRUE.equals(request.getRequiresAdvanceBooking())) {
+            return null;
+        }
+        if (request.getAdvanceBookingHours() == null || request.getAdvanceBookingHours() <= 0) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return request.getAdvanceBookingHours();
     }
 }

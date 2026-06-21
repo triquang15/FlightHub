@@ -25,7 +25,35 @@ springdoc:
     operations-sorter: alpha
     tags-sorter: alpha
 
+booking:
+  currency: ${BOOKING_CURRENCY:USD}
+
 resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+        cancel-running-future: false
+    instances:
+      PaymentClient:
+        timeout-duration: 15s
+        cancel-running-future: false
+      FlightClient:
+        timeout-duration: 8s
+        cancel-running-future: false
+      PricingClient:
+        timeout-duration: 8s
+        cancel-running-future: false
+      SeatClient:
+        timeout-duration: 8s
+        cancel-running-future: false
+      AncillaryClient:
+        timeout-duration: 8s
+        cancel-running-future: false
+      UserClient:
+        timeout-duration: 8s
+        cancel-running-future: false
+
   circuitbreaker:
     configs:
       default:

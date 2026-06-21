@@ -1,5 +1,6 @@
 package com.triquang.mapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -47,10 +48,8 @@ public class BookingMapper {
     public static void updateEntityFromRequest(
             BookingRequest request, Booking booking,
             Set<Passenger> passengers) {
-        booking.setFlightInstanceId(request.getFlightInstanceId());
-        booking.setFlightId(request.getFlightId());
-        booking.setFareId(request.getFareId());
         booking.setPassengers(passengers);
+        booking.setContactInfo(request.getContactInfo());
         booking.setLastModified(LocalDateTime.now());
     }
 
@@ -106,7 +105,12 @@ public class BookingMapper {
                 .fareBaseFare(fareResponse != null ? fareResponse.getBaseFare() : null)
                 .fareTaxesAndFees(fareResponse != null ? fareResponse.getTaxesAndFees() : null)
                 .fareAirlineFees(fareResponse != null ? fareResponse.getAirlineFees() : null)
-                .totalAmount(fareResponse!=null?fareResponse.getTotalPrice():null)
+                .totalAmount(booking.getTotalAmount() != null
+                        ? booking.getTotalAmount()
+                        : fareResponse != null && fareResponse.getTotalPrice() != null
+                                ? BigDecimal.valueOf(fareResponse.getTotalPrice())
+                                : null)
+                .currency(booking.getCurrency())
 
 //                arline details
                 .airlineName(flightResponse!=null? flightResponse.getAirline().getName():null)

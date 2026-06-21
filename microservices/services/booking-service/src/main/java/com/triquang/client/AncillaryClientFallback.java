@@ -7,27 +7,29 @@ import org.springframework.stereotype.Component;
 
 import com.triquang.payload.response.FlightCabinAncillaryResponse;
 import com.triquang.payload.response.FlightMealResponse;
+import com.triquang.payload.response.ApiResponse;
+import com.triquang.enums.ErrorCode;
 
 @Component
 public class AncillaryClientFallback implements AncillaryClient {
 
 	@Override
-	public double calculateAncillariesPrice(List<Long> flightCabinAncillaryIds) {
-		return 0.0;
+	public ApiResponse<Double> calculateAncillariesPriceResponse(List<Long> flightCabinAncillaryIds) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "ancillary-service-fallback");
 	}
 
 	@Override
-	public List<FlightCabinAncillaryResponse> getAllByIds(List<Long> Ids) {
-		return Collections.emptyList();
+	public ApiResponse<List<FlightCabinAncillaryResponse>> getAllByIdsResponse(List<Long> Ids) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "ancillary-service-fallback");
 	}
 
 	@Override
-	public List<FlightMealResponse> getMealsByIds(List<Long> Ids) {
-		return Collections.emptyList();
+	public ApiResponse<List<FlightMealResponse>> getMealsByIdsResponse(List<Long> Ids) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "ancillary-service-fallback");
 	}
 
 	@Override
-	public Double calculateMealPrice(List<Long> requests) {
-		return 0.0;
+	public ApiResponse<Double> calculateMealPriceResponse(List<Long> requests) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "ancillary-service-fallback");
 	}
 }

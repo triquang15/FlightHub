@@ -8,6 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Search, Filter, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Plane, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Loader } from '@/components/common/Loader';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -24,7 +41,8 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
     currentPage,
     pageSize,
     sortBy,
-    sortDirection
+    sortDirection,
+    deleteLoading,
   } = useSelector(state => state.aircraft);
 
   const [localSearchTerm, setLocalSearchTerm] = useState(searchKeyword);
@@ -98,6 +116,77 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
       ? <ArrowUp className="h-3.5 w-3.5 text-foreground" />
       : <ArrowDown className="h-3.5 w-3.5 text-foreground" />;
   };
+
+  const renderActions = (aircraft) => (
+    <TooltipProvider delayDuration={120}>
+      <div className="flex justify-center space-x-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="View aircraft"
+              onClick={() => onViewDetails(aircraft)}
+              className="h-8 w-8"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>View</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Edit aircraft"
+              onClick={() => onEdit(aircraft)}
+              className="h-8 w-8"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Edit</TooltipContent>
+        </Tooltip>
+        <AlertDialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Delete aircraft"
+                  disabled={deleteLoading}
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete aircraft?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove {aircraft.code || 'this aircraft'} from the fleet.
+                Aircraft already referenced by schedules or operations may be blocked by the server.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(aircraft)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
+  );
 
   if (loading && !visibleAircrafts.length) {
     return <Loader message="Loading aircraft data..." />;
@@ -216,34 +305,7 @@ const AircraftTable = ({ onViewDetails, onEdit, onDelete }) => {
                           {aircraft.status || 'Unknown'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onViewDetails(aircraft)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onEdit(aircraft)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onDelete(aircraft)}
-                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-center">{renderActions(aircraft)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

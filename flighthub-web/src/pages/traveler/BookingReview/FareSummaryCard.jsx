@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards } from 'lucide-react';
 
 const FareSummaryCard = ({
   fareData,
@@ -10,6 +9,8 @@ const FareSummaryCard = ({
   selectedBaggage = [],
   
   travelProtection,
+  paymentGateway,
+  onPaymentGatewayChange,
   onProceedToPayment,
   isLoading = false,
   totalPassengers
@@ -37,6 +38,10 @@ const FareSummaryCard = ({
 
   // Calculate savings if any
   const savings = 0; // Can be calculated based on business logic
+  const formatCurrency = (amount = 0) => new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(Number(amount) || 0);
 
   const FareItem = ({ label, amount, highlight = false, info = null }) => (
     <div className={`flex items-start justify-between py-2 ${highlight ? 'font-semibold' : ''}`}>
@@ -54,7 +59,7 @@ const FareSummaryCard = ({
         )}
       </div>
       <span className={`text-sm ${highlight ? 'text-gray-900' : 'text-gray-700'}`}>
-        ₹{amount?.toLocaleString() || '0'}
+        {formatCurrency(amount)}
       </span>
     </div>
   );
@@ -84,10 +89,10 @@ const FareSummaryCard = ({
             <span className="text-sm text-gray-600">Total Amount</span>
             <div className="text-right">
               <p className="text-2xl font-bold text-gray-900">
-                ₹{grandTotal.toLocaleString()}
+                {formatCurrency(grandTotal)}
               </p>
               {savings > 0 && (
-                <p className="text-xs text-green-600 font-medium">You save ₹{savings.toLocaleString()}</p>
+                <p className="text-xs text-green-600 font-medium">You save {formatCurrency(savings)}</p>
               )}
             </div>
           </div>
@@ -186,6 +191,31 @@ const FareSummaryCard = ({
 
       {/* CTA Button */}
       <div className="p-6 pt-0">
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-semibold uppercase text-gray-600">Payment method</p>
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1" role="radiogroup" aria-label="Payment method">
+            {[
+              { value: 'STRIPE', label: 'Card', icon: CreditCard },
+              { value: 'PAYPAL', label: 'PayPal', icon: WalletCards },
+            ].map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={paymentGateway === value}
+                onClick={() => onPaymentGatewayChange(value)}
+                className={`flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${
+                  paymentGateway === value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <motion.button
           whileHover={{ scale: isLoading ? 1 : 1.02 }}
           whileTap={{ scale: isLoading ? 1 : 0.98 }}

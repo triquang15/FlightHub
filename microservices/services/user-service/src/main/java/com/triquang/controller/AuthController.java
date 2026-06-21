@@ -19,18 +19,31 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "Authentication", description = "User signup, login, refresh token rotation, and logout session controls.")
 public class AuthController {
 
     private final AuthService authService;
 
     // ================= SIGNUP =================
     @PostMapping("/signup")
+    @Operation(summary = "Create account and session", description = "Registers a customer or owner account, records device metadata, and returns access/refresh tokens.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Account created"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid signup payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email or phone already exists")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> signup(
             @Valid @RequestBody SignupRequest req,
+            @Parameter(description = "Stable client device identifier used for refresh-token binding.")
             @RequestHeader(value = "X-Device-Id", required = true) String deviceId,
             HttpServletRequest request
     ) {
@@ -47,8 +60,15 @@ public class AuthController {
 
     // ================= LOGIN =================
     @PostMapping("/login")
+    @Operation(summary = "Login", description = "Authenticates credentials for one device and issues a new token pair.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid login payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials or disabled account")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest req,
+            @Parameter(description = "Stable client device identifier used for refresh-token binding.")
             @RequestHeader(value = "X-Device-Id") String deviceId,
             HttpServletRequest request
     ) {
@@ -67,8 +87,15 @@ public class AuthController {
 
     // ================= REFRESH =================
     @PostMapping("/refresh")
+    @Operation(summary = "Refresh token pair", description = "Rotates a refresh token for the same device and returns a new access/refresh token pair.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token pair refreshed"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid refresh payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh token expired, revoked, or bound to another device")
+    })
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
             @Valid @RequestBody RefreshTokenRequest req,
+            @Parameter(description = "Stable client device identifier that must match the refresh-token session.")
             @RequestHeader(value = "X-Device-Id") String deviceId,
             HttpServletRequest request
     ) {
@@ -86,8 +113,14 @@ public class AuthController {
 
     // ================= LOGOUT =================
     @PostMapping("/logout")
+    @Operation(summary = "Logout current device", description = "Revokes one refresh token for the authenticated user and device.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Refresh token revoked"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<?> logout(
             @Valid @RequestBody RefreshTokenRequest req,
+            @Parameter(description = "Device identifier bound to the refresh token.")
             @RequestHeader(value = "X-Device-Id") String deviceId,
             Authentication authentication
     ) {
@@ -107,6 +140,11 @@ public class AuthController {
 
     // ================= LOGOUT ALL =================
     @PostMapping("/logout-all")
+    @Operation(summary = "Logout all devices", description = "Revokes all refresh tokens for the authenticated user.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "All sessions revoked"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<?> logoutAll(Authentication authentication) {
 
         if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails user)) {

@@ -15,9 +15,19 @@ public interface PaymentService {
 
 	PaymentInitiateResponse initiatePayment(PaymentInitiateRequest request);
 
-	PaymentDTO verifyPayment(PaymentVerifyRequest request);
+	PaymentDTO verifyPayment(PaymentVerifyRequest request, Long userId);
+
+	PaymentDTO cancelPaymentByBookingId(Long bookingId, Long userId);
+
+	void processWebhook(com.triquang.service.gateway.ProviderWebhookEvent event);
+
+	PaymentDTO refundPayment(Long paymentId, String roles);
+
+	void reconcilePayment(Long paymentId);
 
 	Page<PaymentDTO> getAllPayments(Pageable pageable);
+
+	PaymentDTO getPaymentByBookingId(Long bookingId);
 
 	Map<Long, PaymentDTO> getPaymentsByBookingIds(List<Long> bookingIds);
 }

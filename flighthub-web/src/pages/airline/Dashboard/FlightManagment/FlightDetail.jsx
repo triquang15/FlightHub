@@ -27,6 +27,7 @@ import { getFlightCabinAncillariesByFlightAndCabinClass } from "@/Redux/flightCa
 import { fetchFlightMealsByFlightId } from "@/Redux/flightMeal/flightMealThunk";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
 import { getFlightById } from "@/Redux/flight/flightThunk";
+import { clearCurrentFlight } from "@/Redux/flight/flightSlice";
 
 const statusClass = {
   SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300",
@@ -96,13 +97,19 @@ const FlightDetail = () => {
   const ancillaries = useMemo(() => asList(ancillaryPayload), [ancillaryPayload]);
   const flightMatchesRoute = String(flight?.id) === String(id);
   const selectedCabinIsAvailable = cabins.some((cabin) => String(cabin.id) === selectedCabinId);
-  const activeCabinId = selectedCabinIsAvailable ? selectedCabinId : "";
+  const activeCabinId = selectedCabinIsAvailable
+    ? selectedCabinId
+    : (cabins[0]?.id ? String(cabins[0].id) : "");
 
   useEffect(() => {
     if (id) {
       dispatch(getFlightById(id));
       dispatch(fetchFlightMealsByFlightId(id));
     }
+
+    return () => {
+      dispatch(clearCurrentFlight());
+    };
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -177,10 +184,10 @@ const FlightDetail = () => {
 
           <div className="grid items-center gap-5 md:grid-cols-[1fr_auto_1fr]">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Departure</p>
+              <p className="text-xs font-medium text-muted-foreground">Origin</p>
               <p className="mt-1 text-2xl font-semibold">{airportCode(flight.departureAirport)}</p>
               <p className="mt-1 text-sm text-muted-foreground">{airportCity(flight.departureAirport)}</p>
-              <p className="mt-2 text-xs">{formatDateTime(flight.departureTime)}</p>
+              <p className="mt-2 text-xs text-muted-foreground">Departure times are configured in schedules.</p>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground md:flex-col">
               <div className="h-px flex-1 bg-border md:h-8 md:w-px" />
@@ -188,10 +195,10 @@ const FlightDetail = () => {
               <div className="h-px flex-1 bg-border md:h-8 md:w-px" />
             </div>
             <div className="md:text-right">
-              <p className="text-xs font-medium text-muted-foreground">Arrival</p>
+              <p className="text-xs font-medium text-muted-foreground">Destination</p>
               <p className="mt-1 text-2xl font-semibold">{airportCode(flight.arrivalAirport)}</p>
               <p className="mt-1 text-sm text-muted-foreground">{airportCity(flight.arrivalAirport)}</p>
-              <p className="mt-2 text-xs">{formatDateTime(flight.arrivalTime)}</p>
+              <p className="mt-2 text-xs text-muted-foreground">Arrival times are configured in schedules.</p>
             </div>
           </div>
         </CardContent>
@@ -263,7 +270,7 @@ const FlightDetail = () => {
               title="Fares"
               description={activeCabinId ? "Fare products for the selected cabin." : "Select a cabin to inspect fare products."}
               value={activeCabinId ? fares.length : "Select cabin"}
-              action={() => navigate("/airline/fare/new")}
+              action={() => navigate(`/airline/fares/new?flightId=${id}&cabinClassId=${activeCabinId}`)}
               actionLabel="Create fare"
             />
             <CommercialItem

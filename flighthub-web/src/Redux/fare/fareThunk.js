@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
+import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
 const API_URL = "/api/fares";
 
 // ✅ Create Fare
@@ -9,7 +10,7 @@ export const createFare = createAsyncThunk(
     try {
       const res = await api.post(API_URL, fareData);
       console.log("✅ createFare success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ createFare error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to create fare");
@@ -24,12 +25,34 @@ export const getFareById = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFareById success: ------------------- ", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getFareById error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Fare not found");
     }
   }
+);
+
+export const getOwnedFareById = createAsyncThunk(
+  "fare/getOwnedById",
+  async (id, { rejectWithValue }) => {
+    try {
+      return unwrapApiData(await api.get(`${API_URL}/owner/${id}`));
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Fare not found"));
+    }
+  },
+);
+
+export const getOwnerFares = createAsyncThunk(
+  "fare/getOwnerFares",
+  async (_, { rejectWithValue }) => {
+    try {
+      return unwrapApiData(await api.get(`${API_URL}/owner`));
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch fares"));
+    }
+  },
 );
 
 
@@ -39,8 +62,7 @@ export const updateFare = createAsyncThunk(
   async ({ id, fareData }, { rejectWithValue }) => {
     try {
       const res = await api.put(`${API_URL}/${id}`, fareData);
-      console.log("✅ updateFare success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ updateFare error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to update fare");
@@ -72,10 +94,10 @@ export const getFlightFares = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/flight/${flightId}/cabin-class/${cabinId}`);
       console.log("✅ getFlightFares success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getFlightFares error:", err);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch flight fares");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch flight fares"));
     }
   }
 );
@@ -99,7 +121,7 @@ export const searchFares = createAsyncThunk(
     try {
       const res = await api.post(`${API_URL}/search`, searchParams);
       console.log("✅ searchFares success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ searchFares error:", err.response?.data?.message || err.message);
       return rejectWithValue(

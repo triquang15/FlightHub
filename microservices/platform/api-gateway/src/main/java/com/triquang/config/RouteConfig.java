@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.slf4j.MDC;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
@@ -75,6 +76,16 @@ public class RouteConfig {
 
     @Bean
     @Order(0)
+    public RouterFunction<ServerResponse> paymentWebhookRoutes() {
+        return routeWithoutCB("payment-webhooks", "payment-service")
+                .route(RequestPredicates.POST("/api/payments/webhooks/stripe"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/payments/webhooks/paypal"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
     public RouterFunction<ServerResponse> authRoutes() {
         return routeWithoutCB("auth-routes", "user-service")
                 .route(RequestPredicates.path("/api/auth/**"), HandlerFunctions.http())
@@ -123,6 +134,21 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/seat-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/seat-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("seat-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("pricing-openapi-docs")
+                        .route(RequestPredicates.path("/docs/pricing-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/pricing-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("pricing-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("ancillary-openapi-docs")
+                        .route(RequestPredicates.path("/docs/ancillary-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/ancillary-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("ancillary-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("payment-openapi-docs")
+                        .route(RequestPredicates.path("/docs/payment-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/payment-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("payment-service"))
                         .build());
     }
 
@@ -138,7 +164,37 @@ public class RouteConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(0)
+    public RouterFunction<ServerResponse> airlineAdminMutationRoutes() {
+        return routeWithoutCB("airline-admin-mutations", "airline-core-service")
+                .route(RequestPredicates.POST("/api/airlines/{id}/approve"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/airlines/{id}/suspend"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/airlines/{id}/ban"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(1)
+    public RouterFunction<ServerResponse> airlineOwnerMutationRoutes() {
+        return routeWithoutCB("airline-owner-mutations", "airline-core-service")
+                .route(RequestPredicates.POST("/api/airlines"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/airlines/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/airlines/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/aircrafts"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/aircrafts/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/aircrafts/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/aircrafts/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     public RouterFunction<ServerResponse> airlineCoreServiceRoutes() {
         return routeWithoutCB("airline-core", "airline-core-service")
                 .route(RequestPredicates.path("/api/airlines/**"), HandlerFunctions.http())
@@ -172,6 +228,41 @@ public class RouteConfig {
     }
 
     @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> seatInternalOnlyRoutes() {
+        return RouterFunctions.route()
+                .POST("/api/seat-instances/hold", req -> ServerResponse.notFound().build())
+                .POST("/api/seat-instances/release", req -> ServerResponse.notFound().build())
+                .POST("/api/seat-instances/confirm", req -> ServerResponse.notFound().build())
+                .build();
+    }
+
+    @Bean
+    @Order(1)
+    public RouterFunction<ServerResponse> seatMutationRoutes() {
+        return routeWithCB("seat-mutations", "seat-service", "seat-cb", "forward:/fallback/seat")
+                .route(RequestPredicates.POST("/api/cabin-classes"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/cabin-classes/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/cabin-classes/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/cabin-classes/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/seat-maps"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/seat-maps/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/seat-maps/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/seat-maps/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/seats/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/seat-instances"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/seat-instances/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-instance-cabins"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flight-instance-cabins/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flight-instance-cabins/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     public RouterFunction<ServerResponse> seatRoutes() {
         return routeWithCB("seat", "seat-service", "seat-cb", "forward:/fallback/seat")
                 .route(RequestPredicates.path("/api/cabin-classes/**"), HandlerFunctions.http())
@@ -219,17 +310,100 @@ public class RouteConfig {
     }
 
     @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> ancillaryMutationRoutes() {
+        return routeWithCB("ancillary-mutations", "ancillary-service", "ancillary-service-cb", "forward:/fallback/ancillary")
+                .route(RequestPredicates.POST("/api/ancillaries"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/meals"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/meals/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-meals"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-meals/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flight-meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/flight-meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flight-meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-cabin-ancillaries"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/flight-cabin-ancillaries/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/insurance-coverages"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/insurance-coverages/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/insurance-coverages/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/insurance-coverages/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/insurance-coverages/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     public RouterFunction<ServerResponse> ancillaryRoutes() {
-        return routeWithCB("ancillary", "ancillary-service", "ancillary-cb", "forward:/fallback/ancillary")
+        return routeWithCB("ancillary", "ancillary-service", "ancillary-service-cb", "forward:/fallback/ancillary")
                 .route(RequestPredicates.path("/api/ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/flight-meals/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/flight-cabin-ancillaries/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/insurance-coverages/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
                 .build();
     }
 
     @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> pricingMutationRoutes() {
+        return routeWithCB("pricing-mutations", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
+                .route(RequestPredicates.POST("/api/fares"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/fares/bulk"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/fares/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/fares/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/fare-rules"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/fare-rules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/fare-rules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/baggage-policies"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/baggage-policies/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/baggage-policies/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
+    public RouterFunction<ServerResponse> pricingRoutes() {
+        return routeWithCB("pricing", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
+                .route(RequestPredicates.path("/api/fares/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/fare-rules/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/baggage-policies/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(1)
+    public RouterFunction<ServerResponse> paymentAdminRoutes() {
+        return routeWithCB("payment-admin", "payment-service", "payment-service-cb", "forward:/fallback/payment")
+                .route(RequestPredicates.POST("/api/payments/{paymentId}/refund"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     public RouterFunction<ServerResponse> paymentRoutes() {
-        return routeWithCB("payment", "payment-service", "payment-cb", "forward:/fallback/payment")
+        return routeWithCB("payment", "payment-service", "payment-service-cb", "forward:/fallback/payment")
                 .route(RequestPredicates.path("/api/payments/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
@@ -250,11 +424,17 @@ public class RouteConfig {
     // ==================== ADMIN ====================
 
     @Bean
-    @Order(1)
+    @Order(0)
     public RouterFunction<ServerResponse> adminRoutes() {
         return routeWithoutCB("admin", "location-service")
                 .route(RequestPredicates.POST("/api/cities/**"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/airports/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/cities/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/airports/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/cities/**"), HandlerFunctions.http())
+                .route(RequestPredicates.PATCH("/api/airports/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/cities/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/airports/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
                 .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
@@ -304,6 +484,10 @@ public class RouteConfig {
         Long userId = jwtUtil.extractUserId(claims);
         Integer tokenVersion = jwtUtil.extractTokenVersion(claims);
 
+        if (userId == null || tokenVersion == null || email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token claims");
+        }
+
         // =========================
         // CRITICAL SECURITY CHECK
         // =========================
@@ -339,22 +523,37 @@ public class RouteConfig {
                     headers.remove("X-User-Id");
                     headers.remove("X-User-Roles");
                     headers.remove("X-Trace-Id");
+                    headers.remove("X-Internal-Secret");
                 })
                 .header("X-User-Email", email)
                 .header("X-User-Id", String.valueOf(userId))
                 .header("X-User-Roles", roles)
-                .header("X-Trace-Id", UUID.randomUUID().toString())
+                .header("X-Trace-Id", currentTraceId())
                 .build();
     }
 
     private ServerRequest requireRole(ServerRequest request, String role) {
         String roles = request.headers().firstHeader("X-User-Roles");
 
-        if (roles == null || !roles.contains(role)) {
+        if (!hasRole(roles, role)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
         return request;
+    }
+
+    static boolean hasRole(String roles, String requiredRole) {
+        if (roles == null || requiredRole == null) {
+            return false;
+        }
+        return java.util.Arrays.stream(roles.split(","))
+                .map(String::trim)
+                .anyMatch(requiredRole::equals);
+    }
+
+    private String currentTraceId() {
+        String traceId = MDC.get(com.triquang.config.TraceIdFilter.TRACE_ID);
+        return traceId != null && !traceId.isBlank() ? traceId : UUID.randomUUID().toString();
     }
 
 }

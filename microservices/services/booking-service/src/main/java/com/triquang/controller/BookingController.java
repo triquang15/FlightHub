@@ -65,7 +65,7 @@ public class BookingController {
 	public ResponseEntity<?> updateBooking(@PathVariable Long id, @Valid @RequestBody BookingRequest request,
 			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(bookingService.updateBooking(id, request));
+		return ResponseUtil.ok(bookingService.updateBooking(id, request, userId));
 	}
 
 	// =========================
@@ -77,9 +77,10 @@ public class BookingController {
 		@ApiResponse(responseCode = "404", description = "Booking not found")
 	})
 	@GetMapping("/{id:\\d+}")
-	public ResponseEntity<?> getBookingById(@PathVariable Long id) {
+	public ResponseEntity<?> getBookingById(@PathVariable Long id,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(bookingService.getBookingById(id));
+		return ResponseUtil.ok(bookingService.getBookingById(id, userId));
 	}
 
 	// =========================
@@ -124,7 +125,7 @@ public class BookingController {
 	@PatchMapping("/{id}/cancel")
 	public ResponseEntity<?> cancelBooking(@PathVariable Long id, @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(bookingService.cancelBooking(id));
+		return ResponseUtil.ok(bookingService.cancelBooking(id, userId));
 	}
 
 	// =========================
@@ -138,7 +139,7 @@ public class BookingController {
 	@DeleteMapping("/{id:\\d+}")
 	public ResponseEntity<?> deleteBooking(@PathVariable Long id, @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		bookingService.deleteBooking(id);
+		bookingService.deleteBooking(id, userId);
 
 		return ResponseUtil.noContent();
 	}
@@ -166,8 +167,9 @@ public class BookingController {
 		@ApiResponse(responseCode = "400", description = "Invalid airline ID")
 	})
 	@GetMapping("/statistics/airline")
-	public ResponseEntity<?> getBookingStatisticsForAirline(@RequestParam Long airlineId) {
+	public ResponseEntity<?> getBookingStatisticsForAirline(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(bookingService.getBookingStatisticsForAirline(airlineId));
+		return ResponseUtil.ok(bookingService.getBookingStatisticsForAirline(userId));
 	}
 }

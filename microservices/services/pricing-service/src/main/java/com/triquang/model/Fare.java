@@ -32,6 +32,9 @@ public class Fare {
     @Column(nullable = false)
     private Character rbdCode;
 
+    @Column(name = "airline_id", nullable = false)
+    private Long airlineId;
+
     // Cross-service ref: Flight is in flight-ops-service
     @Column(name = "flight_id", nullable = false)
     private Long flightId;
@@ -49,6 +52,10 @@ public class Fare {
     private CabinClassType cabinClass;
 
     // Pricing
+    @Column(length = 3, nullable = false)
+    @Builder.Default
+    private String currency = "USD";
+
     @Column(nullable = false)
     private Double baseFare;
 

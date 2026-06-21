@@ -3,15 +3,15 @@ package com.triquang.client;
 import org.springframework.stereotype.Component;
 
 import com.triquang.payload.response.CabinClassResponse;
+import com.triquang.payload.response.ApiResponse;
 
-import java.util.Collections;
 import java.util.List;
 
 @Component
 public class SeatClientFallback implements SeatClient {
 
     @Override
-    public List<CabinClassResponse> getCabinClassesByAircraftId(Long aircraftId) {
-        return Collections.emptyList();
+    public ApiResponse<List<CabinClassResponse>> getCabinClassesByAircraftIdResponse(Long aircraftId) {
+        return null;
     }
 }

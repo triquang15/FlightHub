@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,6 +19,11 @@ import com.triquang.payload.request.FlightCabinAncillaryRequest;
 import com.triquang.service.FlightCabinAncillaryService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/flight-cabin-ancillaries")
 @RequiredArgsConstructor
+@Tag(name = "Flight Cabin Ancillaries", description = "Assign sellable ancillary offers to specific flight and cabin combinations, with per-offer price, currency, availability, and quantity limits.")
 public class FlightCabinAncillaryController {
 
 	private final FlightCabinAncillaryService service;
@@ -40,24 +47,44 @@ public class FlightCabinAncillaryController {
 	// CREATE
 	// =========================
 	@PostMapping
-	public ResponseEntity<?> create(@Valid @RequestBody FlightCabinAncillaryRequest request) {
+	@Operation(summary = "Assign ancillary to flight cabin", description = "Creates one sellable ancillary offer for an owned flight and a cabin class that belongs to the flight aircraft. Natural duplicates are rejected.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "Flight cabin ancillary created"),
+			@ApiResponse(responseCode = "400", description = "Invalid price, currency, quantity, or duplicate assignment"),
+			@ApiResponse(responseCode = "403", description = "Flight, cabin, or ancillary is not owned by the authenticated airline"),
+			@ApiResponse(responseCode = "404", description = "Referenced flight, cabin, or ancillary not found")
+	})
+	public ResponseEntity<?> create(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+			@Valid @RequestBody FlightCabinAncillaryRequest request) {
 
-		return ResponseUtil.created(service.create(request));
+		return ResponseUtil.created(service.create(userId, request));
 	}
 
 	// =========================
 	// BULK CREATE
 	// =========================
 	@PostMapping("/bulk")
-	public ResponseEntity<?> bulkCreate(@Valid @RequestBody List<FlightCabinAncillaryRequest> requests) {
+	@Operation(summary = "Bulk assign ancillaries to flight cabins", description = "Creates multiple owned offers in one request. Each item is validated against airline ownership, flight aircraft, price, currency, and duplicate natural key rules.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "Assignments created"),
+			@ApiResponse(responseCode = "400", description = "One or more assignments are invalid"),
+			@ApiResponse(responseCode = "403", description = "One or more referenced records are not owned by the airline")
+	})
+	public ResponseEntity<?> bulkCreate(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+			@Valid @RequestBody List<FlightCabinAncillaryRequest> requests) {
 
-		return ResponseUtil.created(service.bulkCreate(requests));
+		return ResponseUtil.created(service.bulkCreate(userId, requests));
 	}
 
 	// =========================
 	// GET BY ID
 	// =========================
 	@GetMapping("/{id:\\d+}")
+	@Operation(summary = "Get flight cabin ancillary by ID", description = "Public read endpoint used by checkout and airline UI to resolve one sellable ancillary offer.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offer returned"),
+			@ApiResponse(responseCode = "404", description = "Offer not found")
+	})
 	public ResponseEntity<?> getById(@PathVariable Long id) {
 
 		return ResponseUtil.ok(service.getById(id));
@@ -67,6 +94,11 @@ public class FlightCabinAncillaryController {
 	// GET ALL BY IDS
 	// =========================
 	@GetMapping("/all")
+	@Operation(summary = "Resolve flight cabin ancillaries by IDs", description = "Batch read used by booking checkout. The response includes only existing IDs; price calculation should use /price/total to enforce availability and duplicate checks.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offers returned"),
+			@ApiResponse(responseCode = "400", description = "Invalid id list")
+	})
 	public ResponseEntity<?> getAllByIds(@RequestParam List<Long> ids) {
 
 		return ResponseUtil.ok(service.getAllByIds(ids));
@@ -76,6 +108,11 @@ public class FlightCabinAncillaryController {
 	// GET BY FLIGHT + CABIN
 	// =========================
 	@GetMapping("/flight/{flightId:\\d+}/cabin/{cabinClassId}")
+	@Operation(summary = "List ancillary offers for flight cabin", description = "Returns all active and inactive ancillary offers configured for a specific flight and cabin class.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offer list returned"),
+			@ApiResponse(responseCode = "404", description = "Flight or cabin not found")
+	})
 	public ResponseEntity<?> getAllByFlightAndCabinClass(@PathVariable Long flightId, @PathVariable Long cabinClassId) {
 
 		return ResponseUtil.ok(service.getAllByFlightAndCabinClass(flightId, cabinClassId));
@@ -85,6 +122,11 @@ public class FlightCabinAncillaryController {
 	// GET SINGLE BY TYPE
 	// =========================
 	@GetMapping("/flight/{flightId}/cabin/{cabinClassId}/type/{type}")
+	@Operation(summary = "Get first ancillary offer by type", description = "Compatibility endpoint for clients that expect one offer for a flight cabin and ancillary type. Prefer the /type/{type}/all endpoint when multiple offers are allowed.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offer returned"),
+			@ApiResponse(responseCode = "404", description = "Offer not found")
+	})
 	public ResponseEntity<?> getByFlightAndCabinClassAndType(@PathVariable Long flightId,
 			@PathVariable Long cabinClassId, @PathVariable AncillaryType type) {
 
@@ -95,6 +137,10 @@ public class FlightCabinAncillaryController {
 	// GET ALL BY TYPE
 	// =========================
 	@GetMapping("/flight/{flightId}/cabin/{cabinClassId}/type/{type}/all")
+	@Operation(summary = "List ancillary offers by type", description = "Returns every offer of the requested ancillary type for a flight cabin, such as all baggage options or all insurance products.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offer list returned")
+	})
 	public ResponseEntity<?> getAllByFlightAndCabinClassAndType(@PathVariable Long flightId,
 			@PathVariable Long cabinClassId, @PathVariable AncillaryType type) {
 
@@ -105,18 +151,32 @@ public class FlightCabinAncillaryController {
 	// UPDATE
 	// =========================
 	@PutMapping("/{id:\\d+}")
-	public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody FlightCabinAncillaryRequest request) {
+	@Operation(summary = "Update flight cabin ancillary offer", description = "Updates price, currency, availability, inclusion, and quantity fields while preserving the original flight, cabin, and ancillary identity.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Offer updated"),
+			@ApiResponse(responseCode = "400", description = "Invalid commercial terms"),
+			@ApiResponse(responseCode = "403", description = "Offer is not owned by the authenticated airline"),
+			@ApiResponse(responseCode = "404", description = "Offer not found")
+	})
+	public ResponseEntity<?> update(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId, @PathVariable Long id,
+			@Valid @RequestBody FlightCabinAncillaryRequest request) {
 
-		return ResponseUtil.ok(service.update(id, request));
+		return ResponseUtil.ok(service.update(userId, id, request));
 	}
 
 	// =========================
 	// DELETE
 	// =========================
 	@DeleteMapping("/{id:\\d+}")
-	public ResponseEntity<?> delete(@PathVariable Long id) {
+	@Operation(summary = "Delete flight cabin ancillary offer", description = "Removes an owned sellable offer from a flight cabin. Historical booking snapshots should remain in Booking Service.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "204", description = "Offer deleted"),
+			@ApiResponse(responseCode = "403", description = "Offer is not owned by the authenticated airline"),
+			@ApiResponse(responseCode = "404", description = "Offer not found")
+	})
+	public ResponseEntity<?> delete(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId, @PathVariable Long id) {
 
-		service.delete(id);
+		service.delete(userId, id);
 		return ResponseUtil.noContent();
 	}
 
@@ -124,6 +184,11 @@ public class FlightCabinAncillaryController {
 	// CALCULATE PRICE
 	// =========================
 	@PostMapping("/price/total")
+	@Operation(summary = "Calculate selected ancillary total", description = "Checkout endpoint. Rejects missing IDs, duplicate selected IDs, unavailable offers, and non-priced offers instead of silently undercharging.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Ancillary total returned"),
+			@ApiResponse(responseCode = "400", description = "Invalid, duplicate, missing, or unavailable ancillary selection")
+	})
 	public ResponseEntity<?> calculateAncillariesPrice(@RequestBody List<Long> flightCabinAncillaryIds) {
 
 		return ResponseUtil.ok(service.calculateAncillaryPrice(flightCabinAncillaryIds));

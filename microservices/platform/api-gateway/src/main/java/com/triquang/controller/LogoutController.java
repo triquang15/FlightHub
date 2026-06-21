@@ -15,6 +15,10 @@ import com.triquang.service.TokenBlacklistService;
 import com.triquang.utils.ResponseUtil;
 
 import io.jsonwebtoken.Claims;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.time.Duration;
 
@@ -22,6 +26,7 @@ import java.time.Duration;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Gateway Auth", description = "Gateway-level authentication helpers such as access-token blacklist logout.")
 public class LogoutController {
 
     private final JwtUtil jwtUtil;
@@ -29,8 +34,17 @@ public class LogoutController {
     private final AuthServiceClient authServiceClient;
 
     @PostMapping("/logout")
+    @Operation(summary = "Gateway logout", description = "Revokes the refresh token in User Service, then blacklists the current JWT access token in Redis for its remaining TTL.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logged out or token already invalid/expired"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Missing device ID or refresh token"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid Authorization header"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "User Service or Redis unavailable")
+    })
     public ResponseEntity<?> logout(
+            @Parameter(description = "Bearer access token to blacklist.")
             @RequestHeader(value = JwtConstant.JWT_HEADER, required = false) String authHeader,
+            @Parameter(description = "Device identifier bound to the refresh token.")
             @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
             @RequestBody(required = false) RefreshTokenRequest request) {
 

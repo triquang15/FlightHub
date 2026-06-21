@@ -11,6 +11,8 @@ import com.triquang.model.Booking;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long>, BookingPerformanceRepository {
@@ -22,6 +24,46 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
 
 
     long countByFlightInstanceId(Long flightInstanceId);
+
+    long countByAirlineIdAndStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+            Long airlineId, BookingStatus status, LocalDateTime from, LocalDateTime to);
+
+    @Query("select coalesce(sum(b.totalAmount), 0.0) from Booking b "
+            + "where b.airlineId = :airlineId and b.status = :status "
+            + "and b.bookingDate >= :from and b.bookingDate < :to")
+    BigDecimal sumRevenueByAirlineAndPeriod(
+            @Param("airlineId") Long airlineId,
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Query(value = """
+            SELECT TO_CHAR(booking_date, 'YYYY-MM-DD') AS period,
+                   COUNT(*) AS bookingCount,
+                   COALESCE(SUM(total_amount), 0) AS revenue
+            FROM bookings
+            WHERE airline_id = :airlineId
+              AND status = 'CONFIRMED'
+              AND booking_date >= :from
+            GROUP BY TO_CHAR(booking_date, 'YYYY-MM-DD')
+            ORDER BY period
+            """, nativeQuery = true)
+    List<BookingPeriodStatistics> findDailyStatistics(
+            @Param("airlineId") Long airlineId, @Param("from") LocalDateTime from);
+
+    @Query(value = """
+            SELECT TO_CHAR(booking_date, 'YYYY-MM') AS period,
+                   COUNT(*) AS bookingCount,
+                   COALESCE(SUM(total_amount), 0) AS revenue
+            FROM bookings
+            WHERE airline_id = :airlineId
+              AND status = 'CONFIRMED'
+              AND booking_date >= :from
+            GROUP BY TO_CHAR(booking_date, 'YYYY-MM')
+            ORDER BY period
+            """, nativeQuery = true)
+    List<BookingPeriodStatistics> findMonthlyStatistics(
+            @Param("airlineId") Long airlineId, @Param("from") LocalDateTime from);
 
 
     @Query("SELECT b FROM Booking b " +

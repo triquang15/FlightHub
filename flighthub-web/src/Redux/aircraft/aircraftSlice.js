@@ -233,6 +233,9 @@ const aircraftSlice = createSlice({
         state.aircrafts = state.aircrafts.filter(aircraft => aircraft.id !== action.payload);
         // Remove from paginated aircrafts
         state.paginatedAircrafts.content = state.paginatedAircrafts.content.filter(aircraft => aircraft.id !== action.payload);
+        if (state.paginatedAircrafts.totalElements > 0) {
+          state.paginatedAircrafts.totalElements -= 1;
+        }
         if (state.paginatedAircrafts.numberOfElements > 0) {
           state.paginatedAircrafts.numberOfElements -= 1;
         }

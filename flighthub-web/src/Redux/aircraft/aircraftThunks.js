@@ -1,6 +1,17 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
+const getAircraftErrorMessage = (err, fallback) => {
+  const data = err.response?.data;
+  if (typeof data?.message === "string") return data.message;
+  if (typeof data?.error === "string") return data.error;
+  if (data?.errors && typeof data.errors === "object") {
+    return Object.values(data.errors).filter(Boolean).join(", ");
+  }
+  if (Array.isArray(data?.errors)) return data.errors.join(", ");
+  return fallback;
+};
+
 // ✅ Create Aircraft
 export const createAircraft = createAsyncThunk(
   "aircraft/create",
@@ -11,9 +22,7 @@ export const createAircraft = createAsyncThunk(
       return res.data?.data ?? res.data;
     } catch (err) {
       console.error("Create aircraft error:", err);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to create aircraft"
-      );
+      return rejectWithValue(getAircraftErrorMessage(err, "Failed to create aircraft"));
     }
   }
 );
@@ -96,9 +105,7 @@ export const updateAircraft = createAsyncThunk(
       return res.data?.data ?? res.data;
     } catch (err) {
       console.error("Update aircraft error:", err);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to update aircraft"
-      );
+      return rejectWithValue(getAircraftErrorMessage(err, "Failed to update aircraft"));
     }
   }
 );
@@ -113,11 +120,7 @@ export const deleteAircraft = createAsyncThunk(
       return aircraftId;
     } catch (err) {
       console.error("Delete aircraft error:", err);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to delete aircraft"
-      );
+      return rejectWithValue(getAircraftErrorMessage(err, "Failed to delete aircraft"));
     }
   }
 );
-
-

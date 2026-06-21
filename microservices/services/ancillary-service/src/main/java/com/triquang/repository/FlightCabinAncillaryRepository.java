@@ -10,6 +10,10 @@ import java.util.Optional;
 
 public interface FlightCabinAncillaryRepository extends JpaRepository<FlightCabinAncillary, Long> {
 
+	boolean existsByFlightIdAndCabinClassIdAndAncillaryId(Long flightId, Long cabinClassId, Long ancillaryId);
+
+	boolean existsByAncillaryId(Long ancillaryId);
+
 	List<FlightCabinAncillary> findByFlightId(Long flightId);
 
 	List<FlightCabinAncillary> findByFlightIdAndCabinClassId(Long flightId, Long cabinClassId);

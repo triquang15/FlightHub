@@ -20,6 +20,15 @@ public interface FareRepository extends JpaRepository<Fare, Long> {
 
     List<Fare> findByCabinClassId(Long cabinClassId);
 
+    @Query("""
+        SELECT f FROM Fare f
+        LEFT JOIN FETCH f.fareRules
+        LEFT JOIN FETCH f.baggagePolicy
+        WHERE f.airlineId = :airlineId
+        ORDER BY f.updatedAt DESC
+    """)
+    List<Fare> findByAirlineIdOrderByUpdatedAtDesc(@Param("airlineId") Long airlineId);
+
     List<Fare> findByFlightIdAndCabinClassId(Long flightId, Long cabinClassId);
 
     @Query("SELECT f FROM Fare f LEFT JOIN FETCH f.fareRules LEFT JOIN FETCH f.baggagePolicy WHERE f.id = :id")

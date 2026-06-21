@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.triquang.payload.PaymentDTO;
 import com.triquang.payload.request.PaymentInitiateRequest;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.PaymentInitiateResponse;
+import com.triquang.enums.ErrorCode;
+import com.triquang.exception.BaseException;
 
 import jakarta.validation.Valid;
 
@@ -20,12 +23,39 @@ import jakarta.validation.Valid;
 public interface PaymentClient {
 
 	@PostMapping("/api/payments/initiate")
-	PaymentInitiateResponse initiatePayment(@Valid @RequestBody PaymentInitiateRequest request,
+	ApiResponse<PaymentInitiateResponse> initiatePaymentResponse(@Valid @RequestBody PaymentInitiateRequest request,
 			@RequestHeader("X-User-Id") Long userId);
 
+	default PaymentInitiateResponse initiatePayment(PaymentInitiateRequest request, Long userId) {
+		return requireData(initiatePaymentResponse(request, userId));
+	}
+
+	@PostMapping("/api/payments/booking/{bookingId}/cancel")
+	ApiResponse<PaymentDTO> cancelPaymentResponse(@PathVariable Long bookingId,
+			@RequestHeader("X-User-Id") Long userId);
+
+	default PaymentDTO cancelPayment(Long bookingId, Long userId) {
+		return requireData(cancelPaymentResponse(bookingId, userId));
+	}
+
 	@GetMapping("/api/payments/booking/{bookingId}")
-	PaymentDTO getPaymentByBookingId(@PathVariable Long bookingId);
+	ApiResponse<PaymentDTO> getPaymentByBookingIdResponse(@PathVariable Long bookingId);
+
+	default PaymentDTO getPaymentByBookingId(Long bookingId) {
+		return requireData(getPaymentByBookingIdResponse(bookingId));
+	}
 
 	@PostMapping("/api/payments/batch/bookings")
-	Map<Long, PaymentDTO> getPaymentsByBookingIds(@RequestBody List<Long> bookingIds);
+	ApiResponse<Map<Long, PaymentDTO>> getPaymentsByBookingIdsResponse(@RequestBody List<Long> bookingIds);
+
+	default Map<Long, PaymentDTO> getPaymentsByBookingIds(List<Long> bookingIds) {
+		return requireData(getPaymentsByBookingIdsResponse(bookingIds));
+	}
+
+	private static <T> T requireData(ApiResponse<T> response) {
+		if (response == null || response.data() == null || response.errorCode() != null) {
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+		}
+		return response.data();
+	}
 }

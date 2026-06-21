@@ -74,6 +74,12 @@ export const sidebarSections = [
     icon: CircleDollarSign,
     items: [
       {
+        id: "fares",
+        label: "Fares",
+        icon: CircleDollarSign,
+        path: "/airline/fares",
+      },
+      {
         id: "fare-rules",
         label: "Fare Rules",
         icon: CircleDollarSign,

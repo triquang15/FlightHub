@@ -15,8 +15,11 @@ public class PaymentMapper {
         PaymentDTO dto = new PaymentDTO();
         dto.setId(payment.getId());
         dto.setGateway(payment.getProvider());
-        dto.setAmount(payment.getAmount() != null ? payment.getAmount().longValue() : null);
+        dto.setAmount(payment.getAmount());
+        dto.setCurrency(payment.getCurrency());
         dto.setTransactionId(payment.getTransactionId());
+        dto.setGatewayPaymentId(payment.getProviderPaymentId());
+        dto.setGatewayCheckoutId(payment.getProviderCheckoutId());
         dto.setPaymentMethod(payment.getMethod());
         dto.setStatus(payment.getStatus());
         dto.setUserId(payment.getUserId());
@@ -27,6 +30,7 @@ public class PaymentMapper {
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime());
         }
+        dto.setExpiresAt(payment.getExpiresAt());
 
         if (payment.getCreatedAt() != null) {
             dto.setCreatedAt(payment.getCreatedAt()

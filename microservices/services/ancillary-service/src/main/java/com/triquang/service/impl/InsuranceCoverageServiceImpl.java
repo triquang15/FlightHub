@@ -14,6 +14,7 @@ import com.triquang.payload.response.InsuranceCoverageResponse;
 import com.triquang.repository.AncillaryRepository;
 import com.triquang.repository.InsuranceCoverageRepository;
 import com.triquang.service.InsuranceCoverageService;
+import com.triquang.service.AncillaryOwnershipService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,13 +25,13 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
 
     private final InsuranceCoverageRepository coverageRepository;
     private final AncillaryRepository ancillaryRepository;
+    private final AncillaryOwnershipService ownershipService;
 
     @Override
     @Transactional
-    public InsuranceCoverageResponse createCoverage(InsuranceCoverageRequest request) {
+    public InsuranceCoverageResponse createCoverage(Long userId, InsuranceCoverageRequest request) {
 
-        Ancillary ancillary = ancillaryRepository.findById(request.getAncillaryId())
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+        Ancillary ancillary = ownershipService.requireOwnedAncillary(userId, request.getAncillaryId());
 
         InsuranceCoverage coverage = InsuranceCoverageMapper.toEntity(request, ancillary);
         InsuranceCoverage saved = coverageRepository.save(coverage);
@@ -40,7 +41,7 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
 
     @Override
     @Transactional
-    public List<InsuranceCoverageResponse> createCoveragesBulk(List<InsuranceCoverageRequest> requests) {
+    public List<InsuranceCoverageResponse> createCoveragesBulk(Long userId, List<InsuranceCoverageRequest> requests) {
 
         if (requests == null || requests.isEmpty()) {
             throw new BaseException(ErrorCode.INSURANCE_COVERAGE_INVALID_REQUEST);
@@ -55,8 +56,7 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
             throw new BaseException(ErrorCode.INSURANCE_COVERAGE_INVALID_REQUEST);
         }
 
-        Ancillary ancillary = ancillaryRepository.findById(ancillaryId)
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+        Ancillary ancillary = ownershipService.requireOwnedAncillary(userId, ancillaryId);
 
         List<InsuranceCoverage> coverages = requests.stream()
                 .map(req -> InsuranceCoverageMapper.toEntity(req, ancillary))
@@ -70,15 +70,13 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
 
     @Override
     @Transactional
-    public InsuranceCoverageResponse updateCoverage(Long id, InsuranceCoverageRequest request) {
+    public InsuranceCoverageResponse updateCoverage(Long userId, Long id, InsuranceCoverageRequest request) {
 
-        InsuranceCoverage existing = coverageRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.INSURANCE_COVERAGE_NOT_FOUND));
+        InsuranceCoverage existing = ownershipService.requireOwnedCoverage(userId, id);
 
         Ancillary ancillary = null;
         if (request.getAncillaryId() != null) {
-            ancillary = ancillaryRepository.findById(request.getAncillaryId())
-                    .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+            ancillary = ownershipService.requireOwnedAncillary(userId, request.getAncillaryId());
         }
 
         InsuranceCoverageMapper.updateEntityFromRequest(existing, request, ancillary);
@@ -88,26 +86,25 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
 
     @Override
     @Transactional
-    public void deleteCoverage(Long id) {
+    public void deleteCoverage(Long userId, Long id) {
 
-        InsuranceCoverage coverage = coverageRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.INSURANCE_COVERAGE_NOT_FOUND));
+        InsuranceCoverage coverage = ownershipService.requireOwnedCoverage(userId, id);
 
         coverageRepository.delete(coverage);
     }
 
     @Override
-    public InsuranceCoverageResponse getCoverageById(Long id) {
+    public InsuranceCoverageResponse getCoverageById(Long userId, Long id) {
 
-        InsuranceCoverage coverage = coverageRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.INSURANCE_COVERAGE_NOT_FOUND));
+        InsuranceCoverage coverage = ownershipService.requireOwnedCoverage(userId, id);
 
         return InsuranceCoverageMapper.toResponse(coverage);
     }
 
     @Override
-    public List<InsuranceCoverageResponse> getCoveragesByAncillaryId(Long ancillaryId) {
-        return coverageRepository.findByAncillaryIdAndActiveTrue(ancillaryId)
+    public List<InsuranceCoverageResponse> getCoveragesByAncillaryId(Long userId, Long ancillaryId) {
+        Ancillary ancillary = ownershipService.requireOwnedAncillary(userId, ancillaryId);
+        return coverageRepository.findByAncillary(ancillary)
                 .stream()
                 .map(InsuranceCoverageMapper::toResponse)
                 .collect(Collectors.toList());
@@ -122,8 +119,9 @@ public class InsuranceCoverageServiceImpl implements InsuranceCoverageService {
     }
 
     @Override
-    public List<InsuranceCoverageResponse> getAllCoverages() {
-        return coverageRepository.findAll()
+    public List<InsuranceCoverageResponse> getAllCoverages(Long userId) {
+        Long airlineId = ownershipService.airlineId(userId);
+        return coverageRepository.findByAncillaryAirlineId(airlineId)
                 .stream()
                 .map(InsuranceCoverageMapper::toResponse)
                 .collect(Collectors.toList());

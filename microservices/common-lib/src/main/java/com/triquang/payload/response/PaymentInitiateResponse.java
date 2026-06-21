@@ -1,6 +1,7 @@
 package com.triquang.payload.response;
 
 import com.triquang.enums.PaymentGateway;
+import java.math.BigDecimal;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,7 @@ public class PaymentInitiateResponse {
 	// Razorpay specific fields
 	private String razorpayOrderId;
 
-	private Double amount;
+	private BigDecimal amount;
 	private String currency;
 	private String description;
 

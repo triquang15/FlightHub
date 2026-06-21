@@ -13,6 +13,7 @@ import com.triquang.enums.CabinClassType;
 public class FareResponse {
 
     private Long id;
+    private Long airlineId;
     private String name;
     private Character rbdCode;
     private Long flightId;
@@ -20,6 +21,7 @@ public class FareResponse {
     private CabinClassType cabinClass;
 
     // Pricing
+    private String currency;
     private Double baseFare;
     private Double taxesAndFees;
     private Double airlineFees;

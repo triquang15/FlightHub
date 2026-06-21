@@ -4,8 +4,6 @@ import java.time.LocalDateTime;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +27,6 @@ public class NotificationTrackingService {
     private final NotificationDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendTracked(
             NotificationType type,
             String businessKey,
@@ -40,6 +37,13 @@ public class NotificationTrackingService {
             Object payload,
             NotificationSender sender
     ) throws Exception {
+        if (type == null || channel == null || sender == null) {
+            throw new IllegalArgumentException("Notification type, channel and sender are required");
+        }
+        if (recipient == null || recipient.isBlank()) {
+            throw new IllegalArgumentException("Notification recipient is required");
+        }
+
         String normalizedBusinessKey = normalizeBusinessKey(businessKey);
         String eventKey = type + ":" + normalizedBusinessKey;
         String deliveryKey = eventKey + ":" + channel + ":" + recipient;

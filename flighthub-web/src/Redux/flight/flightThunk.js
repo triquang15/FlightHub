@@ -1,8 +1,19 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
-import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
+import { unwrapApiData } from "@/utils/flightOps";
 
 const API_URL = "/api/flights";
+
+const getFlightErrorMessage = (err, fallback) => {
+  const data = err.response?.data;
+  if (typeof data?.message === "string") return data.message;
+  if (typeof data?.error === "string") return data.error;
+  if (Array.isArray(data?.errors)) return data.errors.join(", ");
+  if (data?.errors && typeof data.errors === "object") {
+    return Object.values(data.errors).filter(Boolean).join(", ");
+  }
+  return err.message || fallback;
+};
 
 // ✅ Create Flight
 export const createFlight = createAsyncThunk(
@@ -14,7 +25,7 @@ export const createFlight = createAsyncThunk(
       return unwrapApiData(res);
     } catch (err) {
       console.error("❌ createFlight error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to create flight");
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to create flight"));
     }
   }
 );
@@ -29,7 +40,7 @@ export const getFlightById = createAsyncThunk(
       return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getFlightById error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Flight not found");
+      return rejectWithValue(getFlightErrorMessage(err, "Flight not found"));
     }
   }
 );
@@ -46,7 +57,7 @@ export const updateFlight = createAsyncThunk(
       return unwrapApiData(res);
     } catch (err) {
       console.error("❌ updateFlight error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to update flight");
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to update flight"));
     }
   }
 );
@@ -61,7 +72,7 @@ export const deleteFlight = createAsyncThunk(
       return id;
     } catch (err) {
       console.error("❌ deleteFlight error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to delete flight");
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to cancel flight"));
     }
   }
 );
@@ -73,7 +84,7 @@ export const changeFlightStatus = createAsyncThunk(
       const res = await api.patch(`${API_URL}/${id}/status`, null, { params: { status } });
       return unwrapApiData(res);
     } catch (err) {
-      return rejectWithValue(getApiErrorMessage(err, "Failed to change flight status"));
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to change flight status"));
     }
   }
 );
@@ -89,7 +100,7 @@ export const getFlightsByAirline = createAsyncThunk(
       return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getFlightsByAirline error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch flights by airline");
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to fetch flights by airline"));
     }
   }
 );
@@ -104,7 +115,7 @@ export const getFlightsByAircraft = createAsyncThunk(
       return res.data;
     } catch (err) {
       console.error("❌ getFlightsByAircraft error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch flights by aircraft");
+      return rejectWithValue(getFlightErrorMessage(err, "Failed to fetch flights by aircraft"));
     }
   }
 );

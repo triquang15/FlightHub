@@ -9,17 +9,21 @@ import com.triquang.payload.response.FareResponse;
 
 public interface FareService {
 
-	FareResponse createFare(FareRequest request);
+	FareResponse createFare(Long userId, FareRequest request);
 
-	List<FareResponse> createFares(List<FareRequest> requests);
+	List<FareResponse> createFares(Long userId, List<FareRequest> requests);
+
+	List<FareResponse> getFaresByAirlineOwner(Long userId);
+
+	FareResponse getOwnedFareById(Long userId, Long id);
 
 	FareResponse getFareById(Long id);
 
 	List<FareResponse> getFaresByFlightIdAndCabinClassId(Long flightId, Long cabinClassId);
 
-	FareResponse updateFare(Long id, FareRequest request);
+	FareResponse updateFare(Long userId, Long id, FareRequest request);
 
-	void deleteFare(Long id);
+	void deleteFare(Long userId, Long id);
 
 	List<Fare> getFares();
 

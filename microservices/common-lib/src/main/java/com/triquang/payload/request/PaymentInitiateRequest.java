@@ -1,6 +1,7 @@
 package com.triquang.payload.request;
 
 import com.triquang.enums.PaymentGateway;
+import java.math.BigDecimal;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -26,7 +27,10 @@ public class PaymentInitiateRequest {
 
 	@NotNull(message = "Amount is mandatory")
 	@Positive(message = "Amount must be positive")
-	private Double amount;
+	private BigDecimal amount;
+
+	@NotNull(message = "Currency is mandatory")
+	private String currency;
 
 	private String description;
 }

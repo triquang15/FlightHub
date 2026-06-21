@@ -568,11 +568,24 @@ services:
         condition: service_healthy
       flightopsdb:
         condition: service_healthy
+      seatdb:
+        condition: service_healthy
+      pricingdb:
+        condition: service_healthy
+      ancillarydb:
+        condition: service_healthy
+      bookingdb:
+        condition: service_healthy
+      paymentdb:
+        condition: service_healthy
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       SEED_BASE_DATA: "true"
+      SEED_SEAT: "true"
       SEED_FLIGHT_OPS: "true"
+      SEED_PRICING: "true"
+      SEED_ANCILLARY: "true"
     volumes:
       - ../Documentation/sql:/seed-sql:ro
       - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro
@@ -595,7 +608,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       SEED_BASE_DATA: "false"
+      SEED_SEAT: "false"
       SEED_FLIGHT_OPS: "false"
+      SEED_PRICING: "false"
+      SEED_ANCILLARY: "false"
     volumes:
       - ../Documentation/sql:/seed-sql:ro
       - ../scripts/seed-production-demo-data-internal.sh:/seed-scripts/seed-production-demo-data-internal.sh:ro

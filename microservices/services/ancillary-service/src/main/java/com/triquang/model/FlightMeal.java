@@ -34,7 +34,11 @@ public class FlightMeal {
     @Builder.Default
     private Boolean available = true;
 
+    @Column(nullable = false)
     private Double price;
+
+    @Column(nullable = false, length = 3)
+    private String currency;
 
     @Builder.Default
     private Integer displayOrder = 0;

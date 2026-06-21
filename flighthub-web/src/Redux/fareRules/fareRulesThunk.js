@@ -1,122 +1,86 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
+import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
+
 const API_URL = "/api/fare-rules";
 
-// ✅ Create Fare Rule
+const rejectFareRuleError = (error, rejectWithValue, fallback) =>
+  rejectWithValue(getApiErrorMessage(error, fallback));
+
 export const createFareRule = createAsyncThunk(
   "fareRules/create",
   async (fareRuleData, { rejectWithValue }) => {
     try {
-      const res = await api.post(API_URL, fareRuleData);
-      console.log("✅ createFareRule success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ createFareRule error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to create fare rule"
-      );
+      return unwrapApiData(await api.post(API_URL, fareRuleData));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to create fare rule");
     }
-  }
+  },
 );
 
-// ✅ Get All Fare Rules
 export const getAllFareRules = createAsyncThunk(
   "fareRules/getAll",
-  async (params = { page: 0, size: 100 }, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(API_URL, { params, });
-      console.log("✅ getAllFareRules success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ getAllFareRules error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch fare rules"
-      );
+      return unwrapApiData(await api.get(`${API_URL}/airline`));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to fetch fare rules");
     }
-  }
+  },
 );
 
-// ✅ Get Fare Rule by ID
+export const getFareRulesByAirline = createAsyncThunk(
+  "fareRules/getByAirline",
+  async (_, { rejectWithValue }) => {
+    try {
+      return unwrapApiData(await api.get(`${API_URL}/airline`));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to fetch fare rules");
+    }
+  },
+);
+
 export const getFareRuleById = createAsyncThunk(
   "fareRules/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/${id}`);
-      console.log("✅ getFareRuleById success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ getFareRuleById error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Fare rule not found");
+      return unwrapApiData(await api.get(`${API_URL}/${id}`));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Fare rule not found");
     }
-  }
+  },
 );
 
-// ✅ Update Fare Rule
 export const updateFareRule = createAsyncThunk(
   "fareRules/update",
   async ({ id, fareRuleData }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`${API_URL}/${id}`, fareRuleData);
-      console.log("✅ updateFareRule success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ updateFareRule error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to update fare rule"
-      );
+      return unwrapApiData(await api.put(`${API_URL}/${id}`, fareRuleData));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to update fare rule");
     }
-  }
+  },
 );
 
-// ✅ Delete Fare Rule
 export const deleteFareRule = createAsyncThunk(
   "fareRules/delete",
   async (id, { rejectWithValue }) => {
     try {
       await api.delete(`${API_URL}/${id}`);
-      console.log("✅ deleteFareRule success:", id);
       return id;
-    } catch (err) {
-      console.error("❌ deleteFareRule error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to delete fare rule"
-      );
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to delete fare rule");
     }
-  }
+  },
 );
 
-// ✅ Get Fare Rules by Airline
-export const getFareRulesByAirline = createAsyncThunk(
-  "fareRules/getByAirline",
-  async (airlineId, { rejectWithValue }) => {
-    try {
-      const res = await api.get(`${API_URL}/airline/${airlineId}`);
-      console.log("✅ getFareRulesByAirline success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ getFareRulesByAirline error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch fare rules by airline"
-      );
-    }
-  }
-);
-
-
-
-// ✅ Get Fare Rule by Fare
 export const getFareRuleByFare = createAsyncThunk(
   "fareRules/getByFare",
   async (fareId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`${API_URL}/fare/${fareId}`);
-      console.log("✅ getFareRuleByFare success:", res.data);
-      return res.data;
-    } catch (err) {
-      console.error("❌ getFareRuleByFare error:", err.response?.data?.message || err.message);
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch fare rule by fare"
-      );
+      return unwrapApiData(await api.get(`${API_URL}/fare/${fareId}`));
+    } catch (error) {
+      return rejectFareRuleError(error, rejectWithValue, "Failed to fetch fare rule");
     }
-  }
+  },
 );

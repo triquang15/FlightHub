@@ -1,38 +1,9 @@
-import React, { useState, useEffect } from "react";
-import {
-  Edit,
-  Trash2,
-  Eye,
-  MoreHorizontal,
-  Search,
-  Filter,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  DollarSign,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRightLeft, Eye, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,374 +13,218 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import {
-  getAllFareRules,
-  deleteFareRule,
-  getFareRulesByAirline,
-} from "@/Redux/fareRules/fareRulesThunk";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { deleteFareRule, getFareRulesByAirline } from "@/Redux/fareRules/fareRulesThunk";
+
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2,
+});
+
+const formatFee = (value) => (Number(value) > 0 ? currency.format(value) : "Free");
+
+const IconAction = ({ label, icon: Icon, variant = "ghost", onClick }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button type="button" variant={variant} size="icon" aria-label={label} onClick={onClick}>
+        <Icon className="size-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
 
 const FareRulesTable = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { fareRules, loading, error } = useSelector((state) => state.fareRules);
-  const { user } = useSelector((state) => state.auth);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredRules, setFilteredRules] = useState([]);
-  const [deleteRuleId, setDeleteRuleId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [policy, setPolicy] = useState("all");
+  const [ruleToDelete, setRuleToDelete] = useState(null);
 
   useEffect(() => {
-    // Load fare rules for the airline
-    if (user?.airlineId) {
-      dispatch(getFareRulesByAirline(user.airlineId));
-    } else {
-      dispatch(getAllFareRules());
-    }
-  }, [dispatch, user?.airlineId]);
+    dispatch(getFareRulesByAirline());
+  }, [dispatch]);
 
-  useEffect(() => {
-    // Filter rules based on search term
-    if (searchTerm) {
-      const filtered = fareRules.filter(rule =>
-        rule.ruleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        rule.additionalRestrictions?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredRules(filtered);
-    } else {
-      setFilteredRules(fareRules);
-    }
-  }, [fareRules, searchTerm]);
+  const rules = useMemo(() => (Array.isArray(fareRules) ? fareRules : []), [fareRules]);
+  const filteredRules = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rules.filter((rule) => {
+      const matchesSearch =
+        !query ||
+        rule.ruleName?.toLowerCase().includes(query) ||
+        String(rule.fareId).includes(query);
+      const matchesPolicy =
+        policy === "all" ||
+        (policy === "refundable" && rule.isRefundable) ||
+        (policy === "changeable" && rule.isChangeable) ||
+        (policy === "restricted" && !rule.isRefundable && !rule.isChangeable);
+      return matchesSearch && matchesPolicy;
+    });
+  }, [policy, rules, search]);
 
-  const handleDelete = async (ruleId) => {
+  const confirmDelete = async () => {
+    if (!ruleToDelete) return;
     try {
-      await dispatch(deleteFareRule(ruleId)).unwrap();
-      // Refresh the list
-      if (user?.airlineId) {
-        dispatch(getFareRulesByAirline(user.airlineId));
-      } else {
-        dispatch(getAllFareRules());
-      }
-    } catch (error) {
-      console.error("Failed to delete fare rule:", error);
+      await dispatch(deleteFareRule(ruleToDelete.id)).unwrap();
+      toast.success("Fare rule deleted", {
+        description: `${ruleToDelete.ruleName} is no longer attached to fare #${ruleToDelete.fareId}.`,
+      });
+      setRuleToDelete(null);
+    } catch (deleteError) {
+      toast.error("Unable to delete fare rule", { description: String(deleteError) });
     }
-    setDeleteRuleId(null);
   };
-
-  const formatCurrency = (value) => {
-    if (!value) return "Free";
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const RefundableBadge = ({ isRefundable }) => (
-    <Badge variant={isRefundable ? "default" : "secondary"} className="flex items-center gap-1">
-      {isRefundable ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-      {isRefundable ? "Refundable" : "Non-Refundable"}
-    </Badge>
-  );
-
-  const UpgradeBadge = ({ upgradePossible }) => (
-    <Badge variant={upgradePossible ? "outline" : "secondary"} className="flex items-center gap-1">
-      {upgradePossible ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-      {upgradePossible ? "Upgradeable" : "Fixed"}
-    </Badge>
-  );
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex space-x-4">
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Fare Rules</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => dispatch(getAllFareRules())}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Fare Rules ({filteredRules.length})</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage pricing policies and restrictions
-          </p>
+    <TooltipProvider>
+      <section className="overflow-hidden rounded-md border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Policy register</h2>
+            <p className="text-xs text-muted-foreground">One policy per fare. Changes affect future purchases.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative min-w-0 sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search rule or fare ID"
+                className="pl-9"
+              />
+            </div>
+            <Select value={policy} onValueChange={setPolicy}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All policies</SelectItem>
+                <SelectItem value="refundable">Refundable</SelectItem>
+                <SelectItem value="changeable">Changeable</SelectItem>
+                <SelectItem value="restricted">Restricted</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
 
-    
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {filteredRules.length === 0 ? (
-            <div className="text-center py-12">
-              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Fare Rules Found</h3>
-              <p className="text-gray-600">
-                {searchTerm
-                  ? "No rules match your search criteria."
-                  : "No fare rules have been created yet."}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">Rule Name</TableHead>
-                  <TableHead>Refund Policy</TableHead>
-                  <TableHead>Change Policy</TableHead>
-                  <TableHead>Fees</TableHead>
-                  <TableHead>Deadlines</TableHead>
-             
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRules.map((rule) => (
-                  <TableRow key={rule.id} className="hover:bg-gray-50/50">
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-gray-900">
-                          {rule.ruleName}
+        {loading && rules.length === 0 ? (
+          <div className="space-y-3 p-4">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-16 w-full" />)}</div>
+        ) : error ? (
+          <div className="flex min-h-52 flex-col items-center justify-center gap-3 p-6 text-center">
+            <p className="text-sm font-medium text-destructive">{error}</p>
+            <Button variant="outline" onClick={() => dispatch(getFareRulesByAirline())}>
+              <RefreshCw className="size-4" /> Retry
+            </Button>
+          </div>
+        ) : filteredRules.length === 0 ? (
+          <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+            <ShieldCheck className="mb-3 size-9 text-muted-foreground" />
+            <p className="font-medium text-foreground">No matching fare rules</p>
+            <p className="mt-1 text-sm text-muted-foreground">Create a rule or adjust the current filters.</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Rule</th>
+                    <th className="px-4 py-3 font-medium">Refund</th>
+                    <th className="px-4 py-3 font-medium">Change</th>
+                    <th className="px-4 py-3 font-medium">Deadlines</th>
+                    <th className="sticky right-0 bg-muted/95 px-4 py-3 text-right font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredRules.map((rule) => (
+                    <tr key={rule.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{rule.ruleName}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Fare #{rule.fareId}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={rule.isRefundable ? "default" : "secondary"}>
+                          {rule.isRefundable ? "Refundable" : "Not refundable"}
+                        </Badge>
+                        {rule.isRefundable && <p className="mt-1 text-xs text-muted-foreground">Fee {formatFee(rule.cancellationFee)}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={rule.isChangeable ? "outline" : "secondary"}>
+                          {rule.isChangeable ? "Changeable" : "Not changeable"}
+                        </Badge>
+                        {rule.isChangeable && <p className="mt-1 text-xs text-muted-foreground">Fee {formatFee(rule.changeFee)}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <p>Refund: {rule.isRefundable ? `${rule.refundDeadlineDays ?? 0} days` : "N/A"}</p>
+                        <p className="mt-1">Change: {rule.isChangeable ? `${rule.changeDeadlineHours ?? 0} hours` : "N/A"}</p>
+                      </td>
+                      <td className="sticky right-0 bg-card px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <IconAction label="View rule" icon={Eye} onClick={() => navigate(`/airline/fare-rules/${rule.id}`)} />
+                          <IconAction label="Edit rule" icon={Pencil} onClick={() => navigate(`/airline/fare-rules/${rule.id}/edit`)} />
+                          <IconAction label="Delete rule" icon={Trash2} variant="ghost" onClick={() => setRuleToDelete(rule)} />
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <RefundableBadge isRefundable={rule.isRefundable} />
-                          <UpgradeBadge upgradePossible={rule.upgradePossible} />
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1">
-                        {rule.isRefundable ? (
-                          <div className="text-sm">
-                            <div className="text-green-600 font-medium">Refundable</div>
-                            {rule.refundDeadlineDays && (
-                              <div className="text-gray-500 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {rule.refundDeadlineDays} days before departure
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-sm">
-                            <div className="text-red-600 font-medium">Non-Refundable</div>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm">
-                          <div className="font-medium">
-                            Fee: {formatCurrency(rule.changeFee)}
-                          </div>
-                          {rule.changeDeadlineHours && (
-                            <div className="text-gray-500 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {rule.changeDeadlineHours}h before departure
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3 text-blue-600" />
-                          <span>Cancel: {formatCurrency(rule.cancellationFee)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3 text-orange-600" />
-                          <span>No-Show: {formatCurrency(rule.noShowFee)}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        {rule.refundDeadlineDays && (
-                          <div>Refund: {rule.refundDeadlineDays}d</div>
-                        )}
-                        {rule.changeDeadlineHours && (
-                          <div>Change: {rule.changeDeadlineHours}h</div>
-                        )}
-                        {!rule.refundDeadlineDays && !rule.changeDeadlineHours && (
-                          <span className="text-gray-500">No deadlines</span>
-                        )}
-                      </div>
-                    </TableCell>
-
-                   
-
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/airline/fare-rules/${rule.id}`)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/airline/fare-rules/${rule.id}/edit`)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Rule
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setDeleteRuleId(rule.id);
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Rule
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the fare rule
-                                  "{rule.ruleName}" and remove it from all associated flights.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setDeleteRuleId(null)}>
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(rule.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete Rule
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div className="text-sm">
-                <div className="font-medium">
-                  {filteredRules.filter(r => r.isRefundable).length} Refundable
-                </div>
-                <div className="text-gray-500">Rules</div>
-              </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <RefreshCw className="h-4 w-4 text-blue-600" />
-              <div className="text-sm">
-                <div className="font-medium">
-                  {filteredRules.filter(r => r.upgradePossible).length} Upgradeable
-                </div>
-                <div className="text-gray-500">Rules</div>
-              </div>
+            <div className="divide-y divide-border lg:hidden">
+              {filteredRules.map((rule) => (
+                <article key={rule.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{rule.ruleName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Fare #{rule.fareId}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <IconAction label="View rule" icon={Eye} onClick={() => navigate(`/airline/fare-rules/${rule.id}`)} />
+                      <IconAction label="Edit rule" icon={Pencil} onClick={() => navigate(`/airline/fare-rules/${rule.id}/edit`)} />
+                      <IconAction label="Delete rule" icon={Trash2} onClick={() => setRuleToDelete(rule)} />
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <span className="flex items-center gap-1 text-muted-foreground"><ShieldCheck className="size-3" /> Refund</span>
+                      <p className="mt-1 font-medium text-foreground">{rule.isRefundable ? formatFee(rule.cancellationFee) : "Not allowed"}</p>
+                    </div>
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <span className="flex items-center gap-1 text-muted-foreground"><ArrowRightLeft className="size-3" /> Change</span>
+                      <p className="mt-1 font-medium text-foreground">{rule.isChangeable ? formatFee(rule.changeFee) : "Not allowed"}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          </>
+        )}
+      </section>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-yellow-600" />
-              <div className="text-sm">
-                <div className="font-medium">
-                  {filteredRules.filter(r => r.changeFee > 0).length} Paid Changes
-                </div>
-                <div className="text-gray-500">Rules</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-purple-600" />
-              <div className="text-sm">
-                <div className="font-medium">
-                  {filteredRules.filter(r => r.refundDeadlineDays || r.changeDeadlineHours).length}
-                </div>
-                <div className="text-gray-500">With Deadlines</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      <AlertDialog open={Boolean(ruleToDelete)} onOpenChange={(open) => !open && setRuleToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete fare rule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {ruleToDelete?.ruleName} from fare #{ruleToDelete?.fareId}. Future purchases will no longer show this policy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep rule</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmDelete}>Delete rule</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </TooltipProvider>
   );
 };
 

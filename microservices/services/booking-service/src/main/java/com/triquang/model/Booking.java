@@ -1,6 +1,8 @@
 package com.triquang.model;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,9 +65,11 @@ public class Booking {
     @Column(nullable = false)
     private Long airlineId;
 
+    @Builder.Default
     private TripType tripType = TripType.ONE_WAY;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private CabinClassType cabinClass = CabinClassType.ECONOMY;
 
     // Cross-service ref: Fare (pricing-service)
@@ -76,6 +80,7 @@ public class Booking {
     private LocalDateTime ticketTimeLimit;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Passenger> passengers = new HashSet<>();
 
     // Cross-service ref: SeatInstance IDs (seat-service)
@@ -98,7 +103,8 @@ public class Booking {
     private List<Long> mealIds;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    private Set<Ticket> tickets=new HashSet<>();
+    @Builder.Default
+    private Set<Ticket> tickets = new HashSet<>();
 
     private Long paymentId;
 
@@ -112,6 +118,12 @@ public class Booking {
     private LocalDateTime lastModified;
 
     private boolean ticketIssued;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalAmount;
+    private String currency;
+    private String seatHoldToken;
+    private Instant seatHoldExpiresAt;
 
     private ContactInfo contactInfo;
 }

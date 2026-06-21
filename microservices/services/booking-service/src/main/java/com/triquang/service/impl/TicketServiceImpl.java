@@ -54,6 +54,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         List<Ticket> savedTickets = ticketRepository.saveAll(tickets);
+        booking.getTickets().addAll(savedTickets);
 
         log.info("Successfully generated {} tickets for booking {}",
                 savedTickets.size(),

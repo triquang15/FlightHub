@@ -7,6 +7,12 @@ import {
   updateCabinClass,
 } from "./cabinClassThunk.js";
 
+const asArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.content)) return payload.content;
+  return [];
+};
+
 const cabinClassSlice = createSlice({
   name: "cabinClass",
   initialState: {
@@ -31,6 +37,7 @@ const cabinClassSlice = createSlice({
       .addCase(createCabinClass.fulfilled, (state, action) => {
         console.log("✅ createCabinClass fulfilled");
         state.loading = false;
+        state.cabinClass = action.payload;
         state.cabinClasses.push(action.payload);
       })
       .addCase(createCabinClass.rejected, (state, action) => {
@@ -65,7 +72,7 @@ const cabinClassSlice = createSlice({
       .addCase(getCabinClassesByAircraft.fulfilled, (state, action) => {
         console.log("✅ getCabinClassesByAircraft fulfilled");
         state.loading = false;
-        state.cabinClasses = action.payload;
+        state.cabinClasses = asArray(action.payload);
       })
       .addCase(getCabinClassesByAircraft.rejected, (state, action) => {
         console.log("❌ getCabinClassesByAircraft rejected:", action.payload);

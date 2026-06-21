@@ -1,4 +1,5 @@
 package com.triquang.message;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -56,7 +57,7 @@ public class BookingConfirmedEvent {
     private String flightDuration;
 
     // ── Payment ──────────────────────────────────────────────────────────────
-    private Double totalAmount;
+    private BigDecimal totalAmount;
     private String currency;
     private String transactionId;
     private String providerPaymentId;

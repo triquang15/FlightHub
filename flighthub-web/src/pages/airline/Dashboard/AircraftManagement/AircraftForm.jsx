@@ -4,11 +4,16 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader } from '@/components/common/Loader';
 import { createAircraft, getAircraftById, updateAircraft } from '@/Redux/aircraft/aircraftThunks';
 import { getAirlineByAdmin } from '@/Redux/airline/airlineThunks';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { CalendarIcon, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // AircraftStatus enum values from the DTO
 const AIRCRAFT_STATUS = [
@@ -18,6 +23,110 @@ const AIRCRAFT_STATUS = [
   { value: 'RETIRED', label: 'Retired' },
 ];
 
+const getEmptyFormData = (airlineId = null) => ({
+  code: '',
+  model: '',
+  manufacturer: '',
+  seatingCapacity: '',
+  economySeats: '',
+  premiumEconomySeats: 0,
+  businessSeats: 0,
+  firstClassSeats: 0,
+  rangeKm: '',
+  cruisingSpeedKmh: '',
+  maxAltitudeFt: '',
+  yearOfManufacture: '',
+  registrationDate: null,
+  nextMaintenanceDate: null,
+  status: 'ACTIVE',
+  isAvailable: true,
+  airlineId,
+  currentAirportId: null,
+});
+
+const toOptionalPositiveNumber = (value) =>
+  value === '' || value === null || value === undefined ? null : Number(value);
+
+const toRequiredNumber = (value) =>
+  value === '' || value === null || value === undefined ? 0 : Number(value);
+
+const formatDisplayDate = (date) =>
+  date
+    ? date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : '';
+
+const formatApiDate = (date) => {
+  if (!date) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const DateField = ({ id, label, value, onChange, placeholder = 'Select date' }) => {
+  const [open, setOpen] = useState(false);
+
+  const selectDate = (date) => {
+    onChange(date || null);
+    setOpen(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            className={cn(
+              "h-11 w-full justify-between rounded-md border-border/70 bg-background/60 px-3 text-left font-normal shadow-sm hover:bg-accent hover:text-accent-foreground",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <span>{value ? formatDisplayDate(value) : placeholder}</span>
+            <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <CalendarComponent
+            mode="single"
+            selected={value || undefined}
+            onSelect={selectDate}
+            initialFocus
+          />
+          <div className="flex items-center justify-between border-t border-border/70 bg-popover px-3 py-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => selectDate(null)}
+              className="h-8 gap-2 px-2 text-muted-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => selectDate(new Date())}
+              className="h-8 px-3"
+            >
+              Today
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 const AircraftForm = ({ 
   onCancel, 
   isEditMode = false, 
@@ -25,26 +134,7 @@ const AircraftForm = ({
   loading = false,
   error = null
 }) => {
-  const [formData, setFormData] = useState({
-    code: '',
-    model: '',
-    manufacturer: '',
-    seatingCapacity: 0,
-    economySeats: 0,
-    premiumEconomySeats: 0,
-    businessSeats: 0,
-    firstClassSeats: 0,
-    rangeKm: 0,
-    cruisingSpeedKmh: 0,
-    maxAltitudeFt: 0,
-    yearOfManufacture: 0,
-    registrationDate: null,
-    nextMaintenanceDate: null,
-    status: 'ACTIVE',
-    isAvailable: true,
-    airlineId: null,
-    currentAirportId: null,
-  });
+  const [formData, setFormData] = useState(getEmptyFormData());
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { aircraftId } = useParams();
@@ -55,6 +145,7 @@ const AircraftForm = ({
     currentAircraft,
     createLoading = false,
     updateLoading = false,
+    error: aircraftError = null,
   } = useSelector((state) => state.aircraft || {});
   const routeAircraft = String(currentAircraft?.id) === String(aircraftId) ? currentAircraft : null;
   const effectiveAircraftData = aircraftData || (routeEditMode ? routeAircraft : null);
@@ -79,6 +170,7 @@ const AircraftForm = ({
   useEffect(() => {
     const airlineId = currentAirline?.id || (airlines.length === 1 ? airlines[0].id : null);
     if (!effectiveEditMode && airlineId && !formData.airlineId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData(prev => ({ ...prev, airlineId }));
     }
   }, [airlines, currentAirline, effectiveEditMode, formData.airlineId]);
@@ -86,19 +178,20 @@ const AircraftForm = ({
   // Initialize form with data when editing
   useEffect(() => {
     if (effectiveEditMode && effectiveAircraftData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         code: effectiveAircraftData.code || '',
         model: effectiveAircraftData.model || '',
         manufacturer: effectiveAircraftData.manufacturer || '',
-        seatingCapacity: effectiveAircraftData.seatingCapacity || 0,
-        economySeats: effectiveAircraftData.economySeats || 0,
+        seatingCapacity: effectiveAircraftData.seatingCapacity || '',
+        economySeats: effectiveAircraftData.economySeats || '',
         premiumEconomySeats: effectiveAircraftData.premiumEconomySeats || 0,
         businessSeats: effectiveAircraftData.businessSeats || 0,
         firstClassSeats: effectiveAircraftData.firstClassSeats || 0,
-        rangeKm: effectiveAircraftData.rangeKm || 0,
-        cruisingSpeedKmh: effectiveAircraftData.cruisingSpeedKmh || 0,
-        maxAltitudeFt: effectiveAircraftData.maxAltitudeFt || 0,
-        yearOfManufacture: effectiveAircraftData.yearOfManufacture || 0,
+        rangeKm: effectiveAircraftData.rangeKm || '',
+        cruisingSpeedKmh: effectiveAircraftData.cruisingSpeedKmh || '',
+        maxAltitudeFt: effectiveAircraftData.maxAltitudeFt || '',
+        yearOfManufacture: effectiveAircraftData.yearOfManufacture || '',
         registrationDate: effectiveAircraftData.registrationDate ? new Date(effectiveAircraftData.registrationDate) : null,
         nextMaintenanceDate: effectiveAircraftData.nextMaintenanceDate ? new Date(effectiveAircraftData.nextMaintenanceDate) : null,
         status: effectiveAircraftData.status || 'ACTIVE',
@@ -108,34 +201,25 @@ const AircraftForm = ({
       });
     } else {
       // Reset form when not editing
-      setFormData({
-        code: '',
-        model: '',
-        manufacturer: '',
-        seatingCapacity: 0,
-        economySeats: 0,
-        premiumEconomySeats: 0,
-        businessSeats: 0,
-        firstClassSeats: 0,
-        rangeKm: 0,
-        cruisingSpeedKmh: 0,
-        maxAltitudeFt: 0,
-        yearOfManufacture: 0,
-        registrationDate: null,
-        nextMaintenanceDate: null,
-        status: 'ACTIVE',
-        isAvailable: true,
-        airlineId: null,
-        currentAirportId: null,
-      });
+      const airlineId = currentAirline?.id || (airlines.length === 1 ? airlines[0].id : null);
+      setFormData(getEmptyFormData(airlineId));
     }
     // Clear errors when form data changes
     setErrors({});
-  }, [currentAirline?.id, effectiveAircraftData, effectiveEditMode]);
+  }, [airlines, currentAirline?.id, effectiveAircraftData, effectiveEditMode]);
 
   // Validate form before submission
   const validateForm = () => {
     const newErrors = {};
+    const seatingCapacity = toRequiredNumber(formData.seatingCapacity);
+    const economySeats = toRequiredNumber(formData.economySeats);
+    const premiumEconomySeats = toRequiredNumber(formData.premiumEconomySeats);
+    const businessSeats = toRequiredNumber(formData.businessSeats);
+    const firstClassSeats = toRequiredNumber(formData.firstClassSeats);
+    const rangeKm = toOptionalPositiveNumber(formData.rangeKm);
+    const cruisingSpeedKmh = toOptionalPositiveNumber(formData.cruisingSpeedKmh);
+    const maxAltitudeFt = toOptionalPositiveNumber(formData.maxAltitudeFt);
+    const yearOfManufacture = toRequiredNumber(formData.yearOfManufacture);
     
     if (!formData.code.trim()) {
       newErrors.code = 'Aircraft code is required';
@@ -149,7 +233,7 @@ const AircraftForm = ({
       newErrors.manufacturer = 'Manufacturer is required';
     }
     
-    if (!formData.seatingCapacity || formData.seatingCapacity <= 0) {
+    if (!seatingCapacity || seatingCapacity <= 0) {
       newErrors.seatingCapacity = 'Seating capacity must be positive';
     }
     
@@ -161,23 +245,35 @@ const AircraftForm = ({
       newErrors.airlineId = 'Airline is required';
     }
     
-    if (formData.economySeats <= 0) {
+    if (economySeats <= 0) {
       newErrors.economySeats = 'Economy seats must be positive';
     }
     
-    if (formData.yearOfManufacture <= 1900 || formData.yearOfManufacture > new Date().getFullYear()) {
-      newErrors.yearOfManufacture = 'Invalid year of manufacture';
+    if (yearOfManufacture < 1950 || yearOfManufacture > new Date().getFullYear()) {
+      newErrors.yearOfManufacture = 'Year must be between 1950 and the current year';
+    }
+
+    if (rangeKm !== null && rangeKm <= 0) {
+      newErrors.rangeKm = 'Range must be positive';
+    }
+
+    if (cruisingSpeedKmh !== null && cruisingSpeedKmh <= 0) {
+      newErrors.cruisingSpeedKmh = 'Cruising speed must be positive';
+    }
+
+    if (maxAltitudeFt !== null && maxAltitudeFt <= 0) {
+      newErrors.maxAltitudeFt = 'Maximum altitude must be positive';
     }
     
     // Calculate total seats from class seats
-    const totalClassSeats = 
-      formData.economySeats + 
-      formData.premiumEconomySeats + 
-      formData.businessSeats + 
-      formData.firstClassSeats;
+    const totalClassSeats =
+      economySeats +
+      premiumEconomySeats +
+      businessSeats +
+      firstClassSeats;
     
-    if (totalClassSeats !== formData.seatingCapacity) {
-      newErrors.seatingCapacity = `Total seating capacity (${formData.seatingCapacity}) must match sum of class seats (${totalClassSeats})`;
+    if (totalClassSeats !== seatingCapacity) {
+      newErrors.seatingCapacity = `Total seating capacity (${seatingCapacity}) must match sum of class seats (${totalClassSeats})`;
     }
     
     setErrors(newErrors);
@@ -190,7 +286,7 @@ const AircraftForm = ({
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : 
-              type === 'number' ? parseInt(value) || 0 : value
+              type === 'number' ? (value === '' ? '' : Number(value)) : value
     }));
   };
 
@@ -218,24 +314,32 @@ const AircraftForm = ({
     if (validateForm()) {
           const requestData = {
             ...formData,
-            registrationDate: formData.registrationDate
-              ? formData.registrationDate.toISOString().split('T')[0]
-              : null,
-            nextMaintenanceDate: formData.nextMaintenanceDate
-              ? formData.nextMaintenanceDate.toISOString().split('T')[0]
-              : null,
+            seatingCapacity: toRequiredNumber(formData.seatingCapacity),
+            economySeats: toRequiredNumber(formData.economySeats),
+            premiumEconomySeats: toRequiredNumber(formData.premiumEconomySeats),
+            businessSeats: toRequiredNumber(formData.businessSeats),
+            firstClassSeats: toRequiredNumber(formData.firstClassSeats),
+            rangeKm: toOptionalPositiveNumber(formData.rangeKm),
+            cruisingSpeedKmh: toOptionalPositiveNumber(formData.cruisingSpeedKmh),
+            maxAltitudeFt: toOptionalPositiveNumber(formData.maxAltitudeFt),
+            yearOfManufacture: toRequiredNumber(formData.yearOfManufacture),
+            registrationDate: formatApiDate(formData.registrationDate),
+            nextMaintenanceDate: formatApiDate(formData.nextMaintenanceDate),
           };
 
           try {
             if (effectiveEditMode) {
               await dispatch(updateAircraft({ aircraftId, aircraftData: requestData })).unwrap();
+              toast.success("Aircraft updated successfully");
               navigate(`/airline/aircraft/${aircraftId}`);
             } else {
               await dispatch(createAircraft(requestData)).unwrap();
+              toast.success("Aircraft created successfully");
               navigate('/airline/aircraft');
             }
           } catch (error) {
             console.error("Error creating aircraft:", error);
+            toast.error(error || "Unable to save aircraft");
           }
         
     }
@@ -252,9 +356,9 @@ const AircraftForm = ({
         <h2 className="text-xl font-bold">{effectiveEditMode ? 'Edit Aircraft' : 'Create New Aircraft'}</h2>
       </div>
       <div className="p-6">
-        {error && (
+        {(error || aircraftError) && (
           <div className="bg-red-50 text-red-800 border border-red-200 p-4 rounded-md mb-6">
-            {error}
+            {error || aircraftError}
           </div>
         )}
         
@@ -348,7 +452,7 @@ const AircraftForm = ({
                     value={formData.yearOfManufacture}
                     onChange={handleChange}
                     placeholder="2020"
-                    min="1900"
+                    min="1950"
                     max={new Date().getFullYear()}
                     required
                   />
@@ -455,6 +559,9 @@ const AircraftForm = ({
                     onChange={handleChange}
                     min="1"
                   />
+                  {errors.rangeKm && (
+                    <p className="text-sm text-red-500">{errors.rangeKm}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -468,6 +575,9 @@ const AircraftForm = ({
                     onChange={handleChange}
                     min="1"
                   />
+                  {errors.cruisingSpeedKmh && (
+                    <p className="text-sm text-red-500">{errors.cruisingSpeedKmh}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -481,6 +591,9 @@ const AircraftForm = ({
                     onChange={handleChange}
                     min="1"
                   />
+                  {errors.maxAltitudeFt && (
+                    <p className="text-sm text-red-500">{errors.maxAltitudeFt}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -524,26 +637,22 @@ const AircraftForm = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="registrationDate">Registration Date</Label>
-                  <Input
-                    className="w-full"
+                  <DateField
                     id="registrationDate"
-                    name="registrationDate"
-                    type="date"
-                    value={formData.registrationDate ? formData.registrationDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => handleDateChange('registrationDate', e.target.value ? new Date(e.target.value) : null)}
+                    label="Registration Date"
+                    value={formData.registrationDate}
+                    onChange={(date) => handleDateChange('registrationDate', date)}
+                    placeholder="Select registration date"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="nextMaintenanceDate">Next Maintenance Date</Label>
-                  <Input
-                    className="w-full"
+                  <DateField
                     id="nextMaintenanceDate"
-                    name="nextMaintenanceDate"
-                    type="date"
-                    value={formData.nextMaintenanceDate ? formData.nextMaintenanceDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => handleDateChange('nextMaintenanceDate', e.target.value ? new Date(e.target.value) : null)}
+                    label="Next Maintenance Date"
+                    value={formData.nextMaintenanceDate}
+                    onChange={(date) => handleDateChange('nextMaintenanceDate', date)}
+                    placeholder="Select maintenance date"
                   />
                 </div>
               </div>

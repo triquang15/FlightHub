@@ -12,6 +12,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import com.triquang.message.BookingConfirmedEvent;
+import java.math.BigDecimal;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.message.SuspiciousLoginEvent;
 
@@ -93,7 +94,7 @@ public class EmailService {
         double seats      = orZero(event.getSeatFees());
         double ancillary  = orZero(event.getAncillaryFees());
         double meals      = orZero(event.getMealFees());
-        double total      = orZero(event.getTotalAmount());
+        BigDecimal total  = orZero(event.getTotalAmount());
 
         ctx.setVariable("baseFareTotal",  fmt(base));
         ctx.setVariable("taxes",          fmt(taxes));
@@ -122,8 +123,16 @@ public class EmailService {
         return v != null ? v : 0.0;
     }
 
+    private static BigDecimal orZero(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
+    }
+
     private static String fmt(double v) {
         return String.format("%.2f", v);
+    }
+
+    private static String fmt(BigDecimal v) {
+        return v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
     private static String baggageLabel(Integer pieces, Double weightPer) {

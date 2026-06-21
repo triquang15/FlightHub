@@ -23,11 +23,16 @@ import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.NotificationAdminService;
 import com.triquang.utils.ResponseUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@Tag(name = "Notification Admin", description = "Inspect notification events, delivery attempts, failed messages, and retry/delete delivery operations.")
 public class NotificationAdminController {
 
     private static final java.util.Set<String> ALLOWED_SORT_FIELDS = java.util.Set.of(
@@ -44,13 +49,20 @@ public class NotificationAdminController {
     private final NotificationAdminService notificationAdminService;
 
     @GetMapping("/overview")
+    @Operation(summary = "Get notification overview", description = "Returns aggregate notification and delivery health metrics for the admin dashboard.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Overview returned")
+    })
     public ResponseEntity<ApiResponse<NotificationOverviewResponse>> overview() {
         return ResponseUtil.ok(notificationAdminService.overview());
     }
 
     @GetMapping("/events")
+    @Operation(summary = "Search notification events", description = "Returns paginated notification events with optional type and text filters.")
     public ResponseEntity<ApiResponse<Page<NotificationEventResponse>>> events(
+            @Parameter(description = "Optional notification type filter.")
             @RequestParam(required = false) NotificationType type,
+            @Parameter(description = "Optional recipient, subject, or payload search text.")
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -65,10 +77,15 @@ public class NotificationAdminController {
     }
 
     @GetMapping("/deliveries")
+    @Operation(summary = "Search notification deliveries", description = "Returns paginated delivery attempts with optional status, channel, type, and text filters.")
     public ResponseEntity<ApiResponse<Page<NotificationDeliveryResponse>>> deliveries(
+            @Parameter(description = "Optional delivery status filter.")
             @RequestParam(required = false) DeliveryStatus status,
+            @Parameter(description = "Optional channel filter such as EMAIL, SMS, or PUSH.")
             @RequestParam(required = false) DeliveryChannel channel,
+            @Parameter(description = "Optional notification type filter.")
             @RequestParam(required = false) NotificationType type,
+            @Parameter(description = "Optional recipient or provider reference search text.")
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -85,6 +102,7 @@ public class NotificationAdminController {
     }
 
     @GetMapping("/deliveries/failed")
+    @Operation(summary = "List failed deliveries", description = "Returns failed delivery attempts ordered by latest update for operational retry handling.")
     public ResponseEntity<ApiResponse<Page<NotificationDeliveryResponse>>> failedDeliveries(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -95,11 +113,21 @@ public class NotificationAdminController {
     }
 
     @PostMapping("/deliveries/{deliveryId}/retry")
+    @Operation(summary = "Retry notification delivery", description = "Queues or immediately retries a failed notification delivery and returns retry metadata.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Retry requested"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery not found")
+    })
     public ResponseEntity<ApiResponse<NotificationRetryResponse>> retryDelivery(@PathVariable Long deliveryId) {
         return ResponseUtil.ok(notificationAdminService.retryDelivery(deliveryId));
     }
 
     @DeleteMapping("/deliveries/{deliveryId}")
+    @Operation(summary = "Delete notification delivery", description = "Deletes a delivery record from the admin view. Use with care because this removes retry/audit context.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery deleted"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery not found")
+    })
     public ResponseEntity<ApiResponse<String>> deleteDelivery(@PathVariable Long deliveryId) {
         notificationAdminService.deleteDelivery(deliveryId);
         return ResponseUtil.ok("Notification delivery deleted");

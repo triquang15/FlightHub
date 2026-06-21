@@ -19,6 +19,10 @@ const seatMapSlice = createSlice({
     clearSeatMapError: (state) => {
       state.error = null;
     },
+    clearCurrentSeatMap: (state) => {
+      state.seatMap = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -31,6 +35,7 @@ const seatMapSlice = createSlice({
       .addCase(createSeatMap.fulfilled, (state, action) => {
         console.log("✅ createSeatMap fulfilled");
         state.loading = false;
+        state.seatMap = action.payload;
         state.seatMaps.push(action.payload);
       })
       .addCase(createSeatMap.rejected, (state, action) => {
@@ -97,5 +102,5 @@ const seatMapSlice = createSlice({
   },
 });
 
-export const { clearSeatMapError } = seatMapSlice.actions;
+export const { clearCurrentSeatMap, clearSeatMapError } = seatMapSlice.actions;
 export default seatMapSlice.reducer;

@@ -14,8 +14,10 @@ import com.triquang.payload.response.AncillaryResponse;
 import com.triquang.payload.response.InsuranceCoverageResponse;
 import com.triquang.repository.AncillaryRepository;
 import com.triquang.repository.InsuranceCoverageRepository;
+import com.triquang.repository.FlightCabinAncillaryRepository;
 import com.triquang.service.AirlineIntegrationService;
 import com.triquang.service.AncillaryService;
+import com.triquang.service.AncillaryOwnershipService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +29,8 @@ public class AncillaryServiceImpl implements AncillaryService {
     private final AncillaryRepository ancillaryRepository;
     private final InsuranceCoverageRepository insuranceCoverageRepository;
     private final AirlineIntegrationService airlineIntegrationService;
+    private final AncillaryOwnershipService ownershipService;
+    private final FlightCabinAncillaryRepository flightCabinAncillaryRepository;
 
     @Override
     public AncillaryResponse create(Long userId, AncillaryRequest request){
@@ -47,9 +51,8 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
-    public AncillaryResponse getById(Long id){
-        var ancillary = ancillaryRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+    public AncillaryResponse getById(Long userId, Long id){
+        var ancillary = ownershipService.requireOwnedAncillary(userId, id);
 
         List<InsuranceCoverage> insuranceCoverages = insuranceCoverageRepository.findByAncillary(ancillary);
         List<InsuranceCoverageResponse> coverageResponseList = insuranceCoverages.stream()
@@ -76,9 +79,8 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
-    public AncillaryResponse update(Long id, AncillaryRequest request) {
-        var ancillary = ancillaryRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+    public AncillaryResponse update(Long userId, Long id, AncillaryRequest request) {
+        var ancillary = ownershipService.requireOwnedAncillary(userId, id);
 
         ancillary.setType(request.getType());
         ancillary.setSubType(request.getSubType());
@@ -99,7 +101,12 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
-    public void delete(Long id) {
-        ancillaryRepository.deleteById(id);
+    public void delete(Long userId, Long id) {
+        var ancillary = ownershipService.requireOwnedAncillary(userId, id);
+        if (flightCabinAncillaryRepository.existsByAncillaryId(id)
+                || insuranceCoverageRepository.existsByAncillaryId(id)) {
+            throw new BaseException(ErrorCode.ANCILLARY_IN_USE);
+        }
+        ancillaryRepository.delete(ancillary);
     }
 }

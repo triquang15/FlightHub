@@ -2,6 +2,7 @@ package com.triquang.payload.response;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.triquang.enums.TicketStatus;
@@ -29,6 +30,6 @@ public class TicketResponse {
 
     // Payment details
     private Long paymentId;
-    private Double paymentAmount;
+    private BigDecimal paymentAmount;
     private String paymentCurrency;
 }

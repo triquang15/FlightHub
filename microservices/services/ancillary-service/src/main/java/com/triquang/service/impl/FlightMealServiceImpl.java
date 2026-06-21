@@ -14,6 +14,7 @@ import com.triquang.payload.response.FlightMealResponse;
 import com.triquang.repository.FlightMealRepository;
 import com.triquang.repository.MealRepository;
 import com.triquang.service.FlightMealService;
+import com.triquang.service.AncillaryOwnershipService;
 import com.triquang.utils.FlightMealSpecification;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,15 +33,16 @@ public class FlightMealServiceImpl implements FlightMealService {
 
     private final FlightMealRepository flightMealRepository;
     private final MealRepository mealRepository;
+    private final AncillaryOwnershipService ownershipService;
 
     @Override
     @Transactional
-    public FlightMealResponse create(FlightMealRequest request){
+    public FlightMealResponse create(Long userId, FlightMealRequest request){
         log.debug("Creating flight meal for flight ID: {} and meal ID: {}",
                 request.getFlightId(), request.getMealId());
 
-        Meal meal = mealRepository.findById(request.getMealId())
-                .orElseThrow(() -> new BaseException(ErrorCode.MEAL_NOT_FOUND));
+        ownershipService.requireOwnedFlight(userId, request.getFlightId());
+        Meal meal = ownershipService.requireOwnedMeal(userId, request.getMealId());
 
         Specification<FlightMeal> spec = FlightMealSpecification.hasFlightIdAndMealId(
                 request.getFlightId(), request.getMealId());
@@ -51,7 +55,8 @@ public class FlightMealServiceImpl implements FlightMealService {
                 .flightId(request.getFlightId())
                 .meal(meal)
                 .available(request.getAvailable())
-                .price(request.getPrice())
+                .price(requireValidPrice(request.getPrice()))
+                .currency(normalizeCurrency(request.getCurrency()))
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .build();
 
@@ -63,15 +68,15 @@ public class FlightMealServiceImpl implements FlightMealService {
 
     @Override
     @Transactional
-    public List<FlightMealResponse> bulkCreate(List<FlightMealRequest> requests) {
+    public List<FlightMealResponse> bulkCreate(Long userId, List<FlightMealRequest> requests) {
         log.debug("Bulk creating {} flight meals", requests.size());
 
         List<FlightMealResponse> responses = new ArrayList<>();
 
         for (FlightMealRequest request : requests) {
 
-            Meal meal = mealRepository.findById(request.getMealId())
-                    .orElseThrow(() -> new BaseException(ErrorCode.MEAL_NOT_FOUND));
+            ownershipService.requireOwnedFlight(userId, request.getFlightId());
+            Meal meal = ownershipService.requireOwnedMeal(userId, request.getMealId());
 
             Specification<FlightMeal> spec = FlightMealSpecification.hasFlightIdAndMealId(
                     request.getFlightId(), request.getMealId());
@@ -86,7 +91,8 @@ public class FlightMealServiceImpl implements FlightMealService {
                     .flightId(request.getFlightId())
                     .meal(meal)
                     .available(request.getAvailable())
-                    .price(request.getPrice())
+                    .price(requireValidPrice(request.getPrice()))
+                    .currency(normalizeCurrency(request.getCurrency()))
                     .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                     .build();
 
@@ -128,28 +134,21 @@ public class FlightMealServiceImpl implements FlightMealService {
 
     @Override
     @Transactional
-    public FlightMealResponse update(Long id, FlightMealRequest request) {
+    public FlightMealResponse update(Long userId, Long id, FlightMealRequest request) {
 
         log.debug("Updating flight meal with id: {}", id);
 
-        FlightMeal flightMeal = flightMealRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_MEAL_NOT_FOUND));
+        FlightMeal flightMeal = ownershipService.requireOwnedFlightMeal(userId, id);
 
-        // update flightId
-        if (!flightMeal.getFlightId().equals(request.getFlightId())) {
-            flightMeal.setFlightId(request.getFlightId());
-        }
-
-        // update meal
-        if (!flightMeal.getMeal().getId().equals(request.getMealId())) {
-            Meal meal = mealRepository.findById(request.getMealId())
-                    .orElseThrow(() -> new BaseException(ErrorCode.MEAL_NOT_FOUND));
-            flightMeal.setMeal(meal);
+        if (!flightMeal.getFlightId().equals(request.getFlightId())
+                || !flightMeal.getMeal().getId().equals(request.getMealId())) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
         flightMeal.setAvailable(request.getAvailable());
-        flightMeal.setPrice(request.getPrice());
-        flightMeal.setDisplayOrder(request.getDisplayOrder());
+        flightMeal.setPrice(requireValidPrice(request.getPrice()));
+        flightMeal.setCurrency(normalizeCurrency(request.getCurrency()));
+        flightMeal.setDisplayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0);
 
         FlightMeal updated = flightMealRepository.save(flightMeal);
         log.info("Flight meal updated successfully with id: {}", updated.getId());
@@ -159,21 +158,16 @@ public class FlightMealServiceImpl implements FlightMealService {
 
     @Override
     @Transactional
-    public void delete(Long id) {
-        if (!flightMealRepository.existsById(id)) {
-            throw new BaseException(ErrorCode.FLIGHT_MEAL_NOT_FOUND);
-        }
-
-        flightMealRepository.deleteById(id);
+    public void delete(Long userId, Long id) {
+        flightMealRepository.delete(ownershipService.requireOwnedFlightMeal(userId, id));
         log.info("Flight meal deleted successfully with id: {}", id);
     }
 
     @Override
     @Transactional
-    public FlightMealResponse updateAvailability(Long id, Boolean available) {
+    public FlightMealResponse updateAvailability(Long userId, Long id, Boolean available) {
 
-        FlightMeal flightMeal = flightMealRepository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_MEAL_NOT_FOUND));
+        FlightMeal flightMeal = ownershipService.requireOwnedFlightMeal(userId, id);
 
         flightMeal.setAvailable(available);
 
@@ -185,9 +179,33 @@ public class FlightMealServiceImpl implements FlightMealService {
 
     @Override
     public Double calculateMealPrice(List<Long> mealIds) {
-        return flightMealRepository.findAllById(mealIds)
-                .stream()
-                .mapToDouble(FlightMeal::getPrice)
-                .sum();
+        if (mealIds == null || mealIds.isEmpty()) {
+            return 0.0;
+        }
+        if (mealIds.stream().anyMatch(id -> id == null)
+                || Set.copyOf(mealIds).size() != mealIds.size()) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        List<FlightMeal> selections = flightMealRepository.findAllById(mealIds);
+        if (selections.size() != mealIds.size()
+                || selections.stream().anyMatch(item -> !Boolean.TRUE.equals(item.getAvailable()))) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return selections.stream().mapToDouble(FlightMeal::getPrice).sum();
+    }
+
+    private double requireValidPrice(Double price) {
+        if (price == null || !Double.isFinite(price) || price < 0) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return price;
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || !currency.matches("[A-Za-z]{3}")) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return currency.toUpperCase(Locale.ROOT);
     }
 }

@@ -3,11 +3,16 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
 const unwrapApiData = (response) => response?.data?.data ?? response?.data;
-const getErrorMessage = (err, fallback) =>
-  err.response?.data?.message ||
-  err.response?.data?.error ||
-  err.message ||
-  fallback;
+const getErrorMessage = (err, fallback) => {
+  const data = err.response?.data;
+  if (typeof data?.message === "string") return data.message;
+  if (typeof data?.error === "string") return data.error;
+  if (Array.isArray(data?.errors)) return data.errors.join(", ");
+  if (data?.errors && typeof data.errors === "object") {
+    return Object.values(data.errors).filter(Boolean).join(", ");
+  }
+  return err.message || fallback;
+};
 
 // ================= THUNKS =================
 
@@ -62,4 +67,3 @@ export const deleteSeatMap = createAsyncThunk(
     }
   }
 );
-

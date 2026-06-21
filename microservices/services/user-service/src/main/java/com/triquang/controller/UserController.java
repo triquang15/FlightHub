@@ -35,10 +35,15 @@ import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Tag(name = "Users", description = "Manage profiles, preferences, password recovery, user sessions, and system-admin user operations.")
 public class UserController {
 
     private final UserService userService;
@@ -46,31 +51,44 @@ public class UserController {
 
     // ================= GET MY PROFILE =================
     @GetMapping("/profile")
+    @Operation(summary = "Get my profile", description = "Returns the authenticated user's profile using the trusted X-User-Id header injected by the gateway.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Profile returned"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<ApiResponse<UserDTO>> getMyProfile(
-            @RequestHeader("X-User-Id") Long userId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
         return ResponseUtil.ok(userService.getUserById(userId));
     }
 
     // ================= UPDATE PROFILE =================
     @PutMapping("/profile")
+    @Operation(summary = "Update my profile", description = "Updates mutable profile fields for the authenticated user.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Profile updated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid profile payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
-            @RequestHeader("X-User-Id") Long userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody UpdateProfileRequest request) {
 
         return ResponseUtil.ok(userService.updateProfile(userId, request));
     }
 
     @GetMapping("/preferences")
+    @Operation(summary = "Get my preferences", description = "Returns personalization and notification preference settings for the authenticated user.")
     public ResponseEntity<ApiResponse<UserPreferencesResponse>> getPreferences(
-            @RequestHeader("X-User-Id") Long userId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
         return ResponseUtil.ok(userPreferencesService.getPreferences(userId));
     }
 
     @PatchMapping("/preferences")
+    @Operation(summary = "Update my preferences", description = "Partially updates personalization and notification preferences for the authenticated user.")
     public ResponseEntity<ApiResponse<UserPreferencesResponse>> updatePreferences(
-            @RequestHeader("X-User-Id") Long userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody UpdateUserPreferencesRequest request) {
 
         return ResponseUtil.ok(userPreferencesService.updatePreferences(userId, request));
@@ -78,6 +96,7 @@ public class UserController {
 
     // ================= GET BY ID =================
     @GetMapping("/{id}")
+    @Operation(summary = "Get user by ID", description = "Returns a user profile by ID for internal/admin read paths.")
     public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
 
         return ResponseUtil.ok(userService.getUserById(id));
@@ -85,6 +104,7 @@ public class UserController {
 
     // ================= GET ALL =================
     @GetMapping
+    @Operation(summary = "Search users", description = "Returns a pageable user list with optional keyword and role filters for system administration.")
     public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(
             Pageable pageable,
             @RequestParam(required = false) String keyword,
@@ -95,8 +115,14 @@ public class UserController {
 
     // ================= DELETE USER =================
     @DeleteMapping("/{id:\\d+}")
+    @Operation(summary = "Delete user", description = "System-admin endpoint. Deletes a user account after validating ROLE_SYSTEM_ADMIN from gateway roles.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User deleted"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "System admin role required"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
+    })
     public ResponseEntity<ApiResponse<String>> deleteUser(
-            @RequestHeader("X-User-Roles") String roles,
+            @Parameter(hidden = true) @RequestHeader("X-User-Roles") String roles,
             @PathVariable Long id) {
 
         requireSystemAdmin(roles);
@@ -106,8 +132,9 @@ public class UserController {
 
     // ================= CHANGE PASSWORD =================
     @PostMapping("/change-password")
+    @Operation(summary = "Change password", description = "Changes the authenticated user's password after validating the current password.")
     public ResponseEntity<ApiResponse<String>> changePassword(
-            @RequestHeader("X-User-Id") Long userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody ChangePasswordRequest request) {
 
         userService.changePassword(userId, request);
@@ -116,6 +143,7 @@ public class UserController {
 
     // ================= FORGOT PASSWORD =================
     @PostMapping("/forgot-password")
+    @Operation(summary = "Request password reset", description = "Starts a password reset flow. The response is intentionally generic to avoid account enumeration.")
     public ResponseEntity<ApiResponse<String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
 
@@ -125,6 +153,7 @@ public class UserController {
 
     // ================= RESET PASSWORD =================
     @PostMapping("/reset-password")
+    @Operation(summary = "Reset password", description = "Completes password reset using a valid reset token and a new password.")
     public ResponseEntity<ApiResponse<String>> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request) {
 
@@ -134,16 +163,18 @@ public class UserController {
 
     // ================= GET SESSIONS =================
     @GetMapping("/sessions")
+    @Operation(summary = "List my sessions", description = "Returns active refresh-token sessions/devices for the authenticated user.")
     public ResponseEntity<ApiResponse<List<SessionDTO>>> getSessions(
-            @RequestHeader("X-User-Id") Long userId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
         return ResponseUtil.ok(userService.getUserSessions(userId));
     }
 
     // ================= LOGOUT DEVICE =================
     @DeleteMapping("/sessions/{deviceId}")
+    @Operation(summary = "Logout one device", description = "Revokes one device session owned by the authenticated user.")
     public ResponseEntity<ApiResponse<String>> logoutDevice(
-            @RequestHeader("X-User-Id") Long userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
             @PathVariable String deviceId) {
 
         userService.logoutDevice(userId, deviceId);
@@ -152,8 +183,9 @@ public class UserController {
 
     // ================= LOGOUT ALL =================
     @PostMapping("/logout-all")
+    @Operation(summary = "Logout all user sessions", description = "Revokes all refresh-token sessions for the authenticated user.")
     public ResponseEntity<ApiResponse<String>> logoutAll(
-            @RequestHeader("X-User-Id") Long userId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
         userService.logoutAll(userId);
         return ResponseUtil.ok("All sessions revoked");

@@ -41,4 +41,11 @@ class SeatLifecyclePolicyTest {
         assertThat(SeatLifecyclePolicy.canConfirm(SeatAvailabilityStatus.BLOCKED))
                 .isFalse();
     }
+
+    @Test
+    void bookedSeatsCanBeReleasedForValidatedCancellationButOperationalSeatsCannot() {
+        assertThat(SeatLifecyclePolicy.canRelease(SeatAvailabilityStatus.BOOKED)).isTrue();
+        assertThat(SeatLifecyclePolicy.canRelease(SeatAvailabilityStatus.OCCUPIED)).isFalse();
+        assertThat(SeatLifecyclePolicy.canRelease(SeatAvailabilityStatus.BLOCKED)).isFalse();
+    }
 }

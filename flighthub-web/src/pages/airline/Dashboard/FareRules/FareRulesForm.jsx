@@ -1,887 +1,300 @@
-import React, { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Save,
-  FileText,
-  RefreshCw,
-  Clock,
-  DollarSign,
-  CreditCard,
-  Percent,
-  AlertTriangle,
-  Info,
-  Plane,
-  Armchair,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRightLeft, CircleDollarSign, Loader2, Save, ShieldCheck } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  createFareRule,
-  updateFareRule,
-  getFareRuleById,
-} from "@/Redux/fareRules/fareRulesThunk";
-import { getFlightsByAirline} from "@/Redux/flight/flightThunk";
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
-
-import { Formik, Form, Field, ErrorMessage } from "formik";
-import * as Yup from "yup";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
+import { clearCurrentFareRule, clearFareRulesError } from "@/Redux/fareRules/fareRulesSlice";
+import { createFareRule, getFareRuleById, updateFareRule } from "@/Redux/fareRules/fareRulesThunk";
+import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
+
+const EMPTY_FORM = {
+  ruleName: "",
+  fareId: "",
+  isRefundable: false,
+  cancellationFee: "",
+  refundDeadlineDays: "",
+  isChangeable: false,
+  changeFee: "",
+  changeDeadlineHours: "",
+};
+
+const toOptionalNumber = (value) => (value === "" ? null : Number(value));
+
+const FieldError = ({ children }) => children ? <p className="text-xs text-destructive">{children}</p> : null;
 
 const FareRulesForm = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { id } = useParams();
+  const editing = Boolean(id);
 
-  const { flights } = useSelector((state) => state.flight);
-  const { cabinClasses } = useSelector((state) => state.cabinClass);
-  const { fares } = useSelector((state) => state.fare);
-  const { currentFareRule } = useSelector((state) => state.fareRules);
+  const { flights = [] } = useSelector((state) => state.flight);
+  const { cabinClasses = [] } = useSelector((state) => state.cabinClass);
+  const { fares = [], loading: faresLoading } = useSelector((state) => state.fare);
+  const { currentFareRule, loading, error } = useSelector((state) => state.fareRules);
 
-  // State for cascading dropdowns
+  const [form, setForm] = useState(EMPTY_FORM);
   const [selectedFlight, setSelectedFlight] = useState("");
   const [selectedCabin, setSelectedCabin] = useState("");
-  const [selectedFare, setSelectedFare] = useState("");
-  const [initialValues, setInitialValues] = useState({
-    ruleName: "",
-    fareId: "",
-    isRefundable: false,
-    changeFee: "",
-    cancellationFee: "",
-    refundDeadlineDays: "",
-    changeDeadlineHours: "",
-    noShowFee: "",
-    upgradePossible: false,
-    mileageEarnPercentage: "",
-  });
+  const [errors, setErrors] = useState({});
 
-  // Fetch fare rule by ID when editing
   useEffect(() => {
-    if (id) {
-      dispatch(getFareRuleById(id));
-    }
-  }, [id, dispatch]);
-
-  // Update initialValues when currentFareRule is loaded
-  useEffect(() => {
-    if (currentFareRule) {
-      const fareRuleData = currentFareRule;
-      const initialValues = {
-        ruleName: fareRuleData?.ruleName ?? "",
-        fareId: fareRuleData?.fareId ?? "",
-        isRefundable: fareRuleData?.isRefundable ?? false,
-        changeFee: fareRuleData?.changeFee ?? "",
-        cancellationFee: fareRuleData?.cancellationFee ?? "",
-        refundDeadlineDays: fareRuleData?.refundDeadlineDays ?? "",
-        changeDeadlineHours: fareRuleData?.changeDeadlineHours ?? "",
-        noShowFee: fareRuleData?.noShowFee ?? "",
-        upgradePossible: fareRuleData?.upgradePossible ?? false,
-        mileageEarnPercentage: fareRuleData?.mileageEarnPercentage ?? "",
-      };
-      setInitialValues(initialValues);
-    }
-  }, [currentFareRule]);
-
-  // Validation schema (matching FareRulesRequest.java validations)
-  const validationSchema = Yup.object({
-    ruleName: Yup.string().required("Rule name is required"),
-    fareId: Yup.number()
-      .required("Fare ID is required")
-      .positive("Fare ID must be positive"),
-    isRefundable: Yup.boolean(),
-    changeFee: Yup.number()
-      .min(0, "Change fee must be positive or zero")
-      .nullable(),
-    cancellationFee: Yup.number()
-      .min(0, "Cancellation fee must be positive or zero")
-      .nullable(),
-    refundDeadlineDays: Yup.number()
-      .min(0, "Refund deadline days must be positive or zero")
-      .integer()
-      .nullable(),
-    changeDeadlineHours: Yup.number()
-      .min(0, "Change deadline hours must be positive or zero")
-      .integer()
-      .nullable(),
-    noShowFee: Yup.number()
-      .min(0, "No show fee must be positive or zero")
-      .nullable(),
-    upgradePossible: Yup.boolean(),
-    mileageEarnPercentage: Yup.number()
-      .min(0, "Mileage earn percentage must be positive or zero")
-      .max(500, "Maximum 500%")
-      .integer()
-      .nullable(),
-  });
-
-  // Handle form submission
-  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
-    try {
-      const formattedValues = {
-        ...values,
-        fareId: parseInt(values.fareId),
-        changeFee: values.changeFee ? parseFloat(values.changeFee) : null,
-        cancellationFee: values.cancellationFee
-          ? parseFloat(values.cancellationFee)
-          : null,
-        refundDeadlineDays: values.refundDeadlineDays
-          ? parseInt(values.refundDeadlineDays)
-          : null,
-        changeDeadlineHours: values.changeDeadlineHours
-          ? parseInt(values.changeDeadlineHours)
-          : null,
-        noShowFee: values.noShowFee ? parseFloat(values.noShowFee) : null,
-        mileageEarnPercentage: values.mileageEarnPercentage
-          ? parseInt(values.mileageEarnPercentage)
-          : null,
-      };
-
-      if (currentFareRule?.id) {
-        await dispatch(
-          updateFareRule({ id: currentFareRule.id, fareRuleData: formattedValues })
-        ).unwrap();
-        toast.success("Fare rule updated successfully!", {
-          description: `${formattedValues.ruleName} has been updated.`,
-        });
-      } else {
-        await dispatch(createFareRule(formattedValues)).unwrap();
-        toast.success("Fare rule created successfully!", {
-          description: `${formattedValues.ruleName} has been created.`,
-        });
-
-        // Reset form and selections after successful creation
-        resetForm();
-        setSelectedFlight(null);
-        setSelectedCabin(null);
-        setSelectedFare(null);
-      }
-      // navigate("/airline/fare-rules");
-    } catch (error) {
-      console.error("Error saving fare rule:", error);
-      toast.error("Failed to save fare rule", {
-        description:
-          error?.message ||
-          "An error occurred while saving the fare rule. Please try again.",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Load flights on component mount
-  useEffect(() => {
+    dispatch(clearFareRulesError());
     dispatch(getFlightsByAirline());
-  }, [dispatch]);
+    if (editing) dispatch(getFareRuleById(id));
+    else dispatch(clearCurrentFareRule());
 
-  // Load cabin classes when flight is selected (from aircraft)
+    return () => {
+      dispatch(clearCurrentFareRule());
+      dispatch(clearFareRulesError());
+    };
+  }, [dispatch, editing, id]);
+
   useEffect(() => {
-    console.log("selected flight", selectedFlight);
-    if (selectedFlight) {
-      const flight = flights?.find((f) => f.id === parseInt(selectedFlight));
-      if (flight?.aircraft?.id) {
-        dispatch(getCabinClassesByAircraft(flight.aircraft.id));
+    if (!editing || !currentFareRule || String(currentFareRule.id) !== String(id)) return;
+    // Hydrate the route-specific editable draft after the API response arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm({
+      ruleName: currentFareRule.ruleName ?? "",
+      fareId: String(currentFareRule.fareId ?? ""),
+      isRefundable: Boolean(currentFareRule.isRefundable),
+      cancellationFee: currentFareRule.cancellationFee ?? "",
+      refundDeadlineDays: currentFareRule.refundDeadlineDays ?? "",
+      isChangeable: Boolean(currentFareRule.isChangeable),
+      changeFee: currentFareRule.changeFee ?? "",
+      changeDeadlineHours: currentFareRule.changeDeadlineHours ?? "",
+    });
+  }, [currentFareRule, editing, id]);
+
+  const availableFares = useMemo(
+    () => (Array.isArray(fares) ? fares : []).filter((fare) => !fare.fareRulesId && !fare.fareRules),
+    [fares],
+  );
+
+  const updateField = (name, value) => {
+    setForm((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: undefined }));
+  };
+
+  const handleFlightChange = (flightId) => {
+    setSelectedFlight(flightId);
+    setSelectedCabin("");
+    updateField("fareId", "");
+    const flight = flights.find((item) => String(item.id) === flightId);
+    const aircraftId = flight?.aircraft?.id ?? flight?.aircraftId;
+    if (aircraftId) dispatch(getCabinClassesByAircraft(aircraftId));
+  };
+
+  const handleCabinChange = (cabinId) => {
+    setSelectedCabin(cabinId);
+    updateField("fareId", "");
+    if (selectedFlight && cabinId) {
+      dispatch(getFlightFares({ flightId: Number(selectedFlight), cabinId: Number(cabinId) }));
+    }
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    if (!form.ruleName.trim()) nextErrors.ruleName = "Rule name is required.";
+    if (!editing && !selectedFlight) nextErrors.flight = "Select a flight.";
+    if (!editing && !selectedCabin) nextErrors.cabin = "Select a cabin class.";
+    if (!form.fareId) nextErrors.fareId = "Select a fare.";
+    if (form.isRefundable) {
+      if (toOptionalNumber(form.cancellationFee) < 0) nextErrors.cancellationFee = "Fee cannot be negative.";
+      if (!Number.isInteger(toOptionalNumber(form.refundDeadlineDays)) || toOptionalNumber(form.refundDeadlineDays) < 0) {
+        nextErrors.refundDeadlineDays = "Enter a whole number of days.";
       }
     }
-  }, [selectedFlight, flights, dispatch]);
-
-  // Load fares when cabin is selected
-  useEffect(() => {
-    if (selectedFlight && selectedCabin) {
-      dispatch(getFlightFares({
-        flightId: parseInt(selectedFlight),
-        cabinId: parseInt(selectedCabin)
-      }));
-      setSelectedFare(null);
+    if (form.isChangeable) {
+      if (toOptionalNumber(form.changeFee) < 0) nextErrors.changeFee = "Fee cannot be negative.";
+      if (!Number.isInteger(toOptionalNumber(form.changeDeadlineHours)) || toOptionalNumber(form.changeDeadlineHours) < 0) {
+        nextErrors.changeDeadlineHours = "Enter a whole number of hours.";
+      }
     }
-  }, [selectedCabin, selectedFlight, dispatch]);
-
-  const formatCurrency = (value) => {
-    if (!value) return "";
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-    }).format(value);
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validate()) return;
+
+    const payload = {
+      ruleName: form.ruleName.trim(),
+      fareId: Number(form.fareId),
+      isRefundable: form.isRefundable,
+      cancellationFee: form.isRefundable ? toOptionalNumber(form.cancellationFee) : null,
+      refundDeadlineDays: form.isRefundable ? toOptionalNumber(form.refundDeadlineDays) : null,
+      isChangeable: form.isChangeable,
+      changeFee: form.isChangeable ? toOptionalNumber(form.changeFee) : null,
+      changeDeadlineHours: form.isChangeable ? toOptionalNumber(form.changeDeadlineHours) : null,
+    };
+
+    try {
+      const saved = editing
+        ? await dispatch(updateFareRule({ id, fareRuleData: payload })).unwrap()
+        : await dispatch(createFareRule(payload)).unwrap();
+      toast.success(editing ? "Fare rule updated" : "Fare rule created", {
+        description: `${saved.ruleName} is ready for fare #${saved.fareId}.`,
+      });
+      navigate(`/airline/fare-rules/${saved.id}`);
+    } catch (submitError) {
+      toast.error(editing ? "Unable to update fare rule" : "Unable to create fare rule", {
+        description: String(submitError),
+      });
+    }
+  };
+
+  const disableSave = loading || (editing && !currentFareRule);
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="bg-white rounded-lg shadow-sm border w-full">
-        <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/airline/fare-rules")}
-            className="flex items-center hover:bg-gray-100"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Fare Rules
+    <form onSubmit={handleSubmit} className="space-y-5 pb-8">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-start gap-3">
+          <Button type="button" variant="ghost" size="icon" aria-label="Back to fare rules" onClick={() => navigate("/airline/fare-rules")}>
+            <ArrowLeft className="size-4" />
           </Button>
-          <div className="text-sm text-gray-500 font-medium">
-            / Fare Rules / {currentFareRule ? "Edit" : "New Rule"}
+          <div>
+            <p className="text-sm font-medium text-primary">Commercial controls</p>
+            <h1 className="mt-1 text-2xl font-semibold text-foreground">{editing ? "Edit fare rule" : "Create fare rule"}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Configure customer flexibility for one published fare.</p>
           </div>
         </div>
+        <Button type="submit" disabled={disableSave}>
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          {editing ? "Save changes" : "Create rule"}
+        </Button>
+      </header>
 
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
+      {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+
+      {!editing && (
+        <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+          <div className="mb-4">
+            <h2 className="font-semibold text-foreground">Fare assignment</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Only fares without an existing rule are available.</p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Flight</Label>
+              <Select value={selectedFlight} onValueChange={handleFlightChange}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select flight" /></SelectTrigger>
+                <SelectContent>
+                  {flights.map((flight) => (
+                    <SelectItem key={flight.id} value={String(flight.id)}>
+                      {flight.flightNumber} · {flight.departureAirport?.iataCode}–{flight.arrivalAirport?.iataCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError>{errors.flight}</FieldError>
+            </div>
+            <div className="space-y-2">
+              <Label>Cabin class</Label>
+              <Select value={selectedCabin} onValueChange={handleCabinChange} disabled={!selectedFlight}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select cabin" /></SelectTrigger>
+                <SelectContent>
+                  {cabinClasses.map((cabin) => <SelectItem key={cabin.id} value={String(cabin.id)}>{cabin.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <FieldError>{errors.cabin}</FieldError>
+            </div>
+            <div className="space-y-2">
+              <Label>Fare</Label>
+              <Select value={form.fareId} onValueChange={(value) => updateField("fareId", value)} disabled={!selectedCabin || faresLoading}>
+                <SelectTrigger className="w-full"><SelectValue placeholder={faresLoading ? "Loading fares..." : "Select fare"} /></SelectTrigger>
+                <SelectContent>
+                  {availableFares.map((fare) => (
+                    <SelectItem key={fare.id} value={String(fare.id)}>
+                      {fare.name} · {fare.rbdCode} · {Number(fare.currentPrice ?? fare.baseFare).toLocaleString()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError>{errors.fareId}</FieldError>
+              {selectedCabin && !faresLoading && availableFares.length === 0 && (
+                <p className="text-xs text-muted-foreground">No unconfigured fares are available in this cabin.</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="space-y-2">
+            <Label htmlFor="ruleName">Rule name</Label>
+            <Input id="ruleName" value={form.ruleName} onChange={(event) => updateField("ruleName", event.target.value)} placeholder="Example: Economy Flex" maxLength={100} />
+            <FieldError>{errors.ruleName}</FieldError>
+          </div>
+          <div className="space-y-2">
+            <Label>Assigned fare</Label>
+            <div className="flex h-8 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-foreground">
+              {form.fareId ? `Fare #${form.fareId}` : "Not selected"}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-md border border-border bg-card p-4 sm:p-5">
+          <div className="flex min-h-14 items-start justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                {currentFareRule ? "Edit Fare Rule" : "Create New Fare Rule"}
-              </h2>
-              <p className="text-gray-600 mt-2">
-                Configure fare rules and policies for your airline
-              </p>
+              <h2 className="flex items-center gap-2 font-semibold text-foreground"><ShieldCheck className="size-4" /> Refund policy</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Allow cancellation and refund before departure.</p>
             </div>
-            <div className="hidden md:block">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-blue-900">
-                  💡 Smart Rules
-                </p>
-                <p className="text-xs text-blue-700">
-                  Define policies that apply to specific fares
-                </p>
-              </div>
+            <Switch checked={form.isRefundable} onCheckedChange={(checked) => updateField("isRefundable", checked)} aria-label="Refundable fare" />
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="cancellationFee">Cancellation fee</Label>
+              <Input id="cancellationFee" type="number" min="0" step="0.01" disabled={!form.isRefundable} value={form.cancellationFee} onChange={(event) => updateField("cancellationFee", event.target.value)} placeholder="0.00" />
+              <FieldError>{errors.cancellationFee}</FieldError>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="refundDeadlineDays">Deadline in days</Label>
+              <Input id="refundDeadlineDays" type="number" min="0" step="1" disabled={!form.isRefundable} value={form.refundDeadlineDays} onChange={(event) => updateField("refundDeadlineDays", event.target.value)} placeholder="7" />
+              <FieldError>{errors.refundDeadlineDays}</FieldError>
             </div>
           </div>
         </div>
 
-        <div className="p-6">
-          <Formik
-            initialValues={initialValues}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-            enableReinitialize
-          >
-            {({ isSubmitting, values, setFieldValue }) => (
-              <Form className="space-y-8">
-                {/* Flight, Cabin, and Fare Selection */}
-             {!currentFareRule &&   <Card className="border-l-4 border-l-indigo-500">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plane className="h-5 w-5 text-indigo-600" />
-                      Flight & Fare Selection
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Flight Selection */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="flightSelect"
-                          className="flex items-center gap-2"
-                        >
-                          <Plane className="h-4 w-4 text-blue-600" />
-                          Select Flight *
-                        </Label>
-                        <Select
-                        
-                          value={selectedFlight}
-                          onValueChange={(value) => {
-                            setSelectedFlight(value);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a flight" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {flights && flights?.length > 0 ? (
-                              flights.map((flight) => (
-                                <SelectItem
-                                  key={flight.id}
-                                  value={flight.id.toString()}
-                                >
-                                  {flight.flightNumber} -{" "}
-                                  {flight.departureAirport.iataCode} →{" "}
-                                  {flight.arrivalAirport.iataCode}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-flights" disabled>
-                                No flights available
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Choose the flight for this fare rule
-                        </p>
-                      </div>
-
-                      {/* Cabin Selection */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="cabinSelect"
-                          className="flex items-center gap-2"
-                        >
-                          <Armchair className="h-4 w-4 text-purple-600" />
-                          Select Cabin *
-                        </Label>
-                        <Select
-                          value={selectedCabin}
-                          onValueChange={(value) => {
-                            setSelectedCabin(value);
-                          }}
-                          disabled={!selectedFlight || cabinClasses?.length === 0}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a cabin class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cabinClasses && cabinClasses.length > 0 ? (
-                              cabinClasses.map((cabinClass) => (
-                                <SelectItem
-                                  key={cabinClass.id}
-                                  value={cabinClass.id.toString()}
-                                >
-                                  {cabinClass.name || cabinClass.cabinClassType ||
-                                    `Cabin ${cabinClass.id}`}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-cabins" disabled>
-                                {selectedFlight
-                                  ? "No cabin classes available"
-                                  : "Select a flight first"}
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Choose the cabin class
-                        </p>
-                      </div>
-
-                      {/* Fare Selection */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="fareSelect"
-                          className="flex items-center gap-2"
-                        >
-                          <DollarSign className="h-4 w-4 text-green-600" />
-                          Select Fare *
-                        </Label>
-                        <Select
-                          value={selectedFare}
-                          onValueChange={(value) => {
-                            setSelectedFare(value);
-                            setFieldValue("fareId", value);
-                          }}
-                          disabled={!selectedCabin || fares?.length === 0}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a fare" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fares && fares.length > 0 ? (
-                              fares.map((fare) => (
-                                <SelectItem
-                                  key={fare.id}
-                                  value={fare.id.toString()}
-                                >
-                                  {fare.name} ({fare.rbdCode}) -{" "}
-                                  {formatCurrency(fare.baseFare)}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-fares" disabled>
-                                {selectedCabin
-                                  ? "No fares available"
-                                  : "Select a cabin class first"}
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Choose the fare for this rule
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Display Selected Fare ID */}
-                    {selectedFare && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-green-900">
-                            Selected Fare ID:
-                          </span>
-                          <Badge variant="default" className="bg-green-600">
-                            {selectedFare}
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>}
-
-                {/* Basic Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      Basic Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <Label
-                          htmlFor="ruleName"
-                          className="flex items-center gap-2"
-                        >
-                          <FileText className="h-4 w-4 text-primary" />
-                          Rule Name *
-                        </Label>
-                        <Field
-                          as={Input}
-                          id="ruleName"
-                          name="ruleName"
-                          placeholder="e.g., Economy Standard Rules"
-                        />
-                        <ErrorMessage
-                          name="ruleName"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                      </div>
-
-                      {/* Hidden fareId field - auto-populated from fare selection */}
-                      <Field type="hidden" name="fareId" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Refund & Change Policies */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <RefreshCw className="h-5 w-5 text-green-600" />
-                      Refund & Change Policies
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Toggle Switches */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
-                        <div>
-                          <Label htmlFor="isRefundable" className="font-medium">
-                            Refundable Fare
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Allow passengers to get full or partial refunds
-                          </p>
-                        </div>
-                        <Field name="isRefundable">
-                          {({ field }) => (
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={(checked) =>
-                                setFieldValue("isRefundable", checked)
-                              }
-                            />
-                          )}
-                        </Field>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
-                        <div>
-                          <Label
-                            htmlFor="upgradePossible"
-                            className="font-medium"
-                          >
-                            Upgrade Possible
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Allow passengers to upgrade their fare class
-                          </p>
-                        </div>
-                        <Field name="upgradePossible">
-                          {({ field }) => (
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={(checked) =>
-                                setFieldValue("upgradePossible", checked)
-                              }
-                            />
-                          )}
-                        </Field>
-                      </div>
-                    </div>
-
-                    {/* Fee Structure */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <Label
-                          htmlFor="changeFee"
-                          className="flex items-center gap-2"
-                        >
-                          <RefreshCw className="h-4 w-4 text-blue-600" />
-                          Change Fee (₹)
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="changeFee"
-                          name="changeFee"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                        />
-                        <ErrorMessage
-                          name="changeFee"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        {values.changeFee && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatCurrency(values.changeFee)}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label
-                          htmlFor="cancellationFee"
-                          className="flex items-center gap-2"
-                        >
-                          <CreditCard className="h-4 w-4 text-red-600" />
-                          Cancellation Fee (₹)
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="cancellationFee"
-                          name="cancellationFee"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                        />
-                        <ErrorMessage
-                          name="cancellationFee"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        {values.cancellationFee && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatCurrency(values.cancellationFee)}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label
-                          htmlFor="noShowFee"
-                          className="flex items-center gap-2"
-                        >
-                          <AlertTriangle className="h-4 w-4 text-orange-600" />
-                          No-Show Fee (₹)
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="noShowFee"
-                          name="noShowFee"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                        />
-                        <ErrorMessage
-                          name="noShowFee"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        {values.noShowFee && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatCurrency(values.noShowFee)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Deadlines & Rewards */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                      Deadlines & Rewards
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label
-                          htmlFor="refundDeadlineDays"
-                          className="flex items-center gap-2"
-                        >
-                          <Clock className="h-4 w-4 text-blue-600" />
-                          Refund Deadline (Days)
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="refundDeadlineDays"
-                          name="refundDeadlineDays"
-                          type="number"
-                          min="0"
-                          placeholder="30"
-                        />
-                        <ErrorMessage
-                          name="refundDeadlineDays"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Days before departure to request refund
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label
-                          htmlFor="changeDeadlineHours"
-                          className="flex items-center gap-2"
-                        >
-                          <Clock className="h-4 w-4 text-green-600" />
-                          Change Deadline (Hours)
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="changeDeadlineHours"
-                          name="changeDeadlineHours"
-                          type="number"
-                          min="0"
-                          placeholder="24"
-                        />
-                        <ErrorMessage
-                          name="changeDeadlineHours"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Hours before departure to make changes
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label
-                          htmlFor="mileageEarnPercentage"
-                          className="flex items-center gap-2"
-                        >
-                          <Percent className="h-4 w-4 text-yellow-600" />
-                          Mileage Earn %
-                        </Label>
-                        <Field
-                          as={Input}
-                          className="w-full"
-                          id="mileageEarnPercentage"
-                          name="mileageEarnPercentage"
-                          type="number"
-                          min="0"
-                          max="500"
-                          placeholder="100"
-                        />
-                        <ErrorMessage
-                          name="mileageEarnPercentage"
-                          component="div"
-                          className="text-sm text-red-600 mt-1"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Percentage of miles earned from base fare
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Policy Summary */}
-                <Card className="bg-blue-50/50 border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-900">
-                      <Info className="h-5 w-5" />
-                      Rule Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-blue-900 mb-2">
-                          Selection Details
-                        </h4>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span>Flight:</span>
-                            <span className="font-medium text-xs">
-                              {selectedFlight
-                                ? flights?.find(
-                                    (f) => f.id === parseInt(selectedFlight)
-                                  )?.flightNumber
-                                : "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Cabin:</span>
-                            <span className="font-medium text-xs">
-                              {selectedCabin
-                                ? cabinClasses?.find(
-                                    (c) => c.id === parseInt(selectedCabin)
-                                  )?.name
-                                : "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Fare:</span>
-                            <span className="font-medium text-xs">
-                              {selectedFare
-                                ? fares.find(
-                                    (f) => f.id === parseInt(selectedFare)
-                                  )?.name
-                                : "N/A"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-blue-900 mb-2">
-                          Rule Details
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <span>Rule Name:</span>
-                          <span className="font-medium">
-                            {values.ruleName || "N/A"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Fare ID:</span>
-                          <Badge variant="secondary">
-                            {values.fareId || "N/A"}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-blue-900 mb-2">
-                          Policy Details
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <span>Refundable:</span>
-                          <Badge
-                            variant={
-                              values.isRefundable ? "default" : "secondary"
-                            }
-                          >
-                            {values.isRefundable ? "Yes" : "No"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Upgrade Possible:</span>
-                          <Badge
-                            variant={
-                              values.upgradePossible ? "default" : "secondary"
-                            }
-                          >
-                            {values.upgradePossible ? "Yes" : "No"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Mileage Earn:</span>
-                          <span className="font-medium">
-                            {values.mileageEarnPercentage || 0}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-blue-900 mb-2">
-                          Fees Structure
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <span>Change Fee:</span>
-                          <span className="font-medium">
-                            {values.changeFee
-                              ? formatCurrency(values.changeFee)
-                              : "Free"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Cancellation Fee:</span>
-                          <span className="font-medium">
-                            {values.cancellationFee
-                              ? formatCurrency(values.cancellationFee)
-                              : "Free"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>No-Show Fee:</span>
-                          <span className="font-medium">
-                            {values.noShowFee
-                              ? formatCurrency(values.noShowFee)
-                              : "Free"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Form Actions */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 z-10 shadow-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">
-                        Rule: {values.ruleName || "Untitled"}
-                      </span>
-                      <span className="ml-2 text-gray-500">
-                        •{" "}
-                        {values.isRefundable ? "Refundable" : "Non-Refundable"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => navigate("/airline/fare-rules")}
-                        className="min-w-[100px]"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex items-center gap-2 min-w-[140px] bg-primary hover:bg-primary/90"
-                      >
-                        <Save className="h-4 w-4" />
-                        {isSubmitting
-                          ? "Saving..."
-                          : currentFareRule
-                          ? "Update Rule"
-                          : "Create Rule"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Form>
-            )}
-          </Formik>
+        <div className="rounded-md border border-border bg-card p-4 sm:p-5">
+          <div className="flex min-h-14 items-start justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-foreground"><ArrowRightLeft className="size-4" /> Change policy</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Allow travel changes before the scheduled departure.</p>
+            </div>
+            <Switch checked={form.isChangeable} onCheckedChange={(checked) => updateField("isChangeable", checked)} aria-label="Changeable fare" />
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="changeFee">Change fee</Label>
+              <Input id="changeFee" type="number" min="0" step="0.01" disabled={!form.isChangeable} value={form.changeFee} onChange={(event) => updateField("changeFee", event.target.value)} placeholder="0.00" />
+              <FieldError>{errors.changeFee}</FieldError>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="changeDeadlineHours">Deadline in hours</Label>
+              <Input id="changeDeadlineHours" type="number" min="0" step="1" disabled={!form.isChangeable} value={form.changeDeadlineHours} onChange={(event) => updateField("changeDeadlineHours", event.target.value)} placeholder="24" />
+              <FieldError>{errors.changeDeadlineHours}</FieldError>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-4 text-sm">
+        <CircleDollarSign className="mt-0.5 size-4 shrink-0 text-primary" />
+        <p className="text-muted-foreground">A zero fee means the permitted action is free. Deadlines are measured backward from scheduled departure.</p>
+      </section>
+    </form>
   );
 };
 

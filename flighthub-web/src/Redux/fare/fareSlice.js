@@ -2,6 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   createFare,
   getFareById,
+  getOwnedFareById,
+  getOwnerFares,
   getFlightFares,
   updateFare,
   deleteFare,
@@ -62,6 +64,34 @@ const fareSlice = createSlice({
         state.fare = action.payload;
       })
       .addCase(getFareById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    builder
+      .addCase(getOwnedFareById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getOwnedFareById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.fare = action.payload;
+      })
+      .addCase(getOwnedFareById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    builder
+      .addCase(getOwnerFares.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getOwnerFares.fulfilled, (state, action) => {
+        state.loading = false;
+        state.fares = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(getOwnerFares.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

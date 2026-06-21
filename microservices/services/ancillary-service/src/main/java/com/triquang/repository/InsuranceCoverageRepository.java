@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface InsuranceCoverageRepository extends JpaRepository<InsuranceCoverage, Long> {
 
+	boolean existsByAncillaryId(Long ancillaryId);
+
 	List<InsuranceCoverage> findByAncillary(Ancillary ancillary);
 
 	List<InsuranceCoverage> findByAncillaryAndActiveTrue(Ancillary ancillary);
@@ -17,4 +19,6 @@ public interface InsuranceCoverageRepository extends JpaRepository<InsuranceCove
 	List<InsuranceCoverage> findByCoverageType(CoverageType coverageType);
 
 	List<InsuranceCoverage> findByAncillaryIdAndActiveTrue(Long ancillaryId);
+
+	List<InsuranceCoverage> findByAncillaryAirlineId(Long airlineId);
 }

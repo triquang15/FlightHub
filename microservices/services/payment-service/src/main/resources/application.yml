@@ -21,13 +21,28 @@ spring:
 # PAYMENT CONFIG
 # =========================
 payment:
+  settlement-currency: ${PAYMENT_SETTLEMENT_CURRENCY:USD}
+  checkout:
+    success-url: ${PAYMENT_SUCCESS_URL:http://localhost:5173/booking-success/{bookingId}}
+    cancel-url: ${PAYMENT_CANCEL_URL:http://localhost:5173/booking-success/{bookingId}}
+
   stripe:
     secret-key: ${STRIPE_SECRET_KEY}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
 
   paypal:
     client-id: ${PAYPAL_CLIENT_ID}
     client-secret: ${PAYPAL_CLIENT_SECRET}
     base-url: ${PAYPAL_BASE_URL}
+    webhook-id: ${PAYPAL_WEBHOOK_ID:}
+
+  reconciliation:
+    enabled: ${PAYMENT_RECONCILIATION_ENABLED:true}
+    delay-ms: ${PAYMENT_RECONCILIATION_DELAY_MS:300000}
+
+app:
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:QW5xY0ZJY2dLNWV1TzZ2aDJlYk1aZzV1d3pHb3V3M2l4YkFTR0NhN2s0Q0E4VQ==}
 
 # =========================
 # RESILIENCE4J

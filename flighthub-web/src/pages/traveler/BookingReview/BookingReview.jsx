@@ -53,6 +53,7 @@ const BookingReview = () => {
   const [selectedSeats, setSelectedSeats] = useState([]); // Changed to array for multiple passengers
   const [selectedMeals, setSelectedMeals] = useState([]);
   const [selectedBaggage, setSelectedBaggage] = useState([]);
+  const [paymentGateway, setPaymentGateway] = useState("STRIPE");
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
@@ -364,6 +365,7 @@ const BookingReview = () => {
       mealIds: mealIds,
       promoCode: searchParams.get("promoCode") || null,
       seatNumbers: seatNumbers,
+      paymentGateway,
     };
 
     // Call the booking API
@@ -385,7 +387,7 @@ const BookingReview = () => {
       } else if (result.success) {
         // No payment needed, booking confirmed
         toast.success(
-          `Booking confirmed! Total: ₹${grandTotal.toLocaleString()}\nBooking Reference: ${
+          `Booking confirmed! Total: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(grandTotal)}\nBooking Reference: ${
             result.bookingReference || "N/A"
           }`,
           { id: "booking-toast", duration: 5000 },
@@ -555,6 +557,8 @@ const BookingReview = () => {
                   selectedMeals={selectedMeals}
                   selectedBaggage={selectedBaggage}
                   travelProtection={selectedTravelProtection}
+                  paymentGateway={paymentGateway}
+                  onPaymentGatewayChange={setPaymentGateway}
                   onProceedToPayment={handleProceedToPayment}
                   isLoading={bookingLoading}
                   totalPassengers={totalPassengers}
@@ -569,7 +573,7 @@ const BookingReview = () => {
               <div>
                 <p className="text-xs text-gray-600">Total Amount</p>
                 <p className="text-lg font-bold text-gray-900">
-                  ₹{pricingSummary.grandTotal.toLocaleString()}
+                  {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(pricingSummary.grandTotal)}
                 </p>
               </div>
               <button

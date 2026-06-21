@@ -39,7 +39,7 @@ public class JwtUtil {
     public Claims safeExtractClaims(String token) {
         try {
             return extractAllClaims(token);
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("Invalid JWT token received");
             return null;
         }
@@ -64,10 +64,13 @@ public class JwtUtil {
     public Long extractUserId(Claims claims) {
         Object value = claims.get("userId");
 
-        if (value instanceof Integer i) return i.longValue();
-        if (value instanceof Long l) return l;
-
-        return Long.parseLong(String.valueOf(value));
+        if (value instanceof Number number) return number.longValue();
+        if (value == null) return null;
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     public Integer extractTokenVersion(Claims claims) {
@@ -77,7 +80,7 @@ public class JwtUtil {
     // ===================== VALIDATION =====================
 
     public boolean isTokenExpired(Claims claims) {
-        return claims.getExpiration().before(new Date());
+        return claims.getExpiration() == null || claims.getExpiration().before(new Date());
     }
 
     public boolean isTokenValid(Claims claims) {

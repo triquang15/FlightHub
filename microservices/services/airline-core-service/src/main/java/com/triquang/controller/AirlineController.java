@@ -153,7 +153,10 @@ public class AirlineController {
 	}
 
 	private void requireSystemAdmin(String roles) {
-		if (roles == null || !roles.contains(UserRole.ROLE_SYSTEM_ADMIN.name())) {
+		boolean systemAdmin = roles != null && java.util.Arrays.stream(roles.split(","))
+				.map(String::trim)
+				.anyMatch(UserRole.ROLE_SYSTEM_ADMIN.name()::equals);
+		if (!systemAdmin) {
 			throw new BaseException(ErrorCode.FORBIDDEN);
 		}
 	}

@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import com.triquang.client.AirlineClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
-import com.triquang.payload.response.AircraftResponse;
 import com.triquang.service.AirlineIntegrationService;
 
 import feign.FeignException;
@@ -20,29 +19,20 @@ public class AirlineIntegrationServiceImpl implements AirlineIntegrationService 
     @Override
     public Long getAirlineIdForUser(Long userId) {
         try {
-            return airlineClient.getAirlineByOwner(userId).getId();
+            var airlines = airlineClient.getAirlinesByOwner(userId);
+            if (airlines == null) {
+                throw new BaseException(ErrorCode.AIRLINE_SERVICE_UNAVAILABLE);
+            }
+            if (airlines.isEmpty()) {
+                throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+            }
+            return airlines.getFirst().getId();
 
         } catch (FeignException.NotFound e) {
             throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 
         } catch (FeignException.ServiceUnavailable e) {
             throw new BaseException(ErrorCode.AIRLINE_SERVICE_UNAVAILABLE);
-
-        } catch (FeignException e) {
-            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
-        }
-    }
-
-    @Override
-    public AircraftResponse getAircraftById(Long aircraftId) {
-        try {
-            return airlineClient.getAircraftById(aircraftId);
-
-        } catch (FeignException.NotFound e) {
-            throw new BaseException(ErrorCode.AIRCRAFT_NOT_FOUND);
-
-        } catch (FeignException.ServiceUnavailable e) {
-            throw new BaseException(ErrorCode.AIRCRAFT_SERVICE_UNAVAILABLE);
 
         } catch (FeignException e) {
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);

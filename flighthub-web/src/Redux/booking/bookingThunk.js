@@ -10,26 +10,28 @@ export const createBooking = createAsyncThunk(
   async (data, { rejectWithValue }) => {
     try {
       const res = await api.post(API_URL, data);
-      console.log("✅ createBooking success:", res.data);
+      const payload = res.data?.data ?? res.data;
+      console.log("✅ createBooking success:", payload);
 
       // Check for checkout URL in the response (checkoutUrl or payment_link_url)
-      const checkoutUrl = res.data.checkoutUrl || res.data.payment_link_url;
+      const checkoutUrl = payload.checkoutUrl || payload.payment_link_url;
 
-      if (checkoutUrl && res.data.success) {
+      if (checkoutUrl && payload.success) {
         // Store payment details before redirecting
         sessionStorage.setItem('paymentDetails', JSON.stringify({
-          paymentId: res.data.paymentId,
-          transactionId: res.data.transactionId,
-          razorpayOrderId: res.data.razorpayOrderId,
-          amount: res.data.amount,
-          gateway: res.data.gateway
+          paymentId: payload.paymentId,
+          transactionId: payload.transactionId,
+          razorpayOrderId: payload.razorpayOrderId,
+          amount: payload.amount,
+          currency: payload.currency,
+          gateway: payload.gateway
         }));
 
         // Redirect to payment gateway
         window.location.href = checkoutUrl;
       }
 
-      return res.data;
+      return payload;
     } catch (err) {
       console.error("❌ createBooking error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to create booking");

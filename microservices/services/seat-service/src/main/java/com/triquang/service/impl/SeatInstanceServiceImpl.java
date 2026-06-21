@@ -169,7 +169,14 @@ public class SeatInstanceServiceImpl implements SeatInstanceService {
         validateAllRequestedSeatsWereFound(request.getSeatInstanceIds(), seatInstances);
 
         for (SeatInstance seatInstance : seatInstances) {
+            SeatAvailabilityStatus previousStatus = seatInstance.getStatus();
             if (!SeatLifecyclePolicy.canRelease(seatInstance.getStatus())) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+
+            if (seatInstance.getStatus() == SeatAvailabilityStatus.BOOKED
+                    && (request.getBookingReference() == null
+                    || !request.getBookingReference().equals(seatInstance.getBookingReference()))) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);
             }
 
@@ -181,6 +188,7 @@ public class SeatInstanceServiceImpl implements SeatInstanceService {
             }
 
             markAvailable(seatInstance);
+            refreshBookedCounter(seatInstance.getFlightInstanceCabin(), previousStatus, seatInstance.getStatus());
         }
 
         return toResponses(seatInstanceRepository.saveAll(seatInstances));

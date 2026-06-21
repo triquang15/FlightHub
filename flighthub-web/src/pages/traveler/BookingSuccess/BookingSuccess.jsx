@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getBookingById } from "@/Redux/booking/bookingThunk";
@@ -40,44 +40,35 @@ const BookingSuccess = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { booking, loading, error } = useSelector((state) => state.booking);
-  const { callbackResponse, loading: paymentLoading } = useSelector(
+  const { loading: paymentLoading } = useSelector(
     (state) => state.payment
   );
   const [emailSent, setEmailSent] = useState(false);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
 
-  const processPayment = async () => {
-    const razorpayPaymentId = searchParams.get("razorpay_payment_id");
-    const paymentLinkId = searchParams.get("razorpay_payment_link_id");
-    const signature = searchParams.get("razorpay_signature");
+  const processPayment = useCallback(async () => {
+    const storedPayment = JSON.parse(sessionStorage.getItem("paymentDetails") || "null");
+    const paymentId = Number(searchParams.get("paymentId") || storedPayment?.paymentId);
+    const stripeSessionId = searchParams.get("session_id");
+    const paypalOrderId = searchParams.get("token");
 
-    console.log("Payment callback params:", {
-      razorpayPaymentId,
-      paymentLinkId,
-      signature,
-    });
+    if (!paymentId || (!stripeSessionId && !paypalOrderId)) return;
 
-    if (razorpayPaymentId && paymentLinkId && signature) {
-      console.log("Processing payment callback...");
-      try {
-        const res = await dispatch(
-          verifyPayment({ razorpayPaymentId, paymentLinkId, signature })
-        ).unwrap();
-
-        console.log("Payment callback response:", res);
-
-        if (res.message == "Booking Got Confirmed") {
-          dispatch(getBookingById(bookingId));
-        }
-      } catch (error) {
-        console.error("Error processing Razorpay callback:", error);
-      }
+    try {
+      await dispatch(
+        verifyPayment({ paymentId, stripeSessionId, paypalOrderId })
+      ).unwrap();
+      sessionStorage.removeItem("paymentDetails");
+      dispatch(getBookingById(bookingId));
+    } catch (error) {
+      console.error("Payment verification failed:", error);
     }
-  };
-  // Handle payment callback from Razorpay
+  }, [bookingId, dispatch, searchParams]);
+
+  // Verify the provider callback once, then refresh the booking confirmed by Kafka.
   useEffect(() => {
     processPayment();
-  }, [searchParams, dispatch]);
+  }, [processPayment]);
 
   // Fetch booking details
   useEffect(() => {

@@ -8,9 +8,9 @@ import com.triquang.payload.response.FlightCabinAncillaryResponse;
 
 public interface FlightCabinAncillaryService {
 
-	FlightCabinAncillaryResponse create(FlightCabinAncillaryRequest request);
+	FlightCabinAncillaryResponse create(Long userId, FlightCabinAncillaryRequest request);
 
-	List<FlightCabinAncillaryResponse> bulkCreate(List<FlightCabinAncillaryRequest> requests);
+	List<FlightCabinAncillaryResponse> bulkCreate(Long userId, List<FlightCabinAncillaryRequest> requests);
 
 	FlightCabinAncillaryResponse getById(Long id);
 
@@ -22,9 +22,9 @@ public interface FlightCabinAncillaryService {
 
 	List<FlightCabinAncillaryResponse> getAllByFlightIdAndCabinClassAndType(Long flightId, Long cabinClassId, AncillaryType type);
 
-	FlightCabinAncillaryResponse update(Long id, FlightCabinAncillaryRequest request);
+	FlightCabinAncillaryResponse update(Long userId, Long id, FlightCabinAncillaryRequest request);
 
-	void delete(Long id);
+	void delete(Long userId, Long id);
 
 	Double calculateAncillaryPrice(List<Long> ancillaryIds);
 }

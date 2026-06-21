@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { listAircraftOptions } from "@/Redux/aircraft/aircraftThunks";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
 import { createFlight, getFlightById, updateFlight } from "@/Redux/flight/flightThunk";
+import { clearCurrentFlight, clearFlightError } from "@/Redux/flight/flightSlice";
 
 const EMPTY_FORM = {
   flightNumber: "",
@@ -76,18 +77,29 @@ const FlightForm = () => {
   const selectedDeparture = airports.find((airport) => String(airport.id) === form.departureAirportId);
   const selectedArrival = airports.find((airport) => String(airport.id) === form.arrivalAirportId);
   const selectedAircraft = aircrafts.find((aircraft) => String(aircraft.id) === form.aircraftId);
+  const canSave = !saving && !airportsLoading && aircrafts.length > 0 && airports.length > 1;
 
   useEffect(() => {
+    dispatch(clearFlightError());
     dispatch(listAircraftOptions());
     dispatch(listAllAirports({ page: 0, size: 500, sortBy: "iataCode", sortDirection: "asc" }));
     if (editing) dispatch(getFlightById(flightId));
+
+    return () => {
+      dispatch(clearFlightError());
+      if (!editing) dispatch(clearCurrentFlight());
+    };
   }, [dispatch, editing, flightId]);
 
-  if (editing && flightMatchesRoute && hydratedFlightId !== flight.id) {
+  useEffect(() => {
+    if (!editing || !flightMatchesRoute || hydratedFlightId === flight.id) return;
+
+    // Hydrate the editable draft once after the route-specific API response arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHydratedFlightId(flight.id);
     setForm(toForm(flight));
     setErrors({});
-  }
+  }, [editing, flight, flightMatchesRoute, hydratedFlightId]);
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -118,13 +130,13 @@ const FlightForm = () => {
     setSaving(true);
     try {
       if (editing) {
-        await dispatch(updateFlight({ id: flightId, flightData: payload })).unwrap();
+        const updated = await dispatch(updateFlight({ id: flightId, flightData: payload })).unwrap();
         toast.success("Flight definition updated");
-        navigate(`/airline/flights/${flightId}`);
+        navigate(`/airline/flights/${updated?.id || flightId}`);
       } else {
-        await dispatch(createFlight(payload)).unwrap();
+        const created = await dispatch(createFlight(payload)).unwrap();
         toast.success("Flight definition created");
-        navigate("/airline/flights");
+        navigate(created?.id ? `/airline/flights/${created.id}` : "/airline/flights");
       }
     } catch (saveError) {
       toast.error(saveError || "Unable to save flight definition");
@@ -197,9 +209,13 @@ const FlightForm = () => {
 
                 <div className="space-y-2">
                   <Label>Assigned aircraft</Label>
-                  <Select value={form.aircraftId} onValueChange={(value) => setField("aircraftId", value)}>
+                  <Select
+                    value={form.aircraftId}
+                    onValueChange={(value) => setField("aircraftId", value)}
+                    disabled={aircrafts.length === 0}
+                  >
                     <SelectTrigger className="w-full" aria-invalid={Boolean(errors.aircraftId)}>
-                      <SelectValue placeholder="Select an owned aircraft" />
+                      <SelectValue placeholder={aircrafts.length === 0 ? "No aircraft available" : "Select an owned aircraft"} />
                     </SelectTrigger>
                     <SelectContent>
                       {aircrafts.map((aircraft) => (
@@ -224,7 +240,11 @@ const FlightForm = () => {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Departure airport</Label>
-                  <Select value={form.departureAirportId} onValueChange={(value) => setField("departureAirportId", value)}>
+                  <Select
+                    value={form.departureAirportId}
+                    onValueChange={(value) => setField("departureAirportId", value)}
+                    disabled={airportsLoading || airports.length === 0}
+                  >
                     <SelectTrigger className="w-full" aria-invalid={Boolean(errors.departureAirportId)}>
                       <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select departure airport"} />
                     </SelectTrigger>
@@ -237,7 +257,11 @@ const FlightForm = () => {
 
                 <div className="space-y-2">
                   <Label>Arrival airport</Label>
-                  <Select value={form.arrivalAirportId} onValueChange={(value) => setField("arrivalAirportId", value)}>
+                  <Select
+                    value={form.arrivalAirportId}
+                    onValueChange={(value) => setField("arrivalAirportId", value)}
+                    disabled={airportsLoading || airports.length === 0}
+                  >
                     <SelectTrigger className="w-full" aria-invalid={Boolean(errors.arrivalAirportId)}>
                       <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select arrival airport"} />
                     </SelectTrigger>
@@ -286,7 +310,7 @@ const FlightForm = () => {
             <Button type="button" variant="outline" onClick={() => navigate(editing ? `/airline/flights/${flightId}` : "/airline/flights")} disabled={saving}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || airportsLoading || aircrafts.length === 0}>
+            <Button type="submit" disabled={!canSave}>
               {saving ? <Loader2 className="animate-spin" /> : <Save />}
               {saving ? "Saving" : editing ? "Update definition" : "Create definition"}
             </Button>

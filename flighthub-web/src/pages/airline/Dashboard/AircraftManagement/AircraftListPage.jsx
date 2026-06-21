@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { getAircraftFleetSummary } from '@/Redux/aircraft/aircraftThunks';
+import { deleteAircraft, getAircraftFleetSummary } from '@/Redux/aircraft/aircraftThunks';
 import AircraftTable from '@/components/aircraft/AircraftTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Plane } from 'lucide-react';
+import { toast } from 'sonner';
 
 const AircraftListPage = () => {
   const dispatch = useDispatch();
@@ -24,9 +25,14 @@ const AircraftListPage = () => {
     navigate(`/airline/aircraft/${aircraft.id}/edit`);
   };
 
-  const handleDelete = (aircraft) => {
-    // This would typically open a confirmation dialog
-    console.log('Delete aircraft:', aircraft);
+  const handleDelete = async (aircraft) => {
+    try {
+      await dispatch(deleteAircraft(aircraft.id)).unwrap();
+      await dispatch(getAircraftFleetSummary()).unwrap();
+      toast.success(`${aircraft.code || 'Aircraft'} deleted successfully`);
+    } catch (error) {
+      toast.error(error || 'Unable to delete aircraft');
+    }
   };
 
   const handleCreateAircraft = () => {

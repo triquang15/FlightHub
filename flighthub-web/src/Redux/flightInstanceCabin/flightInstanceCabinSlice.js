@@ -16,6 +16,14 @@ const initialState = {
   error: null
 };
 
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.content)) return value.data.content;
+  return [];
+};
+
 const flightInstanceCabinSlice = createSlice({
   name: "flightInstanceCabin",
   initialState,
@@ -99,8 +107,8 @@ const flightInstanceCabinSlice = createSlice({
     });
     builder.addCase(getFlightInstanceCabinsByFlightInstance.fulfilled, (state, action) => {
       state.loading = false;
-      state.cabins = action.payload.content;
-      state.pageable=action.payload.pageable
+      state.cabins = asArray(action.payload);
+      state.pageable = action.payload?.pageable || action.payload?.data?.pageable || null;
 
 
     });

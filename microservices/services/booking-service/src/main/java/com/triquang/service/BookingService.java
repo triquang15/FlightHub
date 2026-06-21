@@ -12,18 +12,18 @@ public interface BookingService {
 
 	PaymentInitiateResponse createBooking(BookingRequest request, Long userId);
 
-	BookingResponse updateBooking(Long id, BookingRequest request);
+	BookingResponse updateBooking(Long id, BookingRequest request, Long userId);
 
-	BookingResponse getBookingById(Long id);
+	BookingResponse getBookingById(Long id, Long userId);
 
 	List<BookingResponse> getBookingsByAirline(Long userId, String searchQuery, BookingStatus status,
 			Long flightInstanceId, String sortDirection);
 
 	List<BookingResponse> getBookingsByUser(Long userId);
 
-	BookingResponse cancelBooking(Long id);
+	BookingResponse cancelBooking(Long id, Long userId);
 
-	void deleteBooking(Long id);
+	void deleteBooking(Long id, Long userId);
 
 	boolean existsById(Long id);
 
@@ -31,5 +31,5 @@ public interface BookingService {
 
 	long countByFlightId(Long flightId);
 
-	BookingStatisticsResponse getBookingStatisticsForAirline(Long airlineId);
+	BookingStatisticsResponse getBookingStatisticsForAirline(Long userId);
 }

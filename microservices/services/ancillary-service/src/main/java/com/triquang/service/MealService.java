@@ -11,14 +11,14 @@ public interface MealService {
 
 	List<MealResponse> bulkCreate(Long userId, List<MealRequest> requests);
 
-	MealResponse getById(Long id);
+	MealResponse getById(Long userId, Long id);
 
 	List<MealResponse> getByAirlineId(Long userId);
 
 	MealResponse update(Long userId, Long id, MealRequest request);
 
-	void delete(Long id);
+	void delete(Long userId, Long id);
 
-	MealResponse updateAvailability(Long id, Boolean available);
+	MealResponse updateAvailability(Long userId, Long id, Boolean available);
 
 }

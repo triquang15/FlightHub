@@ -9,20 +9,46 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.triquang.enums.ErrorCode;
+import com.triquang.exception.BaseException;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.payload.response.FlightResponse;
 
 @FeignClient(name = "flight-ops-service", fallback = FlightClientFallback.class)
 public interface FlightClient {
 	@GetMapping("/api/flights/{id}")
-	FlightResponse getFlightById(@PathVariable Long id);
+	ApiResponse<FlightResponse> getFlightByIdResponse(@PathVariable Long id);
+
+	default FlightResponse getFlightById(Long id) {
+		return requireData(getFlightByIdResponse(id));
+	}
 
 	@GetMapping("/api/flight-instances/{id}")
-	FlightInstanceResponse getFlightInstanceResponse(@PathVariable Long id);
+	ApiResponse<FlightInstanceResponse> getFlightInstanceResponseData(@PathVariable Long id);
+
+	default FlightInstanceResponse getFlightInstanceResponse(Long id) {
+		return requireData(getFlightInstanceResponseData(id));
+	}
 
 	@PostMapping("/api/flights/batch")
-	Map<Long, FlightResponse> getFlightsByIds(@RequestBody List<Long> ids);
+	ApiResponse<Map<Long, FlightResponse>> getFlightsByIdsResponse(@RequestBody List<Long> ids);
+
+	default Map<Long, FlightResponse> getFlightsByIds(List<Long> ids) {
+		return requireData(getFlightsByIdsResponse(ids));
+	}
 
 	@PostMapping("/api/flight-instances/batch")
-	Map<Long, FlightInstanceResponse> getFlightInstancesByIds(@RequestBody List<Long> ids);
+	ApiResponse<Map<Long, FlightInstanceResponse>> getFlightInstancesByIdsResponse(@RequestBody List<Long> ids);
+
+	default Map<Long, FlightInstanceResponse> getFlightInstancesByIds(List<Long> ids) {
+		return requireData(getFlightInstancesByIdsResponse(ids));
+	}
+
+	private static <T> T requireData(ApiResponse<T> response) {
+		if (response == null || response.data() == null || response.errorCode() != null) {
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+		}
+		return response.data();
+	}
 }

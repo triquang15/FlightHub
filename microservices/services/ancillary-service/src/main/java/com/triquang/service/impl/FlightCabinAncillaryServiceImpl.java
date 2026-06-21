@@ -14,12 +14,14 @@ import com.triquang.model.InsuranceCoverage;
 import com.triquang.payload.request.FlightCabinAncillaryRequest;
 import com.triquang.payload.response.FlightCabinAncillaryResponse;
 import com.triquang.payload.response.InsuranceCoverageResponse;
-import com.triquang.repository.AncillaryRepository;
 import com.triquang.repository.FlightCabinAncillaryRepository;
 import com.triquang.repository.InsuranceCoverageRepository;
 import com.triquang.service.FlightCabinAncillaryService;
+import com.triquang.service.AncillaryOwnershipService;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,8 +29,8 @@ import java.util.stream.Collectors;
 public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryService {
 
     private final FlightCabinAncillaryRepository repository;
-    private final AncillaryRepository ancillaryRepository;
     private final InsuranceCoverageRepository insuranceCoverageRepository;
+    private final AncillaryOwnershipService ownershipService;
 
     private FlightCabinAncillaryResponse mapWithCoverages(FlightCabinAncillary entity) {
         List<InsuranceCoverage> coverages =
@@ -42,10 +44,18 @@ public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryServ
     }
 
     @Override
-    public FlightCabinAncillaryResponse create(FlightCabinAncillaryRequest req) {
+    public FlightCabinAncillaryResponse create(Long userId, FlightCabinAncillaryRequest req) {
 
-        Ancillary ancillary = ancillaryRepository.findById(req.getAncillaryId())
-                .orElseThrow(() -> new BaseException(ErrorCode.ANCILLARY_NOT_FOUND));
+        var flight = ownershipService.requireOwnedFlight(userId, req.getFlightId());
+        ownershipService.requireCabinOnFlight(flight, req.getCabinClassId());
+        Ancillary ancillary = ownershipService.requireOwnedAncillary(userId, req.getAncillaryId());
+
+        if (repository.existsByFlightIdAndCabinClassIdAndAncillaryId(
+                req.getFlightId(), req.getCabinClassId(), req.getAncillaryId())) {
+            throw new BaseException(ErrorCode.FLIGHT_CABIN_ANCILLARY_ALREADY_EXISTS);
+        }
+
+        double price = normalizePrice(req.getPrice(), req.getIncludedInFare());
 
         FlightCabinAncillary entity = FlightCabinAncillary.builder()
                 .flightId(req.getFlightId())
@@ -53,8 +63,8 @@ public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryServ
                 .ancillary(ancillary)
                 .available(req.getAvailable())
                 .maxQuantity(req.getMaxQuantity())
-                .price(req.getPrice())
-                .currency(req.getCurrency())
+                .price(price)
+                .currency(normalizeCurrency(req.getCurrency()))
                 .includedInFare(req.getIncludedInFare())
                 .build();
 
@@ -62,9 +72,9 @@ public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryServ
     }
 
     @Override
-    public List<FlightCabinAncillaryResponse> bulkCreate(List<FlightCabinAncillaryRequest> requests) {
+    public List<FlightCabinAncillaryResponse> bulkCreate(Long userId, List<FlightCabinAncillaryRequest> requests) {
         return requests.stream()
-                .map(this::create)
+                .map(request -> create(userId, request))
                 .collect(Collectors.toList());
     }
 
@@ -115,33 +125,66 @@ public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryServ
     }
 
     @Override
-    public FlightCabinAncillaryResponse update(Long id, FlightCabinAncillaryRequest req) {
+    public FlightCabinAncillaryResponse update(Long userId, Long id, FlightCabinAncillaryRequest req) {
 
-        FlightCabinAncillary entity = repository.findById(id)
-                .orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_CABIN_ANCILLARY_NOT_FOUND));
+        FlightCabinAncillary entity = ownershipService.requireOwnedFlightCabinAncillary(userId, id);
+
+        if (!entity.getFlightId().equals(req.getFlightId())
+                || !entity.getCabinClassId().equals(req.getCabinClassId())
+                || !entity.getAncillary().getId().equals(req.getAncillaryId())) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
 
         entity.setAvailable(req.getAvailable());
         entity.setMaxQuantity(req.getMaxQuantity());
-        entity.setPrice(req.getPrice());
-        entity.setCurrency(req.getCurrency());
+        entity.setPrice(normalizePrice(req.getPrice(), req.getIncludedInFare()));
+        entity.setCurrency(normalizeCurrency(req.getCurrency()));
         entity.setIncludedInFare(req.getIncludedInFare());
 
         return mapWithCoverages(repository.save(entity));
     }
 
     @Override
-    public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new BaseException(ErrorCode.FLIGHT_CABIN_ANCILLARY_NOT_FOUND);
-        }
-        repository.deleteById(id);
+    public void delete(Long userId, Long id) {
+        repository.delete(ownershipService.requireOwnedFlightCabinAncillary(userId, id));
     }
 
     @Override
     public Double calculateAncillaryPrice(List<Long> ancillaryIds) {
-        return repository.findAllById(ancillaryIds)
-                .stream()
+        if (ancillaryIds == null || ancillaryIds.isEmpty()) {
+            return 0.0;
+        }
+        if (ancillaryIds.stream().anyMatch(id -> id == null)
+                || Set.copyOf(ancillaryIds).size() != ancillaryIds.size()) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        List<FlightCabinAncillary> selections = repository.findAllById(ancillaryIds);
+        if (selections.size() != ancillaryIds.size()
+                || selections.stream().anyMatch(item -> !Boolean.TRUE.equals(item.getAvailable()))) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        return selections.stream()
+                .filter(item -> !Boolean.TRUE.equals(item.getIncludedInFare()))
                 .mapToDouble(FlightCabinAncillary::getPrice)
                 .sum();
+    }
+
+    private double normalizePrice(Double price, Boolean includedInFare) {
+        if (Boolean.TRUE.equals(includedInFare)) {
+            return 0.0;
+        }
+        if (price == null || !Double.isFinite(price) || price < 0) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return price;
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || !currency.matches("[A-Za-z]{3}")) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        return currency.toUpperCase(Locale.ROOT);
     }
 }

@@ -18,6 +18,8 @@ import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * Controller for managing baggage policies.
@@ -32,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/baggage-policies")
 @RequiredArgsConstructor
+@Tag(name = "Baggage Policies", description = "Manage cabin and checked baggage allowances attached to fares.")
 public class BaggagePolicyController {
 
 	private final BaggagePolicyService baggagePolicyService;
@@ -40,6 +43,7 @@ public class BaggagePolicyController {
 	// CREATE
 	// =========================
 	@PostMapping
+	@Operation(summary = "Create a baggage policy")
 	public ResponseEntity<?> createBaggagePolicy(@Valid @RequestBody BaggagePolicyRequest request) {
 
 		return ResponseUtil.created(baggagePolicyService.createBaggagePolicy(request));
@@ -49,6 +53,7 @@ public class BaggagePolicyController {
 	// BULK CREATE
 	// =========================
 	@PostMapping("/bulk")
+	@Operation(summary = "Bulk create baggage policies")
 	public ResponseEntity<?> createBaggagePolicies(@Valid @RequestBody List<BaggagePolicyRequest> requests) {
 
 		return ResponseUtil.created(baggagePolicyService.createBaggagePolicies(requests));
@@ -58,6 +63,7 @@ public class BaggagePolicyController {
 	// GET BY ID
 	// =========================
 	@GetMapping("/{id}")
+	@Operation(summary = "Get a baggage policy by ID")
 	public ResponseEntity<?> getBaggagePolicyById(@PathVariable Long id) {
 
 		return ResponseUtil.ok(baggagePolicyService.getBaggagePolicyById(id));
@@ -67,6 +73,7 @@ public class BaggagePolicyController {
 	// GET BY FARE
 	// =========================
 	@GetMapping("/fare/{fareId}")
+	@Operation(summary = "Get a baggage policy by Fare")
 	public ResponseEntity<?> getBaggagePolicyByFareId(@PathVariable Long fareId) {
 
 		return ResponseUtil.ok(baggagePolicyService.getBaggagePolicyByFareId(fareId));
@@ -76,6 +83,7 @@ public class BaggagePolicyController {
 	// GET BY AIRLINE
 	// =========================
 	@GetMapping("/airline/{airlineId}")
+	@Operation(summary = "List baggage policies by airline")
 	public ResponseEntity<?> getBaggagePoliciesByAirlineId(@PathVariable Long airlineId) {
 
 		return ResponseUtil.ok(baggagePolicyService.getBaggagePoliciesByAirlineId(airlineId));
@@ -85,6 +93,7 @@ public class BaggagePolicyController {
 	// UPDATE
 	// =========================
 	@PutMapping("/{id}")
+	@Operation(summary = "Update a baggage policy")
 	public ResponseEntity<?> updateBaggagePolicy(@PathVariable Long id,
 			@Valid @RequestBody BaggagePolicyRequest request) {
 
@@ -95,6 +104,7 @@ public class BaggagePolicyController {
 	// DELETE
 	// =========================
 	@DeleteMapping("/{id}")
+	@Operation(summary = "Delete a baggage policy")
 	public ResponseEntity<?> deleteBaggagePolicy(@PathVariable Long id) {
 
 		baggagePolicyService.deleteBaggagePolicy(id);

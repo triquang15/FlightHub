@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  AlertTriangle,
   Calendar,
   CheckCircle,
   Clock,
@@ -10,7 +11,6 @@ import {
   Loader2,
   MapPin,
   Plane,
-  Plus,
   Settings,
   Users,
 } from "lucide-react";
@@ -27,6 +27,7 @@ import {
   changeFlightInstanceStatus,
   getFlightInstanceById,
 } from "@/Redux/flightInstance/flightInstanceThunk";
+import { clearflightInstance } from "@/Redux/flightInstance/flightInstanceSlice";
 import { getFlightInstanceCabinsByFlightInstance } from "@/Redux/flightInstanceCabin/flightInstanceCabinThunk";
 import FlightLifecycleControl from "@/components/flight-ops/FlightLifecycleControl";
 import EmptyCabin from "./EmptyCabin";
@@ -35,29 +36,42 @@ import FlightInstanceCabinCard from "./FlightInstanceCabinCard";
 const statusConfig = {
   SCHEDULED: {
     label: "Scheduled",
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300",
+    dotClassName: "bg-blue-500",
     icon: Clock,
   },
   BOARDING: {
     label: "Boarding",
-    className: "border-cyan-200 bg-cyan-50 text-cyan-700",
+    className: "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-300",
+    dotClassName: "bg-cyan-500",
     icon: Users,
   },
   DEPARTED: {
     label: "Departed",
-    className: "border-violet-200 bg-violet-50 text-violet-700",
+    className: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300",
+    dotClassName: "bg-violet-500",
     icon: Plane,
   },
   ARRIVED: {
     label: "Arrived",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+    dotClassName: "bg-emerald-500",
     icon: CheckCircle,
   },
   CANCELLED: {
     label: "Cancelled",
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+    dotClassName: "bg-red-500",
     icon: Settings,
   },
+};
+
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.content)) return value.data.content;
+  return [];
 };
 
 const airportCode = (airport) => airport?.iataCode || airport?.code || "N/A";
@@ -100,13 +114,35 @@ const getLoadFactor = (instance) => {
   return Math.round((getBookedSeats(instance) / instance.totalSeats) * 100);
 };
 
+const loadFactorColor = (loadFactor) =>
+  loadFactor >= 90
+    ? "bg-red-500"
+    : loadFactor >= 70
+      ? "bg-amber-500"
+      : "bg-emerald-500";
+
 const InfoItem = ({ label, value }) => (
-  <div className="rounded-lg border bg-card p-4">
+  <div className="rounded-md border bg-muted/20 p-4">
     <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
       {label}
     </div>
-    <div className="mt-1 font-semibold text-foreground">{value || "N/A"}</div>
+    <div className="mt-1 break-words font-semibold text-foreground">{value || "N/A"}</div>
   </div>
+);
+
+const StatCard = ({ icon: Icon, label, value, helper, iconClassName }) => (
+  <Card className="border-border/70 shadow-sm">
+    <CardContent className="flex items-center justify-between gap-4 p-5">
+      <div className="min-w-0">
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="mt-1 text-2xl font-semibold">{value}</div>
+        {helper && <div className="mt-1 text-xs text-muted-foreground">{helper}</div>}
+      </div>
+      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary", iconClassName)}>
+        <Icon className="h-5 w-5" />
+      </div>
+    </CardContent>
+  </Card>
 );
 
 const FlightInstanceDetail = () => {
@@ -115,7 +151,7 @@ const FlightInstanceDetail = () => {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { flightInstance, loading, updateLoading } = useSelector(
+  const { flightInstance, loading, updateLoading, error } = useSelector(
     (store) => store.flightInstance,
   );
   const { cabins, loading: cabinsLoading } = useSelector(
@@ -124,40 +160,48 @@ const FlightInstanceDetail = () => {
 
   useEffect(() => {
     if (id) dispatch(getFlightInstanceById(id));
+    return () => {
+      dispatch(clearflightInstance());
+    };
   }, [dispatch, id]);
 
+  const isCurrentInstance = String(flightInstance?.id || "") === String(id || "");
+  const instance = isCurrentInstance ? flightInstance : null;
+
   useEffect(() => {
-    if (flightInstance?.id) {
+    if (instance?.id) {
       dispatch(
         getFlightInstanceCabinsByFlightInstance({
-          flightInstanceId: flightInstance.id,
+          flightInstanceId: instance.id,
         }),
       );
     }
-  }, [dispatch, flightInstance?.id]);
+  }, [dispatch, instance?.id]);
 
-  const status = statusConfig[flightInstance?.status] || statusConfig.SCHEDULED;
+  const status = statusConfig[instance?.status] || statusConfig.SCHEDULED;
   const StatusIcon = status.icon;
-  const bookedSeats = getBookedSeats(flightInstance);
-  const availableSeats = getAvailableSeats(flightInstance);
-  const loadFactor = getLoadFactor(flightInstance);
+  const bookedSeats = getBookedSeats(instance);
+  const availableSeats = getAvailableSeats(instance);
+  const loadFactor = getLoadFactor(instance);
+  const cabinList = useMemo(() => asArray(cabins), [cabins]);
   const cabinSummary = useMemo(() => {
-    const totalCabins = cabins?.length || 0;
-    const totalCabinSeats = cabins?.reduce(
+    const totalCabins = cabinList.length;
+    const totalCabinSeats = cabinList.reduce(
       (sum, cabin) => sum + (cabin.totalSeats || 0),
       0,
     );
-    const totalCabinBooked = cabins?.reduce(
+    const totalCabinBooked = cabinList.reduce(
       (sum, cabin) => sum + (cabin.bookedSeats || 0),
       0,
     );
     return { totalCabins, totalCabinSeats, totalCabinBooked };
-  }, [cabins]);
+  }, [cabinList]);
 
   const handleStatusTransition = async (nextStatus) => {
+    if (!instance?.id) return;
     try {
       await dispatch(
-        changeFlightInstanceStatus({ id: flightInstance.id, status: nextStatus }),
+        changeFlightInstanceStatus({ id: instance.id, status: nextStatus }),
       ).unwrap();
       toast.success(`Flight instance moved to ${nextStatus}`);
     } catch (error) {
@@ -165,7 +209,7 @@ const FlightInstanceDetail = () => {
     }
   };
 
-  if (loading && !flightInstance) {
+  if (loading && !instance) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -176,16 +220,20 @@ const FlightInstanceDetail = () => {
     );
   }
 
-  if (!flightInstance) {
+  if (!instance) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-6">
-        <Card className="max-w-md text-center">
+        <Card className="max-w-md border-border/70 text-center shadow-sm">
           <CardContent className="space-y-4 p-8">
-            <Plane className="mx-auto h-12 w-12 text-muted-foreground" />
+            {error ? (
+              <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
+            ) : (
+              <Plane className="mx-auto h-12 w-12 text-muted-foreground" />
+            )}
             <div>
               <h2 className="text-xl font-semibold">Flight instance not found</h2>
               <p className="text-sm text-muted-foreground">
-                The selected dated flight may have been deleted or is unavailable.
+                {error || "The selected dated flight may have been deleted or is unavailable."}
               </p>
             </div>
             <Button onClick={() => navigate("/airline/instances")}>
@@ -198,33 +246,33 @@ const FlightInstanceDetail = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+    <div className="min-w-0 space-y-5 lg:space-y-6">
+      <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between sm:p-5">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
           <Button
             variant="outline"
             onClick={() => navigate("/airline/instances")}
-            className="w-fit"
+            className="h-10 w-fit shrink-0 gap-2"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">
-                {flightInstance.flightNumber || `Instance #${flightInstance.id}`}
+              <h1 className="truncate text-2xl font-semibold tracking-normal sm:text-3xl">
+                {instance.flightNumber || `Instance #${instance.id}`}
               </h1>
-              <Badge variant="outline" className={cn("gap-1", status.className)}>
-                <StatusIcon className="h-3.5 w-3.5" />
+              <Badge variant="outline" className={cn("gap-2", status.className)}>
+                <span className={cn("h-2 w-2 rounded-full", status.dotClassName)} />
                 {status.label}
               </Badge>
             </div>
-            <p className="text-muted-foreground">
-              {airportCode(flightInstance.departureAirport)} to{" "}
-              {airportCode(flightInstance.arrivalAirport)} •{" "}
+            <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+              {airportCode(instance.departureAirport)} to{" "}
+              {airportCode(instance.arrivalAirport)} •{" "}
               {formatDuration(
-                flightInstance.departureDateTime,
-                flightInstance.arrivalDateTime,
+                instance.departureDateTime,
+                instance.arrivalDateTime,
               )}
             </p>
           </div>
@@ -232,7 +280,7 @@ const FlightInstanceDetail = () => {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <FlightLifecycleControl
-            status={flightInstance.status}
+            status={instance.status}
             disabled={updateLoading}
             onTransition={handleStatusTransition}
           />
@@ -243,7 +291,7 @@ const FlightInstanceDetail = () => {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-border/70 shadow-sm">
         <CardContent className="p-0">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr]">
             <div className="space-y-3 p-6">
@@ -252,18 +300,18 @@ const FlightInstanceDetail = () => {
                 Departure
               </div>
               <div className="text-4xl font-bold">
-                {airportCode(flightInstance.departureAirport)}
+                {airportCode(instance.departureAirport)}
               </div>
               <div>
                 <div className="font-semibold">
-                  {airportName(flightInstance.departureAirport)}
+                  {airportName(instance.departureAirport)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {flightInstance.departureAirport?.city?.name || "City unavailable"}
+                  {instance.departureAirport?.city?.name || "City unavailable"}
                 </div>
               </div>
-              <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                {formatDateTime(flightInstance.departureDateTime)}
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                {formatDateTime(instance.departureDateTime)}
               </div>
             </div>
 
@@ -274,13 +322,13 @@ const FlightInstanceDetail = () => {
                 </div>
                 <div className="text-sm font-semibold">
                   {formatDuration(
-                    flightInstance.departureDateTime,
-                    flightInstance.arrivalDateTime,
+                    instance.departureDateTime,
+                    instance.arrivalDateTime,
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {flightInstance.aircraftCode ||
-                    flightInstance.aircraftModal ||
+                  {instance.aircraftCode ||
+                    instance.aircraftModal ||
                     "Aircraft TBD"}
                 </div>
               </div>
@@ -292,18 +340,18 @@ const FlightInstanceDetail = () => {
                 Arrival
               </div>
               <div className="text-4xl font-bold">
-                {airportCode(flightInstance.arrivalAirport)}
+                {airportCode(instance.arrivalAirport)}
               </div>
               <div>
                 <div className="font-semibold">
-                  {airportName(flightInstance.arrivalAirport)}
+                  {airportName(instance.arrivalAirport)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {flightInstance.arrivalAirport?.city?.name || "City unavailable"}
+                  {instance.arrivalAirport?.city?.name || "City unavailable"}
                 </div>
               </div>
-              <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                {formatDateTime(flightInstance.arrivalDateTime)}
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                {formatDateTime(instance.arrivalDateTime)}
               </div>
             </div>
           </div>
@@ -311,34 +359,14 @@ const FlightInstanceDetail = () => {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Total seats</div>
-            <div className="text-2xl font-semibold">{flightInstance.totalSeats || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Booked</div>
-            <div className="text-2xl font-semibold">{bookedSeats}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Available</div>
-            <div className="text-2xl font-semibold">{availableSeats}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Load factor</div>
-            <div className="text-2xl font-semibold">{loadFactor}%</div>
-          </CardContent>
-        </Card>
+        <StatCard icon={Users} label="Total seats" value={instance.totalSeats || 0} />
+        <StatCard icon={CheckCircle} label="Booked" value={bookedSeats} iconClassName="bg-amber-500/10 text-amber-600" />
+        <StatCard icon={Users} label="Available" value={availableSeats} iconClassName="bg-emerald-500/10 text-emerald-600" />
+        <StatCard icon={StatusIcon} label="Load factor" value={`${loadFactor}%`} helper={`${bookedSeats}/${instance.totalSeats || 0} seats`} iconClassName="bg-sky-500/10 text-sky-600" />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 sm:w-fit">
           <TabsTrigger value="overview">
             <Calendar className="mr-2 h-4 w-4" />
             Overview
@@ -356,15 +384,15 @@ const FlightInstanceDetail = () => {
                 <CardTitle>Operational Details</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoItem label="Instance ID" value={flightInstance.id} />
-                <InfoItem label="Schedule ID" value={flightInstance.scheduleId} />
-                <InfoItem label="Airline" value={flightInstance.airlineName} />
+                <InfoItem label="Instance ID" value={instance.id} />
+                <InfoItem label="Schedule ID" value={instance.scheduleId} />
+                <InfoItem label="Airline" value={instance.airlineName} />
                 <InfoItem
                   label="Aircraft"
-                  value={flightInstance.aircraftCode || flightInstance.aircraftModal}
+                  value={instance.aircraftCode || instance.aircraftModal}
                 />
-                <InfoItem label="Terminal" value={flightInstance.terminal || "TBD"} />
-                <InfoItem label="Gate" value={flightInstance.gate || "TBD"} />
+                <InfoItem label="Terminal" value={instance.terminal || "TBD"} />
+                <InfoItem label="Gate" value={instance.gate || "TBD"} />
               </CardContent>
             </Card>
 
@@ -376,13 +404,19 @@ const FlightInstanceDetail = () => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Booked seats</span>
                   <span className="font-medium">
-                    {bookedSeats}/{flightInstance.totalSeats || 0}
+                    {bookedSeats}/{instance.totalSeats || 0}
                   </span>
                 </div>
                 <Progress value={loadFactor} className="h-2" />
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn("h-full", loadFactorColor(loadFactor))}
+                    style={{ width: `${loadFactor}%` }}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <InfoItem label="Min advance booking" value={flightInstance.minAdvanceBookingDays} />
-                  <InfoItem label="Max advance booking" value={flightInstance.maxAdvanceBookingDays} />
+                  <InfoItem label="Min advance booking" value={instance.minAdvanceBookingDays} />
+                  <InfoItem label="Max advance booking" value={instance.maxAdvanceBookingDays} />
                 </div>
               </CardContent>
             </Card>
@@ -400,13 +434,9 @@ const FlightInstanceDetail = () => {
                   {cabinSummary.totalCabinBooked}/{cabinSummary.totalCabinSeats} seats booked
                 </p>
               </div>
-              <Button
-                onClick={() =>
-                  navigate(`/airline/instances/${flightInstance.id}/cabins/new`)
-                }
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Cabin
+              <Button variant="outline" onClick={() => navigate("/airline/aircraft")}>
+                <Settings className="mr-2 h-4 w-4" />
+                Configure Aircraft
               </Button>
             </CardHeader>
             <CardContent>
@@ -415,11 +445,11 @@ const FlightInstanceDetail = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading cabins...
                 </div>
-              ) : !cabins?.length ? (
+              ) : !cabinList.length ? (
                 <EmptyCabin />
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {cabins.map((cabin) => {
+                  {cabinList.map((cabin) => {
                     const occupancyPercentage = cabin.totalSeats
                       ? Math.round(((cabin.bookedSeats || 0) / cabin.totalSeats) * 100)
                       : 0;

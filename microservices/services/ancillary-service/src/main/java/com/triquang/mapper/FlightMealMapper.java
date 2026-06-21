@@ -16,6 +16,7 @@ public class FlightMealMapper {
                 .meal(MealMapper.toResponse(flightMeal.getMeal()))
                 .available(flightMeal.getAvailable())
                 .price(flightMeal.getPrice())
+                .currency(flightMeal.getCurrency())
                 .displayOrder(flightMeal.getDisplayOrder())
                 .build();
     }

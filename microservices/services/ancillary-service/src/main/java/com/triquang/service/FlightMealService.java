@@ -7,9 +7,9 @@ import com.triquang.payload.response.FlightMealResponse;
 
 public interface FlightMealService {
 
-	FlightMealResponse create(FlightMealRequest request);
+	FlightMealResponse create(Long userId, FlightMealRequest request);
 
-	List<FlightMealResponse> bulkCreate(List<FlightMealRequest> requests);
+	List<FlightMealResponse> bulkCreate(Long userId, List<FlightMealRequest> requests);
 
 	FlightMealResponse getById(Long id);
 
@@ -17,11 +17,11 @@ public interface FlightMealService {
 
 	List<FlightMealResponse> getAllByIds(List<Long> Ids);
 
-	FlightMealResponse update(Long id, FlightMealRequest request);
+	FlightMealResponse update(Long userId, Long id, FlightMealRequest request);
 
-	void delete(Long id);
+	void delete(Long userId, Long id);
 
-	FlightMealResponse updateAvailability(Long id, Boolean available);
+	FlightMealResponse updateAvailability(Long userId, Long id, Boolean available);
 
 	Double calculateMealPrice(List<Long> mealIds);
 }

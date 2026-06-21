@@ -1,11 +1,12 @@
 package com.triquang.client;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.triquang.enums.ErrorCode;
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.payload.response.FlightResponse;
 
@@ -13,22 +14,22 @@ import com.triquang.payload.response.FlightResponse;
 public class FlightClientFallback implements FlightClient {
 
 	@Override
-	public FlightResponse getFlightById(Long id) {
-		return null;
+	public ApiResponse<FlightResponse> getFlightByIdResponse(Long id) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "flight-ops-service-fallback");
 	}
 
 	@Override
-	public FlightInstanceResponse getFlightInstanceResponse(Long id) {
-		return null;
+	public ApiResponse<FlightInstanceResponse> getFlightInstanceResponseData(Long id) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "flight-ops-service-fallback");
 	}
 
 	@Override
-	public Map<Long, FlightResponse> getFlightsByIds(List<Long> ids) {
-		return Collections.emptyMap();
+	public ApiResponse<Map<Long, FlightResponse>> getFlightsByIdsResponse(List<Long> ids) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "flight-ops-service-fallback");
 	}
 
 	@Override
-	public Map<Long, FlightInstanceResponse> getFlightInstancesByIds(List<Long> ids) {
-		return Collections.emptyMap();
+	public ApiResponse<Map<Long, FlightInstanceResponse>> getFlightInstancesByIdsResponse(List<Long> ids) {
+		return ApiResponse.error(ErrorCode.EXTERNAL_SERVICE_ERROR, "flight-ops-service-fallback");
 	}
 }

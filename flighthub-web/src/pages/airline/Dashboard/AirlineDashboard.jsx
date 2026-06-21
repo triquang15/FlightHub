@@ -1,7 +1,6 @@
 import * as React from "react"
 import { useLocation } from "react-router-dom"
 import { PlaneTakeoff } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import AirlineSidebar from "../Sidebar/AirlineSidebar"
 import AirlineRoutes from "../routes/AirlineRoutes"
@@ -49,7 +48,7 @@ const AirlineDashboard = () => {
     if (pathname.includes('/aircraft')) return 'aircraft'
     if (pathname.includes('/baggage-policies')) return 'baggagePolicy'
     if (pathname.includes('/fare-rules')) return 'fareRules'
-    if (pathname.includes('/fare/')) return 'flights'
+    if (pathname.includes('/fares') || pathname.includes('/fare/')) return 'fares'
     if (pathname.includes('/flight-cabin')) return 'flights'
     if (pathname.includes('/flights')) return 'flights'
     if (pathname.includes('/schedules')) return 'schedules'
@@ -113,8 +112,10 @@ const AirlineDashboard = () => {
 
       {/* Main Content Area */}
       <div className={cn(
-        "min-w-0 flex-1 transition-all duration-300 ease-in-out",
-        isSidebarCollapsed ? "lg:ml-16" : "lg:ml-80"
+        "flex min-h-screen min-w-0 w-full flex-col overflow-hidden transition-all duration-300 ease-in-out",
+        isSidebarCollapsed
+          ? "lg:ml-16 lg:w-[calc(100vw_-_4rem)] lg:max-w-[calc(100vw_-_4rem)]"
+          : "lg:ml-80 lg:w-[calc(100vw_-_20rem)] lg:max-w-[calc(100vw_-_20rem)]"
       )}>
         <WorkspaceHeader
           title={sectionTitle}
@@ -127,7 +128,7 @@ const AirlineDashboard = () => {
         />
 
         {/* Main Content */}
-        <ScrollArea className="flex-1 p-4 sm:p-6">
+        <main className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
           <AirlineRoutes
             flights={flights}
             statusFilter={statusFilter}
@@ -136,7 +137,7 @@ const AirlineDashboard = () => {
             setRouteFilter={setRouteFilter}
           
           />
-        </ScrollArea>
+        </main>
       </div>
 
       

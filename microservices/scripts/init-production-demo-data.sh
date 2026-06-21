@@ -17,15 +17,28 @@ AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
 SEAT_SERVICE_SEED_SQL="$SQL_DIR/2026-06-08-seed-production-seat-service.sql"
 FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
+PRICING_SEED_SQL="$SQL_DIR/2026-06-20-seed-production-pricing-service.sql"
+BOOKING_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-booking-checkout-integrity.sql"
+PAYMENT_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-payment-idempotency.sql"
+ANCILLARY_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-ancillary-commercial-integrity.sql"
+ANCILLARY_SEED_SQL="$SQL_DIR/2026-06-20-seed-production-ancillary-service.sql"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required to run this seed script." >&2
   exit 1
 fi
 
-for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" "$SEAT_SERVICE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL"; do
+for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" \
+  "$SEAT_SERVICE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL" "$PRICING_SEED_SQL"; do
   if [[ ! -f "$file" ]]; then
     echo "Required SQL seed file not found: $file" >&2
+    exit 1
+  fi
+done
+
+for file in "$BOOKING_MIGRATION_SQL" "$PAYMENT_MIGRATION_SQL" "$ANCILLARY_MIGRATION_SQL" "$ANCILLARY_SEED_SQL"; do
+  if [[ ! -f "$file" ]]; then
+    echo "Required Ancillary SQL file not found: $file" >&2
     exit 1
   fi
 done
@@ -295,6 +308,71 @@ run_sql_file_with_settings \
   apt_hnd="$apt_hnd" \
   apt_dxb="$apt_dxb" \
   apt_doh="$apt_doh"
+
+echo "==> Resolving Flight and Cabin Class IDs for pricing"
+
+flight_vn210="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN210';")"
+flight_vn211="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN211';")"
+flight_vj122="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ122';")"
+flight_sq185="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'SQ185';")"
+
+cabin_vn_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'ECO';")"
+cabin_vn_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'BUS';")"
+cabin_vn_b789_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_b789 AND code = 'ECO';")"
+cabin_vj_a321_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'ECO';")"
+cabin_vj_a321_pre="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'PRE';")"
+cabin_sq_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'ECO';")"
+cabin_sq_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'BUS';")"
+
+for required in flight_vn210 flight_vn211 flight_vj122 flight_sq185 \
+  cabin_vn_a359_eco cabin_vn_a359_bus cabin_vn_b789_eco cabin_vj_a321_eco \
+  cabin_vj_a321_pre cabin_sq_a359_eco cabin_sq_a359_bus; do
+  require_value "$required" "${!required}"
+done
+
+run_sql_file_with_settings \
+  pricingdb \
+  airline_pricing_db \
+  "$PRICING_SEED_SQL" \
+  airline_vn="$airline_vn" \
+  airline_vj="$airline_vj" \
+  airline_sq="$airline_sq" \
+  flight_vn210="$flight_vn210" \
+  flight_vn211="$flight_vn211" \
+  flight_vj122="$flight_vj122" \
+  flight_sq185="$flight_sq185" \
+  cabin_vn_a359_eco="$cabin_vn_a359_eco" \
+  cabin_vn_a359_bus="$cabin_vn_a359_bus" \
+  cabin_vn_b789_eco="$cabin_vn_b789_eco" \
+  cabin_vj_a321_eco="$cabin_vj_a321_eco" \
+  cabin_vj_a321_pre="$cabin_vj_a321_pre" \
+  cabin_sq_a359_eco="$cabin_sq_a359_eco" \
+  cabin_sq_a359_bus="$cabin_sq_a359_bus"
+
+run_sql_file ancillarydb airline_ancillary_db "$ANCILLARY_MIGRATION_SQL"
+
+run_sql_file bookingdb airline_booking_db "$BOOKING_MIGRATION_SQL"
+
+run_sql_file paymentdb airline_payment_db "$PAYMENT_MIGRATION_SQL"
+
+run_sql_file_with_settings \
+  ancillarydb \
+  airline_ancillary_db \
+  "$ANCILLARY_SEED_SQL" \
+  airline_vn="$airline_vn" \
+  airline_vj="$airline_vj" \
+  airline_sq="$airline_sq" \
+  flight_vn210="$flight_vn210" \
+  flight_vn211="$flight_vn211" \
+  flight_vj122="$flight_vj122" \
+  flight_sq185="$flight_sq185" \
+  cabin_vn_a359_eco="$cabin_vn_a359_eco" \
+  cabin_vn_a359_bus="$cabin_vn_a359_bus" \
+  cabin_vn_b789_eco="$cabin_vn_b789_eco" \
+  cabin_vj_a321_eco="$cabin_vj_a321_eco" \
+  cabin_vj_a321_pre="$cabin_vj_a321_pre" \
+  cabin_sq_a359_eco="$cabin_sq_a359_eco" \
+  cabin_sq_a359_bus="$cabin_sq_a359_bus"
 
 echo
 echo "Seed complete."

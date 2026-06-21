@@ -7,19 +7,19 @@ import com.triquang.payload.response.InsuranceCoverageResponse;
 
 public interface InsuranceCoverageService {
 
-	InsuranceCoverageResponse createCoverage(InsuranceCoverageRequest request);
+	InsuranceCoverageResponse createCoverage(Long userId, InsuranceCoverageRequest request);
 
-	List<InsuranceCoverageResponse> createCoveragesBulk(List<InsuranceCoverageRequest> requests);
+	List<InsuranceCoverageResponse> createCoveragesBulk(Long userId, List<InsuranceCoverageRequest> requests);
 
-	InsuranceCoverageResponse updateCoverage(Long id, InsuranceCoverageRequest request);
+	InsuranceCoverageResponse updateCoverage(Long userId, Long id, InsuranceCoverageRequest request);
 
-	void deleteCoverage(Long id);
+	void deleteCoverage(Long userId, Long id);
 
-	InsuranceCoverageResponse getCoverageById(Long id);
+	InsuranceCoverageResponse getCoverageById(Long userId, Long id);
 
-	List<InsuranceCoverageResponse> getCoveragesByAncillaryId(Long ancillaryId);
+	List<InsuranceCoverageResponse> getCoveragesByAncillaryId(Long userId, Long ancillaryId);
 
 	List<InsuranceCoverageResponse> getActiveCoveragesByAncillaryId(Long ancillaryId);
 
-	List<InsuranceCoverageResponse> getAllCoverages();
+	List<InsuranceCoverageResponse> getAllCoverages(Long userId);
 }

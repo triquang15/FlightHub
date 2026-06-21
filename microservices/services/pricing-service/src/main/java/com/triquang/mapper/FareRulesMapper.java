@@ -12,7 +12,6 @@ public class FareRulesMapper {
         return FareRules.builder()
                 .ruleName(request.getRuleName())
                 .fare(fare)
-                .airlineId(request.getAirlineId())
                 .isRefundable(request.getIsRefundable())
                 .changeFee(request.getChangeFee())
                 .cancellationFee(request.getCancellationFee())
@@ -43,12 +42,15 @@ public class FareRulesMapper {
     public static void updateEntity(FareRulesRequest request, FareRules existing) {
         if (request == null || existing == null) return;
         if (request.getRuleName() != null) existing.setRuleName(request.getRuleName());
-        if (request.getAirlineId() != null) existing.setAirlineId(request.getAirlineId());
-        if (request.getIsRefundable() != null) existing.setIsRefundable(request.getIsRefundable());
-        if (request.getChangeFee() != null) existing.setChangeFee(request.getChangeFee());
-        if (request.getCancellationFee() != null) existing.setCancellationFee(request.getCancellationFee());
-        if (request.getRefundDeadlineDays() != null) existing.setRefundDeadlineDays(request.getRefundDeadlineDays());
-        if (request.getChangeDeadlineHours() != null) existing.setChangeDeadlineHours(request.getChangeDeadlineHours());
-        if (request.getIsChangeable() != null) existing.setIsChangeable(request.getIsChangeable());
+        if (request.getIsRefundable() != null) {
+            existing.setIsRefundable(request.getIsRefundable());
+            existing.setCancellationFee(request.getIsRefundable() ? request.getCancellationFee() : null);
+            existing.setRefundDeadlineDays(request.getIsRefundable() ? request.getRefundDeadlineDays() : null);
+        }
+        if (request.getIsChangeable() != null) {
+            existing.setIsChangeable(request.getIsChangeable());
+            existing.setChangeFee(request.getIsChangeable() ? request.getChangeFee() : null);
+            existing.setChangeDeadlineHours(request.getIsChangeable() ? request.getChangeDeadlineHours() : null);
+        }
     }
 }

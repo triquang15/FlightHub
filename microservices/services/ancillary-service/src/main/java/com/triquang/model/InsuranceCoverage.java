@@ -38,7 +38,7 @@ public class InsuranceCoverage {
 
     @Column(length = 3)
     @Builder.Default
-    private String currency = "INR";
+    private String currency = "USD";
 
     @Builder.Default
     private boolean isFlat = true;

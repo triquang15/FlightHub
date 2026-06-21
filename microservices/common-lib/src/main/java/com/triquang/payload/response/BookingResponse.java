@@ -3,6 +3,7 @@ package com.triquang.payload.response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.triquang.embeddable.ContactInfo;
@@ -54,7 +55,7 @@ public class BookingResponse {
     private FareResponse fare;
 
     private Integer totalPassengers;
-    private Double totalAmount;
+    private BigDecimal totalAmount;
     private String currency;
 
     private String specialRequests;

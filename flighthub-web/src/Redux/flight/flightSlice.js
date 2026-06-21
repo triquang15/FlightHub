@@ -37,7 +37,7 @@ const flightSlice = createSlice({
       })
       .addCase(createFlight.fulfilled, (state, action) => {
         state.loading = false;
-        // state.flight = action.payload;
+        state.flight = action.payload;
         state.flights.unshift(action.payload);
       })
       .addCase(createFlight.rejected, (state, action) => {
@@ -52,11 +52,8 @@ const flightSlice = createSlice({
         state.error = null;
       })
       .addCase(getFlightById.fulfilled, (state, action) => {
-        console.log("Flight fetched:", action.payload);
         state.loading = false;
         state.flight = action.payload;
-
-        console.log("Updated state.flight:", state.flight);
       })
       .addCase(getFlightById.rejected, (state, action) => {
         state.loading = false;
@@ -86,7 +83,7 @@ const flightSlice = createSlice({
       })
       .addCase(updateFlight.fulfilled, (state, action) => {
         state.loading = false;
-        // state.flight = action.payload;
+        state.flight = action.payload;
 
         const index = state.flights.findIndex(f => f.id === action.payload.id);
         if (index !== -1) state.flights[index] = action.payload;
@@ -144,7 +141,9 @@ const flightSlice = createSlice({
       })
       .addCase(getFlightsByAircraft.fulfilled, (state, action) => {
         state.loading = false;
-        state.flights = action.payload;
+        state.flights = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload?.content || []);
       })
       .addCase(getFlightsByAircraft.rejected, (state, action) => {
         state.loading = false;

@@ -28,6 +28,8 @@ import FareRulesDetail from "../Dashboard/FareRules/FareRulesDetail";
 import BagagePolicyForm from "../Dashboard/BaggagePolicy/BaggagePolicyForm";
 import BaggagePolicyPage from "../Dashboard/BaggagePolicy/BaggagePolicyPage";
 import FareManagementForm from "../Dashboard/Fare/FareManagementForm";
+import FareManagement from "../Dashboard/Fare/FareManagement";
+import FareDetail from "../Dashboard/Fare/FareDetail";
 
 
 import FlightInstanceTable from "../Dashboard/FlightInstances/FlightInstanceTable";
@@ -198,8 +200,12 @@ const AirlineRoutes = ({
       <Route path="/fare-rules/:id/edit" element={<FareRulesForm />} />
 
       {/* Fare Management Routes */}
-      <Route path="/fare/new" element={<FareManagementForm />} />
-      <Route path="/fare/:id/edit" element={<FareManagementForm />} />
+      <Route path="/fares" element={<FareManagement />} />
+      <Route path="/fares/new" element={<FareManagementForm />} />
+      <Route path="/fares/:id" element={<FareDetail />} />
+      <Route path="/fares/:id/edit" element={<FareManagementForm />} />
+      <Route path="/fare/new" element={<Navigate to="/airline/fares/new" replace />} />
+      <Route path="/fare/:id/edit" element={<Navigate to="/airline/fares" replace />} />
 
       {/* Baggage Policy Management Routes */}
       <Route path="/baggage-policies" element={<BaggagePolicyPage />} />

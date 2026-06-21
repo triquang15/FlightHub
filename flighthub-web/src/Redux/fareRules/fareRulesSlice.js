@@ -16,7 +16,7 @@ const fareRulesSlice = createSlice({
     currentFareRule: null,
     loading: false,
     error: null,
-    fareRule:null
+    fareRule: null,
   },
   reducers: {
     clearFareRulesError: (state) => {
@@ -50,7 +50,9 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getAllFareRules.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules = action.payload.content || action.payload;
+        state.fareRules = Array.isArray(action.payload)
+          ? action.payload
+          : action.payload?.content || [];
       })
       .addCase(getAllFareRules.rejected, (state, action) => {
         state.loading = false;
@@ -117,7 +119,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getFareRulesByAirline.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules = action.payload;
+        state.fareRules = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(getFareRulesByAirline.rejected, (state, action) => {
         state.loading = false;

@@ -6,16 +6,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.client.FlightClient;
 import com.triquang.client.PricingClient;
+import com.triquang.client.SeatClient;
 import com.triquang.client.UserClient;
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.BookingStatus;
+import com.triquang.enums.TicketStatus;
 import com.triquang.event.producer.BookingEventProducer;
 import com.triquang.message.PaymentCompletedEvent;
 import com.triquang.message.PaymentFailedEvent;
+import com.triquang.message.PaymentRefundedEvent;
 import com.triquang.model.Booking;
+import com.triquang.payload.request.SeatConfirmRequest;
+import com.triquang.payload.request.SeatReleaseRequest;
 import com.triquang.payload.response.FareResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.repository.BookingRepository;
+import com.triquang.service.TicketService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +36,8 @@ public class PaymentEventListener {
 	private final FlightClient flightClient;
 	private final PricingClient pricingClient;
 	private final UserClient userClient;
+	private final SeatClient seatClient;
+	private final TicketService ticketService;
 
 	@KafkaListener(
 			topics = "${kafka.topics.payment-completed:payment.completed}",
@@ -43,6 +51,23 @@ public class PaymentEventListener {
 		if (booking == null) {
 			log.error("Booking not found for id={}", event.getBookingId());
 			return;
+		}
+
+		if (booking.getStatus() == BookingStatus.CONFIRMED) {
+			log.info("Booking {} already confirmed; skipping duplicate payment event", booking.getBookingReference());
+			return;
+		}
+		if (booking.getStatus() == BookingStatus.CANCELLED) {
+			log.error("Payment {} completed for cancelled booking {}; manual refund required",
+					event.getPaymentId(), booking.getBookingReference());
+			return;
+		}
+
+		confirmSeats(booking);
+
+		if (!booking.isTicketIssued()) {
+			ticketService.generateTicketsForBooking(booking);
+			booking.setTicketIssued(true);
 		}
 
 		booking.setStatus(BookingStatus.CONFIRMED);
@@ -73,10 +98,37 @@ public class PaymentEventListener {
 			return;
 		}
 
+		if (booking.getStatus() == BookingStatus.CONFIRMED) {
+			log.warn("Ignoring failed payment event for already confirmed booking {}", booking.getBookingReference());
+			return;
+		}
+
+		releaseSeats(booking);
+
 		booking.setStatus(BookingStatus.CANCELLED);
 		bookingRepository.save(booking);
 		log.warn("Booking {} cancelled due to payment failure: {}", booking.getBookingReference(),
 				event.getFailureReason());
+	}
+
+	@KafkaListener(
+			topics = "${kafka.topics.payment-refunded:payment.refunded}",
+			groupId = "${spring.kafka.consumer.group-id:booking-service-group}"
+	)
+	@Transactional
+	public void handlePaymentRefunded(PaymentRefundedEvent event) {
+		Booking booking = bookingRepository.findById(event.getBookingId()).orElse(null);
+		if (booking == null || booking.getStatus() == BookingStatus.CANCELLED) {
+			return;
+		}
+
+		if (booking.getTickets() != null) {
+			booking.getTickets().forEach(ticket -> ticket.setStatus(TicketStatus.REFUNDED));
+		}
+		releaseSeats(booking);
+		booking.setStatus(BookingStatus.CANCELLED);
+		bookingRepository.save(booking);
+		log.info("Booking {} cancelled after refund {}", booking.getBookingReference(), event.getRefundId());
 	}
 
 	// ── Private Helpers ───────────────────────────────────────────────────────
@@ -112,6 +164,34 @@ public class PaymentEventListener {
 		} catch (Exception e) {
 			log.warn("Could not fetch User id={} for notification enrichment: {}", userId, e.getMessage());
 			return null;
+		}
+	}
+
+	private void confirmSeats(Booking booking) {
+		if (booking.getSeatInstanceIds() == null || booking.getSeatInstanceIds().isEmpty()) {
+			return;
+		}
+
+		seatClient.confirmSeats(SeatConfirmRequest.builder()
+				.seatInstanceIds(booking.getSeatInstanceIds())
+				.holdToken(booking.getSeatHoldToken())
+				.bookingReference(booking.getBookingReference())
+				.build());
+	}
+
+	private void releaseSeats(Booking booking) {
+		if (booking.getSeatInstanceIds() == null || booking.getSeatInstanceIds().isEmpty()) {
+			return;
+		}
+
+		try {
+			seatClient.releaseSeats(SeatReleaseRequest.builder()
+					.seatInstanceIds(booking.getSeatInstanceIds())
+					.holdToken(booking.getSeatHoldToken())
+					.bookingReference(booking.getBookingReference())
+					.build());
+		} catch (Exception e) {
+			log.warn("Could not release seats for failed booking {}: {}", booking.getBookingReference(), e.getMessage());
 		}
 	}
 }

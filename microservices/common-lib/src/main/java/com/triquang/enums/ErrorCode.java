@@ -115,17 +115,20 @@ public enum ErrorCode {
     // ANCILLARY
     // =========================
     ANCILLARY_NOT_FOUND("ANC_001", "Ancillary not found", HttpStatus.NOT_FOUND),
+    ANCILLARY_IN_USE("ANC_002", "Ancillary is assigned to a flight and cannot be deleted", HttpStatus.CONFLICT),
 
     // =========================
     // FLIGHT CABIN ANCILLARY
     // =========================
     FLIGHT_CABIN_ANCILLARY_NOT_FOUND("FCA_001", "Flight cabin ancillary not found", HttpStatus.NOT_FOUND),
+    FLIGHT_CABIN_ANCILLARY_ALREADY_EXISTS("FCA_002", "Flight cabin ancillary already exists", HttpStatus.BAD_REQUEST),
 
     // =========================
     // MEAL
     // =========================
     MEAL_NOT_FOUND("MEA_001", "Meal not found", HttpStatus.NOT_FOUND),
     MEAL_ALREADY_EXISTS("MEA_002", "Meal already exists", HttpStatus.BAD_REQUEST),
+    MEAL_IN_USE("MEA_003", "Meal is assigned to a flight and cannot be deleted", HttpStatus.CONFLICT),
 
     // =========================
     // FLIGHT MEAL

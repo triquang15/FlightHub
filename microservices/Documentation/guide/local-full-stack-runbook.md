@@ -101,11 +101,15 @@ bash microservices/scripts/run-local-service.sh pricing-service
 bash microservices/scripts/run-local-service.sh ancillary-service
 bash microservices/scripts/run-local-service.sh booking-service
 bash microservices/scripts/run-local-service.sh payment-service
-bash microservices/scripts/run-local-service.sh subscription-service
 bash microservices/scripts/run-local-service.sh notification-service
 ```
 
 Run one command per terminal.
+
+`subscription-service` is currently an implementation scaffold and is not part
+of the supported API surface. Start it only while developing the billing and
+entitlement contract described in
+`Documentation/business-overview/subscription-service-overview.md`.
 
 ### Start Frontend
 
@@ -127,6 +131,36 @@ Open:
 http://localhost:5173
 ```
 
+### Test Payment Webhooks
+
+For Stripe local testing, start the Payment Service and API Gateway, then run:
+
+```bash
+stripe listen --forward-to http://localhost:8080/api/payments/webhooks/stripe
+```
+
+Copy the emitted `whsec_...` value into `STRIPE_WEBHOOK_SECRET` in
+`.env.local`, then restart Payment Service. The browser return URL and webhook
+are both idempotent; receiving both must still confirm a payment only once.
+
+For PayPal Sandbox, expose API Gateway through an HTTPS tunnel and register:
+
+```text
+https://<public-host>/api/payments/webhooks/paypal
+```
+
+Subscribe to checkout order and payment capture events, then set the PayPal
+webhook identifier as `PAYPAL_WEBHOOK_ID` in `.env.local`. Payment Service
+rejects PayPal callbacks unless PayPal's signature verification API returns
+`SUCCESS`.
+
+Pending checkouts expire after 30 minutes. The reconciliation job runs every
+five minutes by default and can be disabled locally with:
+
+```text
+PAYMENT_RECONCILIATION_ENABLED=false
+```
+
 ## 3. First Run and Seed
 
 PostgreSQL containers initially contain empty databases. Start the relevant
@@ -145,7 +179,7 @@ Email: admin@flighthub.local
 Password: Password@123
 ```
 
-Do not run individual airline-core, seat-service, or flight-ops seed SQL files directly.
+Do not run individual airline-core, seat-service, flight-ops, or pricing seed SQL files directly.
 They require seed context prepared by `init-production-demo-data.sh`.
 
 ## 4. Verify
@@ -201,6 +235,29 @@ http://localhost:8080/swagger-ui.html
 ```
 
 Select a service definition and confirm its OpenAPI document loads.
+
+### Backend Build and Focused Tests
+
+Compile every backend module after changing a shared DTO or event contract:
+
+```bash
+(cd microservices && mvn -DskipTests compile)
+```
+
+Run the production-critical payment, booking-event, notification-delivery and
+gateway authorization tests:
+
+```bash
+(cd microservices && mvn \
+  -pl services/payment-service,services/booking-service,services/notification-service,platform/api-gateway \
+  -am \
+  -Dtest=PaymentServiceImplTest,PaymentEventListenerTest,NotificationTrackingServiceTest,RouteConfigSecurityTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test)
+```
+
+Provider E2E remains a separate check: Stripe has been verified locally;
+PayPal Sandbox checkout creation is configured, while browser approval and
+webhook completion should be rerun after the stack and seed data are restored.
 
 ### Frontend
 
@@ -320,6 +377,7 @@ docker compose -f microservices/docker-compose/docker-compose.yml logs -f userdb
 [ ] API Gateway health is UP on port 8080
 [ ] Login through API Gateway returns an access token
 [ ] Swagger loads through API Gateway
+[ ] Focused backend lifecycle and authorization tests pass
 [ ] Frontend returns HTTP 200 on port 5173
 ```
 
@@ -332,3 +390,4 @@ in the business overview documents:
 - `microservices/Documentation/business-overview/seat-service-overview.md`
 - `microservices/Documentation/business-overview/airline-core-service-overview.md`
 - `microservices/Documentation/business-overview/location-service-overview.md`
+- `microservices/Documentation/business-overview/pricing-service-overview.md`

@@ -9,6 +9,7 @@ import com.triquang.enums.PaymentGateway;
 import com.triquang.enums.PaymentStatus;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "payments")
@@ -31,12 +32,17 @@ public class Payment {
     @Column(name = "booking_id")
     private Long bookingId;
 
-    private Double amount;
+    @Column(precision = 19, scale = 2, nullable = false)
+    private BigDecimal amount;
+
+    @Column(length = 3, nullable = false)
+    private String currency;
 
     @Enumerated(EnumType.STRING)
     private PaymentGateway provider;
 
     private String providerPaymentId;
+    private String providerCheckoutId;
     private String transactionId;
     private String method;
 
@@ -45,6 +51,7 @@ public class Payment {
 
     private String failureReason;
     private LocalDateTime paidAt;
+    private LocalDateTime expiresAt;
     private String refundId;
 
     @CreationTimestamp

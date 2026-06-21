@@ -36,7 +36,9 @@ public class MealRequest {
 
 	private Boolean requiresAdvanceBooking;
 
+	@Min(value = 0, message = "Advance booking hours cannot be negative")
 	private Integer advanceBookingHours;
 
+	@Min(value = 0, message = "Display order cannot be negative")
 	private Integer displayOrder;
 }

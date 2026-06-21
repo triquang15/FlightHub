@@ -7,15 +7,15 @@ import com.triquang.payload.response.FareRulesResponse;
 
 public interface FareRulesService {
 
-	FareRulesResponse createFareRules(FareRulesRequest request);
+	FareRulesResponse createFareRules(Long userId, FareRulesRequest request);
 
-	FareRulesResponse getFareRulesById(Long id);
+	FareRulesResponse getFareRulesById(Long userId, Long id);
 
 	FareRulesResponse getFareRulesByFareId(Long fareId);
 
-	List<FareRulesResponse> getFareRulesByAirlineId(Long airlineId);
+	List<FareRulesResponse> getFareRulesByAirlineOwner(Long userId);
 
-	FareRulesResponse updateFareRules(Long id, FareRulesRequest request);
+	FareRulesResponse updateFareRules(Long userId, Long id, FareRulesRequest request);
 
-	void deleteFareRules(Long id);
+	void deleteFareRules(Long userId, Long id);
 }

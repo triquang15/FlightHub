@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.triquang.embeddable.ContactInfo;
 import com.triquang.enums.CabinClassType;
+import com.triquang.enums.PaymentGateway;
 import com.triquang.enums.TripType;
 
 @Data
@@ -42,4 +43,7 @@ public class BookingRequest {
     private String promoCode;
 
     private List<String> seatNumbers;
+
+    @NotNull(message = "Payment gateway is required")
+    private PaymentGateway paymentGateway;
 }

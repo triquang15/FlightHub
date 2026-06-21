@@ -12,15 +12,20 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.triquang.client.AirlineClient;
+import com.triquang.client.FlightClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.FareMapper;
 import com.triquang.model.Fare;
 import com.triquang.payload.request.FareRequest;
+import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.FareResponse;
+import com.triquang.payload.response.FlightResponse;
 import com.triquang.repository.FareRepository;
 import com.triquang.service.FareService;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -29,30 +34,55 @@ import lombok.RequiredArgsConstructor;
 public class FareServiceImpl implements FareService {
 
 	private final FareRepository fareRepository;
+	private final AirlineClient airlineClient;
+	private final FlightClient flightClient;
 
 	@Override
-	public FareResponse createFare(FareRequest request) {
+	public FareResponse createFare(Long userId, FareRequest request) {
+		Long airlineId = getAirlineForUser(userId);
+		requireOwnedFlight(request.getFlightId(), airlineId);
 		if (fareRepository.existsByFlightIdAndCabinClassIdAndName(request.getFlightId(), request.getCabinClassId(),
 				request.getName())) {
 			throw new BaseException(ErrorCode.FARE_ALREADY_EXISTS);
 		}
 
 		Fare fare = FareMapper.toEntity(request);
+		fare.setAirlineId(airlineId);
 		Fare saved = fareRepository.save(fare);
 		return FareMapper.toResponse(saved);
 	}
 
 	@Override
-	public List<FareResponse> createFares(List<FareRequest> requests) {
+	public List<FareResponse> createFares(Long userId, List<FareRequest> requests) {
+		Long airlineId = getAirlineForUser(userId);
+		requests.stream().map(FareRequest::getFlightId).distinct()
+				.forEach(flightId -> requireOwnedFlight(flightId, airlineId));
 		// Single DB call: fetch composite keys for all relevant flightIds
 		Set<Long> flightIds = requests.stream().map(FareRequest::getFlightId).collect(Collectors.toSet());
 		Set<String> existingKeys = fareRepository.findExistingFareKeys(flightIds);
 
 		List<Fare> toSave = requests.stream().filter(
 				req -> !existingKeys.contains(req.getFlightId() + ":" + req.getCabinClassId() + ":" + req.getName()))
-				.map(FareMapper::toEntity).collect(Collectors.toList());
+				.map(FareMapper::toEntity)
+				.peek(fare -> fare.setAirlineId(airlineId))
+				.collect(Collectors.toList());
 
 		return fareRepository.saveAll(toSave).stream().map(FareMapper::toResponse).collect(Collectors.toList());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<FareResponse> getFaresByAirlineOwner(Long userId) {
+		Long airlineId = getAirlineForUser(userId);
+		return fareRepository.findByAirlineIdOrderByUpdatedAtDesc(airlineId).stream()
+				.map(FareMapper::toResponse)
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public FareResponse getOwnedFareById(Long userId, Long id) {
+		return FareMapper.toResponse(requireOwnedFare(userId, id));
 	}
 
 	@Override
@@ -73,8 +103,9 @@ public class FareServiceImpl implements FareService {
 	@Override
 	@Caching(evict = { @CacheEvict(cacheNames = "fares", key = "#id"),
 			@CacheEvict(cacheNames = "faresByFlight", allEntries = true) })
-	public FareResponse updateFare(Long id, FareRequest request) {
-		Fare existing = fareRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.FARE_NOT_FOUND));
+	public FareResponse updateFare(Long userId, Long id, FareRequest request) {
+		Fare existing = requireOwnedFare(userId, id);
+		requireOwnedFlight(request.getFlightId(), existing.getAirlineId());
 
 		if (fareRepository.existsByFlightIdAndCabinClassIdAndNameAndIdNot(request.getFlightId(),
 				request.getCabinClassId(), request.getName(), id)) {
@@ -89,8 +120,8 @@ public class FareServiceImpl implements FareService {
 	@Override
 	@Caching(evict = { @CacheEvict(cacheNames = "fares", key = "#id"),
 			@CacheEvict(cacheNames = "faresByFlight", allEntries = true) })
-	public void deleteFare(Long id) {
-		Fare fare = fareRepository.findById(id).orElseThrow(() -> new BaseException(ErrorCode.FARE_NOT_FOUND));
+	public void deleteFare(Long userId, Long id) {
+		Fare fare = requireOwnedFare(userId, id);
 		fareRepository.delete(fare);
 	}
 
@@ -133,5 +164,45 @@ public class FareServiceImpl implements FareService {
 		Fare lowestFare = fares.stream().min(Comparator.comparingDouble(Fare::getTotalPrice)).orElse(null);
 
 		return FareMapper.toResponse(lowestFare);
+	}
+
+	private Fare requireOwnedFare(Long userId, Long id) {
+		Fare fare = fareRepository.findByIdWithDetails(id)
+				.orElseThrow(() -> new BaseException(ErrorCode.FARE_NOT_FOUND));
+		if (!getAirlineForUser(userId).equals(fare.getAirlineId())) {
+			throw new BaseException(ErrorCode.ACCESS_DENIED);
+		}
+		return fare;
+	}
+
+	private FlightResponse requireOwnedFlight(Long flightId, Long airlineId) {
+		try {
+			FlightResponse flight = flightClient.getFlightById(flightId);
+			if (flight == null) {
+				throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+			}
+			if (flight.getAirline() == null || !airlineId.equals(flight.getAirline().getId())) {
+				throw new BaseException(ErrorCode.ACCESS_DENIED);
+			}
+			return flight;
+		} catch (FeignException.NotFound e) {
+			throw new BaseException(ErrorCode.FARE_NOT_FOUND);
+		} catch (FeignException e) {
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+		}
+	}
+
+	private Long getAirlineForUser(Long userId) {
+		try {
+			List<AirlineResponse> airlines = airlineClient.getAirlinesByOwner(userId);
+			if (airlines == null || airlines.isEmpty()) {
+				throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+			}
+			return airlines.getFirst().getId();
+		} catch (FeignException.NotFound e) {
+			throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+		} catch (FeignException e) {
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+		}
 	}
 }

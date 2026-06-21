@@ -157,10 +157,10 @@ public class BookingEventProducer {
                 .flightDuration(duration)
                 // Payment
                 .totalAmount(payment.getAmount())
-                .currency("INR")
+                .currency(booking.getCurrency() != null ? booking.getCurrency() : "INR")
                 .transactionId(payment.getTransactionId())
                 .providerPaymentId(payment.getProviderPaymentId())
-                .paymentGateway("RAZORPAY")
+                .paymentGateway(payment.getPaymentGateway())
                 .paidAt(payment.getPaidAt())
                 // Fare breakdown
                 .fareName(fareName)
