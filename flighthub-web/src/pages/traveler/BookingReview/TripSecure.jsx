@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
@@ -6,7 +6,6 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
-  Briefcase,
   Plane,
   Clock,
   Ban,
@@ -39,24 +38,22 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
     (state) => state.flightCabinAncillary
   );
 
-  console.log("ancillaries by types ------- ", ancillariesByType)
+  const travelProtectionPayload = ancillariesByType["TRAVEL_PROTECTION"];
+  const tripSecureData = Array.isArray(travelProtectionPayload)
+    ? travelProtectionPayload[0] || null
+    : travelProtectionPayload || null;
 
-  const tripSecureData = ancillariesByType["TRAVEL_PROTECTION"] || null;
-
-  // Extract data from API response or use mock data
+  // Travel protection is optional. A 404 from the API means this cabin has no package.
   const insuranceName = tripSecureData?.ancillary?.name || "Trip Secure";
 
   const insuranceDescription =
     tripSecureData?.ancillary?.description ||
-    "Protect your journey with comprehensive travel insurance";
+    "Travel protection is not available for this fare right now.";
 
   const insurancePrice = tripSecureData?.price;
 
   const coverages =  tripSecureData?.ancillary?.coverages || [];
 
-  console.log("tripSecure data ", tripSecureData)
-
-  
   const emergencyContact =
     coverages.length > 0
       ? coverages[0].emergencyContact
@@ -207,6 +204,13 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
 
         {/* Radio Button Options */}
         <div className="space-y-3 mb-6">
+          {!tripSecureData && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              No travel protection package is available for this cabin. You can
+              continue without adding insurance.
+            </div>
+          )}
+
           {/* Yes Option */}
           {tripSecureData && <motion.div
             whileHover={{ scale: 1.01 }}

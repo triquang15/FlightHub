@@ -78,9 +78,18 @@ const flightInstanceCabinSlice = createSlice({
       state.error = action.payload;
     });
 
+    builder.addCase(getFlightInstanceCabinsByFlightInstanceAndCabinClass.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
     builder.addCase(getFlightInstanceCabinsByFlightInstanceAndCabinClass.fulfilled, (state, action) => {
       state.loading = false;
-      state.cabin = action.payload;
+      state.cabin = action.payload || null;
+    });
+    builder.addCase(getFlightInstanceCabinsByFlightInstanceAndCabinClass.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.cabin = null;
     });
 
     // ---------- DELETE ----------

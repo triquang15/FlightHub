@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UtensilsCrossed,
@@ -9,7 +9,6 @@ import {
   Leaf,
   AlertCircle,
   Clock,
-  Info,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 
@@ -19,10 +18,15 @@ const MealSelection = ({ selectedMeals, onSelectMeal }) => {
 
   // Get meals from Redux
   const { flightMeals, loading } = useSelector((state) => state.flightMeal);
+  const flightMealList = Array.isArray(flightMeals)
+    ? flightMeals
+    : Array.isArray(flightMeals?.data)
+    ? flightMeals.data
+    : [];
   
 
   // Transform flight meal data to match the expected format
-  const mealsData = (flightMeals || []).map((fm) => ({
+  const mealsData = flightMealList.map((fm) => ({
     id: fm.id,
     flightMealId: fm.id,
     mealId: fm.meal?.id,

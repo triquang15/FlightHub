@@ -2,6 +2,8 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
 const API_URL = "/api/flight-cabin-ancillaries";
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const isNotFound = (err) => err?.response?.status === 404;
 
 // Create Cabin Ancillary
 // Request body now requires: { flightId, cabinClassId, ancillaryId, available, maxQuantity, price, currency, includedInFare }
@@ -116,8 +118,11 @@ export const getFlightCabinAncillariesByType = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}`);
       console.log(`✅ getFlightCabinAncillariesByType [${type}] success:`, res.data);
-      return { type, data: res.data };
+      return { type, data: unwrapApiData(res) };
     } catch (err) {
+      if (isNotFound(err)) {
+        return { type, data: null };
+      }
       console.error(`❌ getFlightCabinAncillariesByType [${type}] error:`, err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || `Failed to fetch cabin ancillary by type: ${type}`);
     }
@@ -131,8 +136,11 @@ export const getAllFlightCabinAncillariesByType = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/flight/${flightId}/cabin/${cabinClassId}/type/${type}/all`);
       console.log(`✅ getAllFlightCabinAncillariesByType [${type}] success:`, res.data);
-      return { type, data: res.data };
+      return { type, data: unwrapApiData(res) };
     } catch (err) {
+      if (isNotFound(err)) {
+        return { type, data: [] };
+      }
       console.error(`❌ getAllFlightCabinAncillariesByType [${type}] error:`, err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || `Failed to fetch cabin ancillaries by type: ${type}`);
     }

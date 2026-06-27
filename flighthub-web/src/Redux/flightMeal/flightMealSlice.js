@@ -19,6 +19,16 @@ const initialState = {
   pageSize: 20,
 };
 
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.content)) return value.content;
+  if (Array.isArray(value?.data?.content)) return value.data.content;
+  return [];
+};
+
+const unwrapItem = (value) => value?.data ?? value;
+
 const flightMealSlice = createSlice({
   name: "flightMeal",
   initialState,
@@ -39,8 +49,9 @@ const flightMealSlice = createSlice({
       })
       .addCase(createFlightMeal.fulfilled, (state, action) => {
         state.loading = false;
-        state.flightMeals.push(action.payload);
-        state.currentFlightMeal = action.payload;
+        const created = unwrapItem(action.payload);
+        state.flightMeals.push(created);
+        state.currentFlightMeal = created;
       })
       .addCase(createFlightMeal.rejected, (state, action) => {
         state.loading = false;
@@ -54,7 +65,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(bulkCreateFlightMeals.fulfilled, (state, action) => {
         state.loading = false;
-        state.flightMeals.push(...action.payload);
+        state.flightMeals.push(...asArray(action.payload));
       })
       .addCase(bulkCreateFlightMeals.rejected, (state, action) => {
         state.loading = false;
@@ -67,11 +78,8 @@ const flightMealSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchFlightMealsByFlightId.fulfilled, (state, action) => {
-        console.log(
-          "Reducer received flight meals: ----- ====== ++++", 
-          action.payload);
         state.loading = false;
-        state.flightMeals = action.payload;
+        state.flightMeals = asArray(action.payload);
       })
       .addCase(fetchFlightMealsByFlightId.rejected, (state, action) => {
         state.loading = false;
@@ -85,11 +93,12 @@ const flightMealSlice = createSlice({
       })
       .addCase(updateFlightMeal.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.flightMeals.findIndex((fm) => fm.id === action.payload.id);
+        const updated = unwrapItem(action.payload);
+        const index = state.flightMeals.findIndex((fm) => fm.id === updated.id);
         if (index !== -1) {
-          state.flightMeals[index] = action.payload;
+          state.flightMeals[index] = updated;
         }
-        state.currentFlightMeal = action.payload;
+        state.currentFlightMeal = updated;
       })
       .addCase(updateFlightMeal.rejected, (state, action) => {
         state.loading = false;
@@ -103,11 +112,12 @@ const flightMealSlice = createSlice({
       })
       .addCase(updateFlightMealAvailability.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.flightMeals.findIndex((fm) => fm.id === action.payload.id);
+        const updated = unwrapItem(action.payload);
+        const index = state.flightMeals.findIndex((fm) => fm.id === updated.id);
         if (index !== -1) {
-          state.flightMeals[index] = action.payload;
+          state.flightMeals[index] = updated;
         }
-        state.currentFlightMeal = action.payload;
+        state.currentFlightMeal = updated;
       })
       .addCase(updateFlightMealAvailability.rejected, (state, action) => {
         state.loading = false;

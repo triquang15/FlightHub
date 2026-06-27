@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CreditCard, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, CreditCard, X, AlertCircle, ShieldCheck, Users, Plane } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -20,16 +20,41 @@ import FareSummaryCard from "./FareSummaryCard";
 // Import Redux thunks
 import {
   getAllFlightCabinAncillariesByType,
-  getFlightCabinAncillariesByType,
 } from "@/Redux/flightCabinAncillary/flightCabinAncillaryThunk";
 import { getFlightInstanceById } from "@/Redux/flightInstance/flightInstanceThunk";
 import { createBooking } from "@/Redux/booking/bookingThunk";
 
 import { getFareRuleByFare } from "@/Redux/fareRules/fareRulesThunk";
 import { fetchFlightMealsByFlightId } from "@/Redux/flightMeal/flightMealThunk";
-import { getFlightInstanceCabinsByFlightInstanceAndCabinClass } from "@/Redux/flightInstanceCabin/flightInstanceCabinThunk";
 import { getBaggagePolicyByFare } from "@/Redux/baggagePolicy/baggagePolicyThunk";
 import { getFareById } from "@/Redux/fare/fareThunk";
+
+const readStoredBookingData = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem("bookingData") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const decodeSearchFilter = (value) => {
+  if (!value) return {};
+  try {
+    return JSON.parse(atob(value));
+  } catch {
+    return {};
+  }
+};
+
+const getSelectedTravelProtection = (payload) => {
+  if (Array.isArray(payload)) return payload[0] || null;
+  return payload || null;
+};
+
+const getFareAmount = (fare, field, fallbackField) => {
+  const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+};
 
 const BookingReview = () => {
   const navigate = useNavigate();
@@ -43,6 +68,7 @@ const BookingReview = () => {
   const { ancillariesByType } = useSelector(
     (state) => state.flightCabinAncillary,
   );
+  const { seats = [] } = useSelector((state) => state.seat || {});
 
   const { loading: bookingLoading, error: bookingError } = useSelector(
     (state) => state.booking,
@@ -59,17 +85,23 @@ const BookingReview = () => {
 
   const [loading, setLoading] = useState(true);
   const bookingParams = useMemo(() => {
+    const storedBookingData = readStoredBookingData();
+    const decodedFilter = decodeSearchFilter(searchParams.get("xflt"));
     const passengerCount = parseInt(
       searchParams.get("pax") || searchParams.get("passengers") || searchParams.get("numberOfTravellers"),
       10,
     ) || 1;
+    const storedFare = storedBookingData?.fare || {};
+    const storedCabin = storedBookingData?.flight?.selectedCabinClass || {};
+
     return {
       passengerCount,
       totalPassengers: passengerCount,
-      flightId: searchParams.get("flightId"),
-      fareId: searchParams.get("fareId"),
-      flightInstanceId: searchParams.get("flightInstanceId"),
-      cabinClass: searchParams.get("cabinClass") || "ECONOMY",
+      flightId: searchParams.get("flightId") || decodedFilter.flightId || storedBookingData?.flight?.flightId,
+      fareId: searchParams.get("fareId") || decodedFilter.fareId || storedFare.id,
+      flightInstanceId: searchParams.get("flightInstanceId") || decodedFilter.flightInstanceId || storedBookingData?.flight?.id,
+      cabinClass: searchParams.get("cabinClass") || decodedFilter.CabinClass || storedCabin.name || storedFare.cabinClass || "ECONOMY",
+      cabinClassId: searchParams.get("cabinClassId") || decodedFilter.cabinClassId || storedFare.cabinClassId || storedCabin.id,
       tripType: searchParams.get("tripType") || "ONE_WAY",
     };
   }, [searchParams]);
@@ -81,6 +113,7 @@ const BookingReview = () => {
     fareId,
     flightInstanceId,
     cabinClass,
+    cabinClassId,
     tripType,
   } = bookingParams;
 
@@ -112,23 +145,23 @@ const BookingReview = () => {
       0,
     );
     const travelProtectionCharge = selectedTravelProtection?.price || 0;
-    const baseFare = selectedFare?.baseFare || 0;
-    const taxes = selectedFare?.taxes || 0;
+    const baseFare = getFareAmount(selectedFare, "baseFare", "price") * passengerCount;
+    const taxes = getFareAmount(selectedFare, "taxes", "taxesAndFees") * passengerCount;
 
     return {
       seatCharges,
       mealCharges,
       baggageCharges,
-      travelProtectionCharge,
+      travelProtectionCharge: travelProtectionCharge * passengerCount,
       grandTotal:
         baseFare +
         taxes +
         seatCharges +
         mealCharges +
         baggageCharges +
-        travelProtectionCharge,
+        travelProtectionCharge * passengerCount,
     };
-  }, [selectedBaggage, selectedFare, selectedMeals, selectedSeats, selectedTravelProtection]);
+  }, [passengerCount, selectedBaggage, selectedFare, selectedMeals, selectedSeats, selectedTravelProtection]);
 
   // Handle seat selection with price calculation for multiple passengers
   const handleSeatSelection = (passengerIndex, seat) => {
@@ -146,6 +179,8 @@ const BookingReview = () => {
   };
 
   useEffect(() => {
+    // Keep seat slots aligned with the selected passenger count.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedSeats((current) =>
       Array.from({ length: passengerCount }, (_, index) => current[index] || null),
     );
@@ -154,18 +189,8 @@ const BookingReview = () => {
   // Load booking data from URL parameters and sessionStorage
   useEffect(() => {
     try {
-      const xflt = searchParams.get("xflt");
-
-      // Decode search filter if available
-      if (xflt) {
-        JSON.parse(atob(xflt));
-      }
-
-      // Get booking data from sessionStorage
-      const storedBookingData = sessionStorage.getItem("bookingData");
-      if (storedBookingData) {
-        JSON.parse(storedBookingData);
-      }
+      decodeSearchFilter(searchParams.get("xflt"));
+      readStoredBookingData();
     } catch (error) {
       console.error("Error loading booking data:", error);
     } finally {
@@ -185,14 +210,8 @@ const BookingReview = () => {
   useEffect(() => {
     if (flightInstanceId) {
       dispatch(getFlightInstanceById(flightInstanceId));
-      dispatch(
-        getFlightInstanceCabinsByFlightInstanceAndCabinClass({
-          flightInstanceId,
-          cabinClassId:selectedFare?.cabinClassId
-        }),
-      );
     }
-  }, [flightInstanceId, dispatch, selectedFare]);
+  }, [flightInstanceId, dispatch]);
 
   // Fetch ancillaries by type when flightId and cabinClassId are available
   useEffect(() => {
@@ -201,15 +220,15 @@ const BookingReview = () => {
       dispatch(fetchFlightMealsByFlightId(flightId));
     }
 
-    if (flightId && selectedFare?.cabinClassId) {
-      const cabinClassId = selectedFare?.cabinClassId;
+    const resolvedCabinClassId = selectedFare?.cabinClassId || cabinClassId;
+    if (flightId && resolvedCabinClassId) {
 
 
-      // Fetch Travel Protection (flexibility, cancellation protection)
+      // Fetch Travel Protection as a list so unavailable packages return 200 [] instead of a noisy 404.
       dispatch(
-        getFlightCabinAncillariesByType({
+        getAllFlightCabinAncillariesByType({
           flightId,
-          cabinClassId,
+          cabinClassId: resolvedCabinClassId,
           type: "TRAVEL_PROTECTION",
         }),
       );
@@ -218,12 +237,12 @@ const BookingReview = () => {
       dispatch(
         getAllFlightCabinAncillariesByType({
           flightId,
-          cabinClassId,
+          cabinClassId: resolvedCabinClassId,
           type: "BAGGAGE",
         }),
       );
     }
-  }, [flightId, selectedFare, dispatch]);
+  }, [cabinClassId, flightId, selectedFare?.cabinClassId, dispatch]);
 
   const handleProceedToPayment = async () => {
     // Validate traveller data
@@ -246,8 +265,10 @@ const BookingReview = () => {
     }
 
     const selectedSeatCount = selectedSeats.filter(Boolean).length;
-    if (selectedSeatCount !== passengerCount) {
-      toast.error(`Please select seats for all ${passengerCount} passenger(s)`);
+    if (selectedSeatCount > 0 && selectedSeatCount !== passengerCount) {
+      toast.error(
+        `Please select seats for all ${passengerCount} passenger(s), or remove the selected seat(s) to continue without seat selection`,
+      );
       return;
     }
 
@@ -265,19 +286,21 @@ const BookingReview = () => {
       0,
     );
 
-    const travelProtectionData = ancillariesByType?.TRAVEL_PROTECTION || {};
+    const travelProtectionData = getSelectedTravelProtection(
+      ancillariesByType?.TRAVEL_PROTECTION,
+    );
     const travelProtectionCharge =
-      selectedTravelProtection && travelProtectionData?.price ? travelProtectionData.price : 0;
+      selectedTravelProtection?.price || travelProtectionData?.price || 0;
 
 
-    const baseFare = selectedFare?.baseFare || 0;
-    const taxes = selectedFare?.taxes || 0;
+    const baseFare = getFareAmount(selectedFare, "baseFare", "price") * passengerCount;
+    const taxes = getFareAmount(selectedFare, "taxes", "taxesAndFees") * passengerCount;
     const subtotal = baseFare + taxes;
     const addOnsTotal =
       seatCharges +
       mealCharges +
       baggageCharges +
-      travelProtectionCharge;
+      travelProtectionCharge * passengerCount;
     const grandTotal = subtotal + addOnsTotal;
 
     // Collect all ancillary IDs
@@ -308,8 +331,11 @@ const BookingReview = () => {
     });
 
     // Add travel protection ancillary ID
-    if (selectedTravelProtection && travelProtectionData?.id) {
-      ancillaryIds.push(travelProtectionData.id);
+    if (selectedTravelProtection && (selectedTravelProtection.id || travelProtectionData?.id)) {
+      const travelProtectionId = selectedTravelProtection.id || travelProtectionData.id;
+      for (let index = 0; index < passengerCount; index += 1) {
+        ancillaryIds.push(travelProtectionId);
+      }
     }
 
 
@@ -371,6 +397,15 @@ const BookingReview = () => {
       paymentGateway,
     };
 
+    if (!seats.length) {
+      bookingDataForAPI.seatNumbers = [];
+      bookingDataForAPI.passengers = bookingDataForAPI.passengers.map((passenger) => ({
+        ...passenger,
+        seatNumber: null,
+        seatInstanceId: null,
+      }));
+    }
+
     // Call the booking API
     try {
       toast.loading("Creating your booking...", { id: "booking-toast" });
@@ -411,10 +446,10 @@ const BookingReview = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading booking details...</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
+          <p className="text-slate-600 dark:text-slate-300">Loading booking details...</p>
         </div>
       </div>
     );
@@ -423,7 +458,7 @@ const BookingReview = () => {
   // Use real booking data if available, otherwise use mock data
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
       {/* Error Notification */}
       <AnimatePresence>
         {bookingError && (
@@ -431,24 +466,24 @@ const BookingReview = () => {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 right-4 z-50 max-w-md"
+            className="fixed right-4 top-4 z-50 max-w-md"
           >
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-lg dark:border-red-500/30 dark:bg-red-950/70">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-300" />
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-red-900 mb-1">
+                  <h3 className="mb-1 text-sm font-semibold text-red-900 dark:text-red-100">
                     Booking Failed
                   </h3>
-                  <p className="text-sm text-red-700">{bookingError}</p>
+                  <p className="text-sm text-red-700 dark:text-red-200">{bookingError}</p>
                 </div>
                 <button
                   onClick={() =>
                     dispatch({ type: "booking/clearBookingError" })
                   }
-                  className="text-red-400 hover:text-red-600 transition-colors"
+                  className="text-red-400 transition-colors hover:text-red-600 dark:hover:text-red-200"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -457,20 +492,20 @@ const BookingReview = () => {
       </AnimatePresence>
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/85">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Back to Flight Search</span>
+              <ArrowLeft className="h-5 w-5" />
+              <span>Back to Flight Search</span>
             </button>
             <div className="hidden md:block">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 Need help? Call:{" "}
-                <span className="font-semibold text-blue-600">
+                <span className="font-semibold text-blue-600 dark:text-blue-300">
                   1800-123-4567
                 </span>
               </p>
@@ -480,26 +515,45 @@ const BookingReview = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
           {/* Page Title */}
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          <div className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase text-blue-600 dark:text-blue-300">
+                  Secure checkout
+                </p>
+                <h1 className="mb-2 text-2xl font-bold text-slate-950 dark:text-white md:text-3xl">
               Complete Your Booking
-            </h1>
-            <p className="text-gray-600 text-sm md:text-base">
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-300 md:text-base">
               Review your flight details and fill in traveller information
-            </p>
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { label: "Flight", icon: Plane },
+                  { label: `${passengerCount} traveller${passengerCount > 1 ? "s" : ""}`, icon: Users },
+                  { label: "Protected", icon: ShieldCheck },
+                ].map(({ label, icon: Icon }) => (
+                  <div key={label} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900/70">
+                    <Icon className="mx-auto mb-1 h-4 w-4 text-blue-600 dark:text-blue-300" />
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 [&_.bg-gray-50]:dark:bg-slate-950/50 [&_.bg-gray-100]:dark:bg-slate-800 [&_.bg-white]:dark:bg-slate-900/90 [&_.border-gray-200]:dark:border-white/10 [&_.border-gray-300]:dark:border-white/10 [&_.text-gray-500]:dark:text-slate-500 [&_.text-gray-600]:dark:text-slate-400 [&_.text-gray-700]:dark:text-slate-300 [&_.text-gray-800]:dark:text-white [&_.text-gray-900]:dark:text-white [&_input]:dark:border-white/10 [&_input]:dark:bg-slate-900 [&_input]:dark:text-white [&_select]:dark:border-white/10 [&_select]:dark:bg-slate-900 [&_select]:dark:text-white lg:grid-cols-3">
             {/* Left Column - Main Content */}
-            <div className="col-span-1 lg:col-span-2 space-y-6">
+            <div className="col-span-1 space-y-6 lg:col-span-2">
               {/* 1. Flight Details Summary */}
               <FlightDetailsOverview flightData={flightInstance} />
 
@@ -527,7 +581,7 @@ const BookingReview = () => {
                   onSelectSeat={handleSeatSelection}
                   passengerCount={passengerCount}
                   flightInstanceId={flightInstanceId}
-                  cabinClassId={selectedFare?.cabinClassId}
+                  cabinClassId={selectedFare?.cabinClassId || cabinClassId}
                   cabinClass={cabinClass}
                 />
 
@@ -571,27 +625,27 @@ const BookingReview = () => {
           </div>
 
           {/* Mobile Sticky Bottom Bar */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-30">
+          <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-950/95 lg:hidden">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs text-gray-600">Total Amount</p>
-                <p className="text-lg font-bold text-gray-900">
+                <p className="text-xs text-slate-600 dark:text-slate-400">Total Amount</p>
+                <p className="text-lg font-bold text-slate-950 dark:text-white">
                   {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(pricingSummary.grandTotal)}
                 </p>
               </div>
               <button
                 onClick={handleProceedToPayment}
                 disabled={bookingLoading}
-                className="flex-1 max-w-xs py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex max-w-xs flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {bookingLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
                     Processing...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-5 h-5" />
+                    <CreditCard className="h-5 w-5" />
                     Continue
                   </>
                 )}

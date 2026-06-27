@@ -3,6 +3,8 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
 const API_URL = `/api/flight-instance-cabins`;
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const isMissingInventory = (err) => [400, 404].includes(err?.response?.status);
 
 // ✅ Create Flight Cabin
 export const createFlightInstanceCabin = createAsyncThunk(
@@ -52,7 +54,7 @@ export const getFlightInstanceCabinById = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getFlightCabinById success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ getFlightCabinById error:",
@@ -98,8 +100,15 @@ export const getFlightInstanceCabinsByFlightInstanceAndCabinClass =
           `${API_URL}/flight-instance/${flightInstanceId}/cabin-class/${cabinClassId}`
         );
         console.log("✅ getFlightCabinsByFlightInstance success: )))))))) ", res.data);
-        return res.data;
+        return unwrapApiData(res);
       } catch (err) {
+        if (isMissingInventory(err)) {
+          console.warn(
+            "⚠️ flight instance cabin inventory not available:",
+            err.response?.data?.message || err.message
+          );
+          return null;
+        }
         console.error(
           "❌ getFlightInstanceCabinsByFlightInstanceAndCabinClass error:",
           err.response?.data?.message || err.message
@@ -120,7 +129,7 @@ export const getFlightInstanceCabinsByFlightInstance = createAsyncThunk(
         params,
         });
       console.log("✅ getFlightInstanceCabinsByFlight success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error(
         "❌ getFlightCabinsByFlight error:",
@@ -132,4 +141,3 @@ export const getFlightInstanceCabinsByFlightInstance = createAsyncThunk(
     }
   }
 );
-

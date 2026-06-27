@@ -1,9 +1,11 @@
 // utils/bookingUtils.js
 
 export const generateItineraryId = (flight) => {
-  return btoa(
-    `${flight.departureAirportCode}-${flight.arrivalAirportCode}-${flight.departureTime}`
-  )
+  const departureCode = flight?.departureAirport?.iataCode || flight?.departureAirportCode || "ORIGIN";
+  const arrivalCode = flight?.arrivalAirport?.iataCode || flight?.arrivalAirportCode || "DEST";
+  const departureTime = flight?.departureDateTime || flight?.departureTime || flight?.scheduledDepartureTime || "TIME";
+
+  return btoa(`${departureCode}-${arrivalCode}-${departureTime}`)
     .replace(/=/g, "")
     .substring(0, 40);
 };

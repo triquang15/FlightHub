@@ -1,5 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
 /**
  * Create a new flight meal
  */
@@ -45,8 +47,7 @@ export const fetchFlightMealsByFlightId = createAsyncThunk(
     try {
       const response = await api.get(`/api/flight-meals/flight/${flightId}`, {
         });
-      console.log("Fetched flight meals: ----- ====== ++++", response.data);
-   return response.data;
+      return unwrapApiData(response);
     } catch (error) {
       console.log("Error fetching flight meals by flight ID:", error);
       return rejectWithValue(
@@ -114,4 +115,3 @@ export const deleteFlightMeal = createAsyncThunk(
     }
   }
 );
-

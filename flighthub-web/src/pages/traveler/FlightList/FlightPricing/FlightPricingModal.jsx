@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarDays, Clock, Plane, Route, Users } from "lucide-react";
+import { AlertCircle, ArrowRight, CalendarDays, Clock, Plane, Route, Users } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -59,7 +59,11 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
     flightFaresLoading: faresLoading,
     flightFaresError: faresError,
   } = useSelector((store) => store.fare);
-  const { cabinClasses = [] } = useSelector((store) => store.cabinClass);
+  const {
+    cabinClasses = [],
+    loading: cabinsLoading,
+    error: cabinsError,
+  } = useSelector((store) => store.cabinClass);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -102,6 +106,33 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
     [selectedFareId, sortedFares],
   );
 
+  const bookingCabinClass = useMemo(() => {
+    if (selectedCabinClass) return selectedCabinClass;
+    if (!selectedFare) return null;
+
+    const cabinName = selectedFare.cabinClass || flight?.fare?.cabinClass;
+    if (!cabinName && !selectedFare.cabinClassId) return null;
+
+    return {
+      id: selectedFare.cabinClassId || selectedCabinId,
+      name: cabinName || "ECONOMY",
+      cabinClassType: cabinName || "ECONOMY",
+    };
+  }, [flight?.fare?.cabinClass, selectedCabinClass, selectedCabinId, selectedFare]);
+
+  const continueDisabledReason = useMemo(() => {
+    if (faresLoading) return "Loading available fares for this flight.";
+    if (faresError && !selectedFare) return `Fare data could not be loaded: ${faresError}`;
+    if (!sortedFares.length) return "No fare is available for this flight and cabin.";
+    if (!selectedFare) return "Select a fare option to continue.";
+    if (cabinsLoading && !bookingCabinClass) return "Loading cabin information before booking.";
+    if (cabinsError && !bookingCabinClass) return `Cabin data could not be loaded: ${cabinsError}`;
+    if (!bookingCabinClass) return "Cabin class could not be resolved for the selected fare.";
+    return "";
+  }, [bookingCabinClass, cabinsError, cabinsLoading, faresError, faresLoading, selectedFare, sortedFares.length]);
+
+  const canContinue = Boolean(selectedFare && bookingCabinClass && !faresLoading);
+
   const selectedTotal = selectedFare ? fareTotal(selectedFare) * passengerCount : 0;
   const selectedCurrency = selectedFare?.currency || flight?.fare?.currency || "USD";
   const routeLabel = `${airportCode(flight?.departureAirport)} to ${airportCode(flight?.arrivalAirport)}`;
@@ -118,18 +149,18 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
   }, [dispatch, flight?.flightId, selectedCabinId]);
 
   const handleContinueBooking = () => {
-    if (!selectedFare || !selectedCabinClass) return;
+    if (!canContinue) return;
 
     const { bookingData, queryParams } = buildBookingPayload({
       flight,
       selectedFare,
-      selectedCabinClass,
+      selectedCabinClass: bookingCabinClass,
       numberOfTravellers: passengerCount,
     });
 
     sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
     navigate(`/booking-review?${new URLSearchParams(queryParams).toString()}`);
-    onSelectFare?.({ ...flight, selectedFare, selectedCabinClass });
+    onSelectFare?.({ ...flight, selectedFare, selectedCabinClass: bookingCabinClass });
     onClose?.();
   };
 
@@ -257,12 +288,21 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
           <Button variant="outline" onClick={onClose}>
             Back to results
           </Button>
+          <div className="min-w-0 flex-1 sm:max-w-md">
+            {continueDisabledReason && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{continueDisabledReason}</span>
+              </div>
+            )}
+          </div>
           <Button
             onClick={handleContinueBooking}
-            disabled={!selectedFare || !selectedCabinClass}
+            disabled={!canContinue}
+            title={continueDisabledReason || "Continue to booking"}
             className="h-11 min-w-48 justify-between"
           >
-            Continue to booking
+            {faresLoading || cabinsLoading ? "Preparing booking" : "Continue to booking"}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, ChevronDown, ChevronUp, Mail, Phone, AlertCircle, ChevronDownIcon } from 'lucide-react';
 import {
@@ -15,9 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { use } from 'react';
 import { useSelector } from 'react-redux';
-import { useEffect } from 'react';
 
 const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => {
   const [expandedPassenger, setExpandedPassenger] = useState(0);
@@ -54,8 +52,6 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
         countryCode: '+91'
       });
     }
-    console.log("User info set in traveller details:", userProfile);
-
   },[userProfile])
 
   const handleInputChange = (passengerIndex, field, value) => {
@@ -82,7 +78,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
   };
 
   const isPassengerComplete = (passenger) => {
-    const requiredFields = ['title', 'firstName', 'lastName', 'gender'];
+    const requiredFields = ['title', 'firstName', 'lastName', 'gender', 'dob'];
     return requiredFields.every(field => passenger[field]);
   };
 
@@ -91,28 +87,28 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
-      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-6"
+      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90 dark:shadow-black/20"
     >
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-          <User className="w-6 h-6 text-blue-600" />
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+          <User className="h-6 w-6 text-blue-600 dark:text-blue-300" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Traveller Details</h2>
-          <p className="text-sm text-gray-600">Enter passenger information as per ID proof</p>
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Traveller Details</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Enter passenger information as per ID proof</p>
         </div>
       </div>
 
       {/* Important Notice */}
-      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-500/10">
         <div className="flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-300" />
           <div>
-            <p className="text-sm font-medium text-amber-900 mb-1">Important</p>
-            <ul className="text-xs text-amber-700 space-y-1">
-              <li>• Enter name as per your govt. approved ID proof</li>
-              <li>• Middle name is optional</li>
-              <li>• Passport details are mandatory for international flights</li>
+            <p className="mb-1 text-sm font-medium text-amber-900 dark:text-amber-100">Important</p>
+            <ul className="space-y-1 text-xs text-amber-700 dark:text-amber-200">
+              <li>Enter name as per your government approved ID proof</li>
+              <li>Date of birth is required for passenger verification</li>
+              <li>Passport details are mandatory for international flights</li>
             </ul>
           </div>
         </div>
@@ -128,44 +124,48 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
             <div
               key={passenger.id}
               className={`border-2 rounded-xl overflow-hidden transition-all ${
-                isComplete ? 'border-green-200' : 'border-gray-200'
+                isComplete
+                  ? 'border-green-200 dark:border-green-400/30'
+                  : 'border-slate-200 dark:border-white/10'
               }`}
             >
               {/* Passenger Header */}
               <button
                 onClick={() => togglePassenger(index)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    isComplete ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    isComplete
+                      ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300'
+                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}>
                     {index + 1}
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-gray-800">
+                    <p className="font-semibold text-slate-950 dark:text-white">
                       {passenger.type} {index + 1}
                       {isComplete && passenger.firstName && (
-                        <span className="text-gray-600 ml-2">
+                        <span className="ml-2 text-slate-600 dark:text-slate-400">
                           - {passenger.title} {passenger.firstName} {passenger.lastName}
                         </span>
                       )}
                     </p>
                     {!isComplete && (
-                      <p className="text-xs text-red-600">Please fill required details</p>
+                      <p className="text-xs text-red-600 dark:text-red-300">Please fill required details</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {isComplete && (
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-300">
                       Completed
                     </span>
                   )}
                   {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                    <ChevronUp className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                    <ChevronDown className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                   )}
                 </div>
               </button>
@@ -176,12 +176,12 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="border-t border-gray-200 bg-gray-50 p-6"
+                  className="border-t border-slate-200 bg-slate-50 p-6 dark:border-white/10 dark:bg-slate-950/50"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* Title */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                         Title <span className="text-red-500">*</span>
                       </label>
                       <Select
@@ -202,7 +202,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
 
                     {/* First Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                         First Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -210,13 +210,13 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         value={passenger.firstName}
                         onChange={(e) => handleInputChange(index, 'firstName', e.target.value)}
                         placeholder="Enter first name"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
 
                     {/* Last Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                         Last Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -224,13 +224,13 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         value={passenger.lastName}
                         onChange={(e) => handleInputChange(index, 'lastName', e.target.value)}
                         placeholder="Enter last name"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
 
                     {/* Gender */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                         Gender <span className="text-red-500">*</span>
                       </label>
                       <Select
@@ -250,8 +250,8 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
 
                     {/* Date of Birth */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Date of Birth
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Date of Birth <span className="text-red-500">*</span>
                       </label>
                       <Popover
                         open={dobPopoverOpen[index]}
@@ -286,7 +286,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
 
                     {/* Nationality */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                         Nationality
                       </label>
                       <input
@@ -294,7 +294,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         value={passenger.nationality}
                         onChange={(e) => handleInputChange(index, 'nationality', e.target.value)}
                         placeholder="Enter nationality"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -307,15 +307,15 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
       </div>
 
       {/* Contact Information Section - Separate from passengers */}
-      <div className="mt-6 p-6 border-2 border-gray-200 rounded-xl bg-white">
+      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-950/40">
         <div className="flex items-center gap-2 mb-4">
-          <Mail className="w-5 h-5 text-blue-600" />
-          <h3 className="text-base font-semibold text-gray-800">Contact Information</h3>
+          <Mail className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+          <h3 className="text-base font-semibold text-slate-950 dark:text-white">Contact Information</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Email Address <span className="text-red-500">*</span>
             </label>
             <input
@@ -323,21 +323,21 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
               value={contactInfo.email}
               onChange={(e) => handleContactInfoChange('email', e.target.value)}
               placeholder="Enter email address"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
             />
-            <p className="text-xs text-gray-500 mt-1">Booking confirmation will be sent here</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking confirmation will be sent here</p>
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Mobile Number <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <select
                 value={contactInfo.countryCode}
                 onChange={(e) => handleContactInfoChange('countryCode', e.target.value)}
-                className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-2 text-slate-950 outline-none transition focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
               >
                 <option value="+91">+91</option>
                 <option value="+1">+1</option>
@@ -349,22 +349,22 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                 value={contactInfo.phone}
                 onChange={(e) => handleContactInfoChange('phone', e.target.value)}
                 placeholder="Enter mobile number"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Booking details will be sent via SMS</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking details will be sent via SMS</p>
           </div>
         </div>
       </div>
 
       {/* GST Details (Optional) */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-400/20 dark:bg-blue-500/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Phone className="w-5 h-5 text-blue-600" />
-            <p className="text-sm font-medium text-blue-900">Need GST Invoice?</p>
+            <Phone className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Need GST Invoice?</p>
           </div>
-          <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition">
+          <button className="text-sm font-medium text-blue-600 transition hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200">
             Add Details
           </button>
         </div>
