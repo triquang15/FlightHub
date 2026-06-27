@@ -95,6 +95,44 @@ public class RouteConfig {
                 .build();
     }
 
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> publicLocationRoutes() {
+        return routeWithCB("public-location", "location-service", "location-cb", "forward:/fallback/location")
+                .route(RequestPredicates.GET("/api/airports/**"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/cities/**"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> publicFlightSearchRoutes() {
+        return routeWithCB("public-flight-search", "flight-ops-service", "flight-cb", "forward:/fallback/flight")
+                .route(RequestPredicates.GET("/api/flights/search"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> publicAirlineRoutes() {
+        return routeWithoutCB("public-airline", "airline-core-service")
+                .route(RequestPredicates.GET("/api/airlines/dropdown"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> publicPricingRoutes() {
+        return routeWithCB("public-pricing", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
+                .route(RequestPredicates.GET("/api/fares/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/fares/lowest/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
     // ==================== OPENAPI DOCS ====================
 
     @Bean

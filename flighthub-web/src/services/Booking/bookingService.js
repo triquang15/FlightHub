@@ -20,16 +20,18 @@ export const buildBookingPayload = ({
   const crId = generateCrId();
   const rKey = generateRKey();
   const paxString = buildPaxString(numberOfTravellers);
+  const cabinName = selectedCabinClass.name || selectedCabinClass.cabinClassType || selectedFare.cabinClass || "ECONOMY";
+  const currency = selectedFare.currency || "USD";
 
   const searchFilter = {
-    c: selectedCabinClass.name?.charAt(0) || "E",
+    c: cabinName?.charAt(0) || "E",
     p: paxString,
-    s: `${flight.departureAirportCode}-${flight.arrivalAirportCode}-${flight.departureTime}`,
+    s: `${flight.departureAirport?.iataCode || flight.departureAirportCode}-${flight.arrivalAirport?.iataCode || flight.arrivalAirportCode}-${flight.departureDateTime || flight.departureTime}`,
     ItineraryId: itineraryId,
     PaxType: paxString,
     Intl: false,
-    CabinClass: selectedCabinClass.name,
-    Ccde: "IN",
+    CabinClass: cabinName,
+    Ccde: "US",
     ForwardFlowRequired: true,
     flightInstanceId: flight.id,
     flightId:flight.flightId
@@ -47,14 +49,14 @@ export const buildBookingPayload = ({
     bookingData,
     queryParams: {
       itineraryId,
-      cur: "INR",
-      ccde: "IN",
+      cur: currency,
+      ccde: "US",
       crId,
       rKey: encodeURIComponent(rKey),
-      userCurrency: "INR",
+      userCurrency: currency,
       xflt,
       numberOfTravellers: String(numberOfTravellers),
-      cabinClass: selectedCabinClass.name,
+      cabinClass: cabinName,
       flightInstanceId: flight.id,
       flightId: flight.flightId,
       fareId: selectedFare.id,

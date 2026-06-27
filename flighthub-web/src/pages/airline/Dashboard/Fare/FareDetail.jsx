@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { clearCurrentFare } from "@/Redux/fare/fareSlice";
 import { getOwnedFareById } from "@/Redux/fare/fareThunk";
 
-const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const benefits = [
   ["Extra seat space", "extraSeatSpace"], ["Preferred seat", "preferredSeatChoice"],
   ["Advance seat selection", "advanceSeatSelection"], ["Seats together", "guaranteedSeatTogether"],

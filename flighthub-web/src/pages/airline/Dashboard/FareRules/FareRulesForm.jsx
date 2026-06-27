@@ -38,7 +38,7 @@ const FareRulesForm = () => {
 
   const { flights = [] } = useSelector((state) => state.flight);
   const { cabinClasses = [] } = useSelector((state) => state.cabinClass);
-  const { fares = [], loading: faresLoading } = useSelector((state) => state.fare);
+  const { flightFares = [], flightFaresLoading: faresLoading } = useSelector((state) => state.fare);
   const { currentFareRule, loading, error } = useSelector((state) => state.fareRules);
 
   const [form, setForm] = useState(EMPTY_FORM);
@@ -75,8 +75,8 @@ const FareRulesForm = () => {
   }, [currentFareRule, editing, id]);
 
   const availableFares = useMemo(
-    () => (Array.isArray(fares) ? fares : []).filter((fare) => !fare.fareRulesId && !fare.fareRules),
-    [fares],
+    () => (Array.isArray(flightFares) ? flightFares : []).filter((fare) => !fare.fareRulesId && !fare.fareRules),
+    [flightFares],
   );
 
   const updateField = (name, value) => {

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Armchair, CircleDollarSign, Plane, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowLeft, Armchair, CircleDollarSign, Plane, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,8 +63,9 @@ const FareManagementForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { fare, loading } = useSelector((state) => state.fare);
-  const flightPayload = useSelector((state) => state.flight.flights);
+  const { flights: flightPayload, loading: flightsLoading, error: flightsError } = useSelector((state) => state.flight);
   const cabinPayload = useSelector((state) => state.cabinClass.cabinClasses);
+  const { loading: cabinsLoading, error: cabinsError } = useSelector((state) => state.cabinClass);
   const [form, setForm] = useState(() => editing ? emptyForm : {
     ...emptyForm,
     flightId: searchParams.get("flightId") || "",
@@ -75,6 +77,15 @@ const FareManagementForm = () => {
   const flights = useMemo(() => Array.isArray(flightPayload) ? flightPayload : (flightPayload?.content || []), [flightPayload]);
   const cabins = useMemo(() => Array.isArray(cabinPayload) ? cabinPayload : (cabinPayload?.content || []), [cabinPayload]);
   const selectedFlight = flights.find((flight) => String(flight.id) === form.flightId);
+  const canSubmit = !submitting
+    && Boolean(form.flightId)
+    && Boolean(form.cabinClassId)
+    && Boolean(form.name.trim())
+    && /^[A-Za-z]$/.test(form.rbdCode)
+    && Number(form.baseFare) > 0
+    && Number(form.taxesAndFees || 0) >= 0
+    && Number(form.airlineFees || 0) >= 0;
+  const hasNoOwnerContext = !flightsLoading && flights.length === 0;
   const total = [form.baseFare, form.taxesAndFees, form.airlineFees]
     .reduce((sum, value) => sum + (Number(value) || 0), 0);
 
@@ -160,8 +171,24 @@ const FareManagementForm = () => {
           <h1 className="text-2xl font-semibold text-foreground">{editing ? "Edit fare" : "Create fare"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define the sellable price and included cabin benefits.</p>
         </div>
-        <Button type="submit" disabled={submitting}><Save className="size-4" /> {submitting ? "Saving..." : "Save fare"}</Button>
+        <Button type="submit" disabled={!canSubmit}><Save className="size-4" /> {submitting ? "Saving..." : "Save fare"}</Button>
       </header>
+
+      {(flightsError || cabinsError || hasNoOwnerContext) && (
+        <Alert variant={flightsError || cabinsError ? "destructive" : "default"}>
+          <AlertCircle className="size-4" />
+          <AlertTitle>
+            {flightsError || cabinsError ? "Fare setup cannot continue" : "No airline flights available"}
+          </AlertTitle>
+          <AlertDescription>
+            {flightsError
+              ? `${flightsError}. Create fare requires logging in as an airline owner that owns an airline profile. Seeded owner accounts use Password@123.`
+              : cabinsError
+                ? `${cabinsError}. Make sure the selected flight aircraft has active, bookable cabin classes.`
+                : "This account has no owned flights. Login as an airline owner such as owner.vietnamairlines@flighthub.local, or create an airline, aircraft, cabin class, and flight first."}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-5">
@@ -170,19 +197,39 @@ const FareManagementForm = () => {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Flight</Label>
-                <Select value={form.flightId} onValueChange={changeFlight}>
-                  <SelectTrigger aria-invalid={Boolean(errors.flightId)}><SelectValue placeholder="Select flight" /></SelectTrigger>
-                  <SelectContent>{flights.map((flight) => <SelectItem key={flight.id} value={String(flight.id)}>{flight.flightNumber}</SelectItem>)}</SelectContent>
+                <Select value={form.flightId} onValueChange={changeFlight} disabled={flightsLoading || flights.length === 0}>
+                  <SelectTrigger aria-invalid={Boolean(errors.flightId)}>
+                    <SelectValue placeholder={flightsLoading ? "Loading flights..." : "Select flight"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {flights.map((flight) => (
+                      <SelectItem key={flight.id} value={String(flight.id)}>
+                        {flight.flightNumber}
+                        {flight.aircraft?.model ? ` · ${flight.aircraft.model}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {errors.flightId && <p className="text-xs text-destructive">{errors.flightId}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Cabin class</Label>
-                <Select value={form.cabinClassId} onValueChange={(value) => setField("cabinClassId", value)} disabled={!form.flightId}>
-                  <SelectTrigger aria-invalid={Boolean(errors.cabinClassId)}><SelectValue placeholder={form.flightId ? "Select cabin" : "Select flight first"} /></SelectTrigger>
-                  <SelectContent>{cabins.map((cabin) => <SelectItem key={cabin.id} value={String(cabin.id)}>{cabin.name || cabin.cabinClassType || `Cabin ${cabin.id}`}</SelectItem>)}</SelectContent>
+                <Select value={form.cabinClassId} onValueChange={(value) => setField("cabinClassId", value)} disabled={!form.flightId || cabinsLoading || cabins.length === 0}>
+                  <SelectTrigger aria-invalid={Boolean(errors.cabinClassId)}>
+                    <SelectValue placeholder={!form.flightId ? "Select flight first" : cabinsLoading ? "Loading cabins..." : "Select cabin"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cabins.map((cabin) => (
+                      <SelectItem key={cabin.id} value={String(cabin.id)}>
+                        {(cabin.name || cabin.cabinClassType || `Cabin ${cabin.id}`).replaceAll("_", " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {errors.cabinClassId && <p className="text-xs text-destructive">{errors.cabinClassId}</p>}
+                {form.flightId && !cabinsLoading && cabins.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No active cabin classes were found for this flight aircraft.</p>
+                )}
               </div>
             </CardContent>
           </Card>

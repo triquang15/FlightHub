@@ -1,24 +1,17 @@
 package com.triquang.client;
 
+import java.util.List;
+
 import org.springframework.stereotype.Component;
 
-import com.triquang.enums.CabinClassType;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.CabinClassResponse;
-
-import java.util.List;
 
 @Component
 public class SeatClientFallback implements SeatClient {
 
     @Override
     public ApiResponse<List<CabinClassResponse>> getCabinClassesByAircraftIdResponse(Long aircraftId) {
-        return null;
-    }
-
-    @Override
-    public ApiResponse<CabinClassResponse> getCabinClassByAircraftIdAndNameResponse(
-            Long aircraftId, CabinClassType cabinClass) {
         return null;
     }
 }

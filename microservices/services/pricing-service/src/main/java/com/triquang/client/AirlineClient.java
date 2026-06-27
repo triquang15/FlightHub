@@ -6,10 +6,12 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import com.triquang.enums.ErrorCode;
+import com.triquang.exception.BaseException;
 import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.ApiResponse;
 
-@FeignClient(name = "airline-core-service", fallback = AirlineClientFallback.class)
+@FeignClient(name = "airline-core-service")
 public interface AirlineClient {
 
     @GetMapping("/api/airlines/admin")
@@ -17,6 +19,9 @@ public interface AirlineClient {
 
     default List<AirlineResponse> getAirlinesByOwner(Long userId) {
         ApiResponse<List<AirlineResponse>> response = getAirlinesByOwnerResponse(userId);
-        return response != null ? response.data() : null;
+        if (response == null) {
+            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
+        return response.data();
     }
 }

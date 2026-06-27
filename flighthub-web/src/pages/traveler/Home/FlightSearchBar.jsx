@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronsUpDown,
   CircleDot,
   GitBranch,
   MapPin,
@@ -20,7 +21,16 @@ import { listAllAirports } from "@/Redux/airport/airportThunk"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 
@@ -70,6 +80,17 @@ const formatApiDate = (date) => {
   return new Date(date.getTime() - offset * 60 * 1000).toISOString().split("T")[0]
 }
 
+const getAirportCity = (airport) =>
+  airport?.city?.name || airport?.cityName || airport?.address?.cityName || airport?.address?.city || "Unknown city"
+
+const getAirportLabel = (airport) =>
+  [airport?.iataCode, airport?.name].filter(Boolean).join(" · ") || "Airport"
+
+const getAirportSearchValue = (airport) =>
+  [airport?.iataCode, airport?.name, getAirportCity(airport), airport?.detailedName]
+    .filter(Boolean)
+    .join(" ")
+
 const FieldShell = ({ icon: Icon, label, children, className }) => (
   <div className={cn(
     "min-w-0 rounded-xl border border-border/80 bg-background px-4 py-3 transition duration-200 focus-within:border-primary/60 focus-within:ring-4 focus-within:ring-primary/10",
@@ -83,35 +104,94 @@ const FieldShell = ({ icon: Icon, label, children, className }) => (
   </div>
 )
 
-const AirportSelect = ({ airports, excludedAirportId, value, onChange, placeholder }) => {
+const AirportSelect = ({
+  airports,
+  excludedAirportId,
+  value,
+  onChange,
+  placeholder,
+  loading,
+  error,
+  onRetry,
+}) => {
+  const [open, setOpen] = React.useState(false)
   const selectedAirport = airports.find((airport) => airport.id === Number(value))
+  const availableAirports = airports.filter((airport) => airport.id !== Number(excludedAirportId))
+  const disabled = loading || (!error && availableAirports.length === 0)
 
   return (
-    <Select value={value ? value.toString() : ""} onValueChange={(nextValue) => onChange(Number(nextValue))}>
-      <SelectTrigger className="h-auto w-full border-0 bg-transparent p-0 shadow-none focus-visible:ring-0">
-        <div className="min-w-0 text-left">
-          <p className="truncate text-base font-semibold">{selectedAirport?.city?.name || placeholder}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {selectedAirport ? `${selectedAirport.iataCode} · ${selectedAirport.name}` : "City or airport"}
-          </p>
-        </div>
-      </SelectTrigger>
-      <SelectContent className="max-h-80 w-[calc(100vw-2rem)] sm:w-[420px]">
-        {airports
-          .filter((airport) => airport.id !== Number(excludedAirportId))
-          .map((airport) => (
-            <SelectItem key={airport.id} value={airport.id.toString()} className="py-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="rounded-lg bg-primary/10 p-2 font-bold text-primary">{airport.iataCode}</span>
-                <span className="min-w-0">
-                  <span className="block font-medium">{airport.city?.name}</span>
-                  <span className="block max-w-64 truncate text-xs text-muted-foreground">{airport.name}</span>
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-      </SelectContent>
-    </Select>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="flex w-full min-w-0 items-center justify-between gap-3 rounded-md text-left outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className="min-w-0">
+            <span className={cn("block truncate text-base font-semibold", !selectedAirport && "text-muted-foreground")}>
+              {selectedAirport ? getAirportCity(selectedAirport) : placeholder}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              {loading
+                ? "Loading airports..."
+                : selectedAirport
+                  ? getAirportLabel(selectedAirport)
+                  : error || "City or airport"}
+            </span>
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-0 sm:w-[420px]">
+        {loading && (
+          <div className="px-4 py-5 text-sm text-muted-foreground">Loading airports...</div>
+        )}
+        {!loading && error && (
+          <div className="space-y-3 px-4 py-5 text-sm">
+            <p className="text-destructive">{error}</p>
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {!loading && !error && (
+          <Command filter={(value, search) => {
+            if (!search) return 1
+            return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+          }}>
+            <CommandInput placeholder="Search city, airport, or IATA code..." />
+            <CommandList>
+              <CommandEmpty>No airports found.</CommandEmpty>
+              <CommandGroup>
+                {availableAirports.map((airport) => (
+                  <CommandItem
+                    key={airport.id}
+                    value={getAirportSearchValue(airport)}
+                    onSelect={() => {
+                      onChange(airport.id)
+                      setOpen(false)
+                    }}
+                    className="cursor-pointer py-3"
+                  >
+                    <span className="rounded-lg bg-primary/10 px-2.5 py-2 text-xs font-bold text-primary">
+                      {airport.iataCode || "--"}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{getAirportCity(airport)}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{airport.name}</span>
+                    </span>
+                    <Check className={cn(
+                      "ml-auto h-4 w-4",
+                      selectedAirport?.id === airport.id ? "opacity-100" : "opacity-0",
+                    )} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -147,8 +227,12 @@ const DateField = ({ date, label, minimumDate = today, onChange, helper = "Trave
 
 const FlightSearchBar = ({ onSearch, className }) => {
   const dispatch = useDispatch()
-  const { airports = [] } = useSelector((state) => state.airport)
-  const [tripType, setTripType] = React.useState("roundTrip")
+  const {
+    airports = [],
+    loading: airportsLoading,
+    error: airportsError,
+  } = useSelector((state) => state.airport)
+  const [tripType, setTripType] = React.useState("oneWay")
   const [specialFare, setSpecialFare] = React.useState("regular")
   const [directOnly, setDirectOnly] = React.useState(false)
   const [passengersOpen, setPassengersOpen] = React.useState(false)
@@ -165,9 +249,13 @@ const FlightSearchBar = ({ onSearch, className }) => {
     createSegment(),
   ])
 
-  React.useEffect(() => {
-    dispatch(listAllAirports())
+  const loadAirports = React.useCallback(() => {
+    dispatch(listAllAirports({ page: 0, size: 100, sortBy: "name", sortDirection: "asc" }))
   }, [dispatch])
+
+  React.useEffect(() => {
+    loadAirports()
+  }, [loadAirports])
 
   const updateSearchData = (key, value) => {
     setSearchData((previous) => ({ ...previous, [key]: value }))
@@ -251,6 +339,13 @@ const FlightSearchBar = ({ onSearch, className }) => {
     (index === 0 || segment.departureDate >= segments[index - 1].departureDate)
   ))
   const canSearch = tripType === "multiCity" ? isMultiCityValid : isStandardSearchValid
+  const searchDisabledReason = airportsError
+    ? "Airport data is not available yet."
+    : tripType === "roundTrip" && !searchData.returnDate
+      ? "Select a return date to search round trips."
+      : !canSearch
+        ? "Select route and departure date."
+        : ""
 
   const handleSearch = () => {
     if (!canSearch) return
@@ -345,6 +440,9 @@ const FlightSearchBar = ({ onSearch, className }) => {
                       value={segment.departureAirportId}
                       onChange={(value) => updateSegment(segment.id, "departureAirportId", value)}
                       placeholder="Leaving from"
+                      loading={airportsLoading}
+                      error={airportsError}
+                      onRetry={loadAirports}
                     />
                   </FieldShell>
                   <div className="hidden items-center text-muted-foreground lg:flex"><ArrowLeftRight className="h-4 w-4" /></div>
@@ -355,6 +453,9 @@ const FlightSearchBar = ({ onSearch, className }) => {
                       value={segment.arrivalAirportId}
                       onChange={(value) => updateSegment(segment.id, "arrivalAirportId", value)}
                       placeholder="Going to"
+                      loading={airportsLoading}
+                      error={airportsError}
+                      onRetry={loadAirports}
                     />
                   </FieldShell>
                   <DateField
@@ -381,6 +482,9 @@ const FlightSearchBar = ({ onSearch, className }) => {
                 value={searchData.departureAirportId}
                 onChange={(value) => updateSearchData("departureAirportId", value)}
                 placeholder="Leaving from"
+                loading={airportsLoading}
+                error={airportsError}
+                onRetry={loadAirports}
               />
             </FieldShell>
 
@@ -400,6 +504,9 @@ const FlightSearchBar = ({ onSearch, className }) => {
                 value={searchData.arrivalAirportId}
                 onChange={(value) => updateSearchData("arrivalAirportId", value)}
                 placeholder="Going to"
+                loading={airportsLoading}
+                error={airportsError}
+                onRetry={loadAirports}
               />
             </FieldShell>
 
@@ -500,6 +607,7 @@ const FlightSearchBar = ({ onSearch, className }) => {
               type="button"
               onClick={handleSearch}
               disabled={!canSearch}
+              title={searchDisabledReason}
               className="h-auto min-h-16 min-w-0 rounded-xl px-7 text-sm font-bold shadow-lg shadow-primary/20 sm:col-span-2 lg:col-span-1"
             >
               <Search className="mr-2 h-4 w-4" />

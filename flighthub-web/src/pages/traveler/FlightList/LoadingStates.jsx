@@ -1,5 +1,5 @@
-import * as React from "react"
-import { Plane, Search } from "lucide-react"
+import { CalendarSearch, Plane, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -101,30 +101,40 @@ export const SearchingFlights = ({ className }) => {
 }
 
 // No Results State
-export const NoResultsFound = ({ onClearFilters, className }) => {
+export const NoResultsFound = ({
+  onClearFilters,
+  onModifySearch,
+  onIncludeConnections,
+  hasActiveFilters = false,
+  directOnly = false,
+  className,
+}) => {
   return (
     <div className={cn("flex flex-col items-center justify-center py-16", className)}>
-      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-6">
-        <Search className="h-10 w-10 text-muted-foreground" />
-      </div>
-      <h3 className="text-2xl font-semibold text-foreground mb-2">
-        No flights found
-      </h3>
-      <p className="text-muted-foreground text-center max-w-md mb-6">
-        We couldn't find any flights matching your criteria. Try adjusting your filters or search dates to see more options.
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+        <CalendarSearch className="h-6 w-6 text-muted-foreground" />
+      </span>
+      <h1 className="mt-5 text-xl font-semibold text-foreground">
+        No flights match this search
+      </h1>
+      <p className="mt-2 max-w-md text-center text-sm leading-6 text-muted-foreground">
+        {hasActiveFilters
+          ? "Your filters may be hiding available options. Reset them or change the route and travel date."
+          : "Try another travel date or change the route. Flights are only shown when both seats and fares are available."}
       </p>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={onClearFilters}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Clear all filters
-        </button>
-        <button
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-muted/50 transition-colors"
-        >
-          Modify search
-        </button>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {hasActiveFilters && (
+          <Button variant="outline" onClick={onClearFilters} className="gap-2">
+            <RotateCcw className="h-4 w-4" />
+            Reset filters
+          </Button>
+        )}
+        {directOnly && (
+          <Button variant="outline" onClick={onIncludeConnections}>
+            Include connections
+          </Button>
+        )}
+        <Button onClick={onModifySearch}>Change search</Button>
       </div>
     </div>
   )

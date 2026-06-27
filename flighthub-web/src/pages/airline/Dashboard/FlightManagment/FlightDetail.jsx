@@ -87,7 +87,7 @@ const FlightDetail = () => {
 
   const { flight, loading, error } = useSelector((state) => state.flight);
   const cabinPayload = useSelector((state) => state.cabinClass.cabinClasses);
-  const farePayload = useSelector((state) => state.fare.fares);
+  const farePayload = useSelector((state) => state.fare.flightFares);
   const mealPayload = useSelector((state) => state.flightMeal.flightMeals);
   const ancillaryPayload = useSelector((state) => state.flightCabinAncillary.cabinAncillaries);
 

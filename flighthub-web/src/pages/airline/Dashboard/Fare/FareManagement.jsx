@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { deleteFare, getOwnerFares } from "@/Redux/fare/fareThunk";
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 
-const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 const IconAction = ({ label, icon: Icon, onClick }) => (
   <Tooltip>

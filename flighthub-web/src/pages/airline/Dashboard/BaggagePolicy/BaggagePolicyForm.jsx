@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Save,
@@ -9,7 +9,6 @@ import {
   Ruler,
   DollarSign,
   Info,
-  AlertCircle,
   Plane,
   Armchair,
 } from "lucide-react";
@@ -17,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -50,7 +48,7 @@ const BaggagePolicyForm = () => {
 
   const { flights } = useSelector((state) => state.flight);
   const { cabinClasses } = useSelector((state) => state.cabinClass);
-  const { fares } = useSelector((state) => state.fare);
+  const { flightFares: fares = [] } = useSelector((state) => state.fare);
   const { policy } = useSelector((state) => state.baggagePolicy);
   const [initialValues, setInitialValues] = useState({
     name: "",
@@ -66,7 +64,7 @@ const BaggagePolicyForm = () => {
     if (id) {
       dispatch(getPolicyById(id));
     }
-  }, [id]);
+  }, [dispatch, id]);
 
   // Initial form values
 
@@ -93,6 +91,8 @@ const BaggagePolicyForm = () => {
         priorityBaggage: baggagePolicy?.priorityBaggage ?? false,
         extraBaggageAllowance: baggagePolicy?.extraBaggageAllowance ?? false,
       };
+      // Hydrate Formik once the policy detail request completes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialValues(initialValues);
     }
   }, [policy]);
@@ -222,6 +222,8 @@ const BaggagePolicyForm = () => {
         flightId: parseInt(selectedFlight),
         cabinId: parseInt(selectedCabin)
       }));
+      // Reset the fare choice when its parent flight/cabin changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedFare(null);
     }
   }, [selectedCabin, selectedFlight, dispatch]);

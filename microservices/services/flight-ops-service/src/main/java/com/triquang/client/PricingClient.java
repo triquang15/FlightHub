@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.FareResponse;
 
 /**
@@ -30,11 +31,24 @@ public interface PricingClient {
      *
      * @param flightIds  list of flight IDs to query
      * @param cabinClassId the requested cabin class
-     */
+	 */
 	@PostMapping("/api/fares/search")
-	Map<Long, FareResponse> getLowestFarePerFlight(@RequestBody List<Long> flightIds,
+	ApiResponse<Map<Long, FareResponse>> getLowestFarePerFlightResponse(@RequestBody List<Long> flightIds,
 			@RequestParam("cabinClassId") Long cabinClassId);
 
+	default Map<Long, FareResponse> getLowestFarePerFlight(List<Long> flightIds, Long cabinClassId) {
+		ApiResponse<Map<Long, FareResponse>> response =
+				getLowestFarePerFlightResponse(flightIds, cabinClassId);
+		return response == null || response.data() == null ? Map.of() : response.data();
+	}
+
 	@GetMapping("/api/fares/lowest/flight/{flightId}/cabin-class/{cabinClassId}")
-	FareResponse getLowestFareForFlightAndCabinClass(@PathVariable Long flightId, @PathVariable Long cabinClassId);
+	ApiResponse<FareResponse> getLowestFareForFlightAndCabinClassResponse(
+			@PathVariable Long flightId, @PathVariable Long cabinClassId);
+
+	default FareResponse getLowestFareForFlightAndCabinClass(Long flightId, Long cabinClassId) {
+		ApiResponse<FareResponse> response =
+				getLowestFareForFlightAndCabinClassResponse(flightId, cabinClassId);
+		return response == null ? null : response.data();
+	}
 }

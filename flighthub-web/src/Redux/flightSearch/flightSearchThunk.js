@@ -7,22 +7,19 @@ const API_URL = "/api/flights/search";
 export const searchFlightsAvailability = createAsyncThunk(
   "flightSearch/search",
   async (params, { rejectWithValue }) => {
-
-    console.log("🔍 Searching flights with params: --- ", params);
     try {
       const res = await api.get(API_URL, {
         params,
-        });
-      console.log("✅ searchFlightsAvailability success:", res.data);
-      return res.data;
+      });
+
+      // Flight search uses the platform-wide ApiResponse<Page<...>> envelope.
+      return res.data?.data ?? res.data;
     } catch (err) {
-      console.error(
-        "❌ searchFlightsAvailability error:",
-        err.response?.data || err.message
-      );
       return rejectWithValue(
-        err.response?.data?.message || "Failed to search flights"
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          "Unable to search flights right now",
       );
     }
-  }
+  },
 );

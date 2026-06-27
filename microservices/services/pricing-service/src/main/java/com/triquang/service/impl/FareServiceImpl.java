@@ -14,12 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.triquang.client.AirlineClient;
 import com.triquang.client.FlightClient;
+import com.triquang.client.SeatClient;
+import com.triquang.enums.CabinClassType;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.FareMapper;
 import com.triquang.model.Fare;
 import com.triquang.payload.request.FareRequest;
 import com.triquang.payload.response.AirlineResponse;
+import com.triquang.payload.response.CabinClassResponse;
 import com.triquang.payload.response.FareResponse;
 import com.triquang.payload.response.FlightResponse;
 import com.triquang.repository.FareRepository;
@@ -36,11 +39,13 @@ public class FareServiceImpl implements FareService {
 	private final FareRepository fareRepository;
 	private final AirlineClient airlineClient;
 	private final FlightClient flightClient;
+	private final SeatClient seatClient;
 
 	@Override
 	public FareResponse createFare(Long userId, FareRequest request) {
 		Long airlineId = getAirlineForUser(userId);
-		requireOwnedFlight(request.getFlightId(), airlineId);
+		FlightResponse flight = requireOwnedFlight(request.getFlightId(), airlineId);
+		CabinClassType cabinClass = requireCabinOnFlight(flight, request.getCabinClassId());
 		if (fareRepository.existsByFlightIdAndCabinClassIdAndName(request.getFlightId(), request.getCabinClassId(),
 				request.getName())) {
 			throw new BaseException(ErrorCode.FARE_ALREADY_EXISTS);
@@ -48,6 +53,7 @@ public class FareServiceImpl implements FareService {
 
 		Fare fare = FareMapper.toEntity(request);
 		fare.setAirlineId(airlineId);
+		fare.setCabinClass(cabinClass);
 		Fare saved = fareRepository.save(fare);
 		return FareMapper.toResponse(saved);
 	}
@@ -55,8 +61,8 @@ public class FareServiceImpl implements FareService {
 	@Override
 	public List<FareResponse> createFares(Long userId, List<FareRequest> requests) {
 		Long airlineId = getAirlineForUser(userId);
-		requests.stream().map(FareRequest::getFlightId).distinct()
-				.forEach(flightId -> requireOwnedFlight(flightId, airlineId));
+		Map<Long, FlightResponse> flightById = requests.stream().map(FareRequest::getFlightId).distinct()
+				.collect(Collectors.toMap(flightId -> flightId, flightId -> requireOwnedFlight(flightId, airlineId)));
 		// Single DB call: fetch composite keys for all relevant flightIds
 		Set<Long> flightIds = requests.stream().map(FareRequest::getFlightId).collect(Collectors.toSet());
 		Set<String> existingKeys = fareRepository.findExistingFareKeys(flightIds);
@@ -64,7 +70,10 @@ public class FareServiceImpl implements FareService {
 		List<Fare> toSave = requests.stream().filter(
 				req -> !existingKeys.contains(req.getFlightId() + ":" + req.getCabinClassId() + ":" + req.getName()))
 				.map(FareMapper::toEntity)
-				.peek(fare -> fare.setAirlineId(airlineId))
+				.peek(fare -> {
+					fare.setAirlineId(airlineId);
+					fare.setCabinClass(requireCabinOnFlight(flightById.get(fare.getFlightId()), fare.getCabinClassId()));
+				})
 				.collect(Collectors.toList());
 
 		return fareRepository.saveAll(toSave).stream().map(FareMapper::toResponse).collect(Collectors.toList());
@@ -105,7 +114,8 @@ public class FareServiceImpl implements FareService {
 			@CacheEvict(cacheNames = "faresByFlight", allEntries = true) })
 	public FareResponse updateFare(Long userId, Long id, FareRequest request) {
 		Fare existing = requireOwnedFare(userId, id);
-		requireOwnedFlight(request.getFlightId(), existing.getAirlineId());
+		FlightResponse flight = requireOwnedFlight(request.getFlightId(), existing.getAirlineId());
+		CabinClassType cabinClass = requireCabinOnFlight(flight, request.getCabinClassId());
 
 		if (fareRepository.existsByFlightIdAndCabinClassIdAndNameAndIdNot(request.getFlightId(),
 				request.getCabinClassId(), request.getName(), id)) {
@@ -113,6 +123,7 @@ public class FareServiceImpl implements FareService {
 		}
 
 		FareMapper.updateEntity(request, existing);
+		existing.setCabinClass(cabinClass);
 		Fare saved = fareRepository.save(existing);
 		return FareMapper.toResponse(saved);
 	}
@@ -187,6 +198,36 @@ public class FareServiceImpl implements FareService {
 			return flight;
 		} catch (FeignException.NotFound e) {
 			throw new BaseException(ErrorCode.FARE_NOT_FOUND);
+		} catch (FeignException e) {
+			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+		}
+	}
+
+	private CabinClassType requireCabinOnFlight(FlightResponse flight, Long cabinClassId) {
+		try {
+			if (flight == null || flight.getAircraft() == null || flight.getAircraft().getId() == null) {
+				throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+			}
+
+			List<CabinClassResponse> cabins = seatClient.getCabinClassesByAircraftId(flight.getAircraft().getId());
+			if (cabins == null) {
+				throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+			}
+
+			CabinClassResponse cabin = cabins.stream()
+					.filter(candidate -> cabinClassId.equals(candidate.getId()))
+					.findFirst()
+					.orElseThrow(() -> new BaseException(ErrorCode.CABIN_CLASS_NOT_FOUND));
+
+			if (!Boolean.TRUE.equals(cabin.getIsActive()) || !Boolean.TRUE.equals(cabin.getIsBookable())) {
+				throw new BaseException(ErrorCode.INVALID_INPUT);
+			}
+
+			return CabinClassType.valueOf(cabin.getName());
+		} catch (IllegalArgumentException e) {
+			throw new BaseException(ErrorCode.INVALID_INPUT);
+		} catch (FeignException.NotFound e) {
+			throw new BaseException(ErrorCode.CABIN_CLASS_NOT_FOUND);
 		} catch (FeignException e) {
 			throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
 		}

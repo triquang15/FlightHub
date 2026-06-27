@@ -59,7 +59,10 @@ const BookingReview = () => {
 
   const [loading, setLoading] = useState(true);
   const bookingParams = useMemo(() => {
-    const passengerCount = parseInt(searchParams.get("numberOfTravellers"), 10) || 1;
+    const passengerCount = parseInt(
+      searchParams.get("pax") || searchParams.get("passengers") || searchParams.get("numberOfTravellers"),
+      10,
+    ) || 1;
     return {
       passengerCount,
       totalPassengers: passengerCount,

@@ -12,8 +12,11 @@ import {
 
 const initialState = {
   fares: [],
+  flightFares: [],
   fare: null,
   loading: false,
+  flightFaresLoading: false,
+  flightFaresError: null,
   error: null,
   // Search results
   searchResults: null,
@@ -30,6 +33,10 @@ const fareSlice = createSlice({
     },
     clearCurrentFare: (state) => {
       state.fare = null;
+    },
+    clearFlightFares: (state) => {
+      state.flightFares = [];
+      state.flightFaresError = null;
     },
     clearSearchResults: (state) => {
       state.searchResults = null;
@@ -99,16 +106,17 @@ const fareSlice = createSlice({
     // ---------- GET FLIGHT FARES ----------
     builder
       .addCase(getFlightFares.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.flightFaresLoading = true;
+        state.flightFaresError = null;
+        state.flightFares = [];
       })
       .addCase(getFlightFares.fulfilled, (state, action) => {
-        state.loading = false;
-        state.fares = action.payload || [];
+        state.flightFaresLoading = false;
+        state.flightFares = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(getFlightFares.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.flightFaresLoading = false;
+        state.flightFaresError = action.payload;
       });
 
     // ---------- UPDATE ----------
@@ -153,7 +161,7 @@ const fareSlice = createSlice({
       })
       .addCase(searchFares.fulfilled, (state, action) => {
         state.searchLoading = false;
-        state.fares = action.payload;
+        state.searchResults = action.payload;
       })
       .addCase(searchFares.rejected, (state, action) => {
         state.searchLoading = false;
@@ -162,5 +170,5 @@ const fareSlice = createSlice({
   }
 });
 
-export const { clearFareError, clearCurrentFare, clearSearchResults } = fareSlice.actions;
+export const { clearFareError, clearCurrentFare, clearFlightFares, clearSearchResults } = fareSlice.actions;
 export default fareSlice.reducer;

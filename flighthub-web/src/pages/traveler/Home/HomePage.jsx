@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import FlightSearchBar from "@/pages/traveler/Home/FlightSearchBar"
 import { Button } from "@/components/ui/button"
+import { buildTravelerSearchParams } from "@/utils/travelerSearchParams"
 
 // Placeholder content until the offers and destination APIs are available.
 const deals = [
@@ -95,12 +96,6 @@ const benefits = [
   },
 ]
 
-const formatSearchDate = (date) => {
-  if (!date) return ""
-  const offset = date.getTimezoneOffset()
-  return new Date(date.getTime() - offset * 60 * 1000).toISOString().split("T")[0]
-}
-
 const HomePage = () => {
   const navigate = useNavigate()
   const searchSectionRef = React.useRef(null)
@@ -110,21 +105,7 @@ const HomePage = () => {
   }
 
   const handleSearch = (searchData) => {
-    const searchParams = new URLSearchParams({
-      departureAirportId: searchData.departureAirportId?.toString() || "",
-      arrivalAirportId: searchData.arrivalAirportId?.toString() || "",
-      departureDate: searchData.departureDate || "",
-      returnDate: formatSearchDate(searchData.returnDate),
-      numberOfTravellers: searchData.numberOfTravellers?.toString() || "1",
-      cabinClass: searchData.cabinClass || "ECONOMY",
-      specialFare: searchData.specialFare || "regular",
-      tripType: searchData.tripType || "oneWay",
-      directOnly: searchData.directOnly ? "true" : "false",
-    })
-
-    if (searchData.segments?.length) {
-      searchParams.set("segments", JSON.stringify(searchData.segments))
-    }
+    const searchParams = buildTravelerSearchParams(searchData)
 
     navigate(`/search?${searchParams.toString()}`)
   }
