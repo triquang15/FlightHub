@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CreditCard, X, AlertCircle, ShieldCheck, Users, Plane } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CreditCard,
+  Plane,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -56,6 +63,22 @@ const getFareAmount = (fare, field, fallbackField) => {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 };
 
+const SectionLabel = ({ eyebrow, title, description }) => (
+  <div className="mb-3">
+    <p className="text-xs font-semibold uppercase text-blue-600 dark:text-blue-300">
+      {eyebrow}
+    </p>
+    <h2 className="mt-1 text-lg font-semibold text-slate-950 dark:text-white">
+      {title}
+    </h2>
+    {description && (
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        {description}
+      </p>
+    )}
+  </div>
+);
+
 const BookingReview = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -70,7 +93,7 @@ const BookingReview = () => {
   );
   const { seats = [] } = useSelector((state) => state.seat || {});
 
-  const { loading: bookingLoading, error: bookingError } = useSelector(
+  const { loading: bookingLoading } = useSelector(
     (state) => state.booking,
   );
 
@@ -83,7 +106,6 @@ const BookingReview = () => {
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
-  const [loading, setLoading] = useState(true);
   const bookingParams = useMemo(() => {
     const storedBookingData = readStoredBookingData();
     const decodedFilter = decodeSearchFilter(searchParams.get("xflt"));
@@ -116,6 +138,43 @@ const BookingReview = () => {
     cabinClassId,
     tripType,
   } = bookingParams;
+  const travelProtectionPackage = getSelectedTravelProtection(
+    ancillariesByType?.TRAVEL_PROTECTION,
+  );
+  const selectedSeatCount = selectedSeats.filter(Boolean).length;
+  const selectedBaggageCount = selectedBaggage.reduce(
+    (sum, bag) => sum + (Number(bag.quantity) || 0),
+    0,
+  );
+  const routeSummary = flightInstance
+    ? `${flightInstance.departureAirport?.iataCode || flightInstance.flight?.departureAirport?.iataCode || "From"} to ${
+        flightInstance.arrivalAirport?.iataCode || flightInstance.flight?.arrivalAirport?.iataCode || "To"
+      }`
+    : "Flight selected";
+  const checkoutSteps = [
+    {
+      label: "Flight",
+      value: routeSummary,
+      icon: Plane,
+      complete: Boolean(flightInstanceId),
+    },
+    {
+      label: "Travellers",
+      value: `${passengerCount} passenger${passengerCount > 1 ? "s" : ""}`,
+      icon: Users,
+      complete: Boolean(travellerData?.passengers?.length === passengerCount),
+    },
+    {
+      label: "Add-ons",
+      value: `${selectedSeatCount} seats | ${selectedBaggageCount} bags | ${selectedMeals.length} meals`,
+      icon: ShieldCheck,
+      complete:
+        selectedSeatCount > 0 ||
+        selectedBaggageCount > 0 ||
+        selectedMeals.length > 0 ||
+        Boolean(selectedTravelProtection),
+    },
+  ];
 
   // Helper function to calculate seat price
   const getSeatPrice = (seat) => {
@@ -186,18 +245,6 @@ const BookingReview = () => {
     );
   }, [passengerCount]);
 
-  // Load booking data from URL parameters and sessionStorage
-  useEffect(() => {
-    try {
-      decodeSearchFilter(searchParams.get("xflt"));
-      readStoredBookingData();
-    } catch (error) {
-      console.error("Error loading booking data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams, passengerCount, cabinClass, fareId, flightId, flightInstanceId]);
-
   useEffect(() => {
     if (fareId) {
       dispatch(getBaggagePolicyByFare(fareId));
@@ -245,6 +292,11 @@ const BookingReview = () => {
   }, [cabinClassId, flightId, selectedFare?.cabinClassId, dispatch]);
 
   const handleProceedToPayment = async () => {
+    if (!flightId || !flightInstanceId || !fareId) {
+      toast.error("Missing flight or fare information. Please go back and select the flight again.");
+      return;
+    }
+
     // Validate traveller data
     const passengers = travellerData?.passengers || [];
     const contactInfo = travellerData?.contactInfo || {};
@@ -264,7 +316,6 @@ const BookingReview = () => {
       return;
     }
 
-    const selectedSeatCount = selectedSeats.filter(Boolean).length;
     if (selectedSeatCount > 0 && selectedSeatCount !== passengerCount) {
       toast.error(
         `Please select seats for all ${passengerCount} passenger(s), or remove the selected seat(s) to continue without seat selection`,
@@ -286,9 +337,7 @@ const BookingReview = () => {
       0,
     );
 
-    const travelProtectionData = getSelectedTravelProtection(
-      ancillariesByType?.TRAVEL_PROTECTION,
-    );
+    const travelProtectionData = travelProtectionPackage;
     const travelProtectionCharge =
       selectedTravelProtection?.price || travelProtectionData?.price || 0;
 
@@ -374,8 +423,8 @@ const BookingReview = () => {
         lastName: t.lastName || "",
         email: t.email || contactInfo.email || "",
         phone: t.phone
-          ? `${t.countryCode || contactInfo.countryCode || "+91"}${t.phone}`
-          : `${contactInfo.countryCode || "+91"}${contactInfo.phone}`,
+          ? `${t.countryCode || contactInfo.countryCode || "+1"}${t.phone}`
+          : `${contactInfo.countryCode || "+1"}${contactInfo.phone}`,
         dateOfBirth: t.dob || null,
         gender: t.gender ? t.gender.toUpperCase() : null,
         seatNumber: selectedSeats[index]
@@ -383,7 +432,7 @@ const BookingReview = () => {
           : null,
         seatInstanceId: selectedSeats[index] ? selectedSeats[index].id : null,
         passportNumber: t.passportNumber || null,
-        nationality: t.nationality || "IN",
+        nationality: t.nationality || null,
         frequentFlyerNumber: t.frequentFlyerNumber || null,
         requiresWheelchairAssistance: t.requiresWheelchairAssistance || false,
         dietaryPreferences: getDietaryPreference(index),
@@ -436,61 +485,14 @@ const BookingReview = () => {
         });
       }
     } catch (error) {
-      console.error("❌ Booking failed:", error);
       toast.error(`Booking failed: ${error || "Please try again"}`, {
         id: "booking-toast",
       });
     }
   };
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
-          <p className="text-slate-600 dark:text-slate-300">Loading booking details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Use real booking data if available, otherwise use mock data
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
-      {/* Error Notification */}
-      <AnimatePresence>
-        {bookingError && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed right-4 top-4 z-50 max-w-md"
-          >
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-lg dark:border-red-500/30 dark:bg-red-950/70">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-300" />
-                <div className="flex-1">
-                  <h3 className="mb-1 text-sm font-semibold text-red-900 dark:text-red-100">
-                    Booking Failed
-                  </h3>
-                  <p className="text-sm text-red-700 dark:text-red-200">{bookingError}</p>
-                </div>
-                <button
-                  onClick={() =>
-                    dispatch({ type: "booking/clearBookingError" })
-                  }
-                  className="text-red-400 transition-colors hover:text-red-600 dark:hover:text-red-200"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/85">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -529,21 +531,28 @@ const BookingReview = () => {
                   Secure checkout
                 </p>
                 <h1 className="mb-2 text-2xl font-bold text-slate-950 dark:text-white md:text-3xl">
-              Complete Your Booking
+                  Complete Your Booking
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-300 md:text-base">
-              Review your flight details and fill in traveller information
+                  Review passenger details, add optional services, and confirm payment.
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {[
-                  { label: "Flight", icon: Plane },
-                  { label: `${passengerCount} traveller${passengerCount > 1 ? "s" : ""}`, icon: Users },
-                  { label: "Protected", icon: ShieldCheck },
-                ].map(({ label, icon: Icon }) => (
-                  <div key={label} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900/70">
-                    <Icon className="mx-auto mb-1 h-4 w-4 text-blue-600 dark:text-blue-300" />
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</p>
+              <div className="grid gap-2 text-left sm:grid-cols-3">
+                {checkoutSteps.map(({ label, value, icon: Icon, complete }) => (
+                  <div
+                    key={label}
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900/70"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <Icon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                      {complete ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-300" />
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-slate-950 dark:text-white">{label}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-600 dark:text-slate-300">{value}</p>
                   </div>
                 ))}
               </div>
@@ -554,28 +563,29 @@ const BookingReview = () => {
           <div className="grid grid-cols-1 gap-6 [&_.bg-gray-50]:dark:bg-slate-950/50 [&_.bg-gray-100]:dark:bg-slate-800 [&_.bg-white]:dark:bg-slate-900/90 [&_.border-gray-200]:dark:border-white/10 [&_.border-gray-300]:dark:border-white/10 [&_.text-gray-500]:dark:text-slate-500 [&_.text-gray-600]:dark:text-slate-400 [&_.text-gray-700]:dark:text-slate-300 [&_.text-gray-800]:dark:text-white [&_.text-gray-900]:dark:text-white [&_input]:dark:border-white/10 [&_input]:dark:bg-slate-900 [&_input]:dark:text-white [&_select]:dark:border-white/10 [&_select]:dark:bg-slate-900 [&_select]:dark:text-white lg:grid-cols-3">
             {/* Left Column - Main Content */}
             <div className="col-span-1 space-y-6 lg:col-span-2">
-              {/* 1. Flight Details Summary */}
+              <SectionLabel
+                eyebrow="Step 1"
+                title="Review flight"
+                description="Confirm the selected itinerary before entering passenger details."
+              />
               <FlightDetailsOverview flightData={flightInstance} />
 
-              {/* Travel Insurance - Using real API data */}
-              <TripSecure
-                selectedTravelProtection={selectedTravelProtection}
-                onSelectTravelProtection={setSelectedTravelProtection}
+              <SectionLabel
+                eyebrow="Step 2"
+                title="Traveller and contact details"
+                description="Passenger names must match government-issued ID documents."
               />
-
-              {/* 5. Cancellation & Date Change Policy - Using real API data */}
-              <CancellationAndDateChangePolicy />
-
-              {/* 2. Traveller Details Form */}
               <TravellerDetailsForm
                 passengerCount={passengerCount}
                 onTravellerDataChange={setTravellerData}
               />
 
-              {/* 3. Add-ons Section */}
+              <SectionLabel
+                eyebrow="Step 3"
+                title="Customize your trip"
+                description="Seats and add-ons are optional. Unavailable services are skipped cleanly."
+              />
               <div className="space-y-6">
-                {/* Seat Selection */}
-                {/* Now using Redux data from flightInstance.seats and flightInstance.seatMap */}
                 <SeatSelection
                   selectedSeats={selectedSeats}
                   onSelectSeat={handleSeatSelection}
@@ -585,24 +595,29 @@ const BookingReview = () => {
                   cabinClass={cabinClass}
                 />
 
-                {/* Meal Selection */}
-                {/* Note: Meals are managed via separate Meal entity, not ancillaries */}
-                {/* Now using Redux data from flightMeal store */}
-                <MealSelection
-                  selectedMeals={selectedMeals}
-                  onSelectMeal={setSelectedMeals}
-                />
-
-                {/* Baggage Selection */}
-                {/* Using Redux data from ancillariesByType.BAGGAGE */}
                 <BaggageSelection
                   selectedBaggage={selectedBaggage}
                   onSelectBaggage={setSelectedBaggage}
                 />
 
-                {/* 6. Important Information */}
-                <ImportantInformation />
+                <MealSelection
+                  selectedMeals={selectedMeals}
+                  onSelectMeal={setSelectedMeals}
+                />
+
+                <TripSecure
+                  selectedTravelProtection={selectedTravelProtection}
+                  onSelectTravelProtection={setSelectedTravelProtection}
+                />
               </div>
+
+              <SectionLabel
+                eyebrow="Step 4"
+                title="Policies and travel notes"
+                description="Review fare conditions and operational reminders before payment."
+              />
+              <CancellationAndDateChangePolicy />
+              <ImportantInformation />
             </div>
 
             {/* Right Column - Fare Summary (Sticky) */}

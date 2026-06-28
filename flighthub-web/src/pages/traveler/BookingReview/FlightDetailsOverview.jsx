@@ -68,11 +68,6 @@ const FlightDetailsOverview = ({ flightData }) => {
   // Get stops info
   const stops = flightInstance.stops || 0;
 
-
-  // Get baggage info from cabin
-  const cabinBaggage = flightInstance.cabin?.fare?.baggage?.cabin || "7 Kgs (1 piece only) / Adult";
-  const checkedBaggage = flightInstance.cabin?.fare?.baggage?.checkIn || "15 Kgs (1 piece only) / Adult";
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

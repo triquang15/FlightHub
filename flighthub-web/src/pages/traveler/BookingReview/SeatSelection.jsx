@@ -9,6 +9,11 @@ import {
   releaseSeatInstances,
 } from '@/Redux/seat/seatThunk';
 
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
 const SeatSelection = ({
   selectedSeats = [],
   onSelectSeat,
@@ -205,9 +210,9 @@ const SeatSelection = ({
 
   if (loading || seatsLoading) {
     return (
-      <div className="bg-white rounded-2xl shadow-md p-6">
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+        <div className="flex h-40 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-300"></div>
         </div>
       </div>
     );
@@ -219,29 +224,33 @@ const SeatSelection = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.4 }}
-        className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-6"
+        className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-            <Armchair className="w-6 h-6 text-indigo-600" />
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-500/10">
+            <Armchair className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">Seat Selection</h2>
-          <p className="text-sm text-gray-600">Choose your preferred seats</p>
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Seat Selection</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Optional seat preference</p>
           </div>
         </div>
-        <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl text-center">
-          <Armchair className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-sm text-gray-600">
-            {seatError || 'No seats available for this cabin yet'}
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center dark:border-white/10 dark:bg-slate-950/40">
+          <Armchair className="mx-auto mb-3 h-12 w-12 text-slate-400 dark:text-slate-500" />
+          <p className="text-base font-semibold text-slate-950 dark:text-white">
+            Seat map is not available yet
+          </p>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {seatError ||
+              'This flight instance does not have generated seat inventory yet. You can continue booking now; seats will be assigned during check-in or after airline inventory is published.'}
           </p>
           {flightInstanceId && (
             <button
               onClick={() => dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId))}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
             >
               <RefreshCw className="h-4 w-4" />
-              Reload seats
+              Reload seat map
             </button>
           )}
         </div>
@@ -256,24 +265,24 @@ const SeatSelection = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.4 }}
-      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-6"
+      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-            <Armchair className="w-6 h-6 text-indigo-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-500/10">
+            <Armchair className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">Seat Selection</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Seat Selection</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               {totalSelectedSeats} of {passengerCount} passengers selected
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs text-gray-500">Available Seats</p>
-            <p className="text-lg font-bold text-indigo-600">
+          <div className="hidden text-right sm:block">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Available Seats</p>
+            <p className="text-lg font-bold text-indigo-600 dark:text-indigo-300">
               {visibleSeats.filter(isSeatAvailable).length}
             </p>
           </div>
@@ -327,7 +336,7 @@ const SeatSelection = ({
                 <div className="flex items-center gap-3">
                   {passengerSeat && (
                     <span className="text-base font-bold text-green-600">
-                      ₹{getSeatPrice(passengerSeat)}
+                      {currencyFormatter.format(getSeatPrice(passengerSeat))}
                     </span>
                   )}
                   {passengerSeat ? (
@@ -501,7 +510,7 @@ const SeatSelection = ({
                                   </span>
                                   {isAvailable && !isSelectedByAnyPassenger && (
                                     <span className="text-[10px] font-bold mt-0.5">
-                                      ₹{getSeatPrice(seat)}
+                                      {currencyFormatter.format(getSeatPrice(seat))}
                                     </span>
                                   )}
                                 </div>
@@ -550,7 +559,7 @@ const SeatSelection = ({
                                   </span>
                                   {isAvailable && !isSelectedByAnyPassenger && (
                                     <span className="text-[10px] font-bold mt-0.5">
-                                      ₹{getSeatPrice(seat)}
+                                      {currencyFormatter.format(getSeatPrice(seat))}
                                     </span>
                                   )}
                                 </div>

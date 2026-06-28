@@ -3,6 +3,18 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
 const API_URL = "/api/bookings";
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const getApiErrorMessage = (err, fallback) => {
+  const payload = err.response?.data;
+  return (
+    payload?.message ||
+    payload?.error ||
+    payload?.errorMessage ||
+    payload?.errorCode ||
+    err.message ||
+    fallback
+  );
+};
 
 // ---------- CREATE ----------
 export const createBooking = createAsyncThunk(
@@ -10,8 +22,7 @@ export const createBooking = createAsyncThunk(
   async (data, { rejectWithValue }) => {
     try {
       const res = await api.post(API_URL, data);
-      const payload = res.data?.data ?? res.data;
-      console.log("✅ createBooking success:", payload);
+      const payload = unwrapApiData(res);
 
       // Check for checkout URL in the response (checkoutUrl or payment_link_url)
       const checkoutUrl = payload.checkoutUrl || payload.payment_link_url;
@@ -33,8 +44,7 @@ export const createBooking = createAsyncThunk(
 
       return payload;
     } catch (err) {
-      console.error("❌ createBooking error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to create booking");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to create booking"));
     }
   }
 );
@@ -61,7 +71,7 @@ export const getBookingById = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/${id}`);
       console.log("✅ getBookingById success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getBookingById error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Booking not found");

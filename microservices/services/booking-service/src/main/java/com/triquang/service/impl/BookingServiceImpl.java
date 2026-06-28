@@ -96,6 +96,8 @@ public class BookingServiceImpl implements BookingService {
         try {
             flightResponse = flightClient.getFlightById(request.getFlightId());
         } catch (Exception e) {
+            log.error("Booking {} failed while fetching flightId={} for userId={}",
+                    bookingReference, request.getFlightId(), userId, e);
             throw new BaseException(ErrorCode.FLIGHT_NOT_FOUND);
         }
 
@@ -127,18 +129,22 @@ public class BookingServiceImpl implements BookingService {
                     || !bookingCurrency.equalsIgnoreCase(fare.getCurrency())) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);
             }
-            seatHold = seatClient.holdSeats(SeatHoldRequest.builder()
-                    .flightInstanceId(booking.getFlightInstanceId())
-                    .seatInstanceIds(booking.getSeatInstanceIds())
-                    .userId(userId)
-                    .holdMinutes(15)
-                    .build());
-            booking.setSeatHoldToken(seatHold.getHoldToken());
-            booking.setSeatHoldExpiresAt(seatHold.getHoldExpiresAt());
+            if (hasItems(booking.getSeatInstanceIds())) {
+                seatHold = seatClient.holdSeats(SeatHoldRequest.builder()
+                        .flightInstanceId(booking.getFlightInstanceId())
+                        .seatInstanceIds(booking.getSeatInstanceIds())
+                        .userId(userId)
+                        .holdMinutes(15)
+                        .build());
+                booking.setSeatHoldToken(seatHold.getHoldToken());
+                booking.setSeatHoldExpiresAt(seatHold.getHoldExpiresAt());
+            }
 
             fareTotal = money(pricingIntegrationService.calculateFareTotal(booking.getFareId()))
                     .multiply(BigDecimal.valueOf(passengerCount));
-            seatPrice = money(seatClient.calculateSeatPrice(booking.getSeatInstanceIds()));
+            seatPrice = hasItems(booking.getSeatInstanceIds())
+                    ? money(seatClient.calculateSeatPrice(booking.getSeatInstanceIds()))
+                    : BigDecimal.ZERO;
             ancillaryPrice = hasItems(booking.getAncillaryIds())
                     ? money(ancillaryClient.calculateAncillariesPrice(booking.getAncillaryIds()))
                     : BigDecimal.ZERO;
@@ -146,6 +152,16 @@ public class BookingServiceImpl implements BookingService {
                     ? money(ancillaryClient.calculateMealPrice(booking.getMealIds()))
                     : BigDecimal.ZERO;
         } catch (Exception e) {
+            log.error(
+                    "Booking {} failed during pricing/seat/ancillary calculation. fareId={}, flightInstanceId={}, seatIds={}, ancillaryIds={}, mealIds={}, configuredCurrency={}",
+                    booking.getBookingReference(),
+                    booking.getFareId(),
+                    booking.getFlightInstanceId(),
+                    booking.getSeatInstanceIds(),
+                    booking.getAncillaryIds(),
+                    booking.getMealIds(),
+                    bookingCurrency,
+                    e);
             cancelPendingBooking(booking, userId, false);
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
         }
@@ -169,6 +185,14 @@ public class BookingServiceImpl implements BookingService {
         try {
             paymentInit = paymentClient.initiatePayment(paymentRequest, userId);
         } catch (Exception e) {
+            log.error(
+                    "Booking {} failed during payment initiation. bookingId={}, gateway={}, amount={}, currency={}",
+                    booking.getBookingReference(),
+                    booking.getId(),
+                    request.getPaymentGateway(),
+                    totalPrice,
+                    booking.getCurrency(),
+                    e);
             cancelPendingBooking(booking, userId, true);
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
         }
@@ -416,10 +440,10 @@ public class BookingServiceImpl implements BookingService {
 
         List<Long> seatInstanceIds = request.getPassengers().stream()
                 .map(PassengerRequest::getSeatInstanceId)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        if (seatInstanceIds.stream().anyMatch(Objects::isNull)
-                || seatInstanceIds.stream().distinct().count() != seatInstanceIds.size()) {
+        if (seatInstanceIds.stream().distinct().count() != seatInstanceIds.size()) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
@@ -487,11 +511,13 @@ public class BookingServiceImpl implements BookingService {
     private BookingResponse convertBookingResponse(Booking booking) {
 
         try {
-            List<FlightCabinAncillaryResponse> ancillaryResponses =
-                    ancillaryClient.getAllByIds(booking.getAncillaryIds());
+            List<FlightCabinAncillaryResponse> ancillaryResponses = hasItems(booking.getAncillaryIds())
+                    ? ancillaryClient.getAllByIds(booking.getAncillaryIds())
+                    : Collections.emptyList();
 
-            List<FlightMealResponse> mealResponses =
-                    ancillaryClient.getMealsByIds(booking.getMealIds());
+            List<FlightMealResponse> mealResponses = hasItems(booking.getMealIds())
+                    ? ancillaryClient.getMealsByIds(booking.getMealIds())
+                    : Collections.emptyList();
 
             PaymentDTO paymentDTO =
                     paymentClient.getPaymentByBookingId(booking.getId());
@@ -502,8 +528,9 @@ public class BookingServiceImpl implements BookingService {
             FlightResponse flightResponse =
                     flightClient.getFlightById(booking.getFlightId());
 
-            List<SeatInstanceResponse> seatInstanceResponses =
-                    seatClient.getAllByIds(booking.getSeatInstanceIds());
+            List<SeatInstanceResponse> seatInstanceResponses = hasItems(booking.getSeatInstanceIds())
+                    ? seatClient.getAllByIds(booking.getSeatInstanceIds())
+                    : Collections.emptyList();
 
             FlightInstanceResponse flightInstanceResponse =
                     flightClient.getFlightInstanceResponse(booking.getFlightInstanceId());

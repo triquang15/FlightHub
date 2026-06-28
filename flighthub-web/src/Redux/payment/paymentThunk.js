@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 const API_URL = "/api/payments";
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
 
 
 // ---------- VERIFY PAYMENT ----------
@@ -11,14 +12,10 @@ const API_URL = "/api/payments";
 export const verifyPayment = createAsyncThunk(
   "payment/verify",
   async (request, { rejectWithValue }) => {
-  console.log("Verifying payment thunk called with request: ---------- ", request);
     try {
-      console.log("📤 Verifying payment with data:", request);
       const res = await api.post(`${API_URL}/verify`, request);
-      console.log("✅ verifyPayment success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
-      console.error("❌ verifyPayment error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to verify payment");
     }
   }

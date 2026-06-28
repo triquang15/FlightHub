@@ -59,18 +59,15 @@ const bookingSlice = createSlice({
   extraReducers: (builder) => {
     // ---------- CREATE ----------
     builder.addCase(createBooking.pending, (state) => {
-      console.log("⏳ createBooking pending");
-      state.routePerformanceLoading = true;
+      state.loading = true;
       state.error = null;
     });
     builder.addCase(createBooking.fulfilled, (state, action) => {
-      console.log("✅ createBooking fulfilled");
       state.loading = false;
       state.booking = action.payload;
       state.bookings.push(action.payload);
     });
     builder.addCase(createBooking.rejected, (state, action) => {
-      console.log("❌ createBooking rejected:", action.payload);
       state.loading = false;
       state.error = action.payload;
     });

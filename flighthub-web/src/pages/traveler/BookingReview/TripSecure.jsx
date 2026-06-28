@@ -1,22 +1,31 @@
-import { useState } from "react";
-import {motion, AnimatePresence } from "framer-motion";
+import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ShieldCheck,
-  Check,
-  Star,
+  AlertTriangle,
+  Ban,
   ChevronDown,
   ChevronUp,
-  Plane,
   Clock,
-  Ban,
-  AlertTriangle,
-  Package,
   Heart,
   Info,
+  Package,
+  Plane,
+  ShieldCheck,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 
-// Coverage type icon mapping
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+const normalizePackage = (payload) => {
+  if (Array.isArray(payload)) return payload[0] || null;
+  if (Array.isArray(payload?.data)) return payload.data[0] || null;
+  if (Array.isArray(payload?.content)) return payload.content[0] || null;
+  return payload || null;
+};
+
 const getCoverageIcon = (coverageType) => {
   const iconMap = {
     BAGGAGE_ASSISTANCE: Package,
@@ -31,491 +40,252 @@ const getCoverageIcon = (coverageType) => {
   return iconMap[coverageType] || ShieldCheck;
 };
 
+const formatCoverageType = (value = "") =>
+  String(value)
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
 const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
   const [showDetails, setShowDetails] = useState(false);
-
   const { ancillariesByType } = useSelector(
-    (state) => state.flightCabinAncillary
+    (state) => state.flightCabinAncillary,
   );
 
-  const travelProtectionPayload = ancillariesByType["TRAVEL_PROTECTION"];
-  const tripSecureData = Array.isArray(travelProtectionPayload)
-    ? travelProtectionPayload[0] || null
-    : travelProtectionPayload || null;
+  const tripSecureData = useMemo(
+    () => normalizePackage(ancillariesByType.TRAVEL_PROTECTION),
+    [ancillariesByType.TRAVEL_PROTECTION],
+  );
 
-  // Travel protection is optional. A 404 from the API means this cabin has no package.
-  const insuranceName = tripSecureData?.ancillary?.name || "Trip Secure";
-
+  const coverages = Array.isArray(tripSecureData?.ancillary?.coverages)
+    ? tripSecureData.ancillary.coverages
+    : [];
+  const sortedCoverages = [...coverages].sort(
+    (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
+  );
+  const previewCoverages = sortedCoverages.slice(0, 3);
+  const totalCoverage = coverages.reduce(
+    (sum, coverage) => sum + Number(coverage.coverageAmount || 0),
+    0,
+  );
+  const insurancePrice = Number(tripSecureData?.price || 0);
+  const insuranceName = tripSecureData?.ancillary?.name || "Travel Protection";
   const insuranceDescription =
     tripSecureData?.ancillary?.description ||
-    "Travel protection is not available for this fare right now.";
-
-  const insurancePrice = tripSecureData?.price;
-
-  const coverages =  tripSecureData?.ancillary?.coverages || [];
-
+    "Optional coverage for baggage, delays, missed connections, and other disruptions.";
   const emergencyContact =
-    coverages.length > 0
-      ? coverages[0].emergencyContact
-      : "1800-123-4567";
+    coverages.find((coverage) => coverage.emergencyContact)?.emergencyContact ||
+    "1800-123-4567";
+  const isSelected = Boolean(selectedTravelProtection);
 
   const handleSelection = (value) => {
-    // value: 'yes' or 'no'
-    if (value === "yes") {
-      onSelectTravelProtection(tripSecureData || "secure-trip");
-    } else {
-      onSelectTravelProtection(null);
-    }
+    onSelectTravelProtection(value === "yes" ? tripSecureData : null);
   };
-
-  const isTravelProtectionSelected = selectedTravelProtection !== null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.3 }}
-      className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden border border-gray-100"
+      transition={{ duration: 0.3 }}
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
     >
-      {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-            <ShieldCheck className="w-8 h-8 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-2xl font-bold mb-1">{insuranceName}</h2>
-                <p className="text-blue-100 text-sm leading-relaxed">
-                  {insuranceDescription}
-                </p>
-              </div>
-              {tripSecureData && (
-                <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full flex-shrink-0">
-                  <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
-                  <span className="text-xs font-semibold">Recommended</span>
-                </div>
-              )}
+      <div className="border-b border-slate-200 p-6 dark:border-white/10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+              <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+                {insuranceName}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                {insuranceDescription}
+              </p>
             </div>
           </div>
+          {tripSecureData && (
+            <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-left sm:text-right dark:border-blue-400/20 dark:bg-blue-500/10">
+              <p className="text-xs text-slate-600 dark:text-slate-300">Per passenger</p>
+              <p className="text-lg font-bold text-blue-700 dark:text-blue-200">
+                {currencyFormatter.format(insurancePrice)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="p-6">
-        {/* Price & Coverage Preview */}
-        {tripSecureData && (
-          <div className="mb-6 space-y-4">
-            {/* Price Card */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-              <div className="flex items-center justify-between">
+        {!tripSecureData ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center dark:border-white/10 dark:bg-slate-950/40">
+            <ShieldCheck className="mx-auto mb-2 h-9 w-9 text-slate-400 dark:text-slate-500" />
+            <p className="text-sm font-semibold text-slate-950 dark:text-white">
+              Travel protection is unavailable
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              This fare can still be booked without insurance.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/40">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">
-                    Special Offer Price
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                    {isSelected ? "Protection added" : "Protection not selected"}
                   </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-gray-900">
-                      ₹{insurancePrice}
-                    </span>
-                    <span className="text-sm text-gray-600">per passenger</span>
-                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                    {isSelected
+                      ? `Added for ${currencyFormatter.format(insurancePrice)} per passenger.`
+                      : "You can continue without insurance; claims support will not be included."}
+                  </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Save up to</p>
-                  <p className="text-xl font-bold text-green-600">40%</p>
+
+                <div className="grid grid-cols-2 gap-2 rounded-md bg-white p-1 dark:bg-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => handleSelection("yes")}
+                    className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                    }`}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelection("no")}
+                    className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                      !isSelected
+                        ? "bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-950"
+                        : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                    }`}
+                  >
+                    Skip
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* What You Get Card */}
-            <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-blue-200">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  What You Get for ₹{insurancePrice}
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {coverages
-                  // .sort((a, b) => a.displayOrder - b.displayOrder)
-                  .map((coverage) => {
-                    const IconComponent = getCoverageIcon(
-                      coverage.coverageType
-                    );
+            {coverages.length > 0 && (
+              <div className="mt-5">
+                <div className="mb-3 grid gap-2 md:grid-cols-3">
+                  {previewCoverages.map((coverage) => {
+                    const Icon = getCoverageIcon(coverage.coverageType);
 
                     return (
                       <div
                         key={coverage.id}
-                        className="flex items-start gap-3 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-blue-100 hover:border-blue-300 hover:shadow-md transition-all group"
+                        className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-950/30"
                       >
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <IconComponent className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-semibold text-gray-900 text-sm leading-tight">
-                              {coverage.name}
-                            </h4>
-                            {coverage.coverageAmount > 0 && (
-                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                                ₹{coverage.coverageAmount.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                            {coverage.description}
+                        <div className="mb-2 flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                          <p className="truncate text-xs font-semibold text-slate-950 dark:text-white">
+                            {coverage.name}
                           </p>
                         </div>
+                        {coverage.coverageAmount > 0 && (
+                          <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                            {currencyFormatter.format(coverage.coverageAmount)}
+                          </p>
+                        )}
                       </div>
                     );
                   })}
-              </div>
+                </div>
 
-              {/* Total Coverage Summary */}
-              <div className="mt-4 pt-4 border-t border-blue-200">
-                <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowDetails((value) => !value)}
+                  className="flex w-full items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
+                >
                   <div className="flex items-center gap-2">
-                    <Check className="w-5 h-5 text-green-600" />
-                    <span className="text-sm font-semibold text-gray-900">
-                      Total Coverage Benefits: {coverages.length} types
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                    <span className="text-sm font-semibold text-slate-950 dark:text-white">
+                      {showDetails ? "Hide coverage details" : `View all ${coverages.length} coverage details`}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-600">
-                      Total Coverage Value
-                    </p>
-                    <p className="text-lg font-bold text-blue-600">
-                      ₹
-                      {coverages
-                        .reduce((sum, c) => sum + (c.coverageAmount || 0), 0)
-                        .toLocaleString()}
-                      +
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                  {showDetails ? (
+                    <ChevronUp className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                  )}
+                </button>
 
-        {/* Radio Button Options */}
-        <div className="space-y-3 mb-6">
-          {!tripSecureData && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-              No travel protection package is available for this cabin. You can
-              continue without adding insurance.
-            </div>
-          )}
+                <AnimatePresence>
+                  {showDetails && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="mt-3 space-y-3 overflow-hidden"
+                    >
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {sortedCoverages.map((coverage) => {
+                          const Icon = getCoverageIcon(coverage.coverageType);
 
-          {/* Yes Option */}
-          {tripSecureData && <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={() => handleSelection("yes")}
-            className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all ${
-              isTravelProtectionSelected
-                ? "border-blue-600 bg-blue-50 shadow-lg shadow-blue-100"
-                : "border-gray-200 hover:border-blue-300 bg-white"
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              {/* Radio Button */}
-              <div
-                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                  isTravelProtectionSelected
-                    ? "border-blue-600 bg-blue-600"
-                    : "border-gray-300 bg-white"
-                }`}
-              >
-                {isTravelProtectionSelected && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-3 h-3 rounded-full bg-white"
-                  />
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Yes, Secure My Trip
-                  </h3>
-                  <ShieldCheck
-                    className={`w-5 h-5 ${
-                      isTravelProtectionSelected ? "text-blue-600" : "text-gray-400"
-                    }`}
-                  />
-                </div>
-                <p className="text-sm text-gray-600">
-                  Get comprehensive protection with {coverages.length || 8}{" "}
-                  types of coverage
-                </p>
-              </div>
-
-              {/* Price Badge */}
-              {tripSecureData && (
-                <div
-                  className={`px-4 py-2 rounded-lg ${
-                    isTravelProtectionSelected
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <p className="text-xs font-medium">Only</p>
-                  <p className="text-lg font-bold">₹{insurancePrice}</p>
-                </div>
-              )}
-            </div>
-          </motion.div>}
-
-          {/* No Option */}
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={() => handleSelection("no")}
-            className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all ${
-              !isTravelProtectionSelected
-                ? "border-gray-400 bg-gray-50"
-                : "border-gray-200 hover:border-gray-300 bg-white"
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              {/* Radio Button */}
-              <div
-                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                  !isTravelProtectionSelected
-                    ? "border-gray-600 bg-gray-600"
-                    : "border-gray-300 bg-white"
-                }`}
-              >
-                {!isTravelProtectionSelected && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-3 h-3 rounded-full bg-white"
-                  />
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  No, I'll Skip This
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Proceed without travel insurance protection
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Detailed Coverage Information Toggle */}
-        {tripSecureData && coverages.length > 0 && (
-          <div className="border-t border-gray-200 pt-6">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="w-full flex items-center justify-between text-left p-3 hover:bg-gray-50 rounded-lg transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <Info className="w-5 h-5 text-blue-600" />
-                <h4 className="text-base font-semibold text-gray-800">
-                  Detailed Coverage Information & Claim Conditions
-                </h4>
-              </div>
-              {showDetails ? (
-                <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {showDetails && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-4 space-y-3"
-                >
-                  {coverages
-                    .sort((a, b) => a.displayOrder - b.displayOrder)
-                    .map((coverage, index) => {
-                      const IconComponent = getCoverageIcon(
-                        coverage.coverageType
-                      );
-
-                      return (
-                        <motion.div
-                          key={coverage.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2, delay: index * 0.05 }}
-                          className="bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-md"
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0 shadow-md">
-                              <IconComponent className="w-6 h-6 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                                      #{index + 1}
-                                    </span>
-                                    <h5 className="font-bold text-gray-900 text-base">
-                                      {coverage.name}
-                                    </h5>
+                          return (
+                            <div
+                              key={coverage.id}
+                              className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/40"
+                            >
+                              <div className="mb-2 flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-start gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+                                    <Icon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                                   </div>
-                                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-                                    {coverage.coverageType.replace(/_/g, " ")}
-                                  </p>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-slate-950 dark:text-white">
+                                      {coverage.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                      {formatCoverageType(coverage.coverageType)}
+                                    </p>
+                                  </div>
                                 </div>
                                 {coverage.coverageAmount > 0 && (
-                                  <div className="text-right flex-shrink-0">
-                                    <p className="text-xs text-gray-500">
-                                      Coverage
-                                    </p>
-                                    <span className="text-lg font-bold text-green-600">
-                                      ₹
-                                      {coverage.coverageAmount.toLocaleString()}
-                                    </span>
-                                  </div>
+                                  <span className="shrink-0 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                                    {currencyFormatter.format(coverage.coverageAmount)}
+                                  </span>
                                 )}
                               </div>
-
-                              <p className="text-sm text-gray-700 leading-relaxed mb-3 bg-gray-50 p-3 rounded-lg">
+                              <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
                                 {coverage.description}
                               </p>
-
                               {coverage.claimCondition && (
-                                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-400 rounded-lg p-3">
-                                  <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                      <p className="text-xs font-semibold text-orange-900 mb-1">
-                                        Claim Condition
-                                      </p>
-                                      <p className="text-xs text-orange-800 leading-relaxed">
-                                        {coverage.claimCondition}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
+                                <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs leading-5 text-amber-800 dark:bg-amber-400/10 dark:text-amber-100">
+                                  {coverage.claimCondition}
+                                </p>
                               )}
                             </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-400/20 dark:bg-blue-400/10">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                              Total coverage value
+                            </p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300">
+                              Emergency assistance: {emergencyContact}
+                            </p>
                           </div>
-                        </motion.div>
-                      );
-                    })}
-
-                  {/* Claim Process Information */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 mt-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-                        <Info className="w-5 h-5 text-white" />
+                          <p className="shrink-0 text-lg font-bold text-blue-700 dark:text-blue-200">
+                            {currencyFormatter.format(totalCoverage)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-gray-900 mb-2">
-                          How to Claim Your Insurance
-                        </h5>
-                        <ul className="space-y-1.5 text-xs text-gray-700">
-                          <li className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span>
-                              Contact emergency support immediately when
-                              incident occurs
-                            </span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span>
-                              Collect all necessary documents (receipts,
-                              reports, confirmations)
-                            </span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span>
-                              Submit claim within 30 days of incident via our
-                              mobile app or website
-                            </span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span>
-                              Claims processed within 7-10 business days
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </>
         )}
-
-        {/* Emergency Contact */}
-        {tripSecureData && (
-          <div className="mt-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <h5 className="text-sm font-semibold text-gray-900 mb-1">
-                  24/7 Emergency Assistance
-                </h5>
-                <p className="text-xs text-gray-600 mb-2">
-                  Need help? Contact us anytime, anywhere
-                </p>
-                <a
-                  href={`tel:${emergencyContact.split(" ")[0]}`}
-                  className="text-sm font-semibold text-orange-600 hover:text-orange-700 underline"
-                >
-                  {emergencyContact}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Success Message */}
-        <AnimatePresence>
-          {isTravelProtectionSelected && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-green-900 mb-0.5">
-                    Excellent Choice! Your Trip is Protected
-                  </p>
-                  <p className="text-xs text-green-700">
-                    You're now covered with comprehensive travel insurance
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </motion.div>
   );

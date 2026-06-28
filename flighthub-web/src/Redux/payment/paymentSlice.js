@@ -57,19 +57,16 @@ const paymentSlice = createSlice({
 
     // ---------- VERIFY PAYMENT ----------
     builder.addCase(verifyPayment.pending, (state) => {
-      console.log("⏳ verifyPayment pending");
       state.loading = true;
       state.error = null;
       state.verifyResponse = null;
     });
     builder.addCase(verifyPayment.fulfilled, (state, action) => {
-      console.log("✅ verifyPayment fulfilled");
       state.loading = false;
       state.verifyResponse = action.payload;
       state.payment = action.payload;
     });
     builder.addCase(verifyPayment.rejected, (state, action) => {
-      console.log("❌ verifyPayment rejected:", action.payload);
       state.loading = false;
       state.error = action.payload;
     });

@@ -1,27 +1,112 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertCircle,
+  Briefcase,
+  Calendar,
+  Check,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
-  Calendar,
-  XCircle,
-  Check,
-  X,
   Clock,
   DollarSign,
-  Briefcase,
-  Package,
   Info,
-  RefreshCw,
-  Star,
+  Package,
+  X,
+  XCircle,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 
-const CancellationAndDateChangePolicy = () => {
-  const [expandedSection, setExpandedSection] = useState(null);
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
-  // Get fare rules and baggage policy from Redux
+const PolicyPanel = ({
+  id,
+  expandedSection,
+  onToggle,
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+}) => {
+  const isExpanded = expandedSection === id;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 transition-all hover:border-blue-300 dark:border-white/10 dark:hover:border-blue-400/50">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+            <Icon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-slate-950 dark:text-white">
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-950/40"
+          >
+            <div className="p-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const InfoTile = ({ icon: Icon, label, value, tone = "blue" }) => {
+  const toneClass =
+    tone === "red"
+      ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-200"
+      : tone === "green"
+        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200"
+        : tone === "amber"
+          ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200"
+          : "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200";
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900/70">
+      <div className="mb-2 flex items-center gap-2">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${toneClass}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {label}
+        </p>
+      </div>
+      <p className="text-sm font-semibold text-slate-950 dark:text-white">
+        {value}
+      </p>
+    </div>
+  );
+};
+
+const CancellationAndDateChangePolicy = () => {
+  const [expandedSection, setExpandedSection] = useState("fareRules");
   const { fareRule } = useSelector((state) => state.fareRules);
   const { policy: baggagePolicy } = useSelector((state) => state.baggagePolicy);
 
@@ -29,556 +114,191 @@ const CancellationAndDateChangePolicy = () => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
-  // Fare Rules Section
-  const FareRulesSection = () => {
-    if (!fareRule) return null;
+  const hasAnyPolicy = fareRule || baggagePolicy;
 
-    const isExpanded = expandedSection === "fareRules";
-
+  if (!hasAnyPolicy) {
     return (
-      <div className="border-2 border-gray-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all">
-        <button
-          onClick={() => toggleSection("fareRules")}
-          className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <AlertCircle className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-gray-900 text-lg">
-                {fareRule.ruleName || "Fare Rules"}
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {fareRule.airlineName}
-              </p>
-            </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90"
+      >
+        <div className="flex items-start gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 dark:border-white/10 dark:bg-slate-950/40">
+          <Info className="mt-0.5 h-5 w-5 text-slate-500 dark:text-slate-400" />
+          <div>
+            <p className="text-sm font-semibold text-slate-950 dark:text-white">
+              Fare policies are not available
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              You can continue booking. Airline rules may still apply after
+              ticketing.
+            </p>
           </div>
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          )}
-        </button>
-
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <div className="p-5 pt-0 bg-gradient-to-br from-gray-50 to-blue-50/30">
-                <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-                  {/* Refundability Status */}
-                  <div className="mb-6">
-                    <div
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-                        fareRule.isRefundable
-                          ? "bg-green-100 border-2 border-green-300"
-                          : "bg-red-100 border-2 border-red-300"
-                      }`}
-                    >
-                      {fareRule.isRefundable ? (
-                        <Check className="w-5 h-5 text-green-700" />
-                      ) : (
-                        <X className="w-5 h-5 text-red-700" />
-                      )}
-                      <span
-                        className={`font-bold text-sm ${
-                          fareRule.isRefundable
-                            ? "text-green-900"
-                            : "text-red-900"
-                        }`}
-                      >
-                        {fareRule.isRefundable
-                          ? "Refundable Fare"
-                          : "Non-Refundable Fare"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Cancellation Policy */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <XCircle className="w-5 h-5 text-red-600" />
-                      <h4 className="font-bold text-gray-900">
-                        Cancellation Policy
-                      </h4>
-                    </div>
-
-                    {fareRule.isRefundable ? (
-                      <div className="space-y-3">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-l-4 border-blue-500">
-                          <div className="flex items-start gap-3">
-                            <Clock className="w-5 h-5 text-blue-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-900 mb-1">
-                                Refund Deadline
-                              </p>
-                              <p className="text-sm text-gray-700">
-                                Cancel up to{" "}
-                                <span className="font-bold text-blue-700">
-                                  {fareRule.refundDeadlineDays} days
-                                </span>{" "}
-                                before departure for refund
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border-l-4 border-orange-500">
-                          <div className="flex items-start gap-3">
-                            <DollarSign className="w-5 h-5 text-orange-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-900 mb-1">
-                                Cancellation Fee
-                              </p>
-                              <p className="text-sm text-gray-700">
-                                Fee:{" "}
-                                <span className="font-bold text-orange-700">
-                                  ₹{fareRule.cancellationFee.toLocaleString()}
-                                </span>{" "}
-                                per passenger
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-red-900 mb-1">
-                              No Refund Available
-                            </p>
-                            <p className="text-sm text-red-700">
-                              This fare is non-refundable. Cancellation will
-                              result in complete loss of ticket value.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Date Change Policy */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <h4 className="font-bold text-gray-900">
-                        Date Change Policy
-                      </h4>
-                    </div>
-
-                    {fareRule.isChangeable !== false ? (
-                      <div className="space-y-3">
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border-l-4 border-green-500">
-                          <div className="flex items-start gap-3">
-                            <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-900 mb-1">
-                                Changes Allowed
-                              </p>
-                              <p className="text-sm text-gray-700">
-                                You can change your travel dates
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {fareRule.changeDeadlineHours && (
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-l-4 border-blue-500">
-                            <div className="flex items-start gap-3">
-                              <Clock className="w-5 h-5 text-blue-600 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="text-sm font-semibold text-gray-900 mb-1">
-                                  Change Deadline
-                                </p>
-                                <p className="text-sm text-gray-700">
-                                  Request changes at least{" "}
-                                  <span className="font-bold text-blue-700">
-                                    {fareRule.changeDeadlineHours} hours
-                                  </span>{" "}
-                                  before departure
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {fareRule.changeFee > 0 && (
-                          <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border-l-4 border-orange-500">
-                            <div className="flex items-start gap-3">
-                              <DollarSign className="w-5 h-5 text-orange-600 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="text-sm font-semibold text-gray-900 mb-1">
-                                  Change Fee
-                                </p>
-                                <p className="text-sm text-gray-700">
-                                  Fee:{" "}
-                                  <span className="font-bold text-orange-700">
-                                    ₹{fareRule.changeFee.toLocaleString()}
-                                  </span>{" "}
-                                  per passenger
-                                </p>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  Plus any fare difference
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
-                        <div className="flex items-start gap-3">
-                          <X className="w-5 h-5 text-red-600 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-red-900 mb-1">
-                              Changes Not Allowed
-                            </p>
-                            <p className="text-sm text-red-700">
-                              Date changes are not permitted for this fare type.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Important Notes */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-gray-600">
-                        All fees are per passenger and subject to airline terms.
-                        Processing may take 7-14 business days for refunds.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        </div>
+      </motion.div>
     );
-  };
-
-  // Baggage Policy Section
-  const BaggagePolicySection = () => {
-    if (!baggagePolicy) return null;
-
-    const isExpanded = expandedSection === "baggage";
-
-    return (
-      <div className="border-2 border-gray-200 rounded-xl overflow-hidden hover:border-purple-300 transition-all">
-        <button
-          onClick={() => toggleSection("baggage")}
-          className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-md">
-              <Briefcase className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-gray-900 text-lg">
-                {baggagePolicy.name || "Baggage Allowance"}
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {baggagePolicy.description || "Check-in & Cabin Baggage"}
-              </p>
-            </div>
-          </div>
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          )}
-        </button>
-
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <div className="p-5 pt-0 bg-gradient-to-br from-gray-50 to-purple-50/30">
-                <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-                  {/* Special Features Badges */}
-                  {(baggagePolicy.priorityBaggage || baggagePolicy.extraBaggageAllowance) && (
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {baggagePolicy.priorityBaggage && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-100 to-amber-100 border-2 border-yellow-300 rounded-lg">
-                          <Star className="w-4 h-4 text-yellow-600 fill-yellow-600" />
-                          <span className="text-xs font-bold text-yellow-900">
-                            Priority Baggage
-                          </span>
-                        </div>
-                      )}
-                      {baggagePolicy.extraBaggageAllowance && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300 rounded-lg">
-                          <Package className="w-4 h-4 text-green-600" />
-                          <span className="text-xs font-bold text-green-900">
-                            Extra Allowance
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Check-in Baggage */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Package className="w-5 h-5 text-purple-600" />
-                      <h4 className="font-bold text-gray-900">
-                        Check-in Baggage
-                      </h4>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* Total Weight Allowance */}
-                      {baggagePolicy.checkInBaggageMaxWeight && (
-                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Total Weight
-                              </p>
-                              <p className="text-2xl font-bold text-purple-700">
-                                {baggagePolicy.checkInBaggageMaxWeight} kg
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pieces Allowed */}
-                      {baggagePolicy.checkInBaggagePieces && (
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-                              <Package className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Pieces Allowed
-                              </p>
-                              <p className="text-2xl font-bold text-blue-700">
-                                {baggagePolicy.checkInBaggagePieces}{" "}
-                                {baggagePolicy.checkInBaggagePieces === 1
-                                  ? "piece"
-                                  : "pieces"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Weight Per Piece */}
-                      {baggagePolicy.checkInBaggageWeightPerPiece && (
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Per Piece
-                              </p>
-                              <p className="text-2xl font-bold text-indigo-700">
-                                {baggagePolicy.checkInBaggageWeightPerPiece} kg
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Free Checked Bags */}
-                    {baggagePolicy.freeCheckedBagsAllowance > 0 && (
-                      <div className="mt-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border-l-4 border-green-500">
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-600" />
-                          <p className="text-sm font-semibold text-green-900">
-                            {baggagePolicy.freeCheckedBagsAllowance} free checked{" "}
-                            {baggagePolicy.freeCheckedBagsAllowance === 1
-                              ? "bag"
-                              : "bags"}{" "}
-                            included
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cabin Baggage */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Briefcase className="w-5 h-5 text-indigo-600" />
-                      <h4 className="font-bold text-gray-900">Cabin Baggage</h4>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* Total Weight Allowance */}
-                      {baggagePolicy.cabinBaggageMaxWeight && (
-                        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Total Weight
-                              </p>
-                              <p className="text-2xl font-bold text-indigo-700">
-                                {baggagePolicy.cabinBaggageMaxWeight} kg
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pieces Allowed */}
-                      {baggagePolicy.cabinBaggagePieces && (
-                        <div className="bg-gradient-to-br from-cyan-50 to-teal-50 rounded-lg p-4 border border-cyan-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center flex-shrink-0">
-                              <Package className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Pieces Allowed
-                              </p>
-                              <p className="text-2xl font-bold text-cyan-700">
-                                {baggagePolicy.cabinBaggagePieces}{" "}
-                                {baggagePolicy.cabinBaggagePieces === 1
-                                  ? "piece"
-                                  : "pieces"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Weight Per Piece */}
-                      {baggagePolicy.cabinBaggageWeightPerPiece && (
-                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg p-4 border border-teal-200">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 mb-1">
-                                Per Piece
-                              </p>
-                              <p className="text-2xl font-bold text-teal-700">
-                                {baggagePolicy.cabinBaggageWeightPerPiece} kg
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Cabin Dimension Info */}
-                    {baggagePolicy.cabinBaggageMaxDimension && (
-                      <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border-l-4 border-blue-500">
-                        <div className="flex items-start gap-2">
-                          <Info className="w-4 h-4 text-blue-600 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-blue-900 mb-1">
-                              Maximum Dimensions
-                            </p>
-                            <p className="text-sm text-blue-700">
-                              Total linear dimensions (L+W+H) must not exceed{" "}
-                              <span className="font-bold">
-                                {baggagePolicy.cabinBaggageMaxDimension} cm
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* General Notes */}
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-start gap-2 mb-3">
-                      <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs text-gray-600 mb-1">
-                          <span className="font-semibold">Important:</span>{" "}
-                          Excess baggage charges apply for additional or
-                          overweight luggage
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Baggage restrictions may vary by route and aircraft
-                          type. Please verify with airline before travel.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  };
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.1 }}
-      className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all p-6 border border-gray-100"
+      transition={{ duration: 0.3 }}
+      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
     >
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-md">
-          <AlertCircle className="w-6 h-6 text-white" />
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-red-50 dark:bg-red-500/10">
+          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-300" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            Important Policies
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+            Fare Policies
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Cancellation, Date Change & Baggage Rules
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Cancellation, date change, and baggage rules for this fare.
           </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <FareRulesSection />
-        <BaggagePolicySection />
-      </div>
+      <div className="space-y-3">
+        {fareRule && (
+          <PolicyPanel
+            id="fareRules"
+            expandedSection={expandedSection}
+            onToggle={toggleSection}
+            icon={AlertCircle}
+            title={fareRule.ruleName || "Fare Rules"}
+            subtitle={fareRule.airlineName || "Airline fare conditions"}
+          >
+            <div className="space-y-5">
+              <div
+                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold ${
+                  fareRule.isRefundable
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200"
+                    : "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-200"
+                }`}
+              >
+                {fareRule.isRefundable ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+                {fareRule.isRefundable ? "Refundable fare" : "Non-refundable fare"}
+              </div>
 
-      {/* General Important Note */}
-      <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border-2 border-amber-200">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-amber-900 mb-1">
-              Important Notice
-            </p>
-            <p className="text-xs text-amber-800 leading-relaxed">
-              Airlines may modify their policies without prior notice. Please
-              verify all terms and conditions before making any changes to your
-              booking. Contact customer support for assistance.
-            </p>
-          </div>
-        </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <InfoTile
+                  icon={XCircle}
+                  label="Cancellation"
+                  tone={fareRule.isRefundable ? "amber" : "red"}
+                  value={
+                    fareRule.isRefundable
+                      ? `${currencyFormatter.format(Number(fareRule.cancellationFee || 0))} per passenger`
+                      : "No refund available"
+                  }
+                />
+                <InfoTile
+                  icon={Clock}
+                  label="Refund deadline"
+                  value={
+                    fareRule.isRefundable && fareRule.refundDeadlineDays
+                      ? `${fareRule.refundDeadlineDays} days before departure`
+                      : "Airline policy applies"
+                  }
+                />
+                <InfoTile
+                  icon={Calendar}
+                  label="Date changes"
+                  tone={fareRule.isChangeable === false ? "red" : "green"}
+                  value={
+                    fareRule.isChangeable === false
+                      ? "Changes not allowed"
+                      : "Changes allowed"
+                  }
+                />
+                <InfoTile
+                  icon={DollarSign}
+                  label="Change fee"
+                  tone="amber"
+                  value={
+                    Number(fareRule.changeFee || 0) > 0
+                      ? `${currencyFormatter.format(Number(fareRule.changeFee || 0))} plus fare difference`
+                      : "No change fee listed"
+                  }
+                />
+              </div>
+
+              <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-800 dark:border-blue-400/20 dark:bg-blue-400/10 dark:text-blue-100">
+                All fees are per passenger and subject to airline approval.
+                Refund and change processing times can vary by payment method.
+              </p>
+            </div>
+          </PolicyPanel>
+        )}
+
+        {baggagePolicy && (
+          <PolicyPanel
+            id="baggage"
+            expandedSection={expandedSection}
+            onToggle={toggleSection}
+            icon={Briefcase}
+            title={baggagePolicy.name || "Baggage Allowance"}
+            subtitle={baggagePolicy.description || "Checked and cabin baggage"}
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <InfoTile
+                icon={Package}
+                label="Checked baggage"
+                value={[
+                  baggagePolicy.checkInBaggagePieces
+                    ? `${baggagePolicy.checkInBaggagePieces} piece${baggagePolicy.checkInBaggagePieces === 1 ? "" : "s"}`
+                    : null,
+                  baggagePolicy.checkInBaggageMaxWeight
+                    ? `${baggagePolicy.checkInBaggageMaxWeight} kg total`
+                    : null,
+                  baggagePolicy.checkInBaggageWeightPerPiece
+                    ? `${baggagePolicy.checkInBaggageWeightPerPiece} kg each`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" | ") || "Airline policy applies"}
+              />
+              <InfoTile
+                icon={Briefcase}
+                label="Cabin baggage"
+                value={[
+                  baggagePolicy.cabinBaggagePieces
+                    ? `${baggagePolicy.cabinBaggagePieces} piece${baggagePolicy.cabinBaggagePieces === 1 ? "" : "s"}`
+                    : null,
+                  baggagePolicy.cabinBaggageMaxWeight
+                    ? `${baggagePolicy.cabinBaggageMaxWeight} kg total`
+                    : null,
+                  baggagePolicy.cabinBaggageMaxDimension
+                    ? `${baggagePolicy.cabinBaggageMaxDimension} cm`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" | ") || "Airline policy applies"}
+              />
+              <InfoTile
+                icon={Check}
+                label="Included checked bags"
+                tone="green"
+                value={
+                  Number(baggagePolicy.freeCheckedBagsAllowance || 0) > 0
+                    ? `${baggagePolicy.freeCheckedBagsAllowance} bag${baggagePolicy.freeCheckedBagsAllowance === 1 ? "" : "s"} included`
+                    : "No free checked bag listed"
+                }
+              />
+              <InfoTile
+                icon={Info}
+                label="Priority baggage"
+                value={baggagePolicy.priorityBaggage ? "Included" : "Not included"}
+              />
+            </div>
+          </PolicyPanel>
+        )}
       </div>
     </motion.div>
   );

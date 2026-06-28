@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getBookingById } from "@/Redux/booking/bookingThunk";
@@ -40,34 +40,68 @@ const BookingSuccess = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { booking, loading, error } = useSelector((state) => state.booking);
-  const { loading: paymentLoading } = useSelector(
+  const { loading: paymentLoading, error: paymentError } = useSelector(
     (state) => state.payment
   );
   const [emailSent, setEmailSent] = useState(false);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [syncingConfirmation, setSyncingConfirmation] = useState(false);
+  const hasProcessedPaymentRef = useRef(false);
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const refreshBookingUntilSettled = useCallback(async () => {
+    if (!bookingId) return null;
+
+    let latest = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      latest = await dispatch(getBookingById(bookingId)).unwrap();
+      if (["CONFIRMED", "CANCELLED"].includes(latest?.status)) {
+        return latest;
+      }
+      await wait(1500);
+    }
+
+    return latest;
+  }, [bookingId, dispatch]);
 
   const processPayment = useCallback(async () => {
-    const storedPayment = JSON.parse(sessionStorage.getItem("paymentDetails") || "null");
+    if (hasProcessedPaymentRef.current) return;
+
+    let storedPayment;
+    try {
+      storedPayment = JSON.parse(sessionStorage.getItem("paymentDetails") || "null");
+    } catch {
+      storedPayment = null;
+    }
+
     const paymentId = Number(searchParams.get("paymentId") || storedPayment?.paymentId);
     const stripeSessionId = searchParams.get("session_id");
     const paypalOrderId = searchParams.get("token");
 
     if (!paymentId || (!stripeSessionId && !paypalOrderId)) return;
 
+    hasProcessedPaymentRef.current = true;
+    setSyncingConfirmation(true);
     try {
       await dispatch(
         verifyPayment({ paymentId, stripeSessionId, paypalOrderId })
       ).unwrap();
       sessionStorage.removeItem("paymentDetails");
-      dispatch(getBookingById(bookingId));
+      await refreshBookingUntilSettled();
     } catch (error) {
       console.error("Payment verification failed:", error);
+      await dispatch(getBookingById(bookingId));
+    } finally {
+      setSyncingConfirmation(false);
     }
-  }, [bookingId, dispatch, searchParams]);
+  }, [bookingId, dispatch, refreshBookingUntilSettled, searchParams]);
 
   // Verify the provider callback once, then refresh the booking confirmed by Kafka.
   useEffect(() => {
-    processPayment();
+    queueMicrotask(() => {
+      processPayment();
+    });
   }, [processPayment]);
 
   // Fetch booking details
@@ -145,14 +179,14 @@ const BookingSuccess = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  if (loading || paymentLoading) {
+  if (loading || paymentLoading || syncingConfirmation) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-lg text-gray-600">
-            {paymentLoading
-              ? "Processing payment..."
+            {paymentLoading || syncingConfirmation
+              ? "Verifying payment and confirming your booking..."
               : "Loading your booking details..."}
           </p>
         </div>
@@ -186,20 +220,42 @@ const BookingSuccess = () => {
     return null;
   }
 
+  const isBookingConfirmed = booking.status === "CONFIRMED";
+  const isPaymentSuccessful = ["SUCCESS", "COMPLETED", "PAID"].includes(booking.paymentStatus);
+  const successTitle = isBookingConfirmed
+    ? "Booking Confirmed!"
+    : isPaymentSuccessful
+    ? "Payment Verified"
+    : "Booking Pending";
+  const successSubtitle = isBookingConfirmed
+    ? "Your flight is booked successfully"
+    : isPaymentSuccessful
+    ? "We are finalizing tickets and confirmation"
+    : "Your booking is waiting for payment confirmation";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Success Header */}
       <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-6 shadow-lg animate-bounce">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-6 shadow-lg">
+            {isBookingConfirmed ? (
+              <CheckCircle2 className="h-12 w-12 text-green-500" />
+            ) : (
+              <Clock className="h-12 w-12 text-amber-500" />
+            )}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Booking Confirmed!
+            {successTitle}
           </h1>
           <p className="text-xl md:text-2xl mb-2">
-            Your flight is booked successfully
+            {successSubtitle}
           </p>
+          {paymentError && (
+            <p className="mx-auto mb-3 max-w-2xl rounded-lg bg-red-500/20 px-4 py-2 text-sm text-white">
+              Payment verification warning: {paymentError}
+            </p>
+          )}
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full">
             <Ticket className="h-5 w-5" />
             <span className="font-mono text-lg font-semibold">

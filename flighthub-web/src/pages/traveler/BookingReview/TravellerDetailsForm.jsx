@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, ChevronDown, ChevronUp, Mail, Phone, AlertCircle, ChevronDownIcon } from 'lucide-react';
+import { User, ChevronDown, ChevronUp, Mail, AlertCircle, ChevronDownIcon, CheckCircle2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -17,42 +17,67 @@ import {
 } from '@/components/ui/popover';
 import { useSelector } from 'react-redux';
 
+const createPassenger = (index) => ({
+  id: index,
+  type: 'Adult',
+  title: '',
+  firstName: '',
+  lastName: '',
+  gender: '',
+  dob: '',
+  passportNumber: '',
+  passportExpiry: '',
+  nationality: ''
+});
+
+const COUNTRY_CODES = [
+  { value: '+1', label: '+1 US/CA' },
+  { value: '+84', label: '+84 VN' },
+  { value: '+44', label: '+44 UK' },
+  { value: '+65', label: '+65 SG' },
+  { value: '+81', label: '+81 JP' },
+  { value: '+82', label: '+82 KR' },
+  { value: '+91', label: '+91 IN' },
+  { value: '+971', label: '+971 AE' },
+];
+
 const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => {
   const [expandedPassenger, setExpandedPassenger] = useState(0);
   const [dobPopoverOpen, setDobPopoverOpen] = useState({});
   const {userProfile}=useSelector(state=>state.user);
   const [travellerData, setTravellerData] = useState(
-    Array.from({ length: passengerCount }, (_, i) => ({
-      id: i,
-      type: i === 0 ? 'Adult' : 'Adult',
-      title: '',
-      firstName: '',
-      lastName: '',
-      gender: '',
-      dob: '',
-      passportNumber: '',
-      passportExpiry: '',
-      nationality: 'Indian'
-    }))
+    Array.from({ length: passengerCount }, (_, i) => createPassenger(i))
   );
 
   const [contactInfo, setContactInfo] = useState({
     email: '',
     phone: '',
-    countryCode: '+91'
+    countryCode: '+1'
   });
 
 
   useEffect(()=>{
     if(userProfile){
-      
-      setContactInfo({
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setContactInfo((current) => ({
+        ...current,
         email: userProfile.email||'',
-        phone: userProfile.phone || '9870065904',
-        countryCode: '+91'
-      });
+        phone: userProfile.phone || current.phone,
+      }));
     }
   },[userProfile])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTravellerData((current) => {
+      const next = Array.from(
+        { length: passengerCount },
+        (_, index) => current[index] || createPassenger(index),
+      );
+      onTravellerDataChange?.({ passengers: next, contactInfo });
+      return next;
+    });
+  }, [passengerCount, contactInfo, onTravellerDataChange]);
 
   const handleInputChange = (passengerIndex, field, value) => {
     const updatedData = [...travellerData];
@@ -82,6 +107,9 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
     return requiredFields.every(field => passenger[field]);
   };
 
+  const completedPassengers = travellerData.filter(isPassengerComplete).length;
+  const isContactComplete = Boolean(contactInfo.email && contactInfo.phone);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -89,26 +117,34 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
       transition={{ duration: 0.4, delay: 0.1 }}
       className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90 dark:shadow-black/20"
     >
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
-          <User className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+            <User className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Traveller Details</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Enter passenger information exactly as shown on travel ID.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Traveller Details</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Enter passenger information as per ID proof</p>
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right dark:border-white/10 dark:bg-slate-950/40">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Progress</p>
+          <p className="text-sm font-semibold text-slate-950 dark:text-white">
+            {completedPassengers}/{passengerCount} travellers | {isContactComplete ? 'Contact ready' : 'Contact missing'}
+          </p>
         </div>
       </div>
 
       {/* Important Notice */}
-      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-500/10">
+      <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-500/10">
         <div className="flex items-start gap-2">
           <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-300" />
           <div>
-            <p className="mb-1 text-sm font-medium text-amber-900 dark:text-amber-100">Important</p>
+            <p className="mb-1 text-sm font-medium text-amber-900 dark:text-amber-100">Check before payment</p>
             <ul className="space-y-1 text-xs text-amber-700 dark:text-amber-200">
-              <li>Enter name as per your government approved ID proof</li>
-              <li>Date of birth is required for passenger verification</li>
-              <li>Passport details are mandatory for international flights</li>
+              <li>Names must match the document used at the airport.</li>
+              <li>Date of birth is required for passenger verification.</li>
+              <li>Passport or visa documents may be required for international routes.</li>
             </ul>
           </div>
         </div>
@@ -131,6 +167,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
             >
               {/* Passenger Header */}
               <button
+                type="button"
                 onClick={() => togglePassenger(index)}
                 className="flex w-full items-center justify-between p-4 transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
               >
@@ -158,8 +195,9 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                 </div>
                 <div className="flex items-center gap-2">
                   {isComplete && (
-                    <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-300">
-                      Completed
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Complete
                     </span>
                   )}
                   {isExpanded ? (
@@ -210,6 +248,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         value={passenger.firstName}
                         onChange={(e) => handleInputChange(index, 'firstName', e.target.value)}
                         placeholder="Enter first name"
+                        autoComplete="given-name"
                         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
@@ -224,6 +263,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         value={passenger.lastName}
                         onChange={(e) => handleInputChange(index, 'lastName', e.target.value)}
                         placeholder="Enter last name"
+                        autoComplete="family-name"
                         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
@@ -279,6 +319,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                             }}
                             fromYear={1940}
                             toYear={new Date().getFullYear()}
+                            disabled={(date) => date > new Date()}
                           />
                         </PopoverContent>
                       </Popover>
@@ -293,7 +334,8 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
                         type="text"
                         value={passenger.nationality}
                         onChange={(e) => handleInputChange(index, 'nationality', e.target.value)}
-                        placeholder="Enter nationality"
+                        placeholder="Optional, e.g. United States"
+                        autoComplete="country-name"
                         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
@@ -323,6 +365,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
               value={contactInfo.email}
               onChange={(e) => handleContactInfoChange('email', e.target.value)}
               placeholder="Enter email address"
+              autoComplete="email"
               className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Booking confirmation will be sent here</p>
@@ -337,18 +380,21 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
               <select
                 value={contactInfo.countryCode}
                 onChange={(e) => handleContactInfoChange('countryCode', e.target.value)}
-                className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-2 text-slate-950 outline-none transition focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
+                className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-2 text-slate-950 outline-none transition focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
               >
-                <option value="+91">+91</option>
-                <option value="+1">+1</option>
-                <option value="+44">+44</option>
-                <option value="+971">+971</option>
+                {COUNTRY_CODES.map((country) => (
+                  <option key={country.value} value={country.value}>
+                    {country.label}
+                  </option>
+                ))}
               </select>
               <input
                 type="tel"
                 value={contactInfo.phone}
-                onChange={(e) => handleContactInfoChange('phone', e.target.value)}
+                onChange={(e) => handleContactInfoChange('phone', e.target.value.replace(/\D/g, ''))}
                 placeholder="Enter mobile number"
+                autoComplete="tel-national"
+                inputMode="tel"
                 className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-white/10 dark:bg-slate-900 dark:text-white"
               />
             </div>
@@ -357,18 +403,6 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange }) => 
         </div>
       </div>
 
-      {/* GST Details (Optional) */}
-      <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-400/20 dark:bg-blue-500/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Phone className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Need GST Invoice?</p>
-          </div>
-          <button className="text-sm font-medium text-blue-600 transition hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200">
-            Add Details
-          </button>
-        </div>
-      </div>
     </motion.div>
   );
 };

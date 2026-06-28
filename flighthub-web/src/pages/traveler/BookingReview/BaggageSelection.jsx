@@ -1,383 +1,487 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, Plus, Minus, Check, X, Package, Info, Weight, Ruler } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  AlertCircle,
+  Briefcase,
+  Info,
+  Minus,
+  Package,
+  Plus,
+  Ruler,
+  Weight,
+  X,
+} from "lucide-react";
+import { useSelector } from "react-redux";
 
-const BaggageSelection = ({ selectedBaggage, onSelectBaggage }) => {
-  const [expandedBaggage, setExpandedBaggage] = useState(null);
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
-  // Get baggage ancillaries from Redux
-  const { ancillariesByType, loadingByType } = useSelector((state) => state.flightCabinAncillary);
+const normalizeList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+};
 
-  // Extract baggage data
-  const baggageOptions = ancillariesByType?.BAGGAGE || [];
-  const loading = loadingByType?.BAGGAGE || false;
+const getBaggageMetadata = (option) =>
+  option?.ancillary?.metadata?.baggage ||
+  option?.metadata?.baggage ||
+  option?.baggage ||
+  {};
 
-  // Transform data to include quantity
-  const baggageData = baggageOptions.map(option => ({
-    id: option.id,
-    ancillaryId: option.ancillary?.id,
-    name: option.ancillary?.name || 'Extra Baggage',
-    description: option.ancillary?.description || '',
-    price: option.price || 0,
-    available: option.available,
-    flightId: option.flightId,
-    type: option.ancillary?.type,
-    subType: option.ancillary?.subType,
-    rfisc: option.ancillary?.rfisc,
-    category: option.ancillary?.metadata?.baggage?.category || 'CHECKED',
-    weight: option.ancillary?.metadata?.baggage?.weight || 0,
-    unit: option.ancillary?.metadata?.baggage?.unit || 'KG',
-    pieces: option.ancillary?.metadata?.baggage?.pieces || 1,
-    dimensions: option.ancillary?.metadata?.baggage?.dimensions || '',
-    notes: option.ancillary?.metadata?.baggage?.notes || '',
-    iconUrl: option.ancillary?.iconUrl,
-    displayOrder: option.ancillary?.displayOrder || 0,
-  }));
+const getBaggagePrice = (option) => {
+  const value =
+    option?.price ??
+    option?.totalPrice ??
+    option?.ancillary?.price ??
+    option?.ancillary?.basePrice ??
+    0;
 
-  // Get quantity for a specific baggage option
-  const getBaggageQuantity = (baggageId) => {
-    const item = selectedBaggage.find(b => b.id === baggageId);
-    return item ? item.quantity : 0;
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+};
+
+const getCategoryConfig = (category = "CHECKED") => {
+  const normalized = String(category).toUpperCase();
+
+  if (normalized === "CARRY_ON" || normalized === "CABIN") {
+    return {
+      icon: Package,
+      label: "Cabin baggage",
+      shell: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-200",
+      iconShell: "bg-violet-50 dark:bg-violet-500/10",
+      iconColor: "text-violet-600 dark:text-violet-300",
+    };
+  }
+
+  return {
+    icon: Briefcase,
+    label: "Checked baggage",
+    shell: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200",
+    iconShell: "bg-blue-50 dark:bg-blue-500/10",
+    iconColor: "text-blue-600 dark:text-blue-300",
   };
+};
 
-  // Handle quantity change
-  const handleQuantityChange = (baggage, change) => {
-    const currentQuantity = getBaggageQuantity(baggage.id);
-    const newQuantity = Math.max(0, Math.min(5, currentQuantity + change)); // Max 5 bags
+const DetailPill = ({ icon: Icon, label, value }) => (
+  <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-slate-950/40">
+    <Icon className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+    <div className="min-w-0">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+        {value}
+      </p>
+    </div>
+  </div>
+);
 
-    if (newQuantity === 0) {
-      // Remove from selection
-      onSelectBaggage(selectedBaggage.filter(b => b.id !== baggage.id));
-    } else {
-      const existingIndex = selectedBaggage.findIndex(b => b.id === baggage.id);
-      if (existingIndex >= 0) {
-        // Update quantity
-        const updated = [...selectedBaggage];
-        updated[existingIndex] = { ...baggage, quantity: newQuantity };
-        onSelectBaggage(updated);
-      } else {
-        // Add new
-        onSelectBaggage([...selectedBaggage, { ...baggage, quantity: newQuantity }]);
-      }
-    }
-  };
+const EmptyState = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
+    className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90"
+  >
+    <div className="mb-4 flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+        <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+      </div>
+      <div>
+        <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+          Extra Baggage
+        </h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Add checked or cabin baggage when available for this fare.
+        </p>
+      </div>
+    </div>
+    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center dark:border-white/10 dark:bg-slate-950/40">
+      <Briefcase className="mx-auto mb-3 h-10 w-10 text-slate-400 dark:text-slate-500" />
+      <p className="text-sm font-semibold text-slate-950 dark:text-white">
+        No extra baggage options available
+      </p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Included baggage is still governed by the fare policy.
+      </p>
+    </div>
+  </motion.div>
+);
 
-  // Calculate total
-  const totalBaggageCost = selectedBaggage.reduce(
-    (sum, item) => sum + (item.price * item.quantity),
-    0
+const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
+  const [activeCategory, setActiveCategory] = useState("ALL");
+  const { ancillariesByType, loadingByType } = useSelector(
+    (state) => state.flightCabinAncillary,
   );
 
-  // Get category icon and color
-  const getCategoryInfo = (category) => {
-    if (category === 'CHECKED') {
-      return { icon: Briefcase, color: 'blue', label: 'Checked Baggage' };
-    } else if (category === 'CARRY_ON' || category === 'CABIN') {
-      return { icon: Package, color: 'purple', label: 'Cabin Baggage' };
-    }
-    return { icon: Briefcase, color: 'gray', label: category };
+  const loading = Boolean(loadingByType?.BAGGAGE);
+  const selectedItems = Array.isArray(selectedBaggage) ? selectedBaggage : [];
+
+  const baggageData = useMemo(() => {
+    return normalizeList(ancillariesByType?.BAGGAGE)
+      .map((option) => {
+        const metadata = getBaggageMetadata(option);
+        const id = option?.id ?? option?.flightCabinAncillaryId ?? option?.ancillary?.id;
+        const rawCategory = metadata?.category || option?.ancillary?.subType || "CHECKED";
+        const maxQuantity = Number(metadata?.maxQuantity ?? option?.maxQuantity ?? 5);
+
+        return {
+          id,
+          ancillaryId: option?.ancillary?.id,
+          name: option?.ancillary?.name || option?.name || "Extra Baggage",
+          description:
+            option?.ancillary?.description ||
+            option?.description ||
+            "Additional baggage allowance for this flight.",
+          price: getBaggagePrice(option),
+          available: option?.available !== false && option?.status !== "INACTIVE",
+          flightId: option?.flightId,
+          type: option?.ancillary?.type || option?.type,
+          subType: option?.ancillary?.subType || option?.subType,
+          rfisc: option?.ancillary?.rfisc || option?.rfisc,
+          category: rawCategory,
+          weight: Number(metadata?.weight || option?.weight || 0),
+          unit: metadata?.unit || option?.unit || "KG",
+          pieces: Number(metadata?.pieces || option?.pieces || 1),
+          dimensions: metadata?.dimensions || option?.dimensions || "",
+          notes: metadata?.notes || option?.notes || "",
+          displayOrder: option?.ancillary?.displayOrder || option?.displayOrder || 0,
+          maxQuantity: Number.isFinite(maxQuantity) && maxQuantity > 0 ? maxQuantity : 5,
+        };
+      })
+      .filter((item) => item.id !== null && item.id !== undefined)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }, [ancillariesByType?.BAGGAGE]);
+
+  const categories = useMemo(() => {
+    const availableCategories = new Set(
+      baggageData.map((item) => String(item.category || "CHECKED").toUpperCase()),
+    );
+
+    return [
+      { value: "ALL", label: "All" },
+      ...(availableCategories.has("CHECKED")
+        ? [{ value: "CHECKED", label: "Checked" }]
+        : []),
+      ...(availableCategories.has("CABIN") || availableCategories.has("CARRY_ON")
+        ? [{ value: "CABIN", label: "Cabin" }]
+        : []),
+    ];
+  }, [baggageData]);
+
+  const displayedBaggage = useMemo(() => {
+    if (activeCategory === "ALL") return baggageData;
+
+    return baggageData.filter((item) => {
+      const category = String(item.category || "CHECKED").toUpperCase();
+      if (activeCategory === "CABIN") {
+        return category === "CABIN" || category === "CARRY_ON";
+      }
+      return category === activeCategory;
+    });
+  }, [activeCategory, baggageData]);
+
+  const getBaggageQuantity = (baggageId) => {
+    const item = selectedItems.find((b) => b.id === baggageId);
+    return Number(item?.quantity || 0);
   };
+
+  const handleQuantityChange = (baggage, change) => {
+    if (!baggage.available) return;
+
+    const currentQuantity = getBaggageQuantity(baggage.id);
+    const nextQuantity = Math.max(
+      0,
+      Math.min(baggage.maxQuantity, currentQuantity + change),
+    );
+
+    if (nextQuantity === 0) {
+      onSelectBaggage(selectedItems.filter((item) => item.id !== baggage.id));
+      return;
+    }
+
+    const existingIndex = selectedItems.findIndex((item) => item.id === baggage.id);
+    if (existingIndex >= 0) {
+      const updated = [...selectedItems];
+      updated[existingIndex] = { ...baggage, quantity: nextQuantity };
+      onSelectBaggage(updated);
+      return;
+    }
+
+    onSelectBaggage([...selectedItems, { ...baggage, quantity: nextQuantity }]);
+  };
+
+  const totalBaggageCount = selectedItems.reduce(
+    (sum, item) => sum + Number(item.quantity || 0),
+    0,
+  );
+  const totalBaggageCost = selectedItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  );
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-md p-6">
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+        <div className="flex h-40 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
       </div>
     );
   }
 
-  if (!baggageData || baggageData.length === 0) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-6"
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-            <Briefcase className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Extra Baggage
-            </h2>
-            <p className="text-sm text-gray-600">Add extra baggage allowance</p>
-          </div>
-        </div>
-        <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl text-center">
-          <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-sm text-gray-600">No extra baggage options available</p>
-        </div>
-      </motion.div>
-    );
+  if (!baggageData.length) {
+    return <EmptyState />;
   }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.3 }}
-      className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-6"
+      transition={{ duration: 0.3 }}
+      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-            <Briefcase className="w-6 h-6 text-blue-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+            <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
               Extra Baggage
             </h2>
-            <p className="text-sm text-gray-600">
-              Add extra baggage to your booking
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Optional allowance. Included baggage stays under your fare policy.
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-500">Available Options</p>
-          <p className="text-lg font-bold text-blue-600">{baggageData.length}</p>
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right dark:border-white/10 dark:bg-slate-950/40">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Selected</p>
+          <p className="text-sm font-semibold text-slate-950 dark:text-white">
+            {totalBaggageCount} bags | {currencyFormatter.format(totalBaggageCost)}
+          </p>
         </div>
       </div>
 
-      {/* Baggage Options */}
-      <div className="space-y-4">
-        {baggageData
-          .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-          .map((baggage) => {
-            const quantity = getBaggageQuantity(baggage.id);
-            const categoryInfo = getCategoryInfo(baggage.category);
-            const CategoryIcon = categoryInfo.icon;
+      {categories.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <button
+              key={category.value}
+              type="button"
+              onClick={() => setActiveCategory(category.value)}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                activeCategory === category.value
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-            return (
-              <motion.div
-                key={baggage.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={`border-2 rounded-xl overflow-hidden transition-all ${
-                  quantity > 0
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : baggage.available
-                    ? 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                    : 'border-gray-200 bg-gray-50 opacity-60'
-                }`}
-              >
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Left: Baggage Info */}
-                    <div className="flex-1">
-                      <div className="flex items-start gap-3 mb-3">
-                        {/* Icon */}
-                        <div
-                          className={`w-12 h-12 rounded-lg bg-${categoryInfo.color}-100 flex items-center justify-center flex-shrink-0`}
-                        >
-                          <CategoryIcon className={`w-6 h-6 text-${categoryInfo.color}-600`} />
-                        </div>
+      <div className="space-y-3">
+        {displayedBaggage.map((baggage) => {
+          const quantity = getBaggageQuantity(baggage.id);
+          const categoryConfig = getCategoryConfig(baggage.category);
+          const CategoryIcon = categoryConfig.icon;
+          const optionTotal = baggage.price * quantity;
 
-                        {/* Name and Description */}
-                        <div className="flex-1">
-                          <h3 className="text-base font-bold text-gray-900 mb-1">
+          return (
+            <motion.div
+              key={baggage.id}
+              layout
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={`overflow-hidden rounded-lg border transition-all ${
+                quantity > 0
+                  ? "border-blue-500 bg-blue-50/70 shadow-sm dark:border-blue-400/70 dark:bg-blue-500/10"
+                  : baggage.available
+                    ? "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm dark:border-white/10 dark:bg-slate-950/30 dark:hover:border-blue-400/50"
+                    : "border-slate-200 bg-slate-50 opacity-70 dark:border-white/10 dark:bg-slate-950/30"
+              }`}
+            >
+              <div className="p-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex items-start gap-3">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md ${categoryConfig.iconShell}`}
+                      >
+                        <CategoryIcon className={`h-5 w-5 ${categoryConfig.iconColor}`} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start gap-2">
+                          <h3 className="text-base font-semibold text-slate-950 dark:text-white">
                             {baggage.name}
                           </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {baggage.description}
-                          </p>
-
-                          {/* Tags */}
-                          <div className="flex flex-wrap gap-2">
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-${categoryInfo.color}-100 text-${categoryInfo.color}-700 rounded-full font-medium`}
-                            >
-                              {categoryInfo.label}
-                            </span>
-                            {baggage.rfisc && (
-                              <span className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
-                                RFISC: {baggage.rfisc}
-                              </span>
-                            )}
-                          </div>
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${categoryConfig.shell}`}
+                          >
+                            {categoryConfig.label}
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Baggage Details Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                        {/* Weight */}
-                        {baggage.weight > 0 && (
-                          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
-                            <Weight className="w-4 h-4 text-gray-600" />
-                            <div>
-                              <p className="text-xs text-gray-500">Weight</p>
-                              <p className="text-sm font-bold text-gray-900">
-                                {baggage.weight} {baggage.unit}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Pieces */}
-                        {baggage.pieces > 0 && (
-                          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
-                            <Package className="w-4 h-4 text-gray-600" />
-                            <div>
-                              <p className="text-xs text-gray-500">Pieces</p>
-                              <p className="text-sm font-bold text-gray-900">
-                                {baggage.pieces}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Dimensions */}
-                        {baggage.dimensions && (
-                          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200">
-                            <Ruler className="w-4 h-4 text-gray-600" />
-                            <div>
-                              <p className="text-xs text-gray-500">Max Size</p>
-                              <p className="text-sm font-bold text-gray-900">
-                                {baggage.dimensions} cm
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Notes */}
-                      {baggage.notes && (
-                        <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
-                          <div className="flex items-start gap-2">
-                            <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-amber-800">{baggage.notes}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right: Price and Quantity Control */}
-                    <div className="flex flex-col items-end gap-3">
-                      {/* Price */}
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 mb-0.5">Price per bag</p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          ₹{baggage.price.toLocaleString()}
+                        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                          {baggage.description}
                         </p>
                       </div>
+                    </div>
 
-                      {/* Quantity Controls */}
-                      {baggage.available ? (
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-lg p-1">
-                            <button
-                              onClick={() => handleQuantityChange(baggage, -1)}
-                              disabled={quantity === 0}
-                              className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
-                                quantity === 0
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <span className="text-lg font-bold text-gray-900 w-8 text-center">
-                              {quantity}
-                            </span>
-                            <button
-                              onClick={() => handleQuantityChange(baggage, 1)}
-                              disabled={quantity >= 5}
-                              className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
-                                quantity >= 5
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-blue-600 text-white hover:bg-blue-700'
-                              }`}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
-                          {quantity > 0 && (
-                            <p className="text-sm font-semibold text-blue-600">
-                              Total: ₹{(baggage.price * quantity).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium">
-                          Not Available
-                        </div>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {baggage.weight > 0 && (
+                        <DetailPill
+                          icon={Weight}
+                          label="Weight"
+                          value={`${baggage.weight} ${baggage.unit}`}
+                        />
+                      )}
+                      {baggage.pieces > 0 && (
+                        <DetailPill
+                          icon={Package}
+                          label="Pieces"
+                          value={`${baggage.pieces} piece${baggage.pieces > 1 ? "s" : ""}`}
+                        />
+                      )}
+                      {baggage.dimensions && (
+                        <DetailPill
+                          icon={Ruler}
+                          label="Max size"
+                          value={baggage.dimensions}
+                        />
                       )}
                     </div>
+
+                    {(baggage.notes || baggage.rfisc) && (
+                      <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-400/20 dark:bg-amber-400/10">
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                        <p className="text-xs leading-5 text-amber-800 dark:text-amber-100">
+                          {baggage.notes || `Service code ${baggage.rfisc}`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0 flex-row items-center justify-between gap-4 border-t border-slate-200 pt-4 xl:min-w-56 xl:flex-col xl:items-end xl:border-t-0 xl:pt-0 dark:border-white/10">
+                    <div className="text-left xl:text-right">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Price per bag
+                      </p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                        {currencyFormatter.format(baggage.price)}
+                      </p>
+                      {quantity > 0 && (
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          Total {currencyFormatter.format(optionTotal)}
+                        </p>
+                      )}
+                    </div>
+
+                    {baggage.available ? (
+                      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white p-1 dark:border-white/10 dark:bg-slate-950">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(baggage, -1)}
+                          disabled={quantity === 0}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                          aria-label={`Remove ${baggage.name}`}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold text-slate-950 dark:text-white">
+                          {quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(baggage, 1)}
+                          disabled={quantity >= baggage.maxQuantity}
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Add ${baggage.name}`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-500/10 dark:text-red-200">
+                        <AlertCircle className="h-4 w-4" />
+                        Not available
+                      </div>
+                    )}
                   </div>
                 </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Selected Baggage Summary */}
-      {selectedBaggage.length > 0 && (
+      {selectedItems.length > 0 ? (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl"
+          className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10"
         >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-gray-900">
-              Selected Extra Baggage ({selectedBaggage.reduce((sum, b) => sum + b.quantity, 0)} bags)
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-950 dark:text-white">
+              Selected baggage ({totalBaggageCount} bags)
             </p>
-            <p className="text-lg font-bold text-green-600">
-              ₹{totalBaggageCost.toLocaleString()}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                {currencyFormatter.format(totalBaggageCost)}
+              </p>
+              <button
+                type="button"
+                onClick={() => onSelectBaggage([])}
+                className="rounded-md px-2 py-1 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:text-emerald-100 dark:hover:bg-emerald-400/10"
+              >
+                Clear
+              </button>
+            </div>
           </div>
+
           <div className="space-y-2">
-            {selectedBaggage.map((item) => (
+            {selectedItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between text-sm bg-white rounded-lg p-3 shadow-sm"
+                className="flex items-center justify-between gap-3 rounded-md border border-white/70 bg-white p-3 text-sm shadow-sm dark:border-white/10 dark:bg-slate-950/50"
               >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Briefcase className="w-4 h-4 text-blue-600" />
+                <div className="min-w-0 flex flex-1 items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+                    <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-950 dark:text-white">
                       {item.name}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {item.weight} {item.unit} × {item.quantity} bag{item.quantity > 1 ? 's' : ''}
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {item.weight ? `${item.weight} ${item.unit} | ` : ""}
+                      {item.quantity} bag{item.quantity > 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-gray-900">
-                    ₹{(item.price * item.quantity).toLocaleString()}
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-semibold text-slate-950 dark:text-white">
+                    {currencyFormatter.format(item.price * item.quantity)}
                   </span>
                   <button
-                    onClick={() => onSelectBaggage(selectedBaggage.filter(b => b.id !== item.id))}
-                    className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
+                    type="button"
+                    onClick={() =>
+                      onSelectBaggage(selectedItems.filter((b) => b.id !== item.id))
+                    }
+                    className="rounded-md p-1.5 text-red-600 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
+                    aria-label={`Remove ${item.name}`}
                   >
-                    <X className="w-4 h-4 text-red-600" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
-      )}
-
-      {/* No Baggage Selected */}
-      {selectedBaggage.length === 0 && (
-        <div className="mt-4 p-6 border-2 border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
-          <Briefcase className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm font-medium text-gray-700 mb-1">
-            No extra baggage selected
-          </p>
-          <p className="text-xs text-gray-500">
-            Add extra baggage if you need more allowance
-          </p>
-        </div>
-      )}
+      ) : null}
     </motion.div>
   );
 };

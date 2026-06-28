@@ -2,6 +2,49 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards } from 'lucide-react';
 
+const formatCurrency = (amount = 0) => new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+}).format(Number(amount) || 0);
+
+const FareItem = ({ label, amount, highlight = false, info = null }) => (
+  <div className={`flex items-start justify-between py-2 ${highlight ? 'font-semibold' : ''}`}>
+    <div className="flex items-center gap-1">
+      <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+        {label}
+      </span>
+      {info && (
+        <div className="group relative">
+          <Info className="h-3 w-3 cursor-help text-slate-400" />
+          <div className="absolute bottom-full left-0 z-10 mb-2 hidden w-48 rounded-lg bg-slate-950 p-2 text-xs text-white shadow-lg group-hover:block dark:bg-white dark:text-slate-950">
+            {info}
+          </div>
+        </div>
+      )}
+    </div>
+    <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+      {formatCurrency(amount)}
+    </span>
+  </div>
+);
+
+const PAYMENT_OPTIONS = [
+  {
+    value: 'STRIPE',
+    label: 'Stripe',
+    description: 'Credit or debit card',
+    icon: CreditCard,
+    badgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200',
+  },
+  {
+    value: 'PAYPAL',
+    label: 'PayPal',
+    description: 'PayPal checkout',
+    icon: WalletCards,
+    badgeClass: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-200',
+  },
+];
+
 const FareSummaryCard = ({
   fareData,
   selectedSeats = [], // Changed from selectedSeat to selectedSeats array
@@ -39,32 +82,6 @@ const FareSummaryCard = ({
 
   // Calculate savings if any
   const savings = 0; // Can be calculated based on business logic
-  const formatCurrency = (amount = 0) => new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(Number(amount) || 0);
-
-  const FareItem = ({ label, amount, highlight = false, info = null }) => (
-    <div className={`flex items-start justify-between py-2 ${highlight ? 'font-semibold' : ''}`}>
-      <div className="flex items-center gap-1">
-        <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-          {label}
-        </span>
-        {info && (
-          <div className="group relative">
-            <Info className="h-3 w-3 cursor-help text-slate-400" />
-            <div className="absolute bottom-full left-0 z-10 mb-2 hidden w-48 rounded-lg bg-slate-950 p-2 text-xs text-white shadow-lg group-hover:block dark:bg-white dark:text-slate-950">
-              {info}
-            </div>
-          </div>
-        )}
-      </div>
-      <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-        {formatCurrency(amount)}
-      </span>
-    </div>
-  );
-
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -194,25 +211,40 @@ const FareSummaryCard = ({
       <div className="p-6 pt-0">
         <div className="mb-4">
           <p className="mb-2 text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">Payment method</p>
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-950" role="radiogroup" aria-label="Payment method">
-            {[
-              { value: 'STRIPE', label: 'Card', icon: CreditCard },
-              { value: 'PAYPAL', label: 'PayPal', icon: WalletCards },
-            ].map(({ value, label, icon: Icon }) => (
+          <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Payment method">
+            {PAYMENT_OPTIONS.map(({ value, label, description, icon: Icon, badgeClass }) => (
               <button
                 key={value}
                 type="button"
                 role="radio"
                 aria-checked={paymentGateway === value}
                 onClick={() => onPaymentGatewayChange(value)}
-                className={`flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${
                   paymentGateway === value
-                    ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white'
-                    : 'text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
+                    ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400/70 dark:bg-blue-500/10'
+                    : 'border-slate-200 bg-white hover:border-blue-300 dark:border-white/10 dark:bg-slate-950/40 dark:hover:border-blue-400/50'
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {label}
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${badgeClass}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-950 dark:text-white">
+                      {label}
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      {description}
+                    </span>
+                  </span>
+                </div>
+                <span
+                  className={`h-4 w-4 rounded-full border ${
+                    paymentGateway === value
+                      ? 'border-blue-600 bg-blue-600 ring-2 ring-blue-200 dark:ring-blue-500/30'
+                      : 'border-slate-300 dark:border-white/20'
+                  }`}
+                />
               </button>
             ))}
           </div>

@@ -43,7 +43,6 @@ public class PassengerRequest {
 
     private String seatNumber;
 
-    @NotNull(message = "Seat instance ID is required")
     private Long seatInstanceId;
 
     private String passportNumber;
