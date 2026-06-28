@@ -103,6 +103,7 @@ const BookingReview = () => {
   const [selectedMeals, setSelectedMeals] = useState([]);
   const [selectedBaggage, setSelectedBaggage] = useState([]);
   const [paymentGateway, setPaymentGateway] = useState("STRIPE");
+  const [travellerValidationAttempted, setTravellerValidationAttempted] = useState(false);
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
@@ -307,14 +308,16 @@ const BookingReview = () => {
       );
 
     if (!isAllTravellersComplete) {
-      toast.error("Please fill all required traveller details, including date of birth");
+      setTravellerValidationAttempted(true);
       return;
     }
 
     if (!contactInfo.email || !contactInfo.phone) {
-      toast.error("Please provide contact email and phone number");
+      setTravellerValidationAttempted(true);
       return;
     }
+
+    setTravellerValidationAttempted(false);
 
     if (selectedSeatCount > 0 && selectedSeatCount !== passengerCount) {
       toast.error(
@@ -565,19 +568,20 @@ const BookingReview = () => {
             <div className="col-span-1 space-y-6 lg:col-span-2">
               <SectionLabel
                 eyebrow="Step 1"
-                title="Review flight"
-                description="Confirm the selected itinerary before entering passenger details."
+                title="Flight review"
+                description="Confirm your itinerary, cabin, and schedule before adding passenger details."
               />
               <FlightDetailsOverview flightData={flightInstance} />
 
               <SectionLabel
                 eyebrow="Step 2"
-                title="Traveller and contact details"
-                description="Passenger names must match government-issued ID documents."
+                title="Passenger information"
+                description="Add traveller names and the booking contact used for confirmations and flight updates."
               />
               <TravellerDetailsForm
                 passengerCount={passengerCount}
                 onTravellerDataChange={setTravellerData}
+                validationAttempted={travellerValidationAttempted}
               />
 
               <SectionLabel

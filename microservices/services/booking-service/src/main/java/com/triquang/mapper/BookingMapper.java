@@ -16,6 +16,7 @@ import com.triquang.payload.response.FlightCabinAncillaryResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
 import com.triquang.payload.response.FlightMealResponse;
 import com.triquang.payload.response.FlightResponse;
+import com.triquang.payload.response.AirportResponse;
 import com.triquang.payload.response.PassengerResponse;
 import com.triquang.payload.response.SeatInstanceResponse;
 import com.triquang.payload.response.TicketResponse;
@@ -81,14 +82,14 @@ public class BookingMapper {
                 .flightId(booking.getFlightInstanceId())
                 .flightNumber(flightResponse != null ? flightResponse.getFlightNumber() : null)
                 .flightName(flightResponse != null && flightResponse.getArrivalAirport() != null && flightResponse.getDepartureAirport() != null
-                        ? flightResponse.getDepartureAirport().getCity().getName() + " - " + flightResponse.getArrivalAirport().getCity().getName()
+                        ? airportCityOrCode(flightResponse.getDepartureAirport()) + " - " + airportCityOrCode(flightResponse.getArrivalAirport())
                         : null)
                 .departureTime(flightInstanceResponse != null ? flightInstanceResponse.getDepartureDateTime() : null)
                 .arrivalTime(flightInstanceResponse != null ? flightInstanceResponse.getArrivalDateTime() : null)
                 .flightDuration(flightInstanceResponse != null ? flightInstanceResponse.getFormattedDuration() : null)
 //                airport details
-                .departureAirport(flightResponse != null && flightResponse.getDepartureAirport() != null ? flightResponse.getDepartureAirport().getDetailedName() : null)
-                .arrivalAirport(flightResponse != null && flightResponse.getArrivalAirport() != null ? flightResponse.getArrivalAirport().getName() : null)
+                .departureAirport(flightResponse != null ? airportName(flightResponse.getDepartureAirport()) : null)
+                .arrivalAirport(flightResponse != null ? airportName(flightResponse.getArrivalAirport()) : null)
                 .status(booking.getStatus())
                 .bookingDate(booking.getBookingDate())
                 .lastModified(booking.getLastModified())
@@ -113,11 +114,37 @@ public class BookingMapper {
                 .currency(booking.getCurrency())
 
 //                arline details
-                .airlineName(flightResponse!=null? flightResponse.getAirline().getName():null)
-                .airlineLogo(flightResponse!=null?flightResponse.getAirline().getLogoUrl():null)
+                .airlineName(flightResponse != null && flightResponse.getAirline() != null ? flightResponse.getAirline().getName() : null)
+                .airlineLogo(flightResponse != null && flightResponse.getAirline() != null ? flightResponse.getAirline().getLogoUrl() : null)
 //                contact information
                 .contactInfo(booking.getContactInfo())
 
                 .build();
+    }
+
+    private static String airportCityOrCode(AirportResponse airport) {
+        if (airport == null) {
+            return null;
+        }
+        if (airport.getCity() != null && airport.getCity().getName() != null) {
+            return airport.getCity().getName();
+        }
+        if (airport.getIataCode() != null) {
+            return airport.getIataCode();
+        }
+        return airportName(airport);
+    }
+
+    private static String airportName(AirportResponse airport) {
+        if (airport == null) {
+            return null;
+        }
+        if (airport.getDetailedName() != null) {
+            return airport.getDetailedName();
+        }
+        if (airport.getName() != null) {
+            return airport.getName();
+        }
+        return airport.getIataCode();
     }
 }

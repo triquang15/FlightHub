@@ -266,16 +266,6 @@ public class RouteConfig {
     }
 
     @Bean
-    @Order(0)
-    public RouterFunction<ServerResponse> seatInternalOnlyRoutes() {
-        return RouterFunctions.route()
-                .POST("/api/seat-instances/hold", req -> ServerResponse.notFound().build())
-                .POST("/api/seat-instances/release", req -> ServerResponse.notFound().build())
-                .POST("/api/seat-instances/confirm", req -> ServerResponse.notFound().build())
-                .build();
-    }
-
-    @Bean
     @Order(1)
     public RouterFunction<ServerResponse> seatMutationRoutes() {
         return routeWithCB("seat-mutations", "seat-service", "seat-cb", "forward:/fallback/seat")

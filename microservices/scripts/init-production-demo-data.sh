@@ -17,6 +17,7 @@ AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
 SEAT_SERVICE_SEED_SQL="$SQL_DIR/2026-06-08-seed-production-seat-service.sql"
 FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
+BOOKING_SEAT_INVENTORY_SEED_SQL="$SQL_DIR/2026-06-28-seed-booking-seat-inventory.sql"
 PRICING_SEED_SQL="$SQL_DIR/2026-06-20-seed-production-pricing-service.sql"
 BOOKING_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-booking-checkout-integrity.sql"
 PAYMENT_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-payment-idempotency.sql"
@@ -29,7 +30,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" \
-  "$SEAT_SERVICE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL" "$PRICING_SEED_SQL"; do
+  "$SEAT_SERVICE_SEED_SQL" "$FLIGHT_OPS_SEED_SQL" "$BOOKING_SEAT_INVENTORY_SEED_SQL" "$PRICING_SEED_SQL"; do
   if [[ ! -f "$file" ]]; then
     echo "Required SQL seed file not found: $file" >&2
     exit 1
@@ -100,6 +101,33 @@ require_value() {
   fi
 }
 
+require_table() {
+  local service="$1"
+  local database="$2"
+  local table="$3"
+  local found
+
+  found="$(query_scalar "$service" "$database" "SELECT COALESCE(to_regclass('public.$table')::text, '');")"
+  if [[ -z "$found" ]]; then
+    echo "Required table not found: $database.$table" >&2
+    echo "Start the Spring services first so Hibernate creates schemas, then rerun this seed script." >&2
+    exit 1
+  fi
+}
+
+require_service_schemas() {
+  require_table userdb airline_user users
+  require_table locationdb airline_location_db cities
+  require_table locationdb airline_location_db airports
+  require_table airlinecoredb airline_core_db airlines
+  require_table seatdb airline_seat_db cabin_classes
+  require_table flightopsdb airline_flight_db flights
+  require_table pricingdb airline_pricing_db fares
+  require_table ancillarydb airline_ancillary_db ancillaries
+  require_table bookingdb airline_booking_db bookings
+  require_table paymentdb airline_payment_db payments
+}
+
 lookup_user_id() {
   local email="$1"
   query_scalar userdb airline_user "SELECT id FROM users WHERE email = '$email';"
@@ -115,9 +143,31 @@ lookup_airport_id() {
   query_scalar locationdb airline_location_db "SELECT id FROM airports WHERE iata_code = '$iata_code';"
 }
 
+lookup_upcoming_flight_instance_ids() {
+  local flight_number="$1"
+  local limit_count="${2:-14}"
+
+  query_scalar flightopsdb airline_flight_db "
+    SELECT COALESCE(string_agg(id::text, ',' ORDER BY departure_date_time), '')
+    FROM (
+      SELECT fi.id, fi.departure_date_time
+      FROM flight_instances fi
+      JOIN flights f ON f.id = fi.flight_id
+      WHERE f.flight_number = '$flight_number'
+        AND fi.departure_date_time >= CURRENT_DATE
+        AND fi.status = 'SCHEDULED'
+        AND fi.is_active = true
+      ORDER BY fi.departure_date_time
+      LIMIT $limit_count
+    ) upcoming_instances;"
+}
+
 echo "FlightHub production-style demo data init"
 echo "Compose file: $COMPOSE_FILE"
 echo
+
+echo "==> Checking service schemas"
+require_service_schemas
 
 run_sql_file userdb airline_user "$USER_SEED_SQL"
 run_sql_file locationdb airline_location_db "$CITY_SEED_SQL"
@@ -329,6 +379,37 @@ for required in flight_vn210 flight_vn211 flight_vj122 flight_sq185 \
   cabin_vj_a321_pre cabin_sq_a359_eco cabin_sq_a359_bus; do
   require_value "$required" "${!required}"
 done
+
+echo "==> Resolving upcoming FlightInstance IDs for booking seat inventory"
+
+flight_instances_vn210="$(lookup_upcoming_flight_instance_ids VN210 14)"
+flight_instances_vn211="$(lookup_upcoming_flight_instance_ids VN211 14)"
+flight_instances_vj122="$(lookup_upcoming_flight_instance_ids VJ122 14)"
+flight_instances_sq185="$(lookup_upcoming_flight_instance_ids SQ185 14)"
+
+for required in flight_instances_vn210 flight_instances_vn211 flight_instances_vj122 flight_instances_sq185; do
+  require_value "$required" "${!required}"
+done
+
+run_sql_file_with_settings \
+  seatdb \
+  airline_seat_db \
+  "$BOOKING_SEAT_INVENTORY_SEED_SQL" \
+  flight_vn210="$flight_vn210" \
+  flight_vn211="$flight_vn211" \
+  flight_vj122="$flight_vj122" \
+  flight_sq185="$flight_sq185" \
+  flight_instances_vn210="$flight_instances_vn210" \
+  flight_instances_vn211="$flight_instances_vn211" \
+  flight_instances_vj122="$flight_instances_vj122" \
+  flight_instances_sq185="$flight_instances_sq185" \
+  cabin_vn_a359_eco="$cabin_vn_a359_eco" \
+  cabin_vn_a359_bus="$cabin_vn_a359_bus" \
+  cabin_vn_b789_eco="$cabin_vn_b789_eco" \
+  cabin_vj_a321_eco="$cabin_vj_a321_eco" \
+  cabin_vj_a321_pre="$cabin_vj_a321_pre" \
+  cabin_sq_a359_eco="$cabin_sq_a359_eco" \
+  cabin_sq_a359_bus="$cabin_sq_a359_bus"
 
 run_sql_file_with_settings \
   pricingdb \

@@ -171,6 +171,19 @@ bash microservices/scripts/init-production-demo-data.sh
 ```
 
 The seed command is safe to run repeatedly.
+After `down -v`, run the Spring services once before seeding; otherwise the
+seed script will fail because Hibernate has not recreated tables yet.
+
+Booking-ready demo searches after seeding:
+
+```text
+SGN -> HAN, tomorrow through the next 14 days, Economy or Premium Economy
+HAN -> SGN, tomorrow through the next 14 days, Economy
+SGN -> SIN, tomorrow through the next 14 days, Economy or Business
+```
+
+These routes include fare data, cabin ancillaries, and per-flight seat
+inventory for seat selection in the booking review flow.
 
 Seeded System Admin:
 

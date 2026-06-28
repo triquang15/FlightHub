@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User, RefreshCw } from 'lucide-react';
+import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User, RefreshCw, Loader2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import {
@@ -91,18 +91,18 @@ const SeatSelection = ({
     const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
 
     if (!isSeatAvailable(seat)) {
-      return 'bg-gray-300 cursor-not-allowed text-gray-500';
+      return 'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400 dark:border-white/10 dark:bg-slate-800 dark:text-slate-600';
     }
     if (isSelectedByAnyPassenger) {
-      return 'bg-blue-600 text-white border-blue-600';
+      return 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-500/25';
     }
     if (hasExtraLegroom(seat)) {
-      return 'bg-green-100 hover:bg-green-200 border-green-400 text-green-800';
+      return 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-400/60 dark:bg-emerald-500/15 dark:text-emerald-100 dark:hover:bg-emerald-500/25';
     }
     if (seat.seatType === 'WINDOW') {
-      return 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800';
+      return 'border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-400/50 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:bg-violet-500/25';
     }
-    return 'bg-gray-50 hover:bg-blue-50 border-gray-300 text-gray-700';
+    return 'border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/15';
   };
 
   const getSeatPrice = (seat) => {
@@ -289,53 +289,52 @@ const SeatSelection = ({
         </div>
       </div>
 
-      {/* Passenger Seat Cards */}
-      <div className="space-y-3 mb-4">
+      <div className="mb-4 space-y-3">
         {Array.from({ length: passengerCount }).map((_, index) => {
           const passengerSeat = selectedSeats[index];
 
           return (
             <div
               key={index}
-              className={`p-4 border-2 rounded-xl transition-all ${
+              className={`rounded-lg border p-4 transition-colors ${
                 passengerSeat
-                  ? 'border-green-200 bg-gradient-to-r from-green-50 to-emerald-50'
-                  : 'border-gray-200 bg-gray-50'
+                  ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/30 dark:bg-emerald-500/10'
+                  : 'border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-950/40'
               }`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    passengerSeat ? 'bg-green-100' : 'bg-gray-200'
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-md ${
+                    passengerSeat ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-slate-200 dark:bg-white/10'
                   }`}>
-                    <User className={`w-5 h-5 ${passengerSeat ? 'text-green-600' : 'text-gray-500'}`} />
+                    <User className={`h-5 w-5 ${passengerSeat ? 'text-emerald-700 dark:text-emerald-200' : 'text-slate-500 dark:text-slate-400'}`} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-white">
                       Passenger {index + 1}
                     </p>
                     {passengerSeat ? (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-lg font-bold text-green-600">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="text-base font-bold text-emerald-700 dark:text-emerald-200">
                           Seat {passengerSeat.seatNumber}
                         </span>
-                        <span className="text-xs px-2 py-0.5 bg-white rounded-full text-gray-700 border border-gray-200">
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
                           {passengerSeat.seatType}
                         </span>
                         {hasExtraLegroom(passengerSeat) && (
-                          <span className="text-xs px-2 py-0.5 bg-green-200 text-green-800 rounded-full font-medium">
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-100">
                             Extra Legroom
                           </span>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500 mt-1">No seat selected</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No seat selected</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {passengerSeat && (
-                    <span className="text-base font-bold text-green-600">
+                    <span className="text-base font-bold text-emerald-700 dark:text-emerald-200">
                       {currencyFormatter.format(getSeatPrice(passengerSeat))}
                     </span>
                   )}
@@ -343,24 +342,26 @@ const SeatSelection = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => openSeatMapForPassenger(index)}
-                        className="px-3 py-1.5 text-sm bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors"
+                        className="rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
                       >
                         Change
                       </button>
                       <button
                         onClick={() => handleRemoveSeat(index)}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
+                        className="rounded-md p-1.5 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                        aria-label={`Remove seat for passenger ${index + 1}`}
                       >
-                        <X className="w-4 h-4 text-red-600" />
+                        <X className="h-4 w-4 text-rose-600 dark:text-rose-300" />
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => openSeatMapForPassenger(index)}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                      className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={holdLoading}
                     >
                       Select Seat
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -370,125 +371,131 @@ const SeatSelection = ({
         })}
       </div>
 
-      {/* Seat Map Modal */}
       <AnimatePresence>
         {showSeatMap && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6"
             onClick={() => setShowSeatMap(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.96, opacity: 0, y: 18 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 18 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-950"
             >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Select Seat for Passenger {currentPassengerIndex + 1}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {totalSelectedSeats} of {passengerCount} seats selected
-                  </p>
+              <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-950 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white">
+                      <Armchair className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
+                        Select seat
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                        Passenger {currentPassengerIndex + 1} · {totalSelectedSeats} of {passengerCount} selected
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSeatMap(false)}
+                    className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                    aria-label="Close seat map"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowSeatMap(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
+
+                {passengerCount > 1 && (
+                  <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                    {Array.from({ length: passengerCount }).map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentPassengerIndex(index)}
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
+                          currentPassengerIndex === index
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/20 dark:text-indigo-100'
+                            : selectedSeats[index]
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        <User className="h-4 w-4" />
+                        Passenger {index + 1}
+                        {selectedSeats[index] && (
+                          <span className="rounded bg-white px-1.5 py-0.5 text-xs dark:bg-white/10">
+                            {selectedSeats[index].seatNumber}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Passenger Navigation */}
-              {passengerCount > 1 && (
-                <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-                  {Array.from({ length: passengerCount }).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPassengerIndex(index)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all whitespace-nowrap ${
-                        currentPassengerIndex === index
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                          : selectedSeats[index]
-                          ? 'border-green-200 bg-green-50 text-green-600'
-                          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      <User className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        Passenger {index + 1}
-                      </span>
-                      {selectedSeats[index] && (
-                        <span className="text-xs font-bold">
-                          {selectedSeats[index].seatNumber}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/70">
+                    <div className="flex items-center gap-3">
+                      <Plane className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                          {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft layout'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                          {totalRows} rows · up to {maxSeatsPerRow} seats per row · {visibleSeats.filter(isSeatAvailable).length} available
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Flight Info Banner */}
-              <div className="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
-                <div className="flex items-center gap-3">
-                  <Plane className="w-5 h-5 text-indigo-600" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft Layout'}
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900/70">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Current passenger
                     </p>
-                    <p className="text-xs text-gray-600">
-                      {totalRows} Rows • up to {maxSeatsPerRow} seats per row • {visibleSeats.length} Total Seats
+                    <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-white">
+                      Passenger {currentPassengerIndex + 1}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Legend */}
-              <div className="flex flex-wrap gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-gray-300 bg-gray-50 rounded"></div>
-                  <span className="text-xs text-gray-700 font-medium">Available</span>
+                <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/70">
+                  {[
+                    ['border-slate-300 bg-white dark:border-white/10 dark:bg-slate-900', 'Available'],
+                    ['border-indigo-600 bg-indigo-600', 'Selected'],
+                    ['border-violet-300 bg-violet-50 dark:border-violet-400/50 dark:bg-violet-500/15', 'Window'],
+                    ['border-emerald-400 bg-emerald-50 dark:border-emerald-400/60 dark:bg-emerald-500/15', 'Extra legroom'],
+                    ['border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-slate-800', 'Unavailable'],
+                  ].map(([boxClass, label]) => (
+                    <div key={label} className="inline-flex items-center gap-2 rounded-md px-2 py-1">
+                      <span className={`h-5 w-5 rounded border ${boxClass}`} />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gray-300 rounded"></div>
-                  <span className="text-xs text-gray-700 font-medium">Occupied</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-blue-600 rounded"></div>
-                  <span className="text-xs text-gray-700 font-medium">Selected</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-purple-300 bg-purple-50 rounded"></div>
-                  <span className="text-xs text-gray-700 font-medium">Window</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-green-400 bg-green-100 rounded"></div>
-                  <span className="text-xs text-gray-700 font-medium">Extra Legroom</span>
-                </div>
-              </div>
 
-              {/* Seat Map */}
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto px-2">
-                {sortedRows
-                  .map(([row, sortedSeats]) => {
+                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/50">
+                  <div className="mx-auto w-max min-w-full space-y-2">
+                    <div className="mx-auto mb-5 h-8 max-w-md rounded-b-full border border-t-0 border-slate-300 bg-white text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-slate-950 dark:text-slate-400">
+                      Front
+                    </div>
+                    {sortedRows.map(([row, sortedSeats]) => {
                     const splitIndex = Math.ceil(sortedSeats.length / 2);
                     const leftSeats = sortedSeats.slice(0, splitIndex);
                     const rightSeats = sortedSeats.slice(splitIndex);
 
                     return (
-                      <div key={row} className="flex items-center gap-3">
-                        {/* Row Number */}
-                        <span className="text-sm font-bold text-gray-700 w-8 text-center">
+                      <div key={row} className="flex items-center justify-center gap-3">
+                        <span className="w-8 text-center text-xs font-bold text-slate-500 dark:text-slate-400">
                           {row}
                         </span>
 
-                        {/* Left Section */}
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5">
                           {leftSeats.map((seat) => {
                             const isAvailable = isSeatAvailable(seat);
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
@@ -501,10 +508,11 @@ const SeatSelection = ({
                                 whileTap={canSelect ? { scale: 0.95 } : {}}
                                 onClick={() => handleSeatClick(seat)}
                                 disabled={!canSelect || holdLoading}
-                                className={`relative p-2 rounded-lg border-2 transition-all min-w-[60px] ${getSeatColor(seat)}`}
+                                className={`relative min-h-[56px] w-14 rounded-md border p-2 transition-all ${getSeatColor(seat)}`}
+                                title={`${seat.seatNumber} · ${currencyFormatter.format(getSeatPrice(seat))}`}
                               >
                                 <div className="flex flex-col items-center">
-                                  <Armchair className="w-4 h-4 mb-0.5" />
+                                  <Armchair className="mb-0.5 h-4 w-4" />
                                   <span className="text-xs font-bold">
                                     {seat.seatNumber.replace(/\d+/g, '')}
                                   </span>
@@ -515,13 +523,13 @@ const SeatSelection = ({
                                   )}
                                 </div>
                                 {hasExtraLegroom(seat) && (
-                                  <div className="absolute -top-1 -right-1">
-                                    <Sparkles className="w-3 h-3 text-green-600" />
+                                  <div className="absolute -right-1 -top-1">
+                                    <Sparkles className="h-3 w-3 text-emerald-500" />
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -top-1 -right-1 bg-blue-600 rounded-full p-0.5">
-                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-0.5">
+                                    <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
                               </motion.button>
@@ -529,15 +537,13 @@ const SeatSelection = ({
                           })}
                         </div>
 
-                        {/* Aisle */}
-                        <div className="w-8 border-l-2 border-r-2 border-dashed border-gray-300 h-12 flex items-center justify-center">
-                          <span className="text-[10px] text-gray-400 font-medium rotate-90">
+                        <div className="flex h-12 w-10 items-center justify-center border-x border-dashed border-slate-300 dark:border-white/10">
+                          <span className="rotate-90 text-[10px] font-semibold text-slate-400">
                             AISLE
                           </span>
                         </div>
 
-                        {/* Right Section */}
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5">
                           {rightSeats.map((seat) => {
                             const isAvailable = isSeatAvailable(seat);
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
@@ -550,10 +556,11 @@ const SeatSelection = ({
                                 whileTap={canSelect ? { scale: 0.95 } : {}}
                                 onClick={() => handleSeatClick(seat)}
                                 disabled={!canSelect || holdLoading}
-                                className={`relative p-2 rounded-lg border-2 transition-all min-w-[60px] ${getSeatColor(seat)}`}
+                                className={`relative min-h-[56px] w-14 rounded-md border p-2 transition-all ${getSeatColor(seat)}`}
+                                title={`${seat.seatNumber} · ${currencyFormatter.format(getSeatPrice(seat))}`}
                               >
                                 <div className="flex flex-col items-center">
-                                  <Armchair className="w-4 h-4 mb-0.5" />
+                                  <Armchair className="mb-0.5 h-4 w-4" />
                                   <span className="text-xs font-bold">
                                     {seat.seatNumber.replace(/\d+/g, '')}
                                   </span>
@@ -564,13 +571,13 @@ const SeatSelection = ({
                                   )}
                                 </div>
                                 {hasExtraLegroom(seat) && (
-                                  <div className="absolute -top-1 -right-1">
-                                    <Sparkles className="w-3 h-3 text-green-600" />
+                                  <div className="absolute -right-1 -top-1">
+                                    <Sparkles className="h-3 w-3 text-emerald-500" />
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -top-1 -right-1 bg-blue-600 rounded-full p-0.5">
-                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-0.5">
+                                    <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
                               </motion.button>
@@ -578,42 +585,76 @@ const SeatSelection = ({
                           })}
                         </div>
 
-                        {/* Row Number (Right) */}
-                        <span className="text-sm font-bold text-gray-700 w-8 text-center">
+                        <span className="w-8 text-center text-xs font-bold text-slate-500 dark:text-slate-400">
                           {row}
                         </span>
                       </div>
                     );
-                  })}
-              </div>
+                    })}
+                  </div>
+                </div>
 
-              {/* Additional Info */}
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-800">
-                    <span className="font-semibold">Tip:</span> Window seats offer great views,
-                    while aisle seats provide easy access. Emergency exit rows have extra legroom
-                    but come with additional responsibilities. Seats with blue checkmarks are already selected by other passengers.
-                  </p>
+                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 dark:border-indigo-400/20 dark:bg-indigo-500/10">
+                  <div className="flex items-start gap-2">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300" />
+                    <p className="text-xs leading-5 text-indigo-900 dark:text-indigo-100">
+                      Selected seats are held for 10 minutes while you finish checkout.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-200 flex gap-3">
-                <button
-                  onClick={() => setShowSeatMap(false)}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  {totalSelectedSeats === passengerCount ? 'Done' : 'Close'}
-                </button>
-                {currentPassengerIndex < passengerCount - 1 && (
+              <div className="sticky bottom-0 flex flex-col gap-3 border-t border-slate-200 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Seat selection
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-white">
+                    {totalSelectedSeats} of {passengerCount} selected
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {totalSelectedSeats < passengerCount && (
+                    <button
+                      onClick={() => setShowSeatMap(false)}
+                      className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-white/10"
+                    >
+                      Skip for now
+                    </button>
+                  )}
+                  {currentPassengerIndex < passengerCount - 1 ? (
                   <button
                     onClick={() => setCurrentPassengerIndex(currentPassengerIndex + 1)}
-                    className="flex-1 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={holdLoading}
                   >
-                    Next Passenger →
+                    {holdLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Holding seat
+                      </>
+                    ) : (
+                      'Next passenger'
+                    )}
                   </button>
-                )}
+                  ) : (
+                    <button
+                      onClick={() => setShowSeatMap(false)}
+                      className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={holdLoading}
+                    >
+                      {holdLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Holding seat
+                        </>
+                      ) : (
+                        'Confirm seats'
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </motion.div>

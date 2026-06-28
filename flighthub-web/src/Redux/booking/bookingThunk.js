@@ -113,10 +113,10 @@ export const getBookingsByUser = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/user/history`);
       console.log("✅ getBookingsByUser success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getBookingsByUser error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch bookings by user");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to fetch bookings by user"));
     }
   }
 );

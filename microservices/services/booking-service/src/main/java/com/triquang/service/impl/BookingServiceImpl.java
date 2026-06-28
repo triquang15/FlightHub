@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -83,6 +84,7 @@ public class BookingServiceImpl implements BookingService {
 
         log.info("Creating booking for user: {}", userId);
 
+        String currency = normalizeBookingCurrency();
         String bookingReference = generateBookingReference();
 
         Set<Passenger> passengers = new HashSet<>();
@@ -105,6 +107,8 @@ public class BookingServiceImpl implements BookingService {
                 request, userId, passengers, bookingReference);
         booking.setStatus(BookingStatus.PENDING);
         booking.setAirlineId(flightResponse.getAirline().getId());
+        booking.setCurrency(currency);
+        booking.setTotalAmount(BigDecimal.ZERO);
 
         List<Long> seatInstanceIds = extractSeatInstanceIds(request);
         booking.setSeatInstanceIds(seatInstanceIds);
@@ -126,7 +130,7 @@ public class BookingServiceImpl implements BookingService {
         try {
             FareResponse fare = pricingClient.getFareById(booking.getFareId());
             if (fare.getCurrency() == null
-                    || !bookingCurrency.equalsIgnoreCase(fare.getCurrency())) {
+                    || !currency.equalsIgnoreCase(fare.getCurrency())) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);
             }
             if (hasItems(booking.getSeatInstanceIds())) {
@@ -160,7 +164,7 @@ public class BookingServiceImpl implements BookingService {
                     booking.getSeatInstanceIds(),
                     booking.getAncillaryIds(),
                     booking.getMealIds(),
-                    bookingCurrency,
+                    currency,
                     e);
             cancelPendingBooking(booking, userId, false);
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
@@ -169,7 +173,7 @@ public class BookingServiceImpl implements BookingService {
         BigDecimal totalPrice = fareTotal.add(seatPrice).add(ancillaryPrice).add(mealPrice)
                 .setScale(2, RoundingMode.HALF_UP);
         booking.setTotalAmount(totalPrice);
-        booking.setCurrency(bookingCurrency.trim().toUpperCase());
+        booking.setCurrency(currency);
         booking = bookingRepository.saveAndFlush(booking);
 
         PaymentInitiateRequest paymentRequest = PaymentInitiateRequest.builder()
@@ -203,6 +207,13 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return paymentInit;
+    }
+
+    private String normalizeBookingCurrency() {
+        if (bookingCurrency == null || bookingCurrency.isBlank()) {
+            return "USD";
+        }
+        return bookingCurrency.trim().toUpperCase();
     }
 
     private BigDecimal money(Double value) {
@@ -509,45 +520,51 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private BookingResponse convertBookingResponse(Booking booking) {
+        List<FlightCabinAncillaryResponse> ancillaryResponses = hasItems(booking.getAncillaryIds())
+                ? safeExternal("ancillaries", booking, () -> ancillaryClient.getAllByIds(booking.getAncillaryIds()), Collections.emptyList())
+                : Collections.emptyList();
 
+        List<FlightMealResponse> mealResponses = hasItems(booking.getMealIds())
+                ? safeExternal("meals", booking, () -> ancillaryClient.getMealsByIds(booking.getMealIds()), Collections.emptyList())
+                : Collections.emptyList();
+
+        PaymentDTO paymentDTO =
+                safeExternal("payment", booking, () -> paymentClient.getPaymentByBookingId(booking.getId()), null);
+
+        FareResponse fareResponse =
+                safeExternal("fare", booking, () -> pricingClient.getFareById(booking.getFareId()), null);
+
+        FlightResponse flightResponse =
+                safeExternal("flight", booking, () -> flightClient.getFlightById(booking.getFlightId()), null);
+
+        List<SeatInstanceResponse> seatInstanceResponses = hasItems(booking.getSeatInstanceIds())
+                ? safeExternal("seats", booking, () -> seatClient.getAllByIds(booking.getSeatInstanceIds()), Collections.emptyList())
+                : Collections.emptyList();
+
+        FlightInstanceResponse flightInstanceResponse =
+                safeExternal("flight-instance", booking, () -> flightClient.getFlightInstanceResponse(booking.getFlightInstanceId()), null);
+
+        return BookingMapper.toResponse(
+                booking,
+                paymentDTO,
+                fareResponse,
+                flightResponse,
+                flightInstanceResponse,
+                ancillaryResponses,
+                mealResponses,
+                seatInstanceResponses
+        );
+    }
+
+    private <T> T safeExternal(String dependency, Booking booking, Supplier<T> supplier, T fallback) {
         try {
-            List<FlightCabinAncillaryResponse> ancillaryResponses = hasItems(booking.getAncillaryIds())
-                    ? ancillaryClient.getAllByIds(booking.getAncillaryIds())
-                    : Collections.emptyList();
-
-            List<FlightMealResponse> mealResponses = hasItems(booking.getMealIds())
-                    ? ancillaryClient.getMealsByIds(booking.getMealIds())
-                    : Collections.emptyList();
-
-            PaymentDTO paymentDTO =
-                    paymentClient.getPaymentByBookingId(booking.getId());
-
-            FareResponse fareResponse =
-                    pricingClient.getFareById(booking.getFareId());
-
-            FlightResponse flightResponse =
-                    flightClient.getFlightById(booking.getFlightId());
-
-            List<SeatInstanceResponse> seatInstanceResponses = hasItems(booking.getSeatInstanceIds())
-                    ? seatClient.getAllByIds(booking.getSeatInstanceIds())
-                    : Collections.emptyList();
-
-            FlightInstanceResponse flightInstanceResponse =
-                    flightClient.getFlightInstanceResponse(booking.getFlightInstanceId());
-
-            return BookingMapper.toResponse(
-                    booking,
-                    paymentDTO,
-                    fareResponse,
-                    flightResponse,
-                    flightInstanceResponse,
-                    ancillaryResponses,
-                    mealResponses,
-                    seatInstanceResponses
-            );
-
+            return supplier.get();
         } catch (Exception e) {
-            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+            log.warn("Booking {} response missing {} enrichment: {}",
+                    booking != null ? booking.getBookingReference() : "unknown",
+                    dependency,
+                    e.getMessage());
+            return fallback;
         }
     }
     

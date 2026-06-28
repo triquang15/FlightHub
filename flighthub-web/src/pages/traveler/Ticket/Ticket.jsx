@@ -1,363 +1,373 @@
 import * as React from "react"
-import { useRef } from "react"
 import {
-  Plane,
-  ArrowLeft,
-  Printer,
   AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Download,
   Home,
+  Loader2,
+  Plane,
+  Printer,
   QrCode,
+  ShieldCheck,
+  Ticket as TicketIcon,
+  UserRound,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useParams, useNavigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
-import { useEffect } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
 import { getBookingById } from "@/Redux/booking/bookingThunk"
-import { Avatar } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { generateTicketPDF } from "./TicketPDF"
+
+const formatDate = (value, options) => {
+  if (!value) return "--"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "--"
+  return new Intl.DateTimeFormat("en-US", options).format(date)
+}
+
+const formatMoney = (amount, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0)
+
+const passengerName = (passenger, index) =>
+  passenger?.fullName ||
+  `${passenger?.firstName || passenger?.givenName || ""} ${passenger?.lastName || passenger?.familyName || ""}`.trim() ||
+  `Passenger ${index + 1}`
+
+const statusClass = (status) => {
+  const normalized = status?.toLowerCase()
+  if (["confirmed", "completed", "paid", "success"].includes(normalized)) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+  }
+  if (["pending", "pending_payment"].includes(normalized)) {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+  }
+  if (normalized === "cancelled") {
+    return "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+  }
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+}
 
 const Ticket = () => {
   const { bookingId } = useParams()
-  const navigate      = useNavigate()
-  const dispatch      = useDispatch()
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const ticketRef = React.useRef(null)
+  const [downloading, setDownloading] = React.useState(false)
   const { booking, loading, error } = useSelector((state) => state.booking)
-  const ticketRef = useRef(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (bookingId) dispatch(getBookingById(bookingId))
   }, [bookingId, dispatch])
 
-  // ── Print only the ticket div ─────────────────────────────────────
   const handlePrint = () => {
     const content = ticketRef.current
     if (!content) return
 
     const printWindow = window.open("", "_blank", "width=900,height=1200")
+    if (!printWindow) return
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>zosh-air-flight-ticket</title>
+          <title>FlightHub E-Ticket</title>
           <meta charset="utf-8" />
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
-            @page { size: A4 portrait; margin: 0; }
-            body  { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @media print { body { margin: 0; } }
+            @page { size: A4 portrait; margin: 12mm; }
+            body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           </style>
         </head>
-        <body>
-          ${content.outerHTML}
-          <script>
-            window.onload = function() {
-              setTimeout(function() { window.print(); window.close(); }, 500);
-            };
-          </script>
-        </body>
+        <body>${content.outerHTML}</body>
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); window.close(); }, 350);
+          };
+        </script>
       </html>
     `)
     printWindow.document.close()
   }
 
-  const fmt = {
-    time:     (dt) => dt ? new Date(dt).toLocaleTimeString("en-US",  { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--",
-    date:     (dt) => dt ? new Date(dt).toLocaleDateString("en-GB",  { day: "2-digit", month: "short", year: "numeric" }) : "—",
-    dateLong: (dt) => dt ? new Date(dt).toLocaleDateString("en-GB",  { day: "numeric", month: "long",  year: "numeric" }) : "—",
+  const handleDownload = async () => {
+    try {
+      setDownloading(true)
+      await generateTicketPDF(booking)
+      toast.success("E-ticket downloaded")
+    } catch (downloadError) {
+      console.error("Could not download ticket:", downloadError)
+      toast.error("Could not download the e-ticket")
+    } finally {
+      setDownloading(false)
+    }
   }
 
-  /* ── loading ── */
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center space-y-3">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-600 mx-auto" />
-        <p className="text-sm text-gray-500 tracking-wide">Loading ticket…</p>
-      </div>
-    </div>
-  )
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
+          <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">Preparing your e-ticket...</p>
+        </div>
+      </main>
+    )
+  }
 
-  /* ── error ── */
-  if (error || !booking) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white border border-gray-200 rounded-lg p-10 max-w-sm w-full text-center space-y-4">
-        <AlertCircle className="h-10 w-10 text-gray-400 mx-auto" />
-        <p className="font-semibold text-gray-800">Ticket not found</p>
-        <p className="text-xs text-gray-400">{error || "We couldn't load this booking."}</p>
-        <Button variant="outline" onClick={() => navigate("/bookings")} className="w-full gap-2 text-sm">
-          <Home className="h-4 w-4" /> Back to Bookings
-        </Button>
-      </div>
-    </div>
-  )
+  if (error || !booking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300">
+            <AlertCircle className="h-7 w-7" />
+          </span>
+          <h1 className="mt-5 text-xl font-semibold">Ticket not found</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{error || "We could not load this booking."}</p>
+          <Button onClick={() => navigate("/bookings")} className="mt-6 w-full rounded-xl">
+            <Home className="mr-2 h-4 w-4" />
+            Back to bookings
+          </Button>
+        </div>
+      </main>
+    )
+  }
 
-  const baseFare = booking.fareBaseFare     || 0
-  const taxes    = booking.fareTaxesAndFees || 0
-  const fees     = booking.fareAirlineFees  || 0
-  const total    = booking.totalAmount      || (baseFare + taxes + fees)
+  const currency = booking.currency || "USD"
+  const passengers = Array.isArray(booking.passengers) ? booking.passengers : []
+  const seats = Array.isArray(booking.seatInstances) ? booking.seatInstances : []
+  const baseFare = booking.fareBaseFare || 0
+  const taxes = booking.fareTaxesAndFees || 0
+  const fees = booking.fareAirlineFees || 0
+  const total = booking.totalAmount || baseFare + taxes + fees
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+      <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div>
+            <Button variant="ghost" onClick={() => navigate("/bookings")} className="-ml-3 rounded-xl">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              My bookings
+            </Button>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight">E-ticket</h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Booking reference {booking.bookingReference || "N/A"} · Keep this ticket and a valid ID ready at the airport.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={handlePrint} className="rounded-xl">
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
+            <Button onClick={handleDownload} disabled={downloading} className="rounded-xl">
+              {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Download PDF
+            </Button>
+          </div>
+        </div>
+      </section>
 
-      {/* ── Toolbar ── */}
-      <div className="w-[794px] max-w-full mx-auto mb-5 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
+        <div
+          ref={ticketRef}
+          className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 print:rounded-none print:border-slate-300 print:shadow-none"
         >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 text-sm border border-gray-300 bg-white hover:bg-gray-50 px-4 py-1.5 rounded transition-colors"
-        >
-          <Printer className="h-4 w-4" /> Print / Save as PDF
-        </button>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════
-          TICKET — fixed A4 size: 794 × 1123 px (210 × 297 mm @ 96dpi)
-          This exact div is screenshotted for the PDF.
-      ══════════════════════════════════════════════════════════════ */}
-      <div
-        ref={ticketRef}
-        className="w-[794px] min-h-[1123px] mx-auto bg-white border border-gray-300 shadow-sm"
-      >
-        {/* ── HEADER ── */}
-        <div className="flex items-center justify-between px-10 pt-8 pb-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="border border-gray-800 rounded p-1.5">
-              <Plane className="h-5 w-5 text-gray-800" />
-            </div>
-            <div>
-              <div className="text-[16px] font-bold tracking-tight leading-none text-gray-900">
-                {booking.airlineName || "Zosh Air"}
+          <div className="flex flex-col gap-5 border-b border-slate-200 p-6 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-4">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <Plane className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">FlightHub itinerary receipt</p>
+                <h2 className="mt-2 text-2xl font-semibold">{booking.airlineName || "FlightHub"}</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{booking.flightName || "Selected route"}</p>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.25em] text-gray-400 leading-none mb-0.5">
-                {booking.flightName || "Airline"}
-              </div>
-              
             </div>
+            <Badge variant="outline" className={cn("w-fit capitalize", statusClass(booking.status))}>
+              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+              {booking.status || "Confirmed"}
+            </Badge>
           </div>
-          <div className="text-right">
-            <div className="text-[9px] uppercase tracking-widest text-gray-400 mb-1">Status</div>
-            <div className="text-[11px] font-bold uppercase tracking-wider border border-gray-900 px-2.5 py-0.5 inline-block text-gray-900">
-              {booking.status || "CONFIRMED"}
-            </div>
+
+          <div className="grid border-b border-slate-200 dark:border-slate-800 sm:grid-cols-4">
+            {[
+              ["Booking ref", booking.bookingReference || "N/A"],
+              ["Flight", booking.flightNumber || "N/A"],
+              ["Cabin", booking.cabinClass || booking.fareName || "Economy"],
+              ["Issued", formatDate(booking.bookingDate, { month: "short", day: "numeric", year: "numeric" })],
+            ].map(([label, value]) => (
+              <div key={label} className="border-b border-slate-200 p-4 dark:border-slate-800 sm:border-b-0 sm:border-r last:sm:border-r-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="mt-2 truncate text-sm font-semibold">{value}</p>
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* ── PNR / REF ROW ── */}
-        <div className="grid grid-cols-4 divide-x divide-gray-200 border-b border-gray-200 text-center">
-          {[
-            ["PNR",    booking.bookingReference || "—"],
-            ["Flight", booking.flightNumber     || "—"],
-            ["Class",  booking.fareName         || "Economy"],
-            ["Date",   fmt.date(booking.bookingDate)],
-          ].map(([label, value]) => (
-            <div key={label} className="py-3.5 px-4">
-              <div className="text-[9px] uppercase tracking-[0.18em] text-gray-400 mb-1.5">{label}</div>
-              <div className="text-[13px] font-bold font-mono tracking-wide text-gray-900">{value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── FLIGHT ROUTE ── */}
-        <div className="px-10 py-8 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-
-            {/* Departure */}
-            <div className="w-[38%]">
-              <div className="text-[14px] font-black text-gray-900 leading-none tracking-tight">
-                {fmt.time(booking.departureTime)}
-              </div>
-              <div className="text-[13px] font-bold text-gray-800 leading-none mt-1.5 tracking-tight">
-                {booking.departureAirport}
-              </div>
-              <div className="mt-2.5 space-y-1">
-                <div className="text-[11px] text-gray-500">{fmt.dateLong(booking.departureTime)}</div>
-                {(booking.departureTerminal || booking.departureGate) && (
-                  <div className="text-[11px] text-gray-400">
-                    {booking.departureTerminal && `Terminal ${booking.departureTerminal}`}
-                    {booking.departureGate && ` · Gate ${booking.departureGate}`}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Centre */}
-            <div className="flex-1 flex flex-col items-center gap-2 px-6">
-              <div className="w-full flex items-center gap-1">
-                <div className="h-2 w-2 rounded-full border-2 border-gray-400 shrink-0" />
-                <div className="flex-1 border-t-2 border-dashed border-gray-300 relative">
-                  <Plane className="absolute -top-[10px] left-1/2 -translate-x-1/2 h-5 w-5 text-gray-500 bg-white px-0.5" />
+          <div className="p-6">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <div className="min-w-0">
+                  <p className="text-4xl font-semibold tracking-tight">
+                    {formatDate(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </p>
+                  <p className="mt-3 truncate text-base font-semibold">{booking.departureAirport || "Departure airport"}</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {formatDate(booking.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  </p>
                 </div>
-                <div className="h-2 w-2 rounded-full bg-gray-700 shrink-0" />
-              </div>
-              <div className="text-[11px] text-gray-400 font-mono mt-1">
-                {booking.flightDuration || "—"}
-              </div>
-            </div>
 
-            {/* Arrival */}
-            <div className="w-[38%] text-right">
-              <div className="text-[14px] font-black text-gray-900 leading-none tracking-tight">
-                {fmt.time(booking.arrivalTime)}
-              </div>
-              <div className="text-[13px] font-bold text-gray-800 leading-none mt-1.5 tracking-tight">
-                {booking.arrivalAirport}
-              </div>
-              <div className="mt-2.5 space-y-1">
-                <div className="text-[11px] text-gray-500">{fmt.dateLong(booking.arrivalTime)}</div>
-                {(booking.arrivalTerminal || booking.arrivalGate) && (
-                  <div className="text-[11px] text-gray-400">
-                    {booking.arrivalTerminal && `Terminal ${booking.arrivalTerminal}`}
-                    {booking.arrivalGate && ` · Gate ${booking.arrivalGate}`}
+                <div className="flex w-24 flex-col items-center text-center sm:w-40">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                    {booking.flightDuration || "Direct"}
+                  </span>
+                  <div className="my-3 flex w-full items-center">
+                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                    <ArrowRight className="h-4 w-4 text-primary" />
+                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── PASSENGERS ── */}
-        <div className="px-10 py-6 border-b border-gray-200">
-          <div className="text-[9px] uppercase tracking-[0.22em] text-gray-400 mb-4">
-            Passenger(s)
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                {["Name", "Type", "Seat", "Class"].map((h) => (
-                  <th key={h} className="text-[9px] uppercase tracking-widest text-gray-400 font-normal pb-2.5 text-left">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {(booking.passengers || []).map((p, i) => {
-                const seat = booking.seatInstances?.[i]
-                const name = p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim() || "—"
-                return (
-                  <tr key={i}>
-                    <td className="py-2.5 font-semibold text-gray-900 text-[13px]">{name}</td>
-                    <td className="py-2.5 text-gray-500 text-[12px]">
-                      {p.isAdult !== undefined ? (p.isAdult ? "Adult" : "Child") : "Adult"}
-                    </td>
-                    <td className="py-2.5 font-bold text-gray-900 text-[13px] font-mono">
-                      {seat?.seatNumber || "—"}
-                    </td>
-                    <td className="py-2.5 text-gray-500 text-[12px] capitalize">
-                      {seat?.seatType?.toLowerCase() || booking.fareName || "Economy"}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ── DETAILS GRID: Baggage · Contact · Fare ── */}
-        <div className="grid grid-cols-3 divide-x divide-gray-200 border-b border-gray-200">
-
-          {/* Baggage */}
-          <div className="px-8 py-6">
-            <div className="text-[9px] uppercase tracking-[0.22em] text-gray-400 mb-3.5">Baggage</div>
-            <div className="space-y-2.5">
-              <div className="flex justify-between text-[12px]">
-                <span className="text-gray-400">Cabin</span>
-                <span className="font-semibold text-gray-800">
-                  {booking.cabinBaggageAllowance ? `${booking.cabinBaggageAllowance} kg` : "7 kg"}
-                </span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-gray-400">Check-in</span>
-                <span className="font-semibold text-gray-800">
-                  {booking.checkinBaggageAllowance ? `${booking.checkinBaggageAllowance} kg` : "15 kg"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="px-8 py-6">
-            <div className="text-[9px] uppercase tracking-[0.22em] text-gray-400 mb-3.5">Contact</div>
-            <div className="space-y-2 text-[12px]">
-              <div className="text-gray-500 truncate">{booking.contactInfo?.email || "—"}</div>
-              <div className="text-gray-500">{booking.contactInfo?.phone || "—"}</div>
-            </div>
-          </div>
-
-          {/* Fare */}
-          <div className="px-8 py-6">
-            <div className="text-[9px] uppercase tracking-[0.22em] text-gray-400 mb-3.5">Fare</div>
-            <div className="space-y-2 text-[12px]">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Base Fare</span>
-                <span className="font-semibold text-gray-800">₹{baseFare.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Taxes</span>
-                <span className="font-semibold text-gray-800">₹{taxes.toLocaleString()}</span>
-              </div>
-              {fees > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Fees</span>
-                  <span className="font-semibold text-gray-800">₹{fees.toLocaleString()}</span>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Non-stop</span>
                 </div>
-              )}
-              <div className="flex justify-between border-t border-gray-200 pt-2 mt-1">
-                <span className="font-bold text-gray-900">Total</span>
-                <span className="font-bold text-gray-900">₹{total.toLocaleString()}</span>
+
+                <div className="min-w-0 text-right">
+                  <p className="text-4xl font-semibold tracking-tight">
+                    {formatDate(booking.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </p>
+                  <p className="mt-3 truncate text-base font-semibold">{booking.arrivalAirport || "Arrival airport"}</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {formatDate(booking.arrivalTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="mb-3 flex items-center gap-2">
+                <UserRound className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Passengers</h3>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-[1.5fr_0.6fr_0.6fr_0.8fr] bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">
+                  <span>Name</span>
+                  <span>Type</span>
+                  <span>Seat</span>
+                  <span>Class</span>
+                </div>
+                {(passengers.length ? passengers : [{}]).map((passenger, index) => {
+                  const seat = seats[index]
+                  return (
+                    <div key={`${passengerName(passenger, index)}-${index}`} className="grid grid-cols-[1.5fr_0.6fr_0.6fr_0.8fr] border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
+                      <span className="font-semibold">{passengerName(passenger, index)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{passenger?.isAdult === false ? "Child" : "Adult"}</span>
+                      <span className="font-semibold">{seat?.seatNumber || "--"}</span>
+                      <span className="capitalize text-slate-500 dark:text-slate-400">{booking.cabinClass || booking.fareName || "Economy"}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <InfoBlock title="Baggage" rows={[
+                ["Cabin", booking.cabinBaggageAllowance ? `${booking.cabinBaggageAllowance} kg` : "7 kg"],
+                ["Check-in", booking.checkinBaggageAllowance ? `${booking.checkinBaggageAllowance} kg` : "15 kg"],
+              ]} />
+              <InfoBlock title="Contact" rows={[
+                ["Email", booking.contactInfo?.email || "--"],
+                ["Phone", booking.contactInfo?.phone || "--"],
+              ]} />
+              <InfoBlock title="Fare" rows={[
+                ["Base", formatMoney(baseFare, currency)],
+                ["Taxes", formatMoney(taxes, currency)],
+                ...(fees > 0 ? [["Fees", formatMoney(fees, currency)]] : []),
+                ["Total", formatMoney(total, currency)],
+              ]} emphasisLast />
+            </div>
+
+            <div className="my-6 border-t border-dashed border-slate-300 dark:border-slate-700" />
+
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-lg font-semibold">{booking.departureAirport || "Departure"} to {booking.arrivalAirport || "Arrival"}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {formatDate(booking.departureTime, { month: "long", day: "numeric", year: "numeric" })} · {formatDate(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                </p>
+                <p className="mt-2 font-mono text-sm font-semibold">{booking.bookingReference || "N/A"}</p>
+              </div>
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-900 dark:border-slate-700">
+                <QrCode className="h-16 w-16" />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ── PERFORATION LINE ── */}
-        <div className="relative flex items-center my-0">
-          <div className="absolute -left-3 w-6 h-6 rounded-full bg-gray-100 border border-gray-300" />
-          <div className="w-full border-t-2 border-dashed border-gray-300 mx-4" />
-          <div className="absolute -right-3 w-6 h-6 rounded-full bg-gray-100 border border-gray-300" />
-        </div>
-
-        {/* ── BOTTOM STUB ── */}
-        <div className="px-10 py-6 flex items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="text-[13px] font-bold text-gray-800 tracking-tight">
-              {booking.departureAirport} → {booking.arrivalAirport}
-            </div>
-            <div className="text-[12px] text-gray-600">
-              {booking.passengers?.[0]?.fullName || "Passenger"}
-              {booking.seatInstances?.[0]?.seatNumber && (
-                <span className="ml-3 font-mono font-bold text-gray-900">
-                  Seat {booking.seatInstances[0].seatNumber}
-                </span>
-              )}
-            </div>
-            <div className="text-[11px] text-gray-400">
-              {fmt.dateLong(booking.departureTime)} · {fmt.time(booking.departureTime)}
-            </div>
-            <div className="text-[11px] font-mono font-bold text-gray-700 mt-1">
-              {booking.bookingReference}
-            </div>
-          </div>
-
-          {/* QR placeholder */}
-          <div className="border border-gray-300 p-2 flex-shrink-0">
-            <QrCode className="h-[72px] w-[72px] text-gray-800" />
+          <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 text-xs leading-5 text-slate-500 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
+            This is a computer-generated e-ticket. Carry a valid photo ID, arrive at the airport at least 2 hours before departure, and keep your booking reference available for check-in and support.
           </div>
         </div>
 
-        {/* ── FOOTER ── */}
-        <div className="border-t border-gray-200 px-10 py-4 text-[10px] text-gray-400 leading-relaxed">
-          This is a computer-generated e-ticket and does not require a physical signature.
-          Carry valid photo ID at the airport. Arrive 2 hrs before departure.
-          Boarding closes 25 min before departure.
-          Subject to terms &amp; conditions of {booking.flightName || "the carrier"}.
-        </div>
-      </div>
+        <aside className="space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <TicketIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-semibold">Ticket summary</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{passengers.length || 1} passenger(s)</p>
+              </div>
+            </div>
+            <div className="mt-5 space-y-3 text-sm">
+              <SummaryRow label="Status" value={booking.status || "Confirmed"} />
+              <SummaryRow label="Payment" value={booking.paymentStatus || "Not available"} />
+              <SummaryRow label="Fare" value={booking.fareName || booking.cabinClass || "Economy"} />
+              <SummaryRow label="Total" value={formatMoney(total, currency)} strong />
+            </div>
+          </div>
 
-    </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="font-semibold">Before you fly</h2>
+            <ul className="mt-4 space-y-3 text-sm text-slate-500 dark:text-slate-400">
+              <li>Check visa and identity document requirements before travel.</li>
+              <li>Boarding closes around 25 minutes before departure.</li>
+              <li>Seat and gate information may change at airport check-in.</li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+    </main>
   )
 }
+
+const InfoBlock = ({ title, rows, emphasisLast = false }) => (
+  <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{title}</p>
+    <div className="mt-3 space-y-2 text-sm">
+      {rows.map(([label, value], index) => {
+        const last = emphasisLast && index === rows.length - 1
+        return (
+          <div key={`${title}-${label}`} className={cn("flex justify-between gap-4", last && "border-t border-slate-200 pt-2 dark:border-slate-800")}>
+            <span className="text-slate-500 dark:text-slate-400">{label}</span>
+            <span className={cn("text-right font-medium", last && "font-semibold text-slate-950 dark:text-white")}>{value}</span>
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)
+
+const SummaryRow = ({ label, value, strong }) => (
+  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-slate-800">
+    <span className="text-slate-500 dark:text-slate-400">{label}</span>
+    <span className={cn("text-right capitalize", strong ? "text-lg font-semibold text-slate-950 dark:text-white" : "font-medium")}>{value}</span>
+  </div>
+)
 
 export default Ticket

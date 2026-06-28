@@ -185,12 +185,25 @@ const fmtDateLong = (dt) =>
 const fmtDateShort = (dt) =>
   dt ? new Date(dt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
+const fmtMoney = (amount, currency = 'USD') =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0)
+
+const passengerName = (passenger) =>
+  passenger?.fullName ||
+  `${passenger?.firstName || passenger?.givenName || ''} ${passenger?.lastName || passenger?.familyName || ''}`.trim() ||
+  '—'
+
 // ── PDF Document ──────────────────────────────────────────────────────
 const TicketPDFDocument = ({ booking }) => {
   const baseFare = booking.fareBaseFare    || 0
   const taxes    = booking.fareTaxesAndFees || 0
   const fees     = booking.fareAirlineFees  || 0
   const total    = booking.totalAmount      || (baseFare + taxes + fees)
+  const currency = booking.currency || 'USD'
 
   return (
     <Document>
@@ -271,10 +284,9 @@ const TicketPDFDocument = ({ booking }) => {
         </View>
         {(booking.passengers || []).map((p, i) => {
           const seat = booking.seatInstances?.[i]
-          const name = p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '—'
           return (
             <View key={i} style={s.tableRow}>
-              <Text style={s.cellName}>{name}</Text>
+              <Text style={s.cellName}>{passengerName(p)}</Text>
               <Text style={s.cellType}>{p.isAdult !== undefined ? (p.isAdult ? 'Adult' : 'Child') : 'Adult'}</Text>
               <Text style={s.cellSeat}>{seat?.seatNumber || '—'}</Text>
               <Text style={s.cellClass}>{seat?.seatType || booking.fareName || 'Economy'}</Text>
@@ -315,21 +327,21 @@ const TicketPDFDocument = ({ booking }) => {
             <Text style={s.detailLabel}>FARE</Text>
             <View style={s.detailRow}>
               <Text style={s.detailKey}>Base Fare</Text>
-              <Text style={s.detailVal}>₹{baseFare.toLocaleString()}</Text>
+              <Text style={s.detailVal}>{fmtMoney(baseFare, currency)}</Text>
             </View>
             <View style={s.detailRow}>
               <Text style={s.detailKey}>Taxes</Text>
-              <Text style={s.detailVal}>₹{taxes.toLocaleString()}</Text>
+              <Text style={s.detailVal}>{fmtMoney(taxes, currency)}</Text>
             </View>
             {fees > 0 && (
               <View style={s.detailRow}>
                 <Text style={s.detailKey}>Fees</Text>
-                <Text style={s.detailVal}>₹{fees.toLocaleString()}</Text>
+                <Text style={s.detailVal}>{fmtMoney(fees, currency)}</Text>
               </View>
             )}
             <View style={s.totalRow}>
               <Text style={s.totalKey}>Total</Text>
-              <Text style={s.totalVal}>₹{total.toLocaleString()}</Text>
+              <Text style={s.totalVal}>{fmtMoney(total, currency)}</Text>
             </View>
           </View>
         </View>
