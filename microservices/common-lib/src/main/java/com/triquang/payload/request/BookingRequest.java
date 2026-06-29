@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.List;
 
 import com.triquang.embeddable.ContactInfo;
@@ -43,6 +44,9 @@ public class BookingRequest {
     private String promoCode;
 
     private List<String> seatNumbers;
+
+    private String seatHoldToken;
+    private Instant seatHoldExpiresAt;
 
     @NotNull(message = "Payment gateway is required")
     private PaymentGateway paymentGateway;

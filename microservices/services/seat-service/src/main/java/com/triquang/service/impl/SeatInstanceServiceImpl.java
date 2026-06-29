@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -84,8 +85,9 @@ public class SeatInstanceServiceImpl implements SeatInstanceService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<SeatInstanceResponse> getSeatInstancesByFlightInstanceId(Long flightInstanceId) {
+        releaseExpiredHolds(flightInstanceId);
+
         return seatInstanceRepository.findByFlightInstanceId(flightInstanceId).stream()
                 .map(SeatInstanceMapper::toResponse)
                 .toList();
@@ -140,14 +142,22 @@ public class SeatInstanceServiceImpl implements SeatInstanceService {
 
         Instant now = Instant.now();
         Instant holdExpiresAt = now.plus(resolveHoldMinutes(request.getHoldMinutes()), ChronoUnit.MINUTES);
-        String holdToken = UUID.randomUUID().toString();
+        String holdToken = request.getHoldToken() == null || request.getHoldToken().isBlank()
+                ? UUID.randomUUID().toString()
+                : request.getHoldToken();
 
         for (SeatInstance seatInstance : seatInstances) {
             if (!request.getFlightInstanceId().equals(seatInstance.getFlightInstanceId())) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);
             }
 
-            if (!SeatLifecyclePolicy.canHold(seatInstance.getStatus(), seatInstance.getHoldExpiresAt(), now)) {
+            boolean sameActiveHold = seatInstance.getStatus() == SeatAvailabilityStatus.HELD
+                    && holdToken.equals(seatInstance.getHoldToken())
+                    && Objects.equals(request.getUserId(), seatInstance.getHeldByUserId())
+                    && seatInstance.getHoldExpiresAt() != null
+                    && seatInstance.getHoldExpiresAt().isAfter(now);
+
+            if (!sameActiveHold && !SeatLifecyclePolicy.canHold(seatInstance.getStatus(), seatInstance.getHoldExpiresAt(), now)) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);
             }
 
@@ -201,6 +211,11 @@ public class SeatInstanceServiceImpl implements SeatInstanceService {
 
         for (SeatInstance seatInstance : seatInstances) {
             SeatAvailabilityStatus previousStatus = seatInstance.getStatus();
+
+            if (seatInstance.getStatus() == SeatAvailabilityStatus.BOOKED
+                    && Objects.equals(seatInstance.getBookingReference(), request.getBookingReference())) {
+                continue;
+            }
 
             if (!SeatLifecyclePolicy.canConfirm(seatInstance.getStatus())) {
                 throw new BaseException(ErrorCode.INVALID_INPUT);

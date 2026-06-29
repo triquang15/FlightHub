@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User, RefreshCw, Loader2 } from 'lucide-react';
+import { Armchair, X, Check, Sparkles, ChevronRight, Info, Plane, User, RefreshCw, Ban } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import {
@@ -17,6 +17,8 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 const SeatSelection = ({
   selectedSeats = [],
   onSelectSeat,
+  seatHold,
+  onSeatHoldChange,
   passengerCount = 1,
   flightInstanceId,
   cabinClassId,
@@ -25,9 +27,7 @@ const SeatSelection = ({
   const dispatch = useDispatch();
   const [showSeatMap, setShowSeatMap] = useState(false);
   const [currentPassengerIndex, setCurrentPassengerIndex] = useState(0);
-  const [seatHoldByPassenger, setSeatHoldByPassenger] = useState({});
 
-  const { user } = useSelector((state) => state.auth || {});
   const { flightInstance, loading } = useSelector((state) => state.flightInstance);
   const {
     seats = [],
@@ -35,6 +35,7 @@ const SeatSelection = ({
     holdLoading,
     error: seatError,
   } = useSelector((state) => state.seat || {});
+  const currentUser = useSelector((state) => state.auth?.user);
 
   useEffect(() => {
     if (flightInstanceId) {
@@ -89,12 +90,13 @@ const SeatSelection = ({
 
   const getSeatColor = (seat) => {
     const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
+    const availability = getSeatAvailability(seat);
 
-    if (!isSeatAvailable(seat)) {
-      return 'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400 dark:border-white/10 dark:bg-slate-800 dark:text-slate-600';
-    }
     if (isSelectedByAnyPassenger) {
       return 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-500/25';
+    }
+    if (!availability.available) {
+      return 'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400 dark:border-white/10 dark:bg-slate-800 dark:text-slate-600';
     }
     if (hasExtraLegroom(seat)) {
       return 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-400/60 dark:bg-emerald-500/15 dark:text-emerald-100 dark:hover:bg-emerald-500/25';
@@ -118,8 +120,37 @@ const SeatSelection = ({
   };
 
   const isSeatAvailable = (seat) => {
-    if (seat.status) return seat.status === 'AVAILABLE';
-    return Boolean(seat.isAvailable && !seat.isOccupied && !seat.isBooked && !seat.booked);
+    return getSeatAvailability(seat).available;
+  };
+
+  const getSeatAvailability = (seat) => {
+    const status = seat?.status?.toString().toUpperCase();
+    const holdExpiresAt = seat?.holdExpiresAt ? new Date(seat.holdExpiresAt).getTime() : null;
+    const holdExpired = holdExpiresAt && Number.isFinite(holdExpiresAt) && holdExpiresAt <= Date.now();
+
+    if (status === 'AVAILABLE') {
+      return { available: true, label: 'Available' };
+    }
+
+    if (status === 'HELD') {
+      return holdExpired
+        ? { available: true, label: 'Available' }
+        : { available: false, label: 'Held' };
+    }
+
+    if (['BOOKED', 'OCCUPIED', 'BLOCKED', 'RESERVED', 'UNAVAILABLE'].includes(status)) {
+      return { available: false, label: status === 'BOOKED' ? 'Booked' : 'Unavailable' };
+    }
+
+    if (seat?.isBooked || seat?.booked || seat?.isOccupied) {
+      return { available: false, label: seat?.isBooked || seat?.booked ? 'Booked' : 'Unavailable' };
+    }
+
+    if (seat?.isAvailable === true) {
+      return { available: true, label: 'Available' };
+    }
+
+    return { available: false, label: 'Unavailable' };
   };
 
   const hasExtraLegroom = (seat) => {
@@ -133,42 +164,63 @@ const SeatSelection = ({
   };
 
   const handleSeatClick = async (seat) => {
-    const isAvailable = isSeatAvailable(seat);
+    const availability = getSeatAvailability(seat);
+    const isAvailable = availability.available;
     const isAlreadySelected = selectedSeats.some(s => s?.id === seat.id);
 
+    if (!isAvailable) {
+      toast.error(`Seat ${seat?.seatNumber || ''} is ${availability.label.toLowerCase()}. Please choose another seat.`);
+      return;
+    }
+
+    if (isAlreadySelected) {
+      return;
+    }
+
     if (isAvailable && !isAlreadySelected) {
+      let previousSeatForPassenger = selectedSeats[currentPassengerIndex] || null;
       try {
-        const previousHold = seatHoldByPassenger[currentPassengerIndex];
-        if (previousHold?.seatInstanceId) {
-          await dispatch(releaseSeatInstances({
-            seatInstanceIds: [previousHold.seatInstanceId],
-            holdToken: previousHold.holdToken,
-          })).unwrap();
-        }
+        const nextSeat = {
+          ...seat,
+          price: getSeatPrice(seat),
+        };
+        const nextSelectedSeats = Array.from(
+          { length: passengerCount },
+          (_, index) => selectedSeats[index] || null,
+        );
+        previousSeatForPassenger = nextSelectedSeats[currentPassengerIndex];
+        nextSelectedSeats[currentPassengerIndex] = nextSeat;
 
-        const hold = await dispatch(holdSeatInstances({
-          flightInstanceId: Number(flightInstanceId),
-          seatInstanceIds: [seat.id],
-          userId: user?.id,
-          holdMinutes: 10,
-        })).unwrap();
+        const nextSeatIds = nextSelectedSeats.filter(Boolean).map((item) => item.id);
+        const previousSeatIds = selectedSeats.filter(Boolean).map((item) => item.id);
+        const removedSeatIds = previousSeatIds.filter((id) => !nextSeatIds.includes(id));
 
-        const heldSeat = hold?.seats?.[0] || seat;
-        setSeatHoldByPassenger((current) => ({
-          ...current,
-          [currentPassengerIndex]: {
-            seatInstanceId: heldSeat.id,
-            holdToken: hold?.holdToken,
-            holdExpiresAt: hold?.holdExpiresAt,
-          },
-        }));
+        const hold = await dispatch(
+          holdSeatInstances({
+            flightInstanceId,
+            seatInstanceIds: nextSeatIds,
+            userId: currentUser?.id,
+            holdToken: seatHold?.holdToken,
+            holdMinutes: 10,
+          }),
+        ).unwrap();
 
-        onSelectSeat(currentPassengerIndex, {
-          ...heldSeat,
-          price: getSeatPrice(heldSeat),
+        onSeatHoldChange?.({
           holdToken: hold?.holdToken,
           holdExpiresAt: hold?.holdExpiresAt,
+          seatInstanceIds: nextSeatIds,
         });
+
+        if (removedSeatIds.length > 0 && seatHold?.holdToken) {
+          await dispatch(
+            releaseSeatInstances({
+              seatInstanceIds: removedSeatIds,
+              holdToken: seatHold.holdToken,
+            }),
+          ).unwrap();
+        }
+
+        onSelectSeat(currentPassengerIndex, nextSeat);
 
         if (currentPassengerIndex < passengerCount - 1) {
           setCurrentPassengerIndex(currentPassengerIndex + 1);
@@ -177,30 +229,43 @@ const SeatSelection = ({
         }
       } catch (error) {
         toast.error(error || 'Seat is no longer available. Please choose another seat.');
+        onSelectSeat(currentPassengerIndex, previousSeatForPassenger || null);
         if (flightInstanceId) dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId));
       }
     }
   };
 
   const handleRemoveSeat = async (passengerIndex) => {
-    const hold = seatHoldByPassenger[passengerIndex];
-    if (hold?.seatInstanceId) {
-      try {
-        await dispatch(releaseSeatInstances({
-          seatInstanceIds: [hold.seatInstanceId],
-          holdToken: hold.holdToken,
-        })).unwrap();
-      } catch (error) {
-        toast.error(error || 'Unable to release the selected seat');
-      }
-    }
+    const seatToRemove = selectedSeats[passengerIndex];
+    if (!seatToRemove) return;
 
-    setSeatHoldByPassenger((current) => {
-      const next = { ...current };
-      delete next[passengerIndex];
-      return next;
-    });
-    onSelectSeat(passengerIndex, null);
+    try {
+      if (seatHold?.holdToken) {
+        await dispatch(
+          releaseSeatInstances({
+            seatInstanceIds: [seatToRemove.id],
+            holdToken: seatHold.holdToken,
+          }),
+        ).unwrap();
+      }
+
+      const nextSelectedSeats = [...selectedSeats];
+      nextSelectedSeats[passengerIndex] = null;
+      const remainingSeatIds = nextSelectedSeats.filter(Boolean).map((seat) => seat.id);
+
+      onSelectSeat(passengerIndex, null);
+      onSeatHoldChange?.(
+        remainingSeatIds.length > 0
+          ? {
+              ...seatHold,
+              seatInstanceIds: remainingSeatIds,
+            }
+          : null,
+      );
+    } catch (error) {
+      toast.error(error || 'Could not release this seat. Please try again.');
+      if (flightInstanceId) dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId));
+    }
   };
 
   const openSeatMapForPassenger = (passengerIndex) => {
@@ -358,7 +423,6 @@ const SeatSelection = ({
                     <button
                       onClick={() => openSeatMapForPassenger(index)}
                       className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={holdLoading}
                     >
                       Select Seat
                       <ChevronRight className="h-4 w-4" />
@@ -470,7 +534,7 @@ const SeatSelection = ({
                     ['border-indigo-600 bg-indigo-600', 'Selected'],
                     ['border-violet-300 bg-violet-50 dark:border-violet-400/50 dark:bg-violet-500/15', 'Window'],
                     ['border-emerald-400 bg-emerald-50 dark:border-emerald-400/60 dark:bg-emerald-500/15', 'Extra legroom'],
-                    ['border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-slate-800', 'Unavailable'],
+                    ['border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-slate-800', 'Booked / unavailable'],
                   ].map(([boxClass, label]) => (
                     <div key={label} className="inline-flex items-center gap-2 rounded-md px-2 py-1">
                       <span className={`h-5 w-5 rounded border ${boxClass}`} />
@@ -497,7 +561,8 @@ const SeatSelection = ({
 
                         <div className="flex gap-1.5">
                           {leftSeats.map((seat) => {
-                            const isAvailable = isSeatAvailable(seat);
+                            const availability = getSeatAvailability(seat);
+                            const isAvailable = availability.available;
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
                             const canSelect = isAvailable && !isSelectedByAnyPassenger;
 
@@ -509,16 +574,25 @@ const SeatSelection = ({
                                 onClick={() => handleSeatClick(seat)}
                                 disabled={!canSelect || holdLoading}
                                 className={`relative min-h-[56px] w-14 rounded-md border p-2 transition-all ${getSeatColor(seat)}`}
-                                title={`${seat.seatNumber} · ${currencyFormatter.format(getSeatPrice(seat))}`}
+                                title={`${seat.seatNumber} · ${isAvailable ? currencyFormatter.format(getSeatPrice(seat)) : availability.label}`}
                               >
                                 <div className="flex flex-col items-center">
-                                  <Armchair className="mb-0.5 h-4 w-4" />
+                                  {isAvailable || isSelectedByAnyPassenger ? (
+                                    <Armchair className="mb-0.5 h-4 w-4" />
+                                  ) : (
+                                    <Ban className="mb-0.5 h-4 w-4" />
+                                  )}
                                   <span className="text-xs font-bold">
                                     {seat.seatNumber.replace(/\d+/g, '')}
                                   </span>
                                   {isAvailable && !isSelectedByAnyPassenger && (
                                     <span className="text-[10px] font-bold mt-0.5">
                                       {currencyFormatter.format(getSeatPrice(seat))}
+                                    </span>
+                                  )}
+                                  {!isAvailable && (
+                                    <span className="mt-0.5 text-[9px] font-bold uppercase">
+                                      {availability.label}
                                     </span>
                                   )}
                                 </div>
@@ -545,7 +619,8 @@ const SeatSelection = ({
 
                         <div className="flex gap-1.5">
                           {rightSeats.map((seat) => {
-                            const isAvailable = isSeatAvailable(seat);
+                            const availability = getSeatAvailability(seat);
+                            const isAvailable = availability.available;
                             const isSelectedByAnyPassenger = selectedSeats.some(s => s?.id === seat.id);
                             const canSelect = isAvailable && !isSelectedByAnyPassenger;
 
@@ -557,16 +632,25 @@ const SeatSelection = ({
                                 onClick={() => handleSeatClick(seat)}
                                 disabled={!canSelect || holdLoading}
                                 className={`relative min-h-[56px] w-14 rounded-md border p-2 transition-all ${getSeatColor(seat)}`}
-                                title={`${seat.seatNumber} · ${currencyFormatter.format(getSeatPrice(seat))}`}
+                                title={`${seat.seatNumber} · ${isAvailable ? currencyFormatter.format(getSeatPrice(seat)) : availability.label}`}
                               >
                                 <div className="flex flex-col items-center">
-                                  <Armchair className="mb-0.5 h-4 w-4" />
+                                  {isAvailable || isSelectedByAnyPassenger ? (
+                                    <Armchair className="mb-0.5 h-4 w-4" />
+                                  ) : (
+                                    <Ban className="mb-0.5 h-4 w-4" />
+                                  )}
                                   <span className="text-xs font-bold">
                                     {seat.seatNumber.replace(/\d+/g, '')}
                                   </span>
                                   {isAvailable && !isSelectedByAnyPassenger && (
                                     <span className="text-[10px] font-bold mt-0.5">
                                       {currencyFormatter.format(getSeatPrice(seat))}
+                                    </span>
+                                  )}
+                                  {!isAvailable && (
+                                    <span className="mt-0.5 text-[9px] font-bold uppercase">
+                                      {availability.label}
                                     </span>
                                   )}
                                 </div>
@@ -627,31 +711,15 @@ const SeatSelection = ({
                   <button
                     onClick={() => setCurrentPassengerIndex(currentPassengerIndex + 1)}
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={holdLoading}
                   >
-                    {holdLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Holding seat
-                      </>
-                    ) : (
-                      'Next passenger'
-                    )}
+                    Next passenger
                   </button>
                   ) : (
                     <button
                       onClick={() => setShowSeatMap(false)}
                       className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={holdLoading}
                     >
-                      {holdLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Holding seat
-                        </>
-                      ) : (
-                        'Confirm seats'
-                      )}
+                      Confirm seats
                     </button>
                   )}
                 </div>

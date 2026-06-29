@@ -184,10 +184,10 @@ public class FlightCabinAncillaryController {
 	// CALCULATE PRICE
 	// =========================
 	@PostMapping("/price/total")
-	@Operation(summary = "Calculate selected ancillary total", description = "Checkout endpoint. Rejects missing IDs, duplicate selected IDs, unavailable offers, and non-priced offers instead of silently undercharging.")
+	@Operation(summary = "Calculate selected ancillary total", description = "Checkout endpoint. Rejects missing IDs and unavailable offers. Duplicate selected IDs are priced as quantities for multi-passenger checkout.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "Ancillary total returned"),
-			@ApiResponse(responseCode = "400", description = "Invalid, duplicate, missing, or unavailable ancillary selection")
+			@ApiResponse(responseCode = "400", description = "Invalid, missing, or unavailable ancillary selection")
 	})
 	public ResponseEntity<?> calculateAncillariesPrice(@RequestBody List<Long> flightCabinAncillaryIds) {
 

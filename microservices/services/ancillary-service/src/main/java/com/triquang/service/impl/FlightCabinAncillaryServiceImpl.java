@@ -21,7 +21,8 @@ import com.triquang.service.AncillaryOwnershipService;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -154,20 +155,21 @@ public class FlightCabinAncillaryServiceImpl implements FlightCabinAncillaryServ
         if (ancillaryIds == null || ancillaryIds.isEmpty()) {
             return 0.0;
         }
-        if (ancillaryIds.stream().anyMatch(id -> id == null)
-                || Set.copyOf(ancillaryIds).size() != ancillaryIds.size()) {
+        if (ancillaryIds.stream().anyMatch(id -> id == null)) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
-        List<FlightCabinAncillary> selections = repository.findAllById(ancillaryIds);
-        if (selections.size() != ancillaryIds.size()
+        Map<Long, Long> quantityById = ancillaryIds.stream()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        List<FlightCabinAncillary> selections = repository.findAllById(quantityById.keySet());
+        if (selections.size() != quantityById.size()
                 || selections.stream().anyMatch(item -> !Boolean.TRUE.equals(item.getAvailable()))) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
         return selections.stream()
                 .filter(item -> !Boolean.TRUE.equals(item.getIncludedInFare()))
-                .mapToDouble(FlightCabinAncillary::getPrice)
+                .mapToDouble(item -> item.getPrice() * quantityById.getOrDefault(item.getId(), 0L))
                 .sum();
     }
 

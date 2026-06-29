@@ -51,12 +51,13 @@ export const fetchAvailableSeatInstancesByFlightInstance = createAsyncThunk(
 
 export const holdSeatInstances = createAsyncThunk(
   "seatInstances/hold",
-  async ({ flightInstanceId, seatInstanceIds, userId, holdMinutes = 10 }, { rejectWithValue }) => {
+  async ({ flightInstanceId, seatInstanceIds, userId, holdToken, holdMinutes = 10 }, { rejectWithValue }) => {
     try {
       const res = await api.post(`${SEAT_INSTANCE_URL}/hold`, {
         flightInstanceId,
         seatInstanceIds,
         userId,
+        holdToken,
         holdMinutes,
       });
       return unwrapApiData(res);

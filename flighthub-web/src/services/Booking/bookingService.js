@@ -61,6 +61,7 @@ export const buildBookingPayload = ({
     },
     fare: selectedFare,
     flightType: flight.flightType,
+    numberOfTravellers,
   };
 
   return {

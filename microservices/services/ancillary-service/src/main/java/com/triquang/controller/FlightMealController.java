@@ -80,10 +80,10 @@ public class FlightMealController {
 	// CALCULATE PRICE
 	// =========================
 	@PostMapping("/price/total")
-	@Operation(summary = "Calculate selected meal total", description = "Checkout endpoint. Rejects missing IDs, duplicate selected IDs, and unavailable meals instead of silently undercharging.")
+	@Operation(summary = "Calculate selected meal total", description = "Checkout endpoint. Rejects missing IDs and unavailable meals. Duplicate selected IDs are priced as quantities for multi-passenger checkout.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "Meal total returned"),
-			@ApiResponse(responseCode = "400", description = "Invalid, duplicate, missing, or unavailable meal selection")
+			@ApiResponse(responseCode = "400", description = "Invalid, missing, or unavailable meal selection")
 	})
 	public ResponseEntity<?> calculateMealPrice(@RequestBody List<Long> requests) {
 

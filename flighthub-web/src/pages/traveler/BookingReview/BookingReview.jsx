@@ -30,6 +30,7 @@ import {
 } from "@/Redux/flightCabinAncillary/flightCabinAncillaryThunk";
 import { getFlightInstanceById } from "@/Redux/flightInstance/flightInstanceThunk";
 import { createBooking } from "@/Redux/booking/bookingThunk";
+import { releaseSeatInstances } from "@/Redux/seat/seatThunk";
 
 import { getFareRuleByFare } from "@/Redux/fareRules/fareRulesThunk";
 import { fetchFlightMealsByFlightId } from "@/Redux/flightMeal/flightMealThunk";
@@ -61,6 +62,25 @@ const getSelectedTravelProtection = (payload) => {
 const getFareAmount = (fare, field, fallbackField) => {
   const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
   return Number.isFinite(Number(value)) ? Number(value) : 0;
+};
+
+const parsePositiveInt = (value) => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const parsePaxTypeCount = (value) => {
+  if (!value || typeof value !== "string") return null;
+
+  const adultMatch = value.match(/A-(\d+)/i);
+  const childMatch = value.match(/C-(\d+)/i);
+  const infantMatch = value.match(/I-(\d+)/i);
+  const adults = parsePositiveInt(adultMatch?.[1]) || 0;
+  const children = parsePositiveInt(childMatch?.[1]) || 0;
+  const infants = parsePositiveInt(infantMatch?.[1]) || 0;
+  const total = adults + children + infants;
+
+  return total > 0 ? total : null;
 };
 
 const SectionLabel = ({ eyebrow, title, description }) => (
@@ -100,6 +120,7 @@ const BookingReview = () => {
   // State management
   const [travellerData, setTravellerData] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]); // Changed to array for multiple passengers
+  const [seatHold, setSeatHold] = useState(null);
   const [selectedMeals, setSelectedMeals] = useState([]);
   const [selectedBaggage, setSelectedBaggage] = useState([]);
   const [paymentGateway, setPaymentGateway] = useState("STRIPE");
@@ -110,12 +131,15 @@ const BookingReview = () => {
   const bookingParams = useMemo(() => {
     const storedBookingData = readStoredBookingData();
     const decodedFilter = decodeSearchFilter(searchParams.get("xflt"));
-    const passengerCount = parseInt(
-      searchParams.get("pax") || searchParams.get("passengers") || searchParams.get("numberOfTravellers"),
-      10,
-    ) || 1;
     const storedFare = storedBookingData?.fare || {};
     const storedCabin = storedBookingData?.flight?.selectedCabinClass || {};
+    const passengerCount =
+      parsePositiveInt(searchParams.get("pax")) ||
+      parsePositiveInt(searchParams.get("passengers")) ||
+      parsePositiveInt(searchParams.get("numberOfTravellers")) ||
+      parsePositiveInt(storedBookingData?.numberOfTravellers) ||
+      parsePaxTypeCount(decodedFilter.PaxType || decodedFilter.p) ||
+      1;
 
     return {
       passengerCount,
@@ -326,6 +350,11 @@ const BookingReview = () => {
       return;
     }
 
+    if (selectedSeatCount > 0 && !seatHold?.holdToken) {
+      toast.error("Your seat hold is not active. Please reselect your seats.");
+      return;
+    }
+
     // Calculate totals for summary - sum up all seats for multiple passengers
     const seatCharges = selectedSeats.reduce(
       (sum, seat) => sum + (seat?.price || 0),
@@ -446,6 +475,8 @@ const BookingReview = () => {
       mealIds: mealIds,
       promoCode: searchParams.get("promoCode") || null,
       seatNumbers: seatNumbers,
+      seatHoldToken: selectedSeatCount > 0 ? seatHold?.holdToken : null,
+      seatHoldExpiresAt: selectedSeatCount > 0 ? seatHold?.holdExpiresAt : null,
       paymentGateway,
     };
 
@@ -488,6 +519,15 @@ const BookingReview = () => {
         });
       }
     } catch (error) {
+      if (seatHold?.holdToken && selectedSeatCount > 0) {
+        dispatch(
+          releaseSeatInstances({
+            seatInstanceIds: selectedSeats.filter(Boolean).map((seat) => seat.id),
+            holdToken: seatHold.holdToken,
+          }),
+        );
+        setSeatHold(null);
+      }
       toast.error(`Booking failed: ${error || "Please try again"}`, {
         id: "booking-toast",
       });
@@ -593,6 +633,8 @@ const BookingReview = () => {
                 <SeatSelection
                   selectedSeats={selectedSeats}
                   onSelectSeat={handleSeatSelection}
+                  seatHold={seatHold}
+                  onSeatHoldChange={setSeatHold}
                   passengerCount={passengerCount}
                   flightInstanceId={flightInstanceId}
                   cabinClassId={selectedFare?.cabinClassId || cabinClassId}

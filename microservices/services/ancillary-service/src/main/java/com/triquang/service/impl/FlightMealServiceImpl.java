@@ -23,7 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -182,17 +183,20 @@ public class FlightMealServiceImpl implements FlightMealService {
         if (mealIds == null || mealIds.isEmpty()) {
             return 0.0;
         }
-        if (mealIds.stream().anyMatch(id -> id == null)
-                || Set.copyOf(mealIds).size() != mealIds.size()) {
+        if (mealIds.stream().anyMatch(id -> id == null)) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
-        List<FlightMeal> selections = flightMealRepository.findAllById(mealIds);
-        if (selections.size() != mealIds.size()
+        Map<Long, Long> quantityById = mealIds.stream()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        List<FlightMeal> selections = flightMealRepository.findAllById(quantityById.keySet());
+        if (selections.size() != quantityById.size()
                 || selections.stream().anyMatch(item -> !Boolean.TRUE.equals(item.getAvailable()))) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
-        return selections.stream().mapToDouble(FlightMeal::getPrice).sum();
+        return selections.stream()
+                .mapToDouble(item -> item.getPrice() * quantityById.getOrDefault(item.getId(), 0L))
+                .sum();
     }
 
     private double requireValidPrice(Double price) {

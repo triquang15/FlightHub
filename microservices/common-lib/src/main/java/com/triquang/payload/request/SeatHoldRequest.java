@@ -25,6 +25,8 @@ public class SeatHoldRequest {
 
     private Long userId;
 
+    private String holdToken;
+
     @Min(value = 1, message = "Hold duration must be at least 1 minute")
     @Max(value = 30, message = "Hold duration cannot exceed 30 minutes")
     private Integer holdMinutes;

@@ -24,7 +24,7 @@ payment:
   settlement-currency: ${PAYMENT_SETTLEMENT_CURRENCY:USD}
   checkout:
     success-url: ${PAYMENT_SUCCESS_URL:http://localhost:5173/booking-success/{bookingId}}
-    cancel-url: ${PAYMENT_CANCEL_URL:http://localhost:5173/booking-success/{bookingId}}
+    cancel-url: ${PAYMENT_CANCEL_URL:http://localhost:5173/booking-success/{bookingId}?payment_status=cancelled}
 
   stripe:
     secret-key: ${STRIPE_SECRET_KEY}

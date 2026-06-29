@@ -73,6 +73,11 @@ public class EmailService {
         ctx.setVariable("event", event);
         ctx.setVariable("passengerCount",
                 event.getPassengers() != null ? event.getPassengers().size() : 1);
+        ctx.setVariable("supportEmail", supportEmail);
+        ctx.setVariable("manageBookingUrl", frontendBaseUrl + "/bookings");
+        ctx.setVariable("viewTicketUrl", event.getBookingId() != null
+                ? frontendBaseUrl + "/view-ticket/" + event.getBookingId()
+                : frontendBaseUrl + "/bookings");
 
         // Formatted dates / times
         ctx.setVariable("depDate",
@@ -113,6 +118,9 @@ public class EmailService {
 
         // Cabin class display name
         ctx.setVariable("cabinClassDisplay", cabinDisplayName(event.getCabinClass()));
+        ctx.setVariable("currency", event.getCurrency() != null && !event.getCurrency().isBlank()
+                ? event.getCurrency()
+                : "USD");
 
         return templateEngine.process("email/booking-confirmation", ctx);
     }

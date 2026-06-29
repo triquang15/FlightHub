@@ -138,6 +138,7 @@ public class BookingServiceImpl implements BookingService {
                         .flightInstanceId(booking.getFlightInstanceId())
                         .seatInstanceIds(booking.getSeatInstanceIds())
                         .userId(userId)
+                        .holdToken(request.getSeatHoldToken())
                         .holdMinutes(15)
                         .build());
                 booking.setSeatHoldToken(seatHold.getHoldToken());

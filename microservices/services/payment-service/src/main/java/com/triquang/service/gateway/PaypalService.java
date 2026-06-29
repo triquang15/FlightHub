@@ -138,8 +138,11 @@ public class PaypalService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            headers.set("PayPal-Request-Id", "capture-" + orderId);
 
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(Map.of(), headers);
 
             RestTemplate restTemplate = new RestTemplate();
 
