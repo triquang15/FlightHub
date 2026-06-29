@@ -96,6 +96,8 @@ const ModernFlightCard = ({
   cabinClass,
   onViewDetails,
   onBookmark,
+  onFareSelected,
+  chooseLabel = "Choose fare",
   isBookmarked = false,
   className,
   viewMode = "list",
@@ -252,7 +254,7 @@ const ModernFlightCard = ({
                 onClick={() => setIsPricingModalOpen(true)}
                 className="h-11 justify-between rounded-md px-4"
               >
-                {isBookable ? "Choose fare" : "Unavailable"}
+                {isBookable ? chooseLabel : "Unavailable"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <p className="text-center text-xs text-muted-foreground">
@@ -268,6 +270,7 @@ const ModernFlightCard = ({
           isOpen={isPricingModalOpen}
           onClose={() => setIsPricingModalOpen(false)}
           flight={flight}
+          onSelectFare={onFareSelected}
         />
       )}
     </Card>

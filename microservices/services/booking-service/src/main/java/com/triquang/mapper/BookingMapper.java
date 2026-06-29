@@ -7,10 +7,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.triquang.model.Booking;
+import com.triquang.model.BookingLeg;
 import com.triquang.model.Passenger;
 import com.triquang.payload.PaymentDTO;
 import com.triquang.payload.request.BookingRequest;
 import com.triquang.payload.response.BookingResponse;
+import com.triquang.payload.response.BookingLegResponse;
 import com.triquang.payload.response.FareResponse;
 import com.triquang.payload.response.FlightCabinAncillaryResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
@@ -72,6 +74,11 @@ public class BookingMapper {
                 booking.getTickets().stream()
                         .map(TicketMapper::toResponse)
                         .collect(Collectors.toList()) : null;
+        List<BookingLegResponse> legResponses = booking.getLegs() != null ?
+                booking.getLegs().stream()
+                        .sorted(java.util.Comparator.comparing(BookingLeg::getLegOrder))
+                        .map(leg -> toLegResponse(leg, flightInstanceResponse))
+                        .collect(Collectors.toList()) : null;
 
 
         return BookingResponse.builder()
@@ -94,6 +101,7 @@ public class BookingMapper {
                 .bookingDate(booking.getBookingDate())
                 .lastModified(booking.getLastModified())
                 .passengers(passengerResponses)
+                .legs(legResponses)
                 .tickets(ticketResponses)
                 .fareId(booking.getFareId())
                 .totalPassengers(booking.getPassengers() != null ? booking.getPassengers().size() : 0)
@@ -119,6 +127,28 @@ public class BookingMapper {
 //                contact information
                 .contactInfo(booking.getContactInfo())
 
+                .build();
+    }
+
+    private static BookingLegResponse toLegResponse(BookingLeg leg, FlightInstanceResponse fallbackFlightInstance) {
+        FlightInstanceResponse flight = fallbackFlightInstance != null
+                && java.util.Objects.equals(fallbackFlightInstance.getId(), leg.getFlightInstanceId())
+                ? fallbackFlightInstance
+                : null;
+
+        return BookingLegResponse.builder()
+                .id(leg.getId())
+                .legOrder(leg.getLegOrder())
+                .flightId(leg.getFlightId())
+                .flightInstanceId(leg.getFlightInstanceId())
+                .fareId(leg.getFareId())
+                .cabinClass(leg.getCabinClass())
+                .flightNumber(flight != null ? flight.getFlightNumber() : null)
+                .departureAirport(flight != null ? airportName(flight.getDepartureAirport()) : null)
+                .arrivalAirport(flight != null ? airportName(flight.getArrivalAirport()) : null)
+                .departureTime(flight != null ? flight.getDepartureDateTime() : null)
+                .arrivalTime(flight != null ? flight.getArrivalDateTime() : null)
+                .flightDuration(flight != null ? flight.getFormattedDuration() : null)
                 .build();
     }
 

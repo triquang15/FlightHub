@@ -36,6 +36,7 @@ import { getFareRuleByFare } from "@/Redux/fareRules/fareRulesThunk";
 import { fetchFlightMealsByFlightId } from "@/Redux/flightMeal/flightMealThunk";
 import { getBaggagePolicyByFare } from "@/Redux/baggagePolicy/baggagePolicyThunk";
 import { getFareById } from "@/Redux/fare/fareThunk";
+import api from "@/utils/api";
 
 const readStoredBookingData = () => {
   try {
@@ -63,6 +64,8 @@ const getFareAmount = (fare, field, fallbackField) => {
   const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 };
+
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
 
 const parsePositiveInt = (value) => {
   const parsed = parseInt(value, 10);
@@ -125,6 +128,7 @@ const BookingReview = () => {
   const [selectedBaggage, setSelectedBaggage] = useState([]);
   const [paymentGateway, setPaymentGateway] = useState("STRIPE");
   const [travellerValidationAttempted, setTravellerValidationAttempted] = useState(false);
+  const [returnFlightInstance, setReturnFlightInstance] = useState(null);
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
@@ -150,6 +154,11 @@ const BookingReview = () => {
       cabinClass: searchParams.get("cabinClass") || decodedFilter.CabinClass || storedCabin.name || storedFare.cabinClass || "ECONOMY",
       cabinClassId: searchParams.get("cabinClassId") || decodedFilter.cabinClassId || storedFare.cabinClassId || storedCabin.id,
       tripType: searchParams.get("tripType") || "ONE_WAY",
+      returnFlightId: searchParams.get("returnFlightId"),
+      returnFlightInstanceId: searchParams.get("returnFlightInstanceId"),
+      returnFareId: searchParams.get("returnFareId"),
+      returnCabinClass: searchParams.get("returnCabinClass"),
+      returnCabinClassId: searchParams.get("returnCabinClassId"),
     };
   }, [searchParams]);
 
@@ -162,6 +171,11 @@ const BookingReview = () => {
     cabinClass,
     cabinClassId,
     tripType,
+    returnFlightId,
+    returnFlightInstanceId,
+    returnFareId,
+    returnCabinClass,
+    returnCabinClassId,
   } = bookingParams;
   const travelProtectionPackage = getSelectedTravelProtection(
     ancillariesByType?.TRAVEL_PROTECTION,
@@ -171,11 +185,18 @@ const BookingReview = () => {
     (sum, bag) => sum + (Number(bag.quantity) || 0),
     0,
   );
-  const routeSummary = flightInstance
-    ? `${flightInstance.departureAirport?.iataCode || flightInstance.flight?.departureAirport?.iataCode || "From"} to ${
-        flightInstance.arrivalAirport?.iataCode || flightInstance.flight?.arrivalAirport?.iataCode || "To"
-      }`
-    : "Flight selected";
+  const isRoundTrip = tripType === "ROUND_TRIP" && Boolean(returnFlightInstanceId);
+  const itineraryFlightData = useMemo(
+    () => (isRoundTrip ? [flightInstance, returnFlightInstance].filter(Boolean) : flightInstance),
+    [flightInstance, isRoundTrip, returnFlightInstance],
+  );
+  const routeSummary = isRoundTrip
+    ? `${flightInstance?.departureAirport?.iataCode || flightInstance?.flight?.departureAirport?.iataCode || "Outbound"} + return`
+    : flightInstance
+      ? `${flightInstance.departureAirport?.iataCode || flightInstance.flight?.departureAirport?.iataCode || "From"} to ${
+          flightInstance.arrivalAirport?.iataCode || flightInstance.flight?.arrivalAirport?.iataCode || "To"
+        }`
+      : "Flight selected";
   const checkoutSteps = [
     {
       label: "Flight",
@@ -284,6 +305,33 @@ const BookingReview = () => {
       dispatch(getFlightInstanceById(flightInstanceId));
     }
   }, [flightInstanceId, dispatch]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isRoundTrip || !returnFlightInstanceId) {
+      setReturnFlightInstance(null);
+      return undefined;
+    }
+
+    const loadReturnFlightInstance = async () => {
+      try {
+        const response = await api.get(`/api/flight-instances/${returnFlightInstanceId}`);
+        if (!cancelled) setReturnFlightInstance(unwrapApiData(response));
+      } catch {
+        if (!cancelled) {
+          setReturnFlightInstance(null);
+          toast.error("Could not load return flight details. Please select the return flight again.");
+        }
+      }
+    };
+
+    loadReturnFlightInstance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRoundTrip, returnFlightInstanceId]);
 
   // Fetch ancillaries by type when flightId and cabinClassId are available
   useEffect(() => {
@@ -450,6 +498,28 @@ const BookingReview = () => {
       cabinClass,
       tripType,
       fareId: parseInt(fareId) || null,
+      legs: [
+        {
+          legOrder: 1,
+          flightId: parseInt(flightId) || null,
+          flightInstanceId: parseInt(flightInstanceId) || null,
+          fareId: parseInt(fareId) || null,
+          cabinClass,
+          seatInstanceIds: selectedSeats.filter(Boolean).map((seat) => seat.id),
+          seatHoldToken: selectedSeatCount > 0 ? seatHold?.holdToken : null,
+        },
+        ...(tripType === "ROUND_TRIP" && returnFlightId && returnFlightInstanceId && returnFareId
+          ? [{
+              legOrder: 2,
+              flightId: parseInt(returnFlightId) || null,
+              flightInstanceId: parseInt(returnFlightInstanceId) || null,
+              fareId: parseInt(returnFareId) || null,
+              cabinClass: returnCabinClass || cabinClass,
+              seatInstanceIds: [],
+              seatHoldToken: null,
+            }]
+          : []),
+      ],
       passengers: passengers.map((t, index) => ({
         firstName: t.firstName || "",
         lastName: t.lastName || "",
@@ -611,7 +681,7 @@ const BookingReview = () => {
                 title="Flight review"
                 description="Confirm your itinerary, cabin, and schedule before adding passenger details."
               />
-              <FlightDetailsOverview flightData={flightInstance} />
+              <FlightDetailsOverview flightData={itineraryFlightData} />
 
               <SectionLabel
                 eyebrow="Step 2"

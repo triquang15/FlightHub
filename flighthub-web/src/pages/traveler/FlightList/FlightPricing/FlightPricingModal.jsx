@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
+import { clearFlightFares } from "@/Redux/fare/fareSlice";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -138,6 +139,12 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
   const routeLabel = `${airportCode(flight?.departureAirport)} to ${airportCode(flight?.arrivalAirport)}`;
 
   useEffect(() => {
+    if (!isOpen) return;
+    setSelectedFareId(null);
+    dispatch(clearFlightFares());
+  }, [dispatch, flight?.flightId, flight?.id, isOpen]);
+
+  useEffect(() => {
     if (isOpen && flight?.aircraftId) {
       dispatch(getCabinClassesByAircraft(flight.aircraftId));
     }
@@ -158,9 +165,22 @@ const FlightPricingModal = ({ isOpen, onClose, flight, onSelectFare }) => {
       numberOfTravellers: passengerCount,
     });
 
+    const selectionPayload = {
+      flight,
+      selectedFare,
+      selectedCabinClass: bookingCabinClass,
+      bookingData,
+      queryParams,
+    };
+
+    if (onSelectFare) {
+      const shouldNavigate = onSelectFare(selectionPayload);
+      onClose?.();
+      if (shouldNavigate === false) return;
+    }
+
     sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
     navigate(`/booking-review?${new URLSearchParams(queryParams).toString()}`);
-    onSelectFare?.({ ...flight, selectedFare, selectedCabinClass: bookingCabinClass });
     onClose?.();
   };
 

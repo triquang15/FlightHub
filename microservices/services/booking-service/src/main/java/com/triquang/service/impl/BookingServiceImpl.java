@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +33,10 @@ import com.triquang.enums.PaymentGateway;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.BookingMapper;
 import com.triquang.model.Booking;
+import com.triquang.model.BookingLeg;
 import com.triquang.model.Passenger;
 import com.triquang.payload.PaymentDTO;
+import com.triquang.payload.request.BookingLegRequest;
 import com.triquang.payload.request.BookingRequest;
 import com.triquang.payload.request.PassengerRequest;
 import com.triquang.payload.request.PaymentInitiateRequest;
@@ -86,6 +89,8 @@ public class BookingServiceImpl implements BookingService {
 
         String currency = normalizeBookingCurrency();
         String bookingReference = generateBookingReference();
+        List<BookingLegRequest> legRequests = normalizeLegs(request);
+        BookingLegRequest primaryLeg = legRequests.get(0);
 
         Set<Passenger> passengers = new HashSet<>();
         for (PassengerRequest passengerRequest : request.getPassengers()) {
@@ -96,10 +101,10 @@ public class BookingServiceImpl implements BookingService {
 
         FlightResponse flightResponse;
         try {
-            flightResponse = flightClient.getFlightById(request.getFlightId());
+            flightResponse = flightClient.getFlightById(primaryLeg.getFlightId());
         } catch (Exception e) {
             log.error("Booking {} failed while fetching flightId={} for userId={}",
-                    bookingReference, request.getFlightId(), userId, e);
+                    bookingReference, primaryLeg.getFlightId(), userId, e);
             throw new BaseException(ErrorCode.FLIGHT_NOT_FOUND);
         }
 
@@ -112,6 +117,20 @@ public class BookingServiceImpl implements BookingService {
 
         List<Long> seatInstanceIds = extractSeatInstanceIds(request);
         booking.setSeatInstanceIds(seatInstanceIds);
+        booking.getLegs().clear();
+        for (BookingLegRequest legRequest : legRequests) {
+            BookingLeg leg = BookingLeg.builder()
+                    .booking(booking)
+                    .legOrder(resolveLegOrder(legRequest, booking.getLegs().size()))
+                    .flightId(legRequest.getFlightId())
+                    .flightInstanceId(legRequest.getFlightInstanceId())
+                    .fareId(legRequest.getFareId())
+                    .cabinClass(legRequest.getCabinClass())
+                    .seatInstanceIds(legRequest.getSeatInstanceIds())
+                    .seatHoldToken(legRequest.getSeatHoldToken())
+                    .build();
+            booking.getLegs().add(leg);
+        }
 
         booking = bookingRepository.saveAndFlush(booking);
 
@@ -128,11 +147,7 @@ public class BookingServiceImpl implements BookingService {
         BigDecimal mealPrice;
 
         try {
-            FareResponse fare = pricingClient.getFareById(booking.getFareId());
-            if (fare.getCurrency() == null
-                    || !currency.equalsIgnoreCase(fare.getCurrency())) {
-                throw new BaseException(ErrorCode.INVALID_INPUT);
-            }
+            validateLegCurrencies(booking.getLegs(), currency);
             if (hasItems(booking.getSeatInstanceIds())) {
                 seatHold = seatClient.holdSeats(SeatHoldRequest.builder()
                         .flightInstanceId(booking.getFlightInstanceId())
@@ -145,8 +160,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.setSeatHoldExpiresAt(seatHold.getHoldExpiresAt());
             }
 
-            fareTotal = money(pricingIntegrationService.calculateFareTotal(booking.getFareId()))
-                    .multiply(BigDecimal.valueOf(passengerCount));
+            fareTotal = calculateFareTotal(booking.getLegs(), passengerCount);
             seatPrice = hasItems(booking.getSeatInstanceIds())
                     ? money(seatClient.calculateSeatPrice(booking.getSeatInstanceIds()))
                     : BigDecimal.ZERO;
@@ -222,6 +236,61 @@ public class BookingServiceImpl implements BookingService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private List<BookingLegRequest> normalizeLegs(BookingRequest request) {
+        if (request.getLegs() != null && !request.getLegs().isEmpty()) {
+            List<BookingLegRequest> legs = request.getLegs().stream()
+                    .sorted(Comparator.comparing(leg -> leg.getLegOrder() == null ? Integer.MAX_VALUE : leg.getLegOrder()))
+                    .collect(Collectors.toList());
+            validateLegs(legs);
+            return legs;
+        }
+
+        BookingLegRequest leg = BookingLegRequest.builder()
+                .flightId(request.getFlightId())
+                .flightInstanceId(request.getFlightInstanceId())
+                .fareId(request.getFareId())
+                .cabinClass(request.getCabinClass())
+                .legOrder(1)
+                .seatInstanceIds(extractSeatInstanceIds(request))
+                .seatHoldToken(request.getSeatHoldToken())
+                .build();
+        validateLegs(List.of(leg));
+        return List.of(leg);
+    }
+
+    private void validateLegs(List<BookingLegRequest> legs) {
+        if (legs == null || legs.isEmpty() || legs.size() > 5) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+        for (BookingLegRequest leg : legs) {
+            if (leg.getFlightId() == null || leg.getFlightInstanceId() == null
+                    || leg.getFareId() == null || leg.getCabinClass() == null) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+        }
+    }
+
+    private int resolveLegOrder(BookingLegRequest legRequest, int index) {
+        return legRequest.getLegOrder() == null ? index + 1 : legRequest.getLegOrder();
+    }
+
+    private void validateLegCurrencies(Set<BookingLeg> legs, String currency) {
+        for (BookingLeg leg : legs) {
+            FareResponse fare = pricingClient.getFareById(leg.getFareId());
+            if (fare.getCurrency() == null || !currency.equalsIgnoreCase(fare.getCurrency())) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+        }
+    }
+
+    private BigDecimal calculateFareTotal(Set<BookingLeg> legs, int passengerCount) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (BookingLeg leg : legs) {
+            total = total.add(money(pricingIntegrationService.calculateFareTotal(leg.getFareId())));
+        }
+        return total.multiply(BigDecimal.valueOf(passengerCount));
     }
 
     private void cancelPendingBooking(Booking booking, Long userId, boolean cancelPayment) {

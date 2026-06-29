@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { getFlightInstanceById } from "@/Redux/flightInstance/flightInstanceThunk";
 import { useSelector } from "react-redux";
 
-const FlightDetailsOverview = ({ flightData }) => {
+const FlightDetailsOverview = ({ flightData, legLabel }) => {
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { flightInstance: storeFlightInstance } = useSelector((state) => state.flightInstance);
@@ -32,6 +32,35 @@ const FlightDetailsOverview = ({ flightData }) => {
             <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading itinerary...</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (Array.isArray(flightData)) {
+    const legs = flightData.filter(Boolean);
+
+    if (!legs.length) {
+      return (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
+          <div className="flex h-40 items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-300"></div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading itinerary...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {legs.map((leg, index) => (
+          <FlightDetailsOverview
+            key={leg.id || leg.flightInstanceId || index}
+            flightData={leg}
+            legLabel={index === 0 ? "Outbound flight" : "Return flight"}
+          />
+        ))}
       </div>
     );
   }
@@ -97,7 +126,7 @@ const FlightDetailsOverview = ({ flightData }) => {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
-                Selected itinerary
+                {legLabel || "Selected itinerary"}
               </p>
               <h2 className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">
                 {departureCode} to {arrivalCode}

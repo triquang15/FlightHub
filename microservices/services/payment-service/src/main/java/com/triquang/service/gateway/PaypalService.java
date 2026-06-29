@@ -221,14 +221,20 @@ public class PaypalService {
         Map<String, Object> payments = mapValue(unit.get("payments"));
         List<Map<String, Object>> captures = listOfMaps(payments.get("captures"));
         Map<String, Object> capture = captures.isEmpty() ? Map.of() : captures.get(0);
+        Map<String, Object> captureAmount = mapValue(capture.get("amount"));
+        Map<String, Object> resolvedAmount = amount == null || amount.isEmpty() ? captureAmount : amount;
+        String paymentId = stringValue(unit.get("custom_id"));
+        if (paymentId == null) {
+            paymentId = stringValue(capture.get("custom_id"));
+        }
 
         return new PaymentVerificationResult(
                 "COMPLETED".equalsIgnoreCase(stringValue(order.get("status"))),
                 orderId,
                 stringValue(capture.get("id")),
-                parseLong(stringValue(unit.get("custom_id"))),
-                parseDecimal(amount == null ? null : stringValue(amount.get("value"))),
-                amount == null ? null : stringValue(amount.get("currency_code")));
+                parseLong(paymentId),
+                parseDecimal(resolvedAmount == null ? null : stringValue(resolvedAmount.get("value"))),
+                resolvedAmount == null ? null : stringValue(resolvedAmount.get("currency_code")));
     }
 
     private Map<String, Object> getOrder(String orderId, String token) {

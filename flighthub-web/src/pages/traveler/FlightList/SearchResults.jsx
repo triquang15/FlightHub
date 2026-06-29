@@ -1,12 +1,14 @@
 import * as React from "react";
-import { AlertCircle, Menu, SlidersHorizontal, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Menu, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { getAirlinesForDropdown } from "@/Redux/airline/airlineThunks";
 import { listAllAirports } from "@/Redux/airport/airportThunk";
 import { searchFlightsAvailability } from "@/Redux/flightSearch/flightSearchThunk";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import api from "@/utils/api";
 import {
   buildTravelerSearchParams,
   formatSearchDateParam,
@@ -30,6 +32,14 @@ const getPrice = (flight) =>
 const getDuration = (flight) =>
   new Date(flight.arrivalDateTime).getTime() - new Date(flight.departureDateTime).getTime();
 
+const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+
+const getApiError = (error, fallback) =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  error?.message ||
+  fallback;
+
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -45,8 +55,39 @@ const SearchResults = () => {
   const [viewMode, setViewMode] = React.useState("list");
   const [showMobileFilters, setShowMobileFilters] = React.useState(false);
   const [filters, setFilters] = React.useState(createDefaultFlightFilters);
+  const [returnResults, setReturnResults] = React.useState(null);
+  const [returnLoading, setReturnLoading] = React.useState(false);
+  const [returnError, setReturnError] = React.useState("");
+  const [selectedOutbound, setSelectedOutbound] = React.useState(null);
+  const [selectedReturn, setSelectedReturn] = React.useState(null);
 
   const departureDate = formatSearchDateParam(searchData.departureDate);
+  const returnDate = formatSearchDateParam(searchData.returnDate);
+  const isRoundTrip = searchData.tripType === "roundTrip";
+
+  const buildSearchParamsForLeg = React.useCallback(
+    ({ departureAirportId, arrivalAirportId, legDate }) => {
+      const params = {
+        departureAirportId,
+        arrivalAirportId,
+        departureDate: legDate,
+        passengers: searchData.passengers,
+        cabinClass: searchData.cabinClass,
+        sortBy,
+        sortOrder,
+      };
+
+      if (filters.airlines.length > 0) params.airlines = filters.airlines;
+      if (filters.priceRange.min > PRICE_LIMITS.min) params.minPrice = filters.priceRange.min;
+      if (filters.priceRange.max < PRICE_LIMITS.max) params.maxPrice = filters.priceRange.max;
+      if (filters.departureTimeRange !== "any") params.departureTimeRange = filters.departureTimeRange;
+      if (filters.arrivalTimeRange !== "any") params.arrivalTimeRange = filters.arrivalTimeRange;
+      if (filters.maxDuration < MAX_DURATION) params.maxDuration = filters.maxDuration;
+
+      return params;
+    },
+    [filters, searchData.cabinClass, searchData.passengers, sortBy, sortOrder],
+  );
 
   React.useEffect(() => {
     if (airports.length === 0) {
@@ -66,26 +107,11 @@ const SearchResults = () => {
     }
 
     const timeoutId = window.setTimeout(() => {
-      const params = {
+      const params = buildSearchParamsForLeg({
         departureAirportId: searchData.departureAirportId,
         arrivalAirportId: searchData.arrivalAirportId,
-        departureDate,
-        passengers: searchData.passengers,
-        cabinClass: searchData.cabinClass,
-        sortBy,
-        sortOrder,
-      };
-
-      if (filters.airlines.length > 0) params.airlines = filters.airlines;
-      if (filters.priceRange.min > PRICE_LIMITS.min) params.minPrice = filters.priceRange.min;
-      if (filters.priceRange.max < PRICE_LIMITS.max) params.maxPrice = filters.priceRange.max;
-      if (filters.departureTimeRange !== "any") {
-        params.departureTimeRange = filters.departureTimeRange;
-      }
-      if (filters.arrivalTimeRange !== "any") {
-        params.arrivalTimeRange = filters.arrivalTimeRange;
-      }
-      if (filters.maxDuration < MAX_DURATION) params.maxDuration = filters.maxDuration;
+        legDate: departureDate,
+      });
 
       dispatch(searchFlightsAvailability(params));
     }, 250);
@@ -93,14 +119,66 @@ const SearchResults = () => {
     return () => window.clearTimeout(timeoutId);
   }, [
     departureDate,
+    buildSearchParamsForLeg,
     dispatch,
-    filters,
+    searchData.arrivalAirportId,
+    searchData.departureAirportId,
+  ]);
+
+  React.useEffect(() => {
+    setSelectedOutbound(null);
+    setSelectedReturn(null);
+  }, [
+    departureDate,
+    returnDate,
     searchData.arrivalAirportId,
     searchData.cabinClass,
     searchData.departureAirportId,
     searchData.passengers,
-    sortBy,
-    sortOrder,
+    searchData.tripType,
+  ]);
+
+  React.useEffect(() => {
+    if (!isRoundTrip || !searchData.departureAirportId || !searchData.arrivalAirportId || !returnDate) {
+      setReturnResults(null);
+      setReturnError("");
+      setReturnLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setReturnLoading(true);
+      setReturnError("");
+
+      try {
+        const params = buildSearchParamsForLeg({
+          departureAirportId: searchData.arrivalAirportId,
+          arrivalAirportId: searchData.departureAirportId,
+          legDate: returnDate,
+        });
+        const response = await api.get("/api/flights/search", { params });
+        const result = unwrapApiData(response);
+        if (!cancelled) setReturnResults(result);
+      } catch (err) {
+        if (!cancelled) {
+          setReturnError(getApiError(err, "Unable to search return flights right now"));
+        }
+      } finally {
+        if (!cancelled) setReturnLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    buildSearchParamsForLeg,
+    isRoundTrip,
+    returnDate,
+    searchData.arrivalAirportId,
+    searchData.departureAirportId,
   ]);
 
   const departureAirport = airports.find(
@@ -113,11 +191,15 @@ const SearchResults = () => {
     () => (Array.isArray(searchResults?.content) ? searchResults.content : []),
     [searchResults],
   );
+  const returnResultContent = React.useMemo(
+    () => (Array.isArray(returnResults?.content) ? returnResults.content : []),
+    [returnResults],
+  );
 
-  const visibleFlights = React.useMemo(() => {
+  const sortFlights = React.useCallback((flights) => {
     const directFlights = searchData.directOnly
-      ? resultContent.filter((flight) => (flight.totalStops ?? flight.stops ?? 0) === 0)
-      : resultContent;
+      ? flights.filter((flight) => (flight.totalStops ?? flight.stops ?? 0) === 0)
+      : flights;
     const direction = sortOrder === "asc" ? 1 : -1;
 
     return [...directFlights].sort((left, right) => {
@@ -135,7 +217,14 @@ const SearchResults = () => {
         direction
       );
     });
-  }, [resultContent, searchData.directOnly, sortBy, sortOrder]);
+  }, [searchData.directOnly, sortBy, sortOrder]);
+
+  const visibleFlights = React.useMemo(() => sortFlights(resultContent), [resultContent, sortFlights]);
+  const visibleReturnFlights = React.useMemo(
+    () => sortFlights(returnResultContent),
+    [returnResultContent, sortFlights],
+  );
+  const isReturnSelectionStage = isRoundTrip && Boolean(selectedOutbound);
 
   const hasActiveFilters =
     filters.airlines.length > 0 ||
@@ -149,6 +238,46 @@ const SearchResults = () => {
   const includeConnections = () => {
     const next = buildTravelerSearchParams({ ...searchData, directOnly: false });
     navigate(`/search?${next.toString()}`);
+  };
+
+  const handleOutboundFareSelected = (selection) => {
+    setSelectedOutbound(selection);
+    setSelectedReturn(null);
+    toast.success("Departure flight selected. Choose your return flight next.");
+    return false;
+  };
+
+  const handleReturnFareSelected = (returnSelection) => {
+    if (!selectedOutbound) {
+      toast.error("Choose a departure flight first.");
+      return false;
+    }
+
+    const roundTripDraft = {
+      tripType: "roundTrip",
+      searchData,
+      outbound: selectedOutbound,
+      return: returnSelection,
+      numberOfTravellers: searchData.passengers,
+      createdAt: new Date().toISOString(),
+    };
+
+    sessionStorage.setItem("roundTripDraft", JSON.stringify(roundTripDraft));
+    setSelectedReturn(returnSelection);
+    sessionStorage.setItem("bookingData", JSON.stringify({
+      ...selectedOutbound.bookingData,
+      tripType: "roundTrip",
+      roundTrip: roundTripDraft,
+    }));
+    const params = new URLSearchParams(selectedOutbound.queryParams);
+    params.set("tripType", "ROUND_TRIP");
+    params.set("returnFlightInstanceId", returnSelection.queryParams.flightInstanceId);
+    params.set("returnFlightId", returnSelection.queryParams.flightId);
+    params.set("returnFareId", returnSelection.queryParams.fareId);
+    params.set("returnCabinClassId", returnSelection.queryParams.cabinClassId);
+    params.set("returnCabinClass", returnSelection.queryParams.cabinClass);
+    navigate(`/booking-review?${params.toString()}`);
+    return false;
   };
 
   return (
@@ -224,30 +353,128 @@ const SearchResults = () => {
               </div>
 
               <section className="min-w-0 space-y-4">
+                {isRoundTrip && (
+                  <div className="rounded-lg border bg-card p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Round trip
+                        </p>
+                        <h2 className="mt-1 text-lg font-semibold">
+                          {selectedOutbound ? "Choose your return flight" : "Choose your departure flight"}
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Select a fare for each leg before checkout. Multi-leg booking checkout will use this paired selection.
+                        </p>
+                      </div>
+                      {selectedOutbound && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedOutbound(null);
+                            setSelectedReturn(null);
+                          }}
+                          className="gap-2"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Change departure
+                        </Button>
+                      )}
+                    </div>
+
+                    {selectedOutbound && (
+                      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="font-semibold">
+                          Departure selected:
+                        </span>
+                        <span>
+                          {selectedOutbound.flight?.flightNumber || "Flight"} · fare {selectedOutbound.selectedFare?.fareLabel || selectedOutbound.selectedFare?.name || selectedOutbound.selectedFare?.id}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedReturn && (
+                      <div className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-700 dark:text-emerald-200">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="font-semibold">Return selected:</span>
+                          <span>
+                            {selectedReturn.flight?.flightNumber || "Flight"} · fare {selectedReturn.selectedFare?.fareLabel || selectedReturn.selectedFare?.name || selectedReturn.selectedFare?.id}
+                          </span>
+                        </div>
+                        <p className="mt-2 leading-5">Opening checkout for both selected legs.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <SortingBar
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                   onSortChange={setSortBy}
                   onSortOrderChange={setSortOrder}
-                  resultsCount={visibleFlights.length}
+                  resultsCount={isReturnSelectionStage ? visibleReturnFlights.length : visibleFlights.length}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                 />
 
-                <div
-                  className={cn(
-                    viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
-                  )}
-                >
-                  {visibleFlights.map((flight) => (
-                    <ModernFlightCard
-                      key={flight.id}
-                      flight={flight}
-                      cabinClass={searchData.cabinClass}
-                      viewMode={viewMode}
-                    />
-                  ))}
-                </div>
+                {!isRoundTrip || !selectedOutbound ? (
+                  <div
+                    className={cn(
+                      viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
+                    )}
+                  >
+                    {visibleFlights.map((flight) => (
+                      <ModernFlightCard
+                        key={flight.id}
+                        flight={flight}
+                        cabinClass={searchData.cabinClass}
+                        viewMode={viewMode}
+                        chooseLabel={isRoundTrip ? "Select departure" : "Choose fare"}
+                        onFareSelected={isRoundTrip ? handleOutboundFareSelected : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : returnLoading ? (
+                  <SearchResultsLoading count={3} />
+                ) : returnError ? (
+                  <section className="flex min-h-80 items-center justify-center rounded-md border bg-card px-6 py-14 text-center">
+                    <div className="max-w-md">
+                      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                        <AlertCircle className="h-6 w-6 text-destructive" />
+                      </span>
+                      <h3 className="mt-5 text-lg font-semibold">We could not load return flights</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">{returnError}</p>
+                    </div>
+                  </section>
+                ) : visibleReturnFlights.length === 0 ? (
+                  <NoResultsFound
+                    className="min-h-80 rounded-md border bg-card px-6"
+                    hasActiveFilters={hasActiveFilters}
+                    directOnly={searchData.directOnly}
+                    onClearFilters={() => setFilters(createDefaultFlightFilters())}
+                    onIncludeConnections={includeConnections}
+                    onModifySearch={modifySearch}
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
+                    )}
+                  >
+                    {visibleReturnFlights.map((flight) => (
+                      <ModernFlightCard
+                        key={flight.id}
+                        flight={flight}
+                        cabinClass={searchData.cabinClass}
+                        viewMode={viewMode}
+                        chooseLabel="Select return"
+                        onFareSelected={handleReturnFareSelected}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             </div>
           </>

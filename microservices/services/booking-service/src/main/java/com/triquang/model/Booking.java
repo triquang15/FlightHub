@@ -83,6 +83,10 @@ public class Booking {
     @Builder.Default
     private Set<Passenger> passengers = new HashSet<>();
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<BookingLeg> legs = new HashSet<>();
+
     // Cross-service ref: SeatInstance IDs (seat-service)
     @ElementCollection
     @CollectionTable(name = "booking_seat_instances", joinColumns = @JoinColumn(name = "booking_id"))

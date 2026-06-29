@@ -198,7 +198,7 @@ const SeatSelection = ({
         const hold = await dispatch(
           holdSeatInstances({
             flightInstanceId,
-            seatInstanceIds: nextSeatIds,
+            seatInstanceIds: [seat.id],
             userId: currentUser?.id,
             holdToken: seatHold?.holdToken,
             holdMinutes: 10,

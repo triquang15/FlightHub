@@ -40,6 +40,7 @@ public class BookingRequest {
 
     private List<Long> ancillaryIds;
     private List<Long> mealIds;
+    private List<BookingLegRequest> legs;
 
     private String promoCode;
 

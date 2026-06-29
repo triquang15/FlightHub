@@ -5,8 +5,10 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  CalendarCheck2,
   CheckCircle2,
   Clock,
+  CreditCard,
   Copy,
   Download,
   FileText,
@@ -184,6 +186,24 @@ const BookingSuccess = () => {
   const seats = useMemo(() => (
     Array.isArray(booking?.seatInstances) ? booking.seatInstances : []
   ), [booking])
+  const legs = useMemo(() => {
+    const bookingLegs = Array.isArray(booking?.legs) ? booking.legs : []
+    if (bookingLegs.length > 0) {
+      return [...bookingLegs].sort((left, right) => (left.legOrder || 0) - (right.legOrder || 0))
+    }
+
+    if (!booking) return []
+    return [{
+      id: "primary",
+      legOrder: 1,
+      flightNumber: booking.flightNumber,
+      departureAirport: booking.departureAirport,
+      arrivalAirport: booking.arrivalAirport,
+      departureTime: booking.departureTime,
+      arrivalTime: booking.arrivalTime,
+      flightDuration: booking.flightDuration,
+    }]
+  }, [booking])
 
   useEffect(() => {
     if (!booking || hasShownStatusToastRef.current || paymentStatusParam) return
@@ -267,10 +287,11 @@ const BookingSuccess = () => {
   const subtitle = cancelled
     ? paymentCallbackError || "Payment was not completed. Your booking is not confirmed."
     : confirmed
-    ? "Your itinerary is confirmed. Download your e-ticket or review the trip details below."
+    ? "Your itinerary is confirmed. Your tickets and trip details are ready."
     : paid
       ? "Payment is verified. Ticket confirmation may take a moment to settle."
       : "Your booking is waiting for payment confirmation."
+  const heroTone = cancelled ? "rose" : confirmed ? "emerald" : "amber"
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
@@ -282,21 +303,27 @@ const BookingSuccess = () => {
           </Button>
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
-            <div className="flex gap-4">
+            <div className={cn(
+              "rounded-2xl border p-6",
+              heroTone === "emerald" && "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/20",
+              heroTone === "amber" && "border-amber-200 bg-amber-50/70 dark:border-amber-900/70 dark:bg-amber-950/20",
+              heroTone === "rose" && "border-rose-200 bg-rose-50/70 dark:border-rose-900/70 dark:bg-rose-950/20",
+            )}>
+              <div className="flex gap-4">
               <span className={cn(
-                "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+                "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm dark:bg-slate-950",
                 cancelled
-                  ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                  ? "border-rose-200 text-rose-600 dark:border-rose-900 dark:text-rose-300"
                   : confirmed
-                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
+                    ? "border-emerald-200 text-emerald-600 dark:border-emerald-900 dark:text-emerald-300"
+                    : "border-amber-200 text-amber-600 dark:border-amber-900 dark:text-amber-300",
               )}>
                 {cancelled ? <AlertCircle className="h-8 w-8" /> : confirmed ? <CheckCircle2 className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">FlightHub checkout</p>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">FlightHub checkout</p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{subtitle}</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
                 {(paymentError || paymentCallbackError) && (
                   <p className={cn(
                     "mt-4 rounded-2xl border px-4 py-3 text-sm",
@@ -308,9 +335,16 @@ const BookingSuccess = () => {
                   </p>
                 )}
               </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <StatusMetric icon={CalendarCheck2} label="Trip" value={legs.length > 1 ? `${legs.length} legs` : "One way"} />
+                <StatusMetric icon={UserRound} label="Travellers" value={`${passengers.length || 1} passenger(s)`} />
+                <StatusMetric icon={CreditCard} label="Paid total" value={formatMoney(total, currency)} />
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/80">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Booking reference</p>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <p className="truncate font-mono text-2xl font-semibold">{booking.bookingReference || "N/A"}</p>
@@ -329,50 +363,28 @@ const BookingSuccess = () => {
 
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold">Trip itinerary</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{booking.airlineName || "Airline"} {booking.flightNumber ? `· ${booking.flightNumber}` : ""}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {booking.airlineName || "Airline"} {legs.length > 1 ? `· ${legs.length} confirmed legs` : booking.flightNumber ? `· ${booking.flightNumber}` : ""}
+                </p>
               </div>
               <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/10 text-primary">
                 <Plane className="mr-1.5 h-3.5 w-3.5" />
-                Non-stop
+                Confirmed itinerary
               </Badge>
             </div>
 
-            <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-                <RoutePoint
-                  align="left"
-                  time={formatDate(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
-                  airport={booking.departureAirport || "Departure airport"}
-                  date={formatDate(booking.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                />
-                <div className="flex w-24 flex-col items-center text-center sm:w-40">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                    {booking.flightDuration || "Direct"}
-                  </span>
-                  <div className="my-3 flex w-full items-center">
-                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
-                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                    <ArrowRight className="h-4 w-4 text-primary" />
-                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
-                  </div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Direct flight</span>
-                </div>
-                <RoutePoint
-                  align="right"
-                  time={formatDate(booking.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
-                  airport={booking.arrivalAirport || "Arrival airport"}
-                  date={formatDate(booking.arrivalTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                />
-              </div>
+            <div className="mt-5 space-y-3">
+              {legs.map((leg, index) => (
+                <ItineraryLegCard key={leg.id || index} leg={leg} index={index} formatDate={formatDate} />
+              ))}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4 flex items-center gap-2">
               <UserRound className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Passengers and seats</h2>
@@ -398,7 +410,7 @@ const BookingSuccess = () => {
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Ticket className="h-5 w-5" />
@@ -434,7 +446,7 @@ const BookingSuccess = () => {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <ShieldCheck className="h-5 w-5" />
@@ -457,9 +469,58 @@ const BookingSuccess = () => {
   )
 }
 
+const StatusMetric = ({ icon: Icon, label, value }) => (
+  <div className="rounded-xl border border-white/70 bg-white/75 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+      <Icon className="h-4 w-4 text-primary" />
+      {label}
+    </div>
+    <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
+  </div>
+)
+
+const ItineraryLegCard = ({ leg, index, formatDate }) => (
+  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+          Leg {index + 1}
+        </p>
+        <p className="mt-1 text-sm font-semibold">{leg.flightNumber || "Flight details"}</p>
+      </div>
+      <Badge variant="outline" className="rounded-full border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        {leg.flightDuration || "Direct"}
+      </Badge>
+    </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <RoutePoint
+        align="left"
+        time={formatDate(leg.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+        airport={leg.departureAirport || "Departure airport"}
+        date={formatDate(leg.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+      />
+      <div className="flex w-20 flex-col items-center text-center sm:w-36">
+        <div className="flex w-full items-center">
+          <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+          <ArrowRight className="h-4 w-4 text-primary" />
+          <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+          <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+        </div>
+      </div>
+      <RoutePoint
+        align="right"
+        time={formatDate(leg.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+        airport={leg.arrivalAirport || "Arrival airport"}
+        date={formatDate(leg.arrivalTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+      />
+    </div>
+  </div>
+)
+
 const RoutePoint = ({ time, airport, date, align }) => (
   <div className={cn("min-w-0", align === "right" && "text-right")}>
-    <p className="text-4xl font-semibold tracking-tight">{time}</p>
+    <p className="text-3xl font-semibold tracking-tight sm:text-4xl">{time}</p>
     <p className="mt-3 truncate text-base font-semibold">{airport}</p>
     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{date}</p>
   </div>

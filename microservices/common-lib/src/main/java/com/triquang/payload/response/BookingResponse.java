@@ -36,6 +36,7 @@ public class BookingResponse {
     private LocalDateTime lastModified;
 
     private List<PassengerResponse> passengers;
+    private List<BookingLegResponse> legs;
     private List<SeatInstanceResponse> seatInstances;
     private PaymentLinkResponse payment;
     private List<FlightCabinAncillaryResponse> ancillaries;

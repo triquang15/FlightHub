@@ -41,18 +41,16 @@ public interface SeatInstanceRepository extends JpaRepository<SeatInstance, Long
     Long countByFlightInstanceCabinIdAndStatus(Long flightInstanceCabinId, SeatAvailabilityStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT si FROM SeatInstance si JOIN FETCH si.seat s JOIN FETCH si.flightInstanceCabin fc WHERE si.id = :seatInstanceId")
+    @Query("SELECT si FROM SeatInstance si WHERE si.id = :seatInstanceId")
     Optional<SeatInstance> findByIdForUpdate(@Param("seatInstanceId") Long seatInstanceId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT si FROM SeatInstance si JOIN FETCH si.seat s JOIN FETCH si.flightInstanceCabin fc WHERE si.id IN :seatInstanceIds")
+    @Query("SELECT si FROM SeatInstance si WHERE si.id IN :seatInstanceIds")
     List<SeatInstance> findAllByIdForUpdate(@Param("seatInstanceIds") List<Long> seatInstanceIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT si FROM SeatInstance si
-            JOIN FETCH si.seat s
-            JOIN FETCH si.flightInstanceCabin fc
             WHERE si.flightInstanceId = :flightInstanceId
               AND si.status = 'HELD'
               AND si.holdExpiresAt IS NOT NULL
