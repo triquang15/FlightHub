@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, ChevronDown, ChevronUp, Mail, AlertCircle, ChevronDownIcon, CheckCircle2, Phone, ShieldCheck } from 'lucide-react';
+import { User, ChevronDown, ChevronUp, Mail, AlertCircle, ChevronDownIcon, CheckCircle2, Phone, ShieldCheck, UserRoundCheck } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useSelector } from 'react-redux';
+import api from '@/utils/api';
 
 const createPassenger = (index) => ({
   id: index,
@@ -49,10 +50,35 @@ const invalidInputClass =
   '!border-rose-400 bg-rose-50/60 focus:!border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:!border-rose-400/60 dark:bg-rose-500/10';
 const fieldErrorText = 'mt-1 text-xs font-medium text-rose-600 dark:text-rose-300';
 
+const getEnvelopeData = (response) => response?.data?.data ?? response?.data;
+
+const normalizeGender = (gender) => {
+  const normalized = String(gender || '').toUpperCase();
+  if (normalized === 'MALE') return 'Male';
+  if (normalized === 'FEMALE') return 'Female';
+  if (normalized === 'OTHER') return 'Other';
+  return '';
+};
+
+const inferTitle = (gender) => {
+  const normalized = normalizeGender(gender);
+  if (normalized === 'Male') return 'Mr';
+  if (normalized === 'Female') return 'Ms';
+  return '';
+};
+
+const savedPassengerLabel = (passenger) => {
+  const name = [passenger.firstName, passenger.lastName].filter(Boolean).join(' ') || passenger.fullName || 'Saved traveler';
+  const document = passenger.passportNumber ? ` · ${passenger.passportNumber}` : '';
+  return `${name}${document}`;
+};
+
 const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, validationAttempted = false }) => {
   const [expandedPassenger, setExpandedPassenger] = useState(0);
   const [dobPopoverOpen, setDobPopoverOpen] = useState({});
   const {userProfile}=useSelector(state=>state.user);
+  const [savedPassengers, setSavedPassengers] = useState([]);
+  const [savedPassengersLoading, setSavedPassengersLoading] = useState(false);
   const [travellerData, setTravellerData] = useState(
     Array.from({ length: passengerCount }, (_, i) => createPassenger(i))
   );
@@ -76,6 +102,35 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
   },[userProfile])
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadSavedPassengers = async () => {
+      try {
+        setSavedPassengersLoading(true);
+        const response = await api.get('/api/passengers/me');
+        const passengers = getEnvelopeData(response);
+        if (!cancelled) {
+          setSavedPassengers(Array.isArray(passengers) ? passengers : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setSavedPassengers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSavedPassengersLoading(false);
+        }
+      }
+    };
+
+    loadSavedPassengers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTravellerData((current) => {
       return Array.from(
@@ -96,6 +151,37 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
       [field]: value
     };
     setTravellerData(updatedData);
+  };
+
+  const applySavedPassenger = (passengerIndex, savedPassengerId) => {
+    const savedPassenger = savedPassengers.find((passenger) => String(passenger.id) === String(savedPassengerId));
+    if (!savedPassenger) return;
+
+    setTravellerData((current) => {
+      const updatedData = [...current];
+      const existingPassenger = updatedData[passengerIndex] || createPassenger(passengerIndex);
+      updatedData[passengerIndex] = {
+        ...existingPassenger,
+        title: existingPassenger.title || inferTitle(savedPassenger.gender),
+        firstName: savedPassenger.firstName || '',
+        lastName: savedPassenger.lastName || '',
+        gender: normalizeGender(savedPassenger.gender),
+        dob: savedPassenger.dateOfBirth || '',
+        passportNumber: savedPassenger.passportNumber || '',
+        nationality: savedPassenger.nationality || existingPassenger.nationality || '',
+        frequentFlyerNumber: savedPassenger.frequentFlyerNumber || '',
+        email: savedPassenger.email || existingPassenger.email || '',
+        phone: savedPassenger.phone || existingPassenger.phone || '',
+      };
+      return updatedData;
+    });
+
+    if (!contactInfo.email && savedPassenger.email) {
+      setContactInfo((current) => ({ ...current, email: savedPassenger.email }));
+    }
+    if (!contactInfo.phone && savedPassenger.phone) {
+      setContactInfo((current) => ({ ...current, phone: savedPassenger.phone.replace(/^\+\d{1,3}/, '') }));
+    }
   };
 
   const handleContactInfoChange = (field, value) => {
@@ -240,6 +326,38 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
                     <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                     Travel document name
                   </div>
+                  {(savedPassengersLoading || savedPassengers.length > 0) && (
+                    <div className="mb-5 rounded-md border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+                            <UserRoundCheck className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950 dark:text-white">Saved travelers</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Autofill this passenger from your previous bookings.
+                            </p>
+                          </div>
+                        </div>
+                        <Select
+                          disabled={savedPassengersLoading || savedPassengers.length === 0}
+                          onValueChange={(value) => applySavedPassenger(index, value)}
+                        >
+                          <SelectTrigger className="w-full rounded-md sm:w-72">
+                            <SelectValue placeholder={savedPassengersLoading ? 'Loading travelers...' : 'Use saved traveler'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {savedPassengers.map((savedPassenger) => (
+                              <SelectItem key={savedPassenger.id} value={String(savedPassenger.id)}>
+                                {savedPassengerLabel(savedPassenger)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">

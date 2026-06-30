@@ -54,9 +54,24 @@ public class PassengerController {
 		@ApiResponse(responseCode = "400", description = "Invalid search criteria")
 	})
 	@PostMapping("/find")
-	public ResponseEntity<?> findExistingPassenger(@RequestBody PassengerRequest request) {
+	public ResponseEntity<?> findExistingPassenger(@RequestBody PassengerRequest request,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
-		return ResponseUtil.ok(passengerService.findExistingPassenger(request));
+		return ResponseUtil.ok(passengerService.findExistingPassenger(request, userId));
+	}
+
+	// =========================
+	// MY SAVED PASSENGERS
+	// =========================
+	@Operation(summary = "Get saved passengers", description = "Returns active passenger profiles saved by the authenticated user.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Passenger profiles returned"),
+		@ApiResponse(responseCode = "401", description = "Authentication required")
+	})
+	@GetMapping("/me")
+	public ResponseEntity<?> getSavedPassengers(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+
+		return ResponseUtil.ok(passengerService.getSavedPassengers(userId));
 	}
 
 	// =========================

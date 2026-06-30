@@ -18,10 +18,12 @@ public interface PassengerRepository extends JpaRepository<Passenger, Long> {
 
     List<Passenger> findByPrimaryUserId(Long primaryUserId);
 
-    Optional<Passenger> findByEmailAndPhoneAndDateOfBirth(
-            String email, String phone, LocalDate dateOfBirth);
+    List<Passenger> findByPrimaryUserIdAndIsActiveTrueOrderByUpdatedAtDesc(Long primaryUserId);
 
-    Optional<Passenger> findByPassportNumber(String passportNumber);
+    Optional<Passenger> findByPrimaryUserIdAndEmailAndPhoneAndDateOfBirth(
+            Long primaryUserId, String email, String phone, LocalDate dateOfBirth);
+
+    Optional<Passenger> findByPrimaryUserIdAndPassportNumber(Long primaryUserId, String passportNumber);
 
     List<Passenger> findByEmail(String email);
 
