@@ -55,6 +55,23 @@ const decodeSearchFilter = (value) => {
   }
 };
 
+const decodeJsonParam = (value) => {
+  if (!value) return null;
+  try {
+    return JSON.parse(atob(value));
+  } catch {
+    return null;
+  }
+};
+
+const readStoredMultiCityDraft = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem("multiCityDraft") || "null");
+  } catch {
+    return null;
+  }
+};
+
 const getSelectedTravelProtection = (payload) => {
   if (Array.isArray(payload)) return payload[0] || null;
   return payload || null;
@@ -130,14 +147,33 @@ const BookingReview = () => {
   const [travellerValidationAttempted, setTravellerValidationAttempted] = useState(false);
   const [returnFlightInstance, setReturnFlightInstance] = useState(null);
   const [returnFare, setReturnFare] = useState(null);
+  const [multiCityFlightInstances, setMultiCityFlightInstances] = useState([]);
+  const [multiCityFares, setMultiCityFares] = useState([]);
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
   const bookingParams = useMemo(() => {
     const storedBookingData = readStoredBookingData();
+    const storedMultiCityDraft = readStoredMultiCityDraft();
     const decodedFilter = decodeSearchFilter(searchParams.get("xflt"));
+    const decodedMultiLegs = decodeJsonParam(searchParams.get("multiLegs"));
     const storedFare = storedBookingData?.fare || {};
     const storedCabin = storedBookingData?.flight?.selectedCabinClass || {};
+    const storedMultiLegs = Array.isArray(storedMultiCityDraft?.legs)
+      ? storedMultiCityDraft.legs.map((legSelection, index) => ({
+          legOrder: index + 1,
+          flightId: legSelection?.queryParams?.flightId,
+          flightInstanceId: legSelection?.queryParams?.flightInstanceId,
+          fareId: legSelection?.queryParams?.fareId,
+          cabinClass: legSelection?.queryParams?.cabinClass,
+          cabinClassId: legSelection?.queryParams?.cabinClassId,
+          selectedFare: legSelection?.selectedFare,
+          flight: legSelection?.flight,
+        }))
+      : [];
+    const multiLegs = Array.isArray(decodedMultiLegs) && decodedMultiLegs.length
+      ? decodedMultiLegs
+      : storedMultiLegs;
     const passengerCount =
       parsePositiveInt(searchParams.get("pax")) ||
       parsePositiveInt(searchParams.get("passengers")) ||
@@ -160,6 +196,7 @@ const BookingReview = () => {
       returnFareId: searchParams.get("returnFareId"),
       returnCabinClass: searchParams.get("returnCabinClass"),
       returnCabinClassId: searchParams.get("returnCabinClassId"),
+      multiLegs,
     };
   }, [searchParams]);
 
@@ -177,6 +214,7 @@ const BookingReview = () => {
     returnFareId,
     returnCabinClass,
     returnCabinClassId,
+    multiLegs,
   } = bookingParams;
   const travelProtectionPackage = getSelectedTravelProtection(
     ancillariesByType?.TRAVEL_PROTECTION,
@@ -187,11 +225,24 @@ const BookingReview = () => {
     0,
   );
   const isRoundTrip = tripType === "ROUND_TRIP" && Boolean(returnFlightInstanceId);
+  const isMultiCity = tripType === "MULTI_CITY" && Array.isArray(multiLegs) && multiLegs.length > 1;
   const itineraryFlightData = useMemo(
-    () => (isRoundTrip ? [flightInstance, returnFlightInstance].filter(Boolean) : flightInstance),
-    [flightInstance, isRoundTrip, returnFlightInstance],
+    () => {
+      if (isMultiCity) {
+        return [flightInstance, ...multiCityFlightInstances].filter(Boolean);
+      }
+      return isRoundTrip ? [flightInstance, returnFlightInstance].filter(Boolean) : flightInstance;
+    },
+    [flightInstance, isMultiCity, isRoundTrip, multiCityFlightInstances, returnFlightInstance],
   );
   const fareItems = useMemo(() => {
+    if (isMultiCity) {
+      return multiLegs.map((leg, index) => ({
+        label: `Flight ${index + 1} fare`,
+        fare: index === 0 ? (selectedFare || leg.selectedFare) : (multiCityFares[index - 1] || leg.selectedFare),
+      })).filter((item) => item.fare);
+    }
+
     const items = [];
     if (selectedFare) {
       items.push({ label: isRoundTrip ? "Outbound fare" : "Flight fare", fare: selectedFare });
@@ -200,8 +251,10 @@ const BookingReview = () => {
       items.push({ label: "Return fare", fare: returnFare });
     }
     return items;
-  }, [isRoundTrip, returnFare, selectedFare]);
-  const routeSummary = isRoundTrip
+  }, [isMultiCity, isRoundTrip, multiCityFares, multiLegs, returnFare, selectedFare]);
+  const routeSummary = isMultiCity
+    ? `${multiLegs.length} flight itinerary`
+    : isRoundTrip
     ? `${flightInstance?.departureAirport?.iataCode || flightInstance?.flight?.departureAirport?.iataCode || "Outbound"} + return`
     : flightInstance
       ? `${flightInstance.departureAirport?.iataCode || flightInstance.flight?.departureAirport?.iataCode || "From"} to ${
@@ -343,6 +396,44 @@ const BookingReview = () => {
     };
   }, [isRoundTrip, returnFareId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isMultiCity) {
+      setMultiCityFares([]);
+      return undefined;
+    }
+
+    const loadMultiCityFares = async () => {
+      const extraLegs = multiLegs.slice(1);
+      const fares = await Promise.all(
+        extraLegs.map(async (leg) => {
+          if (leg.selectedFare) return leg.selectedFare;
+          if (!leg.fareId) return null;
+          try {
+            const response = await api.get(`/api/fares/${leg.fareId}`);
+            return unwrapApiData(response);
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setMultiCityFares(fares);
+        if (fares.some((fare) => !fare)) {
+          toast.error("Could not load all multi-city fare details. Please select the itinerary again.");
+        }
+      }
+    };
+
+    loadMultiCityFares();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMultiCity, multiLegs]);
+
   // Fetch flight instance data when flightInstanceId is available
   useEffect(() => {
     if (flightInstanceId) {
@@ -376,6 +467,44 @@ const BookingReview = () => {
       cancelled = true;
     };
   }, [isRoundTrip, returnFlightInstanceId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isMultiCity) {
+      setMultiCityFlightInstances([]);
+      return undefined;
+    }
+
+    const loadMultiCityFlightInstances = async () => {
+      const extraLegs = multiLegs.slice(1);
+      const flightInstances = await Promise.all(
+        extraLegs.map(async (leg) => {
+          if (leg.flight) return leg.flight;
+          if (!leg.flightInstanceId) return null;
+          try {
+            const response = await api.get(`/api/flight-instances/${leg.flightInstanceId}`);
+            return unwrapApiData(response);
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setMultiCityFlightInstances(flightInstances.filter(Boolean));
+        if (flightInstances.some((instance) => !instance)) {
+          toast.error("Could not load all multi-city flight details. Please select the itinerary again.");
+        }
+      }
+    };
+
+    loadMultiCityFlightInstances();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMultiCity, multiLegs]);
 
   // Fetch ancillaries by type when flightId and cabinClassId are available
   useEffect(() => {
@@ -416,6 +545,16 @@ const BookingReview = () => {
 
     if (isRoundTrip && (!returnFlightId || !returnFlightInstanceId || !returnFareId || !returnFare)) {
       toast.error("Missing return flight or fare information. Please go back and select the return flight again.");
+      return;
+    }
+
+    if (isMultiCity && multiLegs.length < 2) {
+      toast.error("Missing multi-city flight information. Please go back and select every flight again.");
+      return;
+    }
+
+    if (isMultiCity && fareItems.length !== multiLegs.length) {
+      toast.error("Missing multi-city fare information. Please go back and select every fare again.");
       return;
     }
 
@@ -547,34 +686,46 @@ const BookingReview = () => {
     };
 
     // Backend API format booking data
+    const bookingLegs = isMultiCity
+      ? multiLegs.map((leg, index) => ({
+          legOrder: index + 1,
+          flightId: parseInt(leg.flightId) || null,
+          flightInstanceId: parseInt(leg.flightInstanceId) || null,
+          fareId: parseInt(leg.fareId) || null,
+          cabinClass: leg.cabinClass || cabinClass,
+          seatInstanceIds: index === 0 ? selectedSeats.filter(Boolean).map((seat) => seat.id) : [],
+          seatHoldToken: index === 0 && selectedSeatCount > 0 ? seatHold?.holdToken : null,
+        }))
+      : [
+          {
+            legOrder: 1,
+            flightId: parseInt(flightId) || null,
+            flightInstanceId: parseInt(flightInstanceId) || null,
+            fareId: parseInt(fareId) || null,
+            cabinClass,
+            seatInstanceIds: selectedSeats.filter(Boolean).map((seat) => seat.id),
+            seatHoldToken: selectedSeatCount > 0 ? seatHold?.holdToken : null,
+          },
+          ...(tripType === "ROUND_TRIP" && returnFlightId && returnFlightInstanceId && returnFareId
+            ? [{
+                legOrder: 2,
+                flightId: parseInt(returnFlightId) || null,
+                flightInstanceId: parseInt(returnFlightInstanceId) || null,
+                fareId: parseInt(returnFareId) || null,
+                cabinClass: returnCabinClass || cabinClass,
+                seatInstanceIds: [],
+                seatHoldToken: null,
+              }]
+            : []),
+        ];
+
     const bookingDataForAPI = {
       flightId: parseInt(flightId) || null,
       flightInstanceId: parseInt(flightInstanceId) || null,
       cabinClass,
       tripType,
       fareId: parseInt(fareId) || null,
-      legs: [
-        {
-          legOrder: 1,
-          flightId: parseInt(flightId) || null,
-          flightInstanceId: parseInt(flightInstanceId) || null,
-          fareId: parseInt(fareId) || null,
-          cabinClass,
-          seatInstanceIds: selectedSeats.filter(Boolean).map((seat) => seat.id),
-          seatHoldToken: selectedSeatCount > 0 ? seatHold?.holdToken : null,
-        },
-        ...(tripType === "ROUND_TRIP" && returnFlightId && returnFlightInstanceId && returnFareId
-          ? [{
-              legOrder: 2,
-              flightId: parseInt(returnFlightId) || null,
-              flightInstanceId: parseInt(returnFlightInstanceId) || null,
-              fareId: parseInt(returnFareId) || null,
-              cabinClass: returnCabinClass || cabinClass,
-              seatInstanceIds: [],
-              seatHoldToken: null,
-            }]
-          : []),
-      ],
+      legs: bookingLegs,
       passengers: passengers.map((t, index) => ({
         firstName: t.firstName || "",
         lastName: t.lastName || "",
@@ -765,7 +916,7 @@ const BookingReview = () => {
                   cabinClassId={selectedFare?.cabinClassId || cabinClassId}
                   cabinClass={cabinClass}
                   tripType={tripType}
-                  routeLabel={isRoundTrip ? "outbound flight" : "this flight"}
+                  routeLabel={isRoundTrip || isMultiCity ? "first flight" : "this flight"}
                 />
 
                 <BaggageSelection

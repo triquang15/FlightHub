@@ -40,6 +40,10 @@ const getApiError = (error, fallback) =>
   error?.message ||
   fallback;
 
+const encodeJsonParam = (value) => btoa(JSON.stringify(value));
+
+const normalizeLegDate = (date) => formatSearchDateParam(date);
+
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -60,10 +64,32 @@ const SearchResults = () => {
   const [returnError, setReturnError] = React.useState("");
   const [selectedOutbound, setSelectedOutbound] = React.useState(null);
   const [selectedReturn, setSelectedReturn] = React.useState(null);
+  const [activeMultiCityLegIndex, setActiveMultiCityLegIndex] = React.useState(0);
+  const [selectedMultiCityLegs, setSelectedMultiCityLegs] = React.useState([]);
+  const [multiCityResults, setMultiCityResults] = React.useState({});
+  const [multiCityLoading, setMultiCityLoading] = React.useState(false);
+  const [multiCityError, setMultiCityError] = React.useState("");
 
   const departureDate = formatSearchDateParam(searchData.departureDate);
   const returnDate = formatSearchDateParam(searchData.returnDate);
   const isRoundTrip = searchData.tripType === "roundTrip";
+  const isMultiCity = searchData.tripType === "multiCity";
+  const multiCitySegments = React.useMemo(() => {
+    if (Array.isArray(searchData.segments) && searchData.segments.length > 0) {
+      return searchData.segments;
+    }
+
+    if (searchData.departureAirportId && searchData.arrivalAirportId && searchData.departureDate) {
+      return [{
+        departureAirportId: searchData.departureAirportId,
+        arrivalAirportId: searchData.arrivalAirportId,
+        departureDate: searchData.departureDate,
+      }];
+    }
+
+    return [];
+  }, [searchData.arrivalAirportId, searchData.departureAirportId, searchData.departureDate, searchData.segments]);
+  const activeMultiCitySegment = multiCitySegments[activeMultiCityLegIndex];
 
   const buildSearchParamsForLeg = React.useCallback(
     ({ departureAirportId, arrivalAirportId, legDate }) => {
@@ -102,7 +128,7 @@ const SearchResults = () => {
   }, [dispatch]);
 
   React.useEffect(() => {
-    if (!searchData.departureAirportId || !searchData.arrivalAirportId || !departureDate) {
+    if (isMultiCity || !searchData.departureAirportId || !searchData.arrivalAirportId || !departureDate) {
       return undefined;
     }
 
@@ -123,11 +149,16 @@ const SearchResults = () => {
     dispatch,
     searchData.arrivalAirportId,
     searchData.departureAirportId,
+    isMultiCity,
   ]);
 
   React.useEffect(() => {
     setSelectedOutbound(null);
     setSelectedReturn(null);
+    setSelectedMultiCityLegs([]);
+    setActiveMultiCityLegIndex(0);
+    setMultiCityResults({});
+    setMultiCityError("");
   }, [
     departureDate,
     returnDate,
@@ -136,6 +167,7 @@ const SearchResults = () => {
     searchData.departureAirportId,
     searchData.passengers,
     searchData.tripType,
+    searchData.segments,
   ]);
 
   React.useEffect(() => {
@@ -181,6 +213,53 @@ const SearchResults = () => {
     searchData.departureAirportId,
   ]);
 
+  React.useEffect(() => {
+    if (!isMultiCity || !activeMultiCitySegment) {
+      setMultiCityLoading(false);
+      setMultiCityError("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      const legKey = String(activeMultiCityLegIndex);
+      if (multiCityResults[legKey]) return;
+
+      setMultiCityLoading(true);
+      setMultiCityError("");
+
+      try {
+        const params = buildSearchParamsForLeg({
+          departureAirportId: activeMultiCitySegment.departureAirportId,
+          arrivalAirportId: activeMultiCitySegment.arrivalAirportId,
+          legDate: normalizeLegDate(activeMultiCitySegment.departureDate),
+        });
+        const response = await api.get("/api/flights/search", { params });
+        const result = unwrapApiData(response);
+        if (!cancelled) {
+          setMultiCityResults((current) => ({ ...current, [legKey]: result }));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMultiCityError(getApiError(err, "Unable to search this multi-city leg right now"));
+        }
+      } finally {
+        if (!cancelled) setMultiCityLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    activeMultiCityLegIndex,
+    activeMultiCitySegment,
+    buildSearchParamsForLeg,
+    isMultiCity,
+    multiCityResults,
+  ]);
+
   const departureAirport = airports.find(
     (airport) => airport.id === searchData.departureAirportId,
   );
@@ -223,6 +302,14 @@ const SearchResults = () => {
   const visibleReturnFlights = React.useMemo(
     () => sortFlights(returnResultContent),
     [returnResultContent, sortFlights],
+  );
+  const activeMultiCityResultContent = React.useMemo(() => {
+    const result = multiCityResults[String(activeMultiCityLegIndex)];
+    return Array.isArray(result?.content) ? result.content : [];
+  }, [activeMultiCityLegIndex, multiCityResults]);
+  const visibleMultiCityFlights = React.useMemo(
+    () => sortFlights(activeMultiCityResultContent),
+    [activeMultiCityResultContent, sortFlights],
   );
   const isReturnSelectionStage = isRoundTrip && Boolean(selectedOutbound);
 
@@ -280,6 +367,55 @@ const SearchResults = () => {
     return false;
   };
 
+  const handleMultiCityFareSelected = (selection) => {
+    const nextSelections = [...selectedMultiCityLegs];
+    nextSelections[activeMultiCityLegIndex] = selection;
+    setSelectedMultiCityLegs(nextSelections);
+
+    if (activeMultiCityLegIndex < multiCitySegments.length - 1) {
+      setActiveMultiCityLegIndex((index) => index + 1);
+      toast.success(`Flight ${activeMultiCityLegIndex + 1} selected. Choose flight ${activeMultiCityLegIndex + 2} next.`);
+      return false;
+    }
+
+    const completedSelections = nextSelections.filter(Boolean);
+    if (completedSelections.length !== multiCitySegments.length) {
+      toast.error("Please select a fare for every multi-city flight.");
+      return false;
+    }
+
+    const firstSelection = completedSelections[0];
+    const legs = completedSelections.map((legSelection, index) => ({
+      legOrder: index + 1,
+      flightId: legSelection.queryParams.flightId,
+      flightInstanceId: legSelection.queryParams.flightInstanceId,
+      fareId: legSelection.queryParams.fareId,
+      cabinClass: legSelection.queryParams.cabinClass,
+      cabinClassId: legSelection.queryParams.cabinClassId,
+    }));
+
+    const multiCityDraft = {
+      tripType: "multiCity",
+      searchData,
+      legs: completedSelections,
+      numberOfTravellers: searchData.passengers,
+      createdAt: new Date().toISOString(),
+    };
+
+    sessionStorage.setItem("multiCityDraft", JSON.stringify(multiCityDraft));
+    sessionStorage.setItem("bookingData", JSON.stringify({
+      ...firstSelection.bookingData,
+      tripType: "multiCity",
+      multiCity: multiCityDraft,
+    }));
+
+    const params = new URLSearchParams(firstSelection.queryParams);
+    params.set("tripType", "MULTI_CITY");
+    params.set("multiLegs", encodeJsonParam(legs));
+    navigate(`/booking-review?${params.toString()}`);
+    return false;
+  };
+
   return (
     <main className="min-h-screen bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
@@ -297,12 +433,12 @@ const SearchResults = () => {
           onModifySearch={modifySearch}
         />
 
-        {loading ? (
+        {!isMultiCity && loading ? (
           <div className="mt-5 grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
             <div className="hidden h-96 rounded-md border bg-card lg:block" />
             <SearchResultsLoading count={3} />
           </div>
-        ) : error ? (
+        ) : !isMultiCity && error ? (
           <section className="mt-5 flex min-h-96 items-center justify-center rounded-md border bg-card px-6 py-16 text-center">
             <div className="max-w-md">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
@@ -316,7 +452,7 @@ const SearchResults = () => {
               </div>
             </div>
           </section>
-        ) : visibleFlights.length === 0 ? (
+        ) : !isMultiCity && visibleFlights.length === 0 ? (
           <NoResultsFound
             className="mt-5 min-h-96 rounded-md border bg-card px-6"
             hasActiveFilters={hasActiveFilters}
@@ -353,6 +489,73 @@ const SearchResults = () => {
               </div>
 
               <section className="min-w-0 space-y-4">
+                {isMultiCity && (
+                  <div className="rounded-lg border bg-card p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Multi-city
+                        </p>
+                        <h2 className="mt-1 text-lg font-semibold">
+                          Choose flight {activeMultiCityLegIndex + 1} of {multiCitySegments.length}
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Select one fare for each flight. Checkout will create a single multi-leg booking.
+                        </p>
+                      </div>
+                      {activeMultiCityLegIndex > 0 && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveMultiCityLegIndex((index) => Math.max(0, index - 1))}
+                          className="gap-2"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Previous flight
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {multiCitySegments.map((segment, index) => {
+                        const fromAirport = airports.find((airport) => airport.id === segment.departureAirportId);
+                        const toAirport = airports.find((airport) => airport.id === segment.arrivalAirportId);
+                        const selectedLeg = selectedMultiCityLegs[index];
+                        const isActive = activeMultiCityLegIndex === index;
+
+                        return (
+                          <button
+                            key={`${segment.departureAirportId}-${segment.arrivalAirportId}-${index}`}
+                            type="button"
+                            onClick={() => setActiveMultiCityLegIndex(index)}
+                            className={cn(
+                              "rounded-md border px-3 py-3 text-left transition",
+                              isActive
+                                ? "border-primary bg-primary/10"
+                                : selectedLeg
+                                  ? "border-emerald-500/30 bg-emerald-500/10"
+                                  : "bg-background hover:border-primary/40",
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Flight {index + 1}
+                              </span>
+                              {selectedLeg && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                            </div>
+                            <p className="mt-1 font-semibold">
+                              {fromAirport?.iataCode || segment.departureAirportId} to {toAirport?.iataCode || segment.arrivalAirportId}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {formatSearchDateParam(segment.departureDate)}
+                              {selectedLeg ? ` · ${selectedLeg.flight?.flightNumber || "Selected"}` : ""}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {isRoundTrip && (
                   <div className="rounded-lg border bg-card p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -414,28 +617,76 @@ const SearchResults = () => {
                   sortOrder={sortOrder}
                   onSortChange={setSortBy}
                   onSortOrderChange={setSortOrder}
-                  resultsCount={isReturnSelectionStage ? visibleReturnFlights.length : visibleFlights.length}
+                  resultsCount={
+                    isMultiCity
+                      ? visibleMultiCityFlights.length
+                      : isReturnSelectionStage
+                        ? visibleReturnFlights.length
+                        : visibleFlights.length
+                  }
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                 />
 
                 {!isRoundTrip || !selectedOutbound ? (
-                  <div
-                    className={cn(
-                      viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
-                    )}
-                  >
-                    {visibleFlights.map((flight) => (
-                      <ModernFlightCard
-                        key={flight.id}
-                        flight={flight}
-                        cabinClass={searchData.cabinClass}
-                        viewMode={viewMode}
-                        chooseLabel={isRoundTrip ? "Select departure" : "Choose fare"}
-                        onFareSelected={isRoundTrip ? handleOutboundFareSelected : undefined}
+                  isMultiCity ? (
+                    multiCityLoading ? (
+                      <SearchResultsLoading count={3} />
+                    ) : multiCityError ? (
+                      <section className="flex min-h-80 items-center justify-center rounded-md border bg-card px-6 py-14 text-center">
+                        <div className="max-w-md">
+                          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                          </span>
+                          <h3 className="mt-5 text-lg font-semibold">We could not load this flight</h3>
+                          <p className="mt-2 text-sm text-muted-foreground">{multiCityError}</p>
+                        </div>
+                      </section>
+                    ) : visibleMultiCityFlights.length === 0 ? (
+                      <NoResultsFound
+                        className="min-h-80 rounded-md border bg-card px-6"
+                        hasActiveFilters={hasActiveFilters}
+                        directOnly={searchData.directOnly}
+                        onClearFilters={() => setFilters(createDefaultFlightFilters())}
+                        onIncludeConnections={includeConnections}
+                        onModifySearch={modifySearch}
                       />
-                    ))}
-                  </div>
+                    ) : (
+                      <div
+                        className={cn(
+                          viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
+                        )}
+                      >
+                        {visibleMultiCityFlights.map((flight) => (
+                          <ModernFlightCard
+                            key={flight.id}
+                            flight={flight}
+                            cabinClass={searchData.cabinClass}
+                            viewMode={viewMode}
+                            chooseLabel={`Select flight ${activeMultiCityLegIndex + 1}`}
+                            onFareSelected={handleMultiCityFareSelected}
+                          />
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <div
+                      className={cn(
+                        viewMode === "grid" ? "grid gap-4 xl:grid-cols-2" : "space-y-4",
+                      )}
+                    >
+                      {visibleFlights.map((flight) => (
+                        <ModernFlightCard
+                          key={flight.id}
+                          flight={flight}
+                          cabinClass={searchData.cabinClass}
+                          viewMode={viewMode}
+                          chooseLabel={isRoundTrip ? "Select departure" : "Choose fare"}
+                          onFareSelected={isRoundTrip ? handleOutboundFareSelected : undefined}
+                        />
+                      ))}
+                    </div>
+                  )
                 ) : returnLoading ? (
                   <SearchResultsLoading count={3} />
                 ) : returnError ? (

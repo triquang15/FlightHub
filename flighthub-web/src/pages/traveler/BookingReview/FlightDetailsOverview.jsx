@@ -58,7 +58,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
           <FlightDetailsOverview
             key={leg.id || leg.flightInstanceId || index}
             flightData={leg}
-            legLabel={index === 0 ? "Outbound flight" : "Return flight"}
+            legLabel={legs.length > 2 ? `Flight ${index + 1}` : index === 0 ? "Outbound flight" : "Return flight"}
           />
         ))}
       </div>
