@@ -56,7 +56,7 @@ export const updateBooking = createAsyncThunk(
     try {
       const res = await api.put(`${API_URL}/${id}`, data);
       console.log("✅ updateBooking success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ updateBooking error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to update booking");
@@ -98,7 +98,7 @@ export const getBookingsByAirline = createAsyncThunk(
 
       const res = await api.get(url);
       console.log("✅ getBookingsByAirline success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getBookingsByAirline error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch bookings by airline");
@@ -145,7 +145,7 @@ export const cancelBooking = createAsyncThunk(
     try {
       const res = await api.patch(`${API_URL}/${id}/cancel`, null);
       console.log("✅ cancelBooking success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ cancelBooking error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to cancel booking");

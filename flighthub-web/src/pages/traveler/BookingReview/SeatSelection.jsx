@@ -23,6 +23,8 @@ const SeatSelection = ({
   flightInstanceId,
   cabinClassId,
   cabinClass,
+  tripType,
+  routeLabel = 'Outbound flight',
 }) => {
   const dispatch = useDispatch();
   const [showSeatMap, setShowSeatMap] = useState(false);
@@ -354,6 +356,22 @@ const SeatSelection = ({
         </div>
       </div>
 
+      {tripType === 'ROUND_TRIP' && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-500/10">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                Seat selection applies to {routeLabel}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-100/80">
+                Return-flight seat selection is not available in this checkout yet. You can continue booking and select return seats later during check-in.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 space-y-3">
         {Array.from({ length: passengerCount }).map((_, index) => {
           const passengerSeat = selectedSeats[index];
@@ -509,7 +527,7 @@ const SeatSelection = ({
                       <Plane className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
                       <div>
                         <p className="text-sm font-semibold text-slate-950 dark:text-white">
-                          {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft layout'}
+                          {routeLabel} · {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft layout'}
                         </p>
                         <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                           {totalRows} rows · up to {maxSeatsPerRow} seats per row · {visibleSeats.filter(isSeatAvailable).length} available

@@ -116,6 +116,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setTotalAmount(BigDecimal.ZERO);
 
         List<Long> seatInstanceIds = extractSeatInstanceIds(request);
+        validateSeatAssignmentScope(legRequests, seatInstanceIds);
         booking.setSeatInstanceIds(seatInstanceIds);
         booking.getLegs().clear();
         for (BookingLegRequest legRequest : legRequests) {
@@ -396,7 +397,12 @@ public class BookingServiceImpl implements BookingService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
-        paymentClient.cancelPayment(booking.getId(), userId);
+        try {
+            paymentClient.cancelPayment(booking.getId(), userId);
+        } catch (Exception cleanupError) {
+            log.warn("Could not cancel payment for booking {} during user cancellation: {}",
+                    booking.getBookingReference(), cleanupError.getMessage());
+        }
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setLastModified(LocalDateTime.now());
@@ -529,6 +535,37 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return seatInstanceIds;
+    }
+
+    private void validateSeatAssignmentScope(List<BookingLegRequest> legs, List<Long> passengerSeatInstanceIds) {
+        List<Long> passengerSeatIds = passengerSeatInstanceIds == null
+                ? Collections.emptyList()
+                : passengerSeatInstanceIds;
+        if (legs == null || legs.isEmpty()) {
+            if (!passengerSeatIds.isEmpty()) {
+                throw new BaseException(ErrorCode.INVALID_INPUT);
+            }
+            return;
+        }
+
+        List<BookingLegRequest> sortedLegs = legs.stream()
+                .sorted(Comparator.comparing(leg -> leg.getLegOrder() == null ? Integer.MAX_VALUE : leg.getLegOrder()))
+                .collect(Collectors.toList());
+        BookingLegRequest primaryLeg = sortedLegs.get(0);
+        List<Long> primarySeatIds = primaryLeg.getSeatInstanceIds() == null
+                ? Collections.emptyList()
+                : primaryLeg.getSeatInstanceIds();
+
+        if (!Objects.equals(primarySeatIds, passengerSeatIds)) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        boolean nonPrimarySeatsRequested = sortedLegs.stream()
+                .skip(1)
+                .anyMatch(leg -> leg.getSeatInstanceIds() != null && !leg.getSeatInstanceIds().isEmpty());
+        if (nonPrimarySeatsRequested) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
     }
 
     private boolean hasItems(List<Long> ids) {

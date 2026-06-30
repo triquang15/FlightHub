@@ -190,6 +190,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         if (verification == null || !verification.completed()) {
+            failPayment(payment, "Provider checkout was not completed");
             throw new BaseException(ErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 

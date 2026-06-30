@@ -165,10 +165,45 @@ const Ticket = () => {
   const legs = getBookingLegs(booking)
   const firstLeg = legs[0] || {}
   const lastLeg = legs[legs.length - 1] || firstLeg
+  const ticketReady = ["CONFIRMED", "COMPLETED"].includes(booking.status)
   const baseFare = booking.fareBaseFare || 0
   const taxes = booking.fareTaxesAndFees || 0
   const fees = booking.fareAirlineFees || 0
   const total = booking.totalAmount || baseFare + taxes + fees
+
+  if (!ticketReady) {
+    const cancelled = booking.status === "CANCELLED"
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <span className={cn(
+            "mx-auto flex h-14 w-14 items-center justify-center rounded-2xl",
+            cancelled
+              ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
+              : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300",
+          )}>
+            <AlertCircle className="h-7 w-7" />
+          </span>
+          <h1 className="mt-5 text-xl font-semibold">
+            {cancelled ? "Ticket unavailable" : "Ticket not ready yet"}
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {cancelled
+              ? "This booking was cancelled, so an e-ticket cannot be issued."
+              : "Your booking is still waiting for payment confirmation. The e-ticket will be available after the booking is confirmed."}
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <Button onClick={() => navigate(`/booking-success/${booking.id}`)} className="rounded-xl">
+              Booking details
+            </Button>
+            <Button onClick={() => navigate("/bookings")} variant="outline" className="rounded-xl">
+              My bookings
+            </Button>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">

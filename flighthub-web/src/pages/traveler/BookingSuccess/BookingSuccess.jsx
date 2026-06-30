@@ -21,12 +21,23 @@ import {
   UserRound,
 } from "lucide-react"
 import { toast } from "sonner"
-import { getBookingById } from "@/Redux/booking/bookingThunk"
+import { cancelBooking, getBookingById } from "@/Redux/booking/bookingThunk"
 import { verifyPayment } from "@/Redux/payment/paymentThunk"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { generateTicketPDF } from "@/pages/traveler/Ticket/TicketPDF"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -72,6 +83,7 @@ const BookingSuccess = () => {
   const { loading: paymentLoading, error: paymentError } = useSelector((state) => state.payment)
   const [syncingConfirmation, setSyncingConfirmation] = useState(false)
   const [downloadingPDF, setDownloadingPDF] = useState(false)
+  const [cancellingBooking, setCancellingBooking] = useState(false)
   const [paymentCallbackError, setPaymentCallbackError] = useState(null)
   const hasProcessedPaymentRef = useRef(false)
   const hasShownStatusToastRef = useRef(false)
@@ -99,12 +111,17 @@ const BookingSuccess = () => {
     if (isPaymentCancelled) {
       hasProcessedPaymentRef.current = true
       sessionStorage.removeItem("paymentDetails")
-      setPaymentCallbackError("Payment was cancelled. Your booking is not confirmed yet.")
-      toast.error("Payment cancelled. You can review the booking and try again.", {
+      setPaymentCallbackError("Payment was cancelled. Your booking has not been confirmed.")
+      toast.error("Payment cancelled. Held seats will be released.", {
         id: "payment-callback",
         duration: 5000,
       })
-      await dispatch(getBookingById(bookingId))
+      try {
+        await dispatch(cancelBooking(bookingId)).unwrap()
+      } catch (cancelError) {
+        console.error("Could not cancel booking after payment cancellation:", cancelError)
+        await dispatch(getBookingById(bookingId))
+      }
       return
     }
 
@@ -167,6 +184,20 @@ const BookingSuccess = () => {
       toast.error("Could not download the e-ticket")
     } finally {
       setDownloadingPDF(false)
+    }
+  }
+
+  const handleCancelPendingBooking = async () => {
+    if (!booking?.id) return
+    try {
+      setCancellingBooking(true)
+      await dispatch(cancelBooking(booking.id)).unwrap()
+      setPaymentCallbackError("Payment was cancelled. Your booking has not been confirmed.")
+      toast.success("Booking cancelled. Any held seats were released.")
+    } catch (cancelError) {
+      toast.error(cancelError || "Could not cancel this booking")
+    } finally {
+      setCancellingBooking(false)
     }
   }
 
@@ -283,6 +314,7 @@ const BookingSuccess = () => {
   const confirmed = booking.status === "CONFIRMED"
   const paid = ["SUCCESS", "COMPLETED", "PAID"].includes(booking.paymentStatus)
   const cancelled = booking.status === "CANCELLED" || Boolean(paymentCallbackError)
+  const pending = booking.status === "PENDING" && !cancelled
   const title = cancelled ? "Payment not completed" : confirmed ? "Booking confirmed" : paid ? "Payment verified" : "Booking pending"
   const subtitle = cancelled
     ? paymentCallbackError || "Payment was not completed. Your booking is not confirmed."
@@ -340,7 +372,7 @@ const BookingSuccess = () => {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <StatusMetric icon={CalendarCheck2} label="Trip" value={legs.length > 1 ? `${legs.length} legs` : "One way"} />
                 <StatusMetric icon={UserRound} label="Travellers" value={`${passengers.length || 1} passenger(s)`} />
-                <StatusMetric icon={CreditCard} label="Paid total" value={formatMoney(total, currency)} />
+                <StatusMetric icon={CreditCard} label={confirmed || paid ? "Paid total" : "Trip total"} value={formatMoney(total, currency)} />
               </div>
             </div>
 
@@ -371,9 +403,14 @@ const BookingSuccess = () => {
                   {booking.airlineName || "Airline"} {legs.length > 1 ? `· ${legs.length} confirmed legs` : booking.flightNumber ? `· ${booking.flightNumber}` : ""}
                 </p>
               </div>
-              <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/10 text-primary">
+              <Badge variant="outline" className={cn(
+                "w-fit rounded-full",
+                confirmed && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
+                pending && "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
+                cancelled && "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
+              )}>
                 <Plane className="mr-1.5 h-3.5 w-3.5" />
-                Confirmed itinerary
+                {confirmed ? "Confirmed itinerary" : pending ? "Pending payment" : "Not confirmed"}
               </Badge>
             </div>
 
@@ -437,6 +474,30 @@ const BookingSuccess = () => {
                 <FileText className="mr-2 h-4 w-4" />
                 All bookings
               </Button>
+              {pending && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={cancellingBooking} className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                      {cancellingBooking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertCircle className="mr-2 h-4 w-4" />}
+                      Cancel booking
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel this pending booking?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will cancel the pending payment and release any held seats for booking {booking.bookingReference || "this booking"}.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCancelPendingBooking} className="bg-red-600 text-white hover:bg-red-700">
+                        Cancel booking
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               {cancelled && (
                 <Button onClick={() => navigate("/traveler")} className="w-full rounded-xl">
                   <Home className="mr-2 h-4 w-4" />

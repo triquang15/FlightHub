@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Clock,
   CreditCard,
   Download,
   Eye,
@@ -17,11 +18,24 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react"
+import { useDispatch } from "react-redux"
 import { toast } from "sonner"
+import { cancelBooking } from "@/Redux/booking/bookingThunk"
 import { generateTicketPDF } from "@/pages/traveler/Ticket/TicketPDF"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const formatDateTime = (value, options) => {
   if (!value) return "Not available"
@@ -67,12 +81,16 @@ const statusStyles = {
 }
 
 const TravellerBookingCard = ({ booking, navigate }) => {
+  const dispatch = useDispatch()
   const [showDetails, setShowDetails] = React.useState(false)
   const [downloading, setDownloading] = React.useState(false)
+  const [cancelling, setCancelling] = React.useState(false)
   const status = booking.status?.toLowerCase() || "confirmed"
   const paymentStatus = booking.paymentStatus?.toLowerCase()
   const currency = booking.currency || "USD"
-  const ticketAvailable = ["paid", "success", "completed"].includes(paymentStatus)
+  const confirmedBooking = ["confirmed", "completed"].includes(status)
+  const ticketAvailable = confirmedBooking && ["paid", "success", "completed"].includes(paymentStatus)
+  const canCancel = status === "pending"
   const passengers = booking.totalPassengers || booking.passengers?.length || 0
   const legs = getBookingLegs(booking)
   const firstLeg = legs[0] || {}
@@ -92,6 +110,18 @@ const TravellerBookingCard = ({ booking, navigate }) => {
       toast.error("Could not download the e-ticket")
     } finally {
       setDownloading(false)
+    }
+  }
+
+  const handleCancelBooking = async () => {
+    try {
+      setCancelling(true)
+      await dispatch(cancelBooking(booking.id)).unwrap()
+      toast.success("Booking cancelled. Any held seats were released.")
+    } catch (error) {
+      toast.error(error || "Could not cancel this booking")
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -126,7 +156,13 @@ const TravellerBookingCard = ({ booking, navigate }) => {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className={cn("w-fit capitalize", statusStyles[status] || statusStyles.confirmed)}>
-            {status === "cancelled" ? <XCircle className="mr-1 h-3.5 w-3.5" /> : <CheckCircle2 className="mr-1 h-3.5 w-3.5" />}
+            {status === "cancelled" ? (
+              <XCircle className="mr-1 h-3.5 w-3.5" />
+            ) : status === "pending" ? (
+              <Clock className="mr-1 h-3.5 w-3.5" />
+            ) : (
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+            )}
             {status.replace("_", " ")}
           </Badge>
           <Badge variant="outline" className={cn(
@@ -264,6 +300,30 @@ const TravellerBookingCard = ({ booking, navigate }) => {
             {showDetails ? "Hide details" : "More details"} {showDetails ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/booking-success/${booking.id}`)} className="rounded-xl"><Eye className="mr-1.5 h-4 w-4" />Details</Button>
+          {canCancel && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={cancelling} className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                  {cancelling ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <XCircle className="mr-1.5 h-4 w-4" />}
+                  Cancel
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will cancel the pending payment and release any held seats for booking {booking.bookingReference || "this booking"}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancelBooking} className="bg-red-600 text-white hover:bg-red-700">
+                    Cancel booking
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {ticketAvailable && (
             <>
               <Button variant="outline" size="sm" onClick={handleDownloadTicket} disabled={downloading} className="rounded-xl">

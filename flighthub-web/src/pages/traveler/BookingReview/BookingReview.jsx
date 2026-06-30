@@ -764,6 +764,8 @@ const BookingReview = () => {
                   flightInstanceId={flightInstanceId}
                   cabinClassId={selectedFare?.cabinClassId || cabinClassId}
                   cabinClass={cabinClass}
+                  tripType={tripType}
+                  routeLabel={isRoundTrip ? "outbound flight" : "this flight"}
                 />
 
                 <BaggageSelection
