@@ -30,10 +30,23 @@ WITH raw_inventory (
         (current_setting('flighthub_seed.flight_instances_vn210', true), current_setting('flighthub_seed.flight_vn210', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_a359_eco', true)::bigint),
         (current_setting('flighthub_seed.flight_instances_vn210', true), current_setting('flighthub_seed.flight_vn210', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_a359_bus', true)::bigint),
         (current_setting('flighthub_seed.flight_instances_vn211', true), current_setting('flighthub_seed.flight_vn211', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_b789_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vn218', true), current_setting('flighthub_seed.flight_vn218', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_b789_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vn136', true), current_setting('flighthub_seed.flight_vn136', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_a359_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vn135', true), current_setting('flighthub_seed.flight_vn135', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vn_a359_eco', true)::bigint),
         (current_setting('flighthub_seed.flight_instances_vj122', true), current_setting('flighthub_seed.flight_vj122', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vj_a321_eco', true)::bigint),
         (current_setting('flighthub_seed.flight_instances_vj122', true), current_setting('flighthub_seed.flight_vj122', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vj_a321_pre', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vj123', true), current_setting('flighthub_seed.flight_vj123', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vj_a321_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vj803', true), current_setting('flighthub_seed.flight_vj803', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vj_a321_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_vj804', true), current_setting('flighthub_seed.flight_vj804', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_vj_a321_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_ak520', true), current_setting('flighthub_seed.flight_ak520', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_ak_a320_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_ak521', true), current_setting('flighthub_seed.flight_ak521', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_ak_a320_eco', true)::bigint),
         (current_setting('flighthub_seed.flight_instances_sq185', true), current_setting('flighthub_seed.flight_sq185', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_sq_a359_eco', true)::bigint),
-        (current_setting('flighthub_seed.flight_instances_sq185', true), current_setting('flighthub_seed.flight_sq185', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_sq_a359_bus', true)::bigint)
+        (current_setting('flighthub_seed.flight_instances_sq185', true), current_setting('flighthub_seed.flight_sq185', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_sq_a359_bus', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_sq186', true), current_setting('flighthub_seed.flight_sq186', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_sq_a359_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_tg551', true), current_setting('flighthub_seed.flight_tg551', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_tg_b77w_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_tg550', true), current_setting('flighthub_seed.flight_tg550', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_tg_b77w_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_cx764', true), current_setting('flighthub_seed.flight_cx764', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_cx_a35k_eco', true)::bigint),
+        (current_setting('flighthub_seed.flight_instances_cx765', true), current_setting('flighthub_seed.flight_cx765', true)::bigint, NULL::bigint, current_setting('flighthub_seed.cabin_cx_a35k_eco', true)::bigint)
 ),
 selected_inventory AS (
     SELECT

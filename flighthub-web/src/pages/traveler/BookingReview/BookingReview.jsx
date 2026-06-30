@@ -129,6 +129,7 @@ const BookingReview = () => {
   const [paymentGateway, setPaymentGateway] = useState("STRIPE");
   const [travellerValidationAttempted, setTravellerValidationAttempted] = useState(false);
   const [returnFlightInstance, setReturnFlightInstance] = useState(null);
+  const [returnFare, setReturnFare] = useState(null);
 
   const [selectedTravelProtection, setSelectedTravelProtection] = useState(null);
 
@@ -190,6 +191,16 @@ const BookingReview = () => {
     () => (isRoundTrip ? [flightInstance, returnFlightInstance].filter(Boolean) : flightInstance),
     [flightInstance, isRoundTrip, returnFlightInstance],
   );
+  const fareItems = useMemo(() => {
+    const items = [];
+    if (selectedFare) {
+      items.push({ label: isRoundTrip ? "Outbound fare" : "Flight fare", fare: selectedFare });
+    }
+    if (isRoundTrip && returnFare) {
+      items.push({ label: "Return fare", fare: returnFare });
+    }
+    return items;
+  }, [isRoundTrip, returnFare, selectedFare]);
   const routeSummary = isRoundTrip
     ? `${flightInstance?.departureAirport?.iataCode || flightInstance?.flight?.departureAirport?.iataCode || "Outbound"} + return`
     : flightInstance
@@ -250,8 +261,14 @@ const BookingReview = () => {
       0,
     );
     const travelProtectionCharge = selectedTravelProtection?.price || 0;
-    const baseFare = getFareAmount(selectedFare, "baseFare", "price") * passengerCount;
-    const taxes = getFareAmount(selectedFare, "taxes", "taxesAndFees") * passengerCount;
+    const baseFare = fareItems.reduce(
+      (sum, item) => sum + getFareAmount(item.fare, "baseFare", "price") * passengerCount,
+      0,
+    );
+    const taxes = fareItems.reduce(
+      (sum, item) => sum + getFareAmount(item.fare, "taxes", "taxesAndFees") * passengerCount,
+      0,
+    );
 
     return {
       seatCharges,
@@ -266,7 +283,7 @@ const BookingReview = () => {
         baggageCharges +
         travelProtectionCharge * passengerCount,
     };
-  }, [passengerCount, selectedBaggage, selectedFare, selectedMeals, selectedSeats, selectedTravelProtection]);
+  }, [fareItems, passengerCount, selectedBaggage, selectedMeals, selectedSeats, selectedTravelProtection]);
 
   // Handle seat selection with price calculation for multiple passengers
   const handleSeatSelection = (passengerIndex, seat) => {
@@ -298,6 +315,33 @@ const BookingReview = () => {
       dispatch(getFareById(fareId));
     }
   }, [fareId, dispatch]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isRoundTrip || !returnFareId) {
+      setReturnFare(null);
+      return undefined;
+    }
+
+    const loadReturnFare = async () => {
+      try {
+        const response = await api.get(`/api/fares/${returnFareId}`);
+        if (!cancelled) setReturnFare(unwrapApiData(response));
+      } catch {
+        if (!cancelled) {
+          setReturnFare(null);
+          toast.error("Could not load return fare details. Please select the return flight again.");
+        }
+      }
+    };
+
+    loadReturnFare();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRoundTrip, returnFareId]);
 
   // Fetch flight instance data when flightInstanceId is available
   useEffect(() => {
@@ -370,6 +414,11 @@ const BookingReview = () => {
       return;
     }
 
+    if (isRoundTrip && (!returnFlightId || !returnFlightInstanceId || !returnFareId || !returnFare)) {
+      toast.error("Missing return flight or fare information. Please go back and select the return flight again.");
+      return;
+    }
+
     // Validate traveller data
     const passengers = travellerData?.passengers || [];
     const contactInfo = travellerData?.contactInfo || {};
@@ -422,8 +471,14 @@ const BookingReview = () => {
       selectedTravelProtection?.price || travelProtectionData?.price || 0;
 
 
-    const baseFare = getFareAmount(selectedFare, "baseFare", "price") * passengerCount;
-    const taxes = getFareAmount(selectedFare, "taxes", "taxesAndFees") * passengerCount;
+    const baseFare = fareItems.reduce(
+      (sum, item) => sum + getFareAmount(item.fare, "baseFare", "price") * passengerCount,
+      0,
+    );
+    const taxes = fareItems.reduce(
+      (sum, item) => sum + getFareAmount(item.fare, "taxes", "taxesAndFees") * passengerCount,
+      0,
+    );
     const subtotal = baseFare + taxes;
     const addOnsTotal =
       seatCharges +
@@ -741,6 +796,7 @@ const BookingReview = () => {
               <div className="sticky top-24">
                 <FareSummaryCard
                   fareData={selectedFare}
+                  fareItems={fareItems}
                   selectedSeats={selectedSeats}
                   selectedMeals={selectedMeals}
                   selectedBaggage={selectedBaggage}

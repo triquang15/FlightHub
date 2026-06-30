@@ -363,20 +363,39 @@ echo "==> Resolving Flight and Cabin Class IDs for pricing"
 
 flight_vn210="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN210';")"
 flight_vn211="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN211';")"
+flight_vn218="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN218';")"
+flight_vn136="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN136';")"
+flight_vn135="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN135';")"
 flight_vj122="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ122';")"
+flight_vj123="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ123';")"
+flight_vj803="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ803';")"
+flight_vj804="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ804';")"
+flight_ak520="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'AK520';")"
+flight_ak521="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'AK521';")"
 flight_sq185="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'SQ185';")"
+flight_sq186="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'SQ186';")"
+flight_tg551="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'TG551';")"
+flight_tg550="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'TG550';")"
+flight_cx764="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'CX764';")"
+flight_cx765="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'CX765';")"
 
 cabin_vn_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'ECO';")"
 cabin_vn_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'BUS';")"
 cabin_vn_b789_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_b789 AND code = 'ECO';")"
 cabin_vj_a321_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'ECO';")"
 cabin_vj_a321_pre="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'PRE';")"
+cabin_ak_a320_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_ak_a320 AND code = 'ECO';")"
 cabin_sq_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'ECO';")"
 cabin_sq_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'BUS';")"
+cabin_tg_b77w_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_tg_b77w AND code = 'ECO';")"
+cabin_cx_a35k_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_cx_a35k AND code = 'ECO';")"
 
-for required in flight_vn210 flight_vn211 flight_vj122 flight_sq185 \
+for required in flight_vn210 flight_vn211 flight_vn218 flight_vn136 flight_vn135 \
+  flight_vj122 flight_vj123 flight_vj803 flight_vj804 flight_ak520 flight_ak521 \
+  flight_sq185 flight_sq186 flight_tg551 flight_tg550 flight_cx764 flight_cx765 \
   cabin_vn_a359_eco cabin_vn_a359_bus cabin_vn_b789_eco cabin_vj_a321_eco \
-  cabin_vj_a321_pre cabin_sq_a359_eco cabin_sq_a359_bus; do
+  cabin_vj_a321_pre cabin_ak_a320_eco cabin_sq_a359_eco cabin_sq_a359_bus \
+  cabin_tg_b77w_eco cabin_cx_a35k_eco; do
   require_value "$required" "${!required}"
 done
 
@@ -384,10 +403,27 @@ echo "==> Resolving upcoming FlightInstance IDs for booking seat inventory"
 
 flight_instances_vn210="$(lookup_upcoming_flight_instance_ids VN210 14)"
 flight_instances_vn211="$(lookup_upcoming_flight_instance_ids VN211 14)"
+flight_instances_vn218="$(lookup_upcoming_flight_instance_ids VN218 14)"
+flight_instances_vn136="$(lookup_upcoming_flight_instance_ids VN136 14)"
+flight_instances_vn135="$(lookup_upcoming_flight_instance_ids VN135 14)"
 flight_instances_vj122="$(lookup_upcoming_flight_instance_ids VJ122 14)"
+flight_instances_vj123="$(lookup_upcoming_flight_instance_ids VJ123 14)"
+flight_instances_vj803="$(lookup_upcoming_flight_instance_ids VJ803 14)"
+flight_instances_vj804="$(lookup_upcoming_flight_instance_ids VJ804 14)"
+flight_instances_ak520="$(lookup_upcoming_flight_instance_ids AK520 14)"
+flight_instances_ak521="$(lookup_upcoming_flight_instance_ids AK521 14)"
 flight_instances_sq185="$(lookup_upcoming_flight_instance_ids SQ185 14)"
+flight_instances_sq186="$(lookup_upcoming_flight_instance_ids SQ186 14)"
+flight_instances_tg551="$(lookup_upcoming_flight_instance_ids TG551 14)"
+flight_instances_tg550="$(lookup_upcoming_flight_instance_ids TG550 14)"
+flight_instances_cx764="$(lookup_upcoming_flight_instance_ids CX764 14)"
+flight_instances_cx765="$(lookup_upcoming_flight_instance_ids CX765 14)"
 
-for required in flight_instances_vn210 flight_instances_vn211 flight_instances_vj122 flight_instances_sq185; do
+for required in flight_instances_vn210 flight_instances_vn211 flight_instances_vn218 \
+  flight_instances_vn136 flight_instances_vn135 flight_instances_vj122 flight_instances_vj123 \
+  flight_instances_vj803 flight_instances_vj804 flight_instances_ak520 flight_instances_ak521 \
+  flight_instances_sq185 flight_instances_sq186 flight_instances_tg551 flight_instances_tg550 \
+  flight_instances_cx764 flight_instances_cx765; do
   require_value "$required" "${!required}"
 done
 
@@ -397,19 +433,48 @@ run_sql_file_with_settings \
   "$BOOKING_SEAT_INVENTORY_SEED_SQL" \
   flight_vn210="$flight_vn210" \
   flight_vn211="$flight_vn211" \
+  flight_vn218="$flight_vn218" \
+  flight_vn136="$flight_vn136" \
+  flight_vn135="$flight_vn135" \
   flight_vj122="$flight_vj122" \
+  flight_vj123="$flight_vj123" \
+  flight_vj803="$flight_vj803" \
+  flight_vj804="$flight_vj804" \
+  flight_ak520="$flight_ak520" \
+  flight_ak521="$flight_ak521" \
   flight_sq185="$flight_sq185" \
+  flight_sq186="$flight_sq186" \
+  flight_tg551="$flight_tg551" \
+  flight_tg550="$flight_tg550" \
+  flight_cx764="$flight_cx764" \
+  flight_cx765="$flight_cx765" \
   flight_instances_vn210="$flight_instances_vn210" \
   flight_instances_vn211="$flight_instances_vn211" \
+  flight_instances_vn218="$flight_instances_vn218" \
+  flight_instances_vn136="$flight_instances_vn136" \
+  flight_instances_vn135="$flight_instances_vn135" \
   flight_instances_vj122="$flight_instances_vj122" \
+  flight_instances_vj123="$flight_instances_vj123" \
+  flight_instances_vj803="$flight_instances_vj803" \
+  flight_instances_vj804="$flight_instances_vj804" \
+  flight_instances_ak520="$flight_instances_ak520" \
+  flight_instances_ak521="$flight_instances_ak521" \
   flight_instances_sq185="$flight_instances_sq185" \
+  flight_instances_sq186="$flight_instances_sq186" \
+  flight_instances_tg551="$flight_instances_tg551" \
+  flight_instances_tg550="$flight_instances_tg550" \
+  flight_instances_cx764="$flight_instances_cx764" \
+  flight_instances_cx765="$flight_instances_cx765" \
   cabin_vn_a359_eco="$cabin_vn_a359_eco" \
   cabin_vn_a359_bus="$cabin_vn_a359_bus" \
   cabin_vn_b789_eco="$cabin_vn_b789_eco" \
   cabin_vj_a321_eco="$cabin_vj_a321_eco" \
   cabin_vj_a321_pre="$cabin_vj_a321_pre" \
+  cabin_ak_a320_eco="$cabin_ak_a320_eco" \
   cabin_sq_a359_eco="$cabin_sq_a359_eco" \
-  cabin_sq_a359_bus="$cabin_sq_a359_bus"
+  cabin_sq_a359_bus="$cabin_sq_a359_bus" \
+  cabin_tg_b77w_eco="$cabin_tg_b77w_eco" \
+  cabin_cx_a35k_eco="$cabin_cx_a35k_eco"
 
 run_sql_file_with_settings \
   pricingdb \
@@ -417,18 +482,37 @@ run_sql_file_with_settings \
   "$PRICING_SEED_SQL" \
   airline_vn="$airline_vn" \
   airline_vj="$airline_vj" \
+  airline_ak="$airline_ak" \
   airline_sq="$airline_sq" \
+  airline_tg="$airline_tg" \
+  airline_cx="$airline_cx" \
   flight_vn210="$flight_vn210" \
   flight_vn211="$flight_vn211" \
+  flight_vn218="$flight_vn218" \
+  flight_vn136="$flight_vn136" \
+  flight_vn135="$flight_vn135" \
   flight_vj122="$flight_vj122" \
+  flight_vj123="$flight_vj123" \
+  flight_vj803="$flight_vj803" \
+  flight_vj804="$flight_vj804" \
+  flight_ak520="$flight_ak520" \
+  flight_ak521="$flight_ak521" \
   flight_sq185="$flight_sq185" \
+  flight_sq186="$flight_sq186" \
+  flight_tg551="$flight_tg551" \
+  flight_tg550="$flight_tg550" \
+  flight_cx764="$flight_cx764" \
+  flight_cx765="$flight_cx765" \
   cabin_vn_a359_eco="$cabin_vn_a359_eco" \
   cabin_vn_a359_bus="$cabin_vn_a359_bus" \
   cabin_vn_b789_eco="$cabin_vn_b789_eco" \
   cabin_vj_a321_eco="$cabin_vj_a321_eco" \
   cabin_vj_a321_pre="$cabin_vj_a321_pre" \
+  cabin_ak_a320_eco="$cabin_ak_a320_eco" \
   cabin_sq_a359_eco="$cabin_sq_a359_eco" \
-  cabin_sq_a359_bus="$cabin_sq_a359_bus"
+  cabin_sq_a359_bus="$cabin_sq_a359_bus" \
+  cabin_tg_b77w_eco="$cabin_tg_b77w_eco" \
+  cabin_cx_a35k_eco="$cabin_cx_a35k_eco"
 
 run_sql_file ancillarydb airline_ancillary_db "$ANCILLARY_MIGRATION_SQL"
 

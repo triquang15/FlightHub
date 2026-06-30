@@ -28,6 +28,11 @@ const FareItem = ({ label, amount, highlight = false, info = null }) => (
   </div>
 );
 
+const getFareAmount = (fare, field, fallbackField) => {
+  const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+};
+
 const PAYMENT_OPTIONS = [
   {
     value: 'STRIPE',
@@ -47,6 +52,7 @@ const PAYMENT_OPTIONS = [
 
 const FareSummaryCard = ({
   fareData,
+  fareItems = null,
   selectedSeats = [], // Changed from selectedSeat to selectedSeats array
   selectedMeals,
   selectedBaggage = [],
@@ -72,10 +78,17 @@ const FareSummaryCard = ({
   const travelProtectionCharge = (travelProtection?.price || 0) * passengerCount;
 
   // Base fare calculations
-  const baseFarePerPassenger = Number(fareData?.baseFare ?? fareData?.price ?? 0) || 0;
-  const taxesPerPassenger = Number(fareData?.taxes ?? fareData?.taxesAndFees ?? 0) || 0;
-  const baseFare = baseFarePerPassenger * passengerCount;
-  const taxes = taxesPerPassenger * passengerCount;
+  const normalizedFareItems = Array.isArray(fareItems) && fareItems.length
+    ? fareItems
+    : [{ label: 'Flight fare', fare: fareData }].filter((item) => item.fare);
+  const baseFare = normalizedFareItems.reduce(
+    (sum, item) => sum + getFareAmount(item.fare, 'baseFare', 'price') * passengerCount,
+    0,
+  );
+  const taxes = normalizedFareItems.reduce(
+    (sum, item) => sum + getFareAmount(item.fare, 'taxes', 'taxesAndFees') * passengerCount,
+    0,
+  );
   const subtotal = baseFare + taxes;
   const addOnsTotal = seatCharges + mealCharges + baggageCharges + travelProtectionCharge;
   const grandTotal = subtotal + addOnsTotal;
@@ -142,16 +155,29 @@ const FareSummaryCard = ({
             >
               {/* Base Fare & Taxes */}
               <div className="border-b border-slate-200 pb-3 dark:border-white/10">
-                <FareItem
-                  label={`Base Fare x ${passengerCount}`}
-                  amount={baseFare}
-                  info="Basic ticket price before taxes and fees"
-                />
-                <FareItem
-                  label={`Taxes & Fees x ${passengerCount}`}
-                  amount={taxes}
-                  info="Government taxes and airline fees"
-                />
+                {normalizedFareItems.map((item, index) => {
+                  const label = item.label || `Flight ${index + 1}`;
+                  const itemBaseFare = getFareAmount(item.fare, 'baseFare', 'price') * passengerCount;
+                  const itemTaxes = getFareAmount(item.fare, 'taxes', 'taxesAndFees') * passengerCount;
+
+                  return (
+                    <div key={`${label}-${item.fare?.id || index}`} className="py-1">
+                      <p className="mb-1 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                        {label}
+                      </p>
+                      <FareItem
+                        label={`Base Fare x ${passengerCount}`}
+                        amount={itemBaseFare}
+                        info="Basic ticket price before taxes and fees"
+                      />
+                      <FareItem
+                        label={`Taxes & Fees x ${passengerCount}`}
+                        amount={itemTaxes}
+                        info="Government taxes and airline fees"
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Add-ons */}

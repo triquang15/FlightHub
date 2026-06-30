@@ -36,6 +36,28 @@ const formatMoney = (amount, currency = "USD") => new Intl.NumberFormat("en-US",
   maximumFractionDigits: 2,
 }).format(Number(amount) || 0)
 
+const getBookingLegs = (booking) => {
+  const legs = Array.isArray(booking?.legs) ? booking.legs : []
+  if (legs.length > 0) {
+    return [...legs].sort((left, right) => (left.legOrder || 0) - (right.legOrder || 0))
+  }
+
+  if (!booking) return []
+  return [{
+    id: "primary",
+    legOrder: 1,
+    flightNumber: booking.flightNumber,
+    departureAirport: booking.departureAirport,
+    arrivalAirport: booking.arrivalAirport,
+    departureTime: booking.departureTime,
+    arrivalTime: booking.arrivalTime,
+    flightDuration: booking.flightDuration,
+    cabinClass: booking.cabinClass,
+  }]
+}
+
+const routeName = (leg) => `${leg?.departureAirport || "Departure"} to ${leg?.arrivalAirport || "Arrival"}`
+
 const statusStyles = {
   confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
   completed: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300",
@@ -52,10 +74,13 @@ const TravellerBookingCard = ({ booking, navigate }) => {
   const currency = booking.currency || "USD"
   const ticketAvailable = ["paid", "success", "completed"].includes(paymentStatus)
   const passengers = booking.totalPassengers || booking.passengers?.length || 0
-  const routeLabel = booking.flightName || "Selected flight"
-  const departureTime = formatDateTime(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })
-  const arrivalTime = formatDateTime(booking.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })
-  const departureDate = formatDateTime(booking.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+  const legs = getBookingLegs(booking)
+  const firstLeg = legs[0] || {}
+  const lastLeg = legs[legs.length - 1] || firstLeg
+  const routeLabel = legs.length > 1
+    ? `${firstLeg.departureAirport || "Departure"} ⇄ ${firstLeg.arrivalAirport || lastLeg.arrivalAirport || "Arrival"}`
+    : booking.flightName || routeName(firstLeg)
+  const departureDate = formatDateTime(firstLeg.departureTime || booking.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })
 
   const handleDownloadTicket = async () => {
     try {
@@ -80,7 +105,11 @@ const TravellerBookingCard = ({ booking, navigate }) => {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate text-lg font-semibold">{routeLabel}</p>
-              {booking.flightNumber && (
+              {legs.length > 1 ? (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {legs.length} flights
+                </span>
+              ) : booking.flightNumber && (
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   {booking.flightNumber}
                 </span>
@@ -114,30 +143,50 @@ const TravellerBookingCard = ({ booking, navigate }) => {
 
       <div className="grid gap-6 px-5 py-6 sm:px-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-stretch">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-            <div className="min-w-0">
-              <p className="text-3xl font-semibold tracking-tight">{departureTime}</p>
-              <p className="mt-2 truncate text-sm font-semibold">{booking.departureAirport || "Departure airport"}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Departure</p>
-            </div>
-            <div className="flex w-24 flex-col items-center text-center sm:w-40">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                {booking.flightDuration || "Direct"}
-              </span>
-              <div className="my-3 flex w-full items-center">
-                <span className="h-2 w-2 rounded-full border-2 border-primary bg-background" />
-                <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                <ArrowRight className="h-4 w-4 text-primary" />
-                <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                <span className="h-2 w-2 rounded-full border-2 border-primary bg-background" />
-              </div>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Non-stop</span>
-            </div>
-            <div className="min-w-0 text-right">
-              <p className="text-3xl font-semibold tracking-tight">{arrivalTime}</p>
-              <p className="mt-2 truncate text-sm font-semibold">{booking.arrivalAirport || "Arrival airport"}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Arrival</p>
-            </div>
+          <div className="space-y-3">
+            {legs.map((leg, index) => {
+              const departureTime = formatDateTime(leg.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })
+              const arrivalTime = formatDateTime(leg.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })
+              return (
+                <div key={`${leg.id || leg.flightInstanceId || index}`} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      {legs.length > 1 ? (index === 0 ? "Outbound" : "Return") : "Flight"}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      {leg.flightNumber || booking.flightNumber || "Flight"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+                    <div className="min-w-0">
+                      <p className="text-3xl font-semibold tracking-tight">{departureTime}</p>
+                      <p className="mt-2 truncate text-sm font-semibold">{leg.departureAirport || "Departure airport"}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {formatDateTime(leg.departureTime, { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="flex w-24 flex-col items-center text-center sm:w-40">
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                        {leg.flightDuration || "Direct"}
+                      </span>
+                      <div className="my-3 flex w-full items-center">
+                        <span className="h-2 w-2 rounded-full border-2 border-primary bg-background" />
+                        <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                        <ArrowRight className="h-4 w-4 text-primary" />
+                        <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                        <span className="h-2 w-2 rounded-full border-2 border-primary bg-background" />
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Non-stop</span>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-3xl font-semibold tracking-tight">{arrivalTime}</p>
+                      <p className="mt-2 truncate text-sm font-semibold">{leg.arrivalAirport || "Arrival airport"}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Arrival</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -169,7 +218,7 @@ const TravellerBookingCard = ({ booking, navigate }) => {
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
               <p className="text-xs text-slate-500 dark:text-slate-400">Cabin</p>
-              <p className="mt-1 font-semibold capitalize">{booking.cabinClass || "Economy"}</p>
+              <p className="mt-1 font-semibold capitalize">{firstLeg.cabinClass || booking.cabinClass || "Economy"}</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
               <p className="text-xs text-slate-500 dark:text-slate-400">Seats</p>

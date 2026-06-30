@@ -41,6 +41,26 @@ const passengerName = (passenger, index) =>
   `${passenger?.firstName || passenger?.givenName || ""} ${passenger?.lastName || passenger?.familyName || ""}`.trim() ||
   `Passenger ${index + 1}`
 
+const getBookingLegs = (booking) => {
+  const legs = Array.isArray(booking?.legs) ? booking.legs : []
+  if (legs.length > 0) {
+    return [...legs].sort((left, right) => (left.legOrder || 0) - (right.legOrder || 0))
+  }
+
+  if (!booking) return []
+  return [{
+    id: "primary",
+    legOrder: 1,
+    flightNumber: booking.flightNumber,
+    departureAirport: booking.departureAirport,
+    arrivalAirport: booking.arrivalAirport,
+    departureTime: booking.departureTime,
+    arrivalTime: booking.arrivalTime,
+    flightDuration: booking.flightDuration,
+    cabinClass: booking.cabinClass,
+  }]
+}
+
 const statusClass = (status) => {
   const normalized = status?.toLowerCase()
   if (["confirmed", "completed", "paid", "success"].includes(normalized)) {
@@ -142,6 +162,9 @@ const Ticket = () => {
   const currency = booking.currency || "USD"
   const passengers = Array.isArray(booking.passengers) ? booking.passengers : []
   const seats = Array.isArray(booking.seatInstances) ? booking.seatInstances : []
+  const legs = getBookingLegs(booking)
+  const firstLeg = legs[0] || {}
+  const lastLeg = legs[legs.length - 1] || firstLeg
   const baseFare = booking.fareBaseFare || 0
   const taxes = booking.fareTaxesAndFees || 0
   const fees = booking.fareAirlineFees || 0
@@ -187,7 +210,11 @@ const Ticket = () => {
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">FlightHub itinerary receipt</p>
                 <h2 className="mt-2 text-2xl font-semibold">{booking.airlineName || "FlightHub"}</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{booking.flightName || "Selected route"}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {legs.length > 1
+                    ? `${firstLeg.departureAirport || "Departure"} ⇄ ${firstLeg.arrivalAirport || lastLeg.arrivalAirport || "Arrival"}`
+                    : booking.flightName || "Selected route"}
+                </p>
               </div>
             </div>
             <Badge variant="outline" className={cn("w-fit capitalize", statusClass(booking.status))}>
@@ -199,8 +226,8 @@ const Ticket = () => {
           <div className="grid border-b border-slate-200 dark:border-slate-800 sm:grid-cols-4">
             {[
               ["Booking ref", booking.bookingReference || "N/A"],
-              ["Flight", booking.flightNumber || "N/A"],
-              ["Cabin", booking.cabinClass || booking.fareName || "Economy"],
+              ["Flight", legs.length > 1 ? `${legs.length} flights` : booking.flightNumber || firstLeg.flightNumber || "N/A"],
+              ["Cabin", firstLeg.cabinClass || booking.cabinClass || booking.fareName || "Economy"],
               ["Issued", formatDate(booking.bookingDate, { month: "short", day: "numeric", year: "numeric" })],
             ].map(([label, value]) => (
               <div key={label} className="border-b border-slate-200 p-4 dark:border-slate-800 sm:border-b-0 sm:border-r last:sm:border-r-0">
@@ -211,42 +238,54 @@ const Ticket = () => {
           </div>
 
           <div className="p-6">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-                <div className="min-w-0">
-                  <p className="text-4xl font-semibold tracking-tight">
-                    {formatDate(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
-                  </p>
-                  <p className="mt-3 truncate text-base font-semibold">{booking.departureAirport || "Departure airport"}</p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {formatDate(booking.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                  </p>
-                </div>
-
-                <div className="flex w-24 flex-col items-center text-center sm:w-40">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                    {booking.flightDuration || "Direct"}
-                  </span>
-                  <div className="my-3 flex w-full items-center">
-                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
-                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                    <ArrowRight className="h-4 w-4 text-primary" />
-                    <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
-                    <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+            <div className="space-y-4">
+              {legs.map((leg, index) => (
+                <div key={`${leg.id || leg.flightInstanceId || index}`} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/50">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      {legs.length > 1 ? (index === 0 ? "Outbound flight" : "Return flight") : "Flight"}
+                    </p>
+                    <Badge variant="outline" className="rounded-full">
+                      {leg.flightNumber || booking.flightNumber || "Flight"}
+                    </Badge>
                   </div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Non-stop</span>
-                </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                    <div className="min-w-0">
+                      <p className="text-4xl font-semibold tracking-tight">
+                        {formatDate(leg.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </p>
+                      <p className="mt-3 truncate text-base font-semibold">{leg.departureAirport || "Departure airport"}</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {formatDate(leg.departureTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
 
-                <div className="min-w-0 text-right">
-                  <p className="text-4xl font-semibold tracking-tight">
-                    {formatDate(booking.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
-                  </p>
-                  <p className="mt-3 truncate text-base font-semibold">{booking.arrivalAirport || "Arrival airport"}</p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {formatDate(booking.arrivalTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                  </p>
+                    <div className="flex w-24 flex-col items-center text-center sm:w-40">
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                        {leg.flightDuration || "Direct"}
+                      </span>
+                      <div className="my-3 flex w-full items-center">
+                        <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+                        <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                        <ArrowRight className="h-4 w-4 text-primary" />
+                        <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
+                        <span className="h-2 w-2 rounded-full border-2 border-primary bg-white dark:bg-slate-900" />
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Non-stop</span>
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <p className="text-4xl font-semibold tracking-tight">
+                        {formatDate(leg.arrivalTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </p>
+                      <p className="mt-3 truncate text-base font-semibold">{leg.arrivalAirport || "Arrival airport"}</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {formatDate(leg.arrivalTime, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
 
             <div className="mt-6">
@@ -268,7 +307,7 @@ const Ticket = () => {
                       <span className="font-semibold">{passengerName(passenger, index)}</span>
                       <span className="text-slate-500 dark:text-slate-400">{passenger?.isAdult === false ? "Child" : "Adult"}</span>
                       <span className="font-semibold">{seat?.seatNumber || "--"}</span>
-                      <span className="capitalize text-slate-500 dark:text-slate-400">{booking.cabinClass || booking.fareName || "Economy"}</span>
+                      <span className="capitalize text-slate-500 dark:text-slate-400">{firstLeg.cabinClass || booking.cabinClass || booking.fareName || "Economy"}</span>
                     </div>
                   )
                 })}
@@ -296,9 +335,9 @@ const Ticket = () => {
 
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-lg font-semibold">{booking.departureAirport || "Departure"} to {booking.arrivalAirport || "Arrival"}</p>
+                <p className="text-lg font-semibold">{firstLeg.departureAirport || "Departure"} to {lastLeg.arrivalAirport || "Arrival"}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {formatDate(booking.departureTime, { month: "long", day: "numeric", year: "numeric" })} · {formatDate(booking.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  {formatDate(firstLeg.departureTime, { month: "long", day: "numeric", year: "numeric" })} · {formatDate(firstLeg.departureTime, { hour: "2-digit", minute: "2-digit", hour12: false })}
                 </p>
                 <p className="mt-2 font-mono text-sm font-semibold">{booking.bookingReference || "N/A"}</p>
               </div>
@@ -327,6 +366,7 @@ const Ticket = () => {
             <div className="mt-5 space-y-3 text-sm">
               <SummaryRow label="Status" value={booking.status || "Confirmed"} />
               <SummaryRow label="Payment" value={booking.paymentStatus || "Not available"} />
+              <SummaryRow label="Itinerary" value={legs.length > 1 ? `${legs.length} flights` : "One-way"} />
               <SummaryRow label="Fare" value={booking.fareName || booking.cabinClass || "Economy"} />
               <SummaryRow label="Total" value={formatMoney(total, currency)} strong />
             </div>

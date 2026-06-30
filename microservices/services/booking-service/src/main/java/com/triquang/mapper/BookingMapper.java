@@ -3,6 +3,7 @@ package com.triquang.mapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,7 @@ public class BookingMapper {
                                              FareResponse fareResponse,
                                              FlightResponse flightResponse,
                                              FlightInstanceResponse flightInstanceResponse,
+                                             Map<Long, FlightInstanceResponse> legFlightInstances,
                                              List<FlightCabinAncillaryResponse> ancillaries,
                                              List<FlightMealResponse> meals,
                                              List<SeatInstanceResponse> seats) {
@@ -77,7 +79,7 @@ public class BookingMapper {
         List<BookingLegResponse> legResponses = booking.getLegs() != null ?
                 booking.getLegs().stream()
                         .sorted(java.util.Comparator.comparing(BookingLeg::getLegOrder))
-                        .map(leg -> toLegResponse(leg, flightInstanceResponse))
+                        .map(leg -> toLegResponse(leg, flightInstanceResponse, legFlightInstances))
                         .collect(Collectors.toList()) : null;
 
 
@@ -86,7 +88,7 @@ public class BookingMapper {
                 .bookingReference(booking.getBookingReference())
                 .userId(booking.getUserId())
 //                flight details
-                .flightId(booking.getFlightInstanceId())
+                .flightId(booking.getFlightId())
                 .flightNumber(flightResponse != null ? flightResponse.getFlightNumber() : null)
                 .flightName(flightResponse != null && flightResponse.getArrivalAirport() != null && flightResponse.getDepartureAirport() != null
                         ? airportCityOrCode(flightResponse.getDepartureAirport()) + " - " + airportCityOrCode(flightResponse.getArrivalAirport())
@@ -130,11 +132,41 @@ public class BookingMapper {
                 .build();
     }
 
-    private static BookingLegResponse toLegResponse(BookingLeg leg, FlightInstanceResponse fallbackFlightInstance) {
-        FlightInstanceResponse flight = fallbackFlightInstance != null
-                && java.util.Objects.equals(fallbackFlightInstance.getId(), leg.getFlightInstanceId())
-                ? fallbackFlightInstance
+    public static BookingResponse
+    toResponse(Booking booking,
+                                             PaymentDTO paymentDTO,
+                                             FareResponse fareResponse,
+                                             FlightResponse flightResponse,
+                                             FlightInstanceResponse flightInstanceResponse,
+                                             List<FlightCabinAncillaryResponse> ancillaries,
+                                             List<FlightMealResponse> meals,
+                                             List<SeatInstanceResponse> seats) {
+        return toResponse(
+                booking,
+                paymentDTO,
+                fareResponse,
+                flightResponse,
+                flightInstanceResponse,
+                Map.of(),
+                ancillaries,
+                meals,
+                seats
+        );
+    }
+
+    private static BookingLegResponse toLegResponse(
+            BookingLeg leg,
+            FlightInstanceResponse fallbackFlightInstance,
+            Map<Long, FlightInstanceResponse> legFlightInstances
+    ) {
+        FlightInstanceResponse flight = legFlightInstances != null
+                ? legFlightInstances.get(leg.getFlightInstanceId())
                 : null;
+        if (flight == null
+                && fallbackFlightInstance != null
+                && java.util.Objects.equals(fallbackFlightInstance.getId(), leg.getFlightInstanceId())) {
+            flight = fallbackFlightInstance;
+        }
 
         return BookingLegResponse.builder()
                 .id(leg.getId())

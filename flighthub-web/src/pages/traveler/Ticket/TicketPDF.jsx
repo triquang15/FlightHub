@@ -62,12 +62,15 @@ const s = StyleSheet.create({
 
   // ── route ──
   routeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#dddddd',
     paddingVertical: 14,
     marginBottom: 10,
+  },
+  routeLabel: { fontSize: 7, color: '#888888', letterSpacing: 2, marginBottom: 8 },
+  routeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   routeSide: { width: '38%' },
   routeSideRight: { width: '38%', alignItems: 'flex-end' },
@@ -197,6 +200,26 @@ const passengerName = (passenger) =>
   `${passenger?.firstName || passenger?.givenName || ''} ${passenger?.lastName || passenger?.familyName || ''}`.trim() ||
   '—'
 
+const bookingLegs = (booking) => {
+  const legs = Array.isArray(booking?.legs) ? booking.legs : []
+  if (legs.length > 0) {
+    return [...legs].sort((left, right) => (left.legOrder || 0) - (right.legOrder || 0))
+  }
+
+  if (!booking) return []
+  return [{
+    id: 'primary',
+    legOrder: 1,
+    flightNumber: booking.flightNumber,
+    departureAirport: booking.departureAirport,
+    arrivalAirport: booking.arrivalAirport,
+    departureTime: booking.departureTime,
+    arrivalTime: booking.arrivalTime,
+    flightDuration: booking.flightDuration,
+    cabinClass: booking.cabinClass,
+  }]
+}
+
 // ── PDF Document ──────────────────────────────────────────────────────
 const TicketPDFDocument = ({ booking }) => {
   const baseFare = booking.fareBaseFare    || 0
@@ -204,6 +227,9 @@ const TicketPDFDocument = ({ booking }) => {
   const fees     = booking.fareAirlineFees  || 0
   const total    = booking.totalAmount      || (baseFare + taxes + fees)
   const currency = booking.currency || 'USD'
+  const legs = bookingLegs(booking)
+  const firstLeg = legs[0] || {}
+  const lastLeg = legs[legs.length - 1] || firstLeg
 
   return (
     <Document>
@@ -229,8 +255,8 @@ const TicketPDFDocument = ({ booking }) => {
         <View style={s.pnrRow}>
           {[
             ['PNR / BOOKING REF', booking.bookingReference || '—'],
-            ['FLIGHT',            booking.flightNumber     || '—'],
-            ['CLASS',             booking.fareName         || 'Economy'],
+            ['FLIGHT',            legs.length > 1 ? `${legs.length} FLIGHTS` : booking.flightNumber || firstLeg.flightNumber || '—'],
+            ['CLASS',             firstLeg.cabinClass || booking.fareName || 'Economy'],
             ['BOOKING DATE',      fmtDateShort(booking.bookingDate)],
           ].map(([label, value], i, arr) => (
             <View key={label} style={i === arr.length - 1 ? s.pnrCellLast : s.pnrCell}>
@@ -241,38 +267,30 @@ const TicketPDFDocument = ({ booking }) => {
         </View>
 
         {/* ── FLIGHT ROUTE ── */}
-        <View style={s.routeBox}>
-          {/* Departure */}
-          <View style={s.routeSide}>
-            <Text style={s.bigTime}>{fmtTime(booking.departureTime)}</Text>
-            <Text style={s.bigCode}>{booking.departureAirport || '—'}</Text>
-            <Text style={s.routeMeta}>{fmtDateLong(booking.departureTime)}</Text>
-            {(booking.departureTerminal || booking.departureGate) && (
-              <Text style={s.routeMeta}>
-                {booking.departureTerminal ? `Terminal ${booking.departureTerminal}` : ''}
-                {booking.departureGate ? `  ·  Gate ${booking.departureGate}` : ''}
-              </Text>
-            )}
-          </View>
+        {legs.map((leg, index) => (
+          <View key={`${leg.id || leg.flightInstanceId || index}`} style={s.routeBox}>
+            <Text style={s.routeLabel}>
+              {legs.length > 1 ? (index === 0 ? 'OUTBOUND FLIGHT' : 'RETURN FLIGHT') : 'FLIGHT'} {leg.flightNumber ? ` · ${leg.flightNumber}` : ''}
+            </Text>
+            <View style={s.routeContent}>
+              <View style={s.routeSide}>
+                <Text style={s.bigTime}>{fmtTime(leg.departureTime)}</Text>
+                <Text style={s.bigCode}>{leg.departureAirport || '—'}</Text>
+                <Text style={s.routeMeta}>{fmtDateLong(leg.departureTime)}</Text>
+              </View>
 
-          {/* Centre */}
-          <View style={s.routeMiddle}>
-            <Text style={s.durationText}>{booking.flightDuration || '—'}</Text>
-          </View>
+              <View style={s.routeMiddle}>
+                <Text style={s.durationText}>{leg.flightDuration || '—'}</Text>
+              </View>
 
-          {/* Arrival */}
-          <View style={s.routeSideRight}>
-            <Text style={s.bigTime}>{fmtTime(booking.arrivalTime)}</Text>
-            <Text style={s.bigCode}>{booking.arrivalAirport || '—'}</Text>
-            <Text style={s.routeMeta}>{fmtDateLong(booking.arrivalTime)}</Text>
-            {(booking.arrivalTerminal || booking.arrivalGate) && (
-              <Text style={s.routeMeta}>
-                {booking.arrivalTerminal ? `Terminal ${booking.arrivalTerminal}` : ''}
-                {booking.arrivalGate ? `  ·  Gate ${booking.arrivalGate}` : ''}
-              </Text>
-            )}
+              <View style={s.routeSideRight}>
+                <Text style={s.bigTime}>{fmtTime(leg.arrivalTime)}</Text>
+                <Text style={s.bigCode}>{leg.arrivalAirport || '—'}</Text>
+                <Text style={s.routeMeta}>{fmtDateLong(leg.arrivalTime)}</Text>
+              </View>
+            </View>
           </View>
-        </View>
+        ))}
 
         {/* ── PASSENGERS ── */}
         <Text style={s.sectionLabel}>PASSENGER(S)</Text>
@@ -353,7 +371,7 @@ const TicketPDFDocument = ({ booking }) => {
         <View style={s.stub}>
           <View>
             <Text style={s.stubText}>
-              {booking.departureAirport} → {booking.arrivalAirport}
+              {firstLeg.departureAirport || '—'} → {lastLeg.arrivalAirport || '—'}
             </Text>
             <Text style={s.stubMeta}>
               {booking.passengers?.[0]?.fullName || 'Passenger'}
@@ -362,7 +380,7 @@ const TicketPDFDocument = ({ booking }) => {
                 : ''}
             </Text>
             <Text style={s.stubMeta}>
-              {fmtDateLong(booking.departureTime)}  ·  {fmtTime(booking.departureTime)}
+              {fmtDateLong(firstLeg.departureTime)}  ·  {fmtTime(firstLeg.departureTime)}
             </Text>
             <Text style={[s.stubMeta, { marginTop: 3, fontFamily: 'Helvetica-Bold' }]}>
               {booking.bookingReference || '—'}

@@ -453,13 +453,19 @@ const BookingSuccess = () => {
               </span>
               <div>
                 <h2 className="font-semibold">Fare summary</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{booking.cabinClass || booking.fareName || "Economy"}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{legs[0]?.cabinClass || booking.cabinClass || booking.fareName || "Economy"}</p>
               </div>
             </div>
             <div className="mt-5 space-y-3 text-sm">
-              <SummaryRow label="Base fare" value={formatMoney(baseFare, currency)} />
-              <SummaryRow label="Taxes and fees" value={formatMoney(taxes, currency)} />
-              {fees > 0 && <SummaryRow label="Airline fees" value={formatMoney(fees, currency)} />}
+              {legs.length > 1 ? (
+                <SummaryRow label={`${legs.length}-flight itinerary`} value={formatMoney(total, currency)} />
+              ) : (
+                <>
+                  <SummaryRow label="Base fare" value={formatMoney(baseFare, currency)} />
+                  <SummaryRow label="Taxes and fees" value={formatMoney(taxes, currency)} />
+                  {fees > 0 && <SummaryRow label="Airline fees" value={formatMoney(fees, currency)} />}
+                </>
+              )}
               <SummaryRow label="Grand total" value={formatMoney(total, currency)} strong />
             </div>
           </div>

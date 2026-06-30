@@ -614,12 +614,15 @@ public class BookingServiceImpl implements BookingService {
         FlightInstanceResponse flightInstanceResponse =
                 safeExternal("flight-instance", booking, () -> flightClient.getFlightInstanceResponse(booking.getFlightInstanceId()), null);
 
+        Map<Long, FlightInstanceResponse> legFlightInstanceMap = loadLegFlightInstances(booking);
+
         return BookingMapper.toResponse(
                 booking,
                 paymentDTO,
                 fareResponse,
                 flightResponse,
                 flightInstanceResponse,
+                legFlightInstanceMap,
                 ancillaryResponses,
                 mealResponses,
                 seatInstanceResponses
@@ -647,7 +650,13 @@ public class BookingServiceImpl implements BookingService {
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
         List<Long> flightIds = bookings.stream().map(Booking::getFlightId)
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-        List<Long> flightInstanceIds = bookings.stream().map(Booking::getFlightInstanceId)
+        List<Long> flightInstanceIds = bookings.stream()
+                .flatMap(booking -> Stream.concat(
+                        Stream.of(booking.getFlightInstanceId()),
+                        booking.getLegs() != null
+                                ? booking.getLegs().stream().map(BookingLeg::getFlightInstanceId)
+                                : Stream.empty()
+                ))
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
         List<Long> allSeatIds = bookings.stream()
                 .flatMap(b -> b.getSeatInstanceIds() != null ? b.getSeatInstanceIds().stream() : Stream.empty())
@@ -698,10 +707,32 @@ public class BookingServiceImpl implements BookingService {
                     fareMap.get(booking.getFareId()),
                     flightMap.get(booking.getFlightId()),
                     flightInstanceMap.get(booking.getFlightInstanceId()),
+                    flightInstanceMap,
                     ancillaries,
                     meals,
                     seats
             );
         }).collect(Collectors.toList());
+    }
+
+    private Map<Long, FlightInstanceResponse> loadLegFlightInstances(Booking booking) {
+        if (booking == null || booking.getLegs() == null || booking.getLegs().isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> legFlightInstanceIds = booking.getLegs().stream()
+                .map(BookingLeg::getFlightInstanceId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        return legFlightInstanceIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal(
+                        "leg-flight-instances",
+                        booking,
+                        () -> flightClient.getFlightInstancesByIds(legFlightInstanceIds),
+                        Collections.emptyMap()
+                );
     }
 }
