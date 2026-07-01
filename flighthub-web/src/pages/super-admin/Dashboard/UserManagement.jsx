@@ -19,6 +19,9 @@ import {
   Phone,
   Clock,
   Trash2,
+  Plus,
+  X,
+  Lock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -83,6 +86,14 @@ const wait = (ms) => new Promise((resolve) => {
 });
 
 const isSystemAdmin = (user) => user?.role === SYSTEM_ADMIN_ROLE;
+
+const DEFAULT_CREATE_FORM = {
+  fullName: "",
+  email: "",
+  phone: "",
+  password: "",
+  role: "ROLE_AIRLINE_OWNER",
+};
 
 /* ─────────────────────── stat card ─────────────────────── */
 function StatCard({ icon: Icon, label, value, color }) {
@@ -253,6 +264,9 @@ const UserManagement = () => {
   const [refreshSpinning, setRefreshSpinning] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const loadUsers = useCallback(() => {
     return dispatch(
@@ -307,6 +321,48 @@ const UserManagement = () => {
       toast.error(message, { id: "delete-user" });
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  const updateCreateField = (field, value) => {
+    setCreateForm((current) => ({ ...current, [field]: value }));
+  };
+
+  async function handleCreateUser(event) {
+    event.preventDefault();
+
+    const payload = {
+      fullName: createForm.fullName.trim(),
+      email: createForm.email.trim().toLowerCase(),
+      phone: createForm.phone.trim() || undefined,
+      password: createForm.password,
+      role: createForm.role,
+    };
+
+    if (!payload.fullName || !payload.email || !payload.password || !payload.role) {
+      toast.error("Full name, email, password, and role are required");
+      return;
+    }
+
+    if (payload.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    setCreateSubmitting(true);
+    toast.loading("Creating user account...", { id: "create-user" });
+
+    try {
+      await api.post("/api/users", payload);
+      toast.success("User account created", { id: "create-user" });
+      setCreateForm(DEFAULT_CREATE_FORM);
+      setCreateOpen(false);
+      await loadUsers().unwrap();
+    } catch (err) {
+      const message = err.response?.data?.message || "Unable to create user account";
+      toast.error(message, { id: "create-user" });
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -370,17 +426,142 @@ const UserManagement = () => {
   return (
     <div className="space-y-6">
       {/* header */}
-      <div className="flex items-center justify-between">
-        <div />
-        <button
-          onClick={handleRefresh}
-          disabled={usersLoading || refreshSpinning}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition"
-        >
-          <RefreshCw className={`h-4 w-4 ${usersLoading || refreshSpinning ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-950 dark:text-gray-50">User Management</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Create controlled platform accounts and manage existing users.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+          >
+            <Plus className="h-4 w-4" />
+            Create user
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={usersLoading || refreshSpinning}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition"
+          >
+            <RefreshCw className={`h-4 w-4 ${usersLoading || refreshSpinning ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {createOpen && (
+        <form
+          onSubmit={handleCreateUser}
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+        >
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-950 dark:text-gray-50">Create platform account</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Use this for airline owners and support accounts. Public signup remains customer-only.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateOpen(false);
+                setCreateForm(DEFAULT_CREATE_FORM);
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+              aria-label="Close create user form"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Full name</span>
+              <input
+                value={createForm.fullName}
+                onChange={(event) => updateCreateField("fullName", event.target.value)}
+                className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+                placeholder="Nguyen Van A"
+              />
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</span>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(event) => updateCreateField("email", event.target.value)}
+                  className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+                  placeholder="owner@flighthub.local"
+                />
+              </div>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</span>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={createForm.phone}
+                  onChange={(event) => updateCreateField("phone", event.target.value)}
+                  className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+                  placeholder="0912345678"
+                />
+              </div>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Role</span>
+              <select
+                value={createForm.role}
+                onChange={(event) => updateCreateField("role", event.target.value)}
+                className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+              >
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>{getRoleMeta(role).label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Temporary password</span>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(event) => updateCreateField("password", event.target.value)}
+                  className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+                  placeholder="Min 8 characters"
+                />
+              </div>
+            </label>
+          </div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCreateOpen(false);
+                setCreateForm(DEFAULT_CREATE_FORM);
+              }}
+              disabled={createSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createSubmitting}>
+              {createSubmitting ? "Creating..." : "Create account"}
+            </Button>
+          </div>
+        </form>
+      )}
 
       {/* stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

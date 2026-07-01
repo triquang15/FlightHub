@@ -35,9 +35,10 @@ import AirlineOnboardingWizard from "./pages/Onboarding/AirlineOnboardingWizard"
 
 import { getUserProfile } from "./Redux/user/userThunks.js";
 import { getAccessToken } from "./utils/authStorage.js";
-import { AUTH_SESSION_EXPIRED_EVENT } from "./utils/api.js";
+import { AUTH_FORBIDDEN_EVENT, AUTH_SESSION_EXPIRED_EVENT } from "./utils/api.js";
 import { logoutLocal } from "./Redux/auth/authSlice.js";
 import { clearUserState } from "./Redux/user/userSlice.js";
+import { toast } from "sonner";
 
 import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
@@ -104,6 +105,27 @@ function SessionExpiredHandler() {
   return null;
 }
 
+function AuthAccessEventHandler() {
+  useEffect(() => {
+    const handleForbidden = (event) => {
+      const { status, reason } = event.detail || {};
+      if (status === 429) {
+        toast.warning(reason || "Too many requests. Please try again shortly.");
+        return;
+      }
+
+      toast.error(reason || "You do not have permission to perform this action.");
+    };
+
+    window.addEventListener(AUTH_FORBIDDEN_EVENT, handleForbidden);
+    return () => {
+      window.removeEventListener(AUTH_FORBIDDEN_EVENT, handleForbidden);
+    };
+  }, []);
+
+  return null;
+}
+
 // ============================
 // APP
 // ============================
@@ -113,6 +135,7 @@ function App() {
       <Router>
         <div className="min-h-screen bg-background transition-colors">
           <SessionExpiredHandler />
+          <AuthAccessEventHandler />
           <SessionExpiryWarning />
           <Toaster />
           <GlobalThemeControl />

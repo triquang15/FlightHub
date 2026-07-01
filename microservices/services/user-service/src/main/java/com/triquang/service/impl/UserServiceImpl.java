@@ -20,6 +20,7 @@ import com.triquang.mapper.UserMapper;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.model.User;
 import com.triquang.payload.SessionDTO;
+import com.triquang.payload.request.AdminCreateUserRequest;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
 import com.triquang.payload.request.UpdateProfileRequest;
@@ -182,6 +183,31 @@ public class UserServiceImpl implements UserService {
         return userRepository.findAll(spec, pageable).map(UserMapper::toDTO);
     }
 
+    @Override
+    public UserDTO createUserByAdmin(AdminCreateUserRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        User user = User.builder()
+                .fullName(trimToNull(request.getFullName()))
+                .email(email)
+                .phone(trimToNull(request.getPhone()))
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .verified(true)
+                .active(true)
+                .tokenVersion(0)
+                .build();
+
+        User saved = userRepository.save(user);
+        log.info("Admin created user userId={} email={} role={}", saved.getId(), saved.getEmail(), saved.getRole());
+
+        return UserMapper.toDTO(saved);
+    }
+
     // ================= DELETE USER =================
     @Override
     public void deleteUser(Long id) {
@@ -240,5 +266,13 @@ public class UserServiceImpl implements UserService {
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

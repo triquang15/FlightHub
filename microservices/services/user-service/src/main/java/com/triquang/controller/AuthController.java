@@ -14,9 +14,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +37,7 @@ public class AuthController {
 
     // ================= SIGNUP =================
     @PostMapping("/signup")
-    @Operation(summary = "Create account and session", description = "Registers a customer or owner account, records device metadata, and returns access/refresh tokens.")
+    @Operation(summary = "Create customer account and session", description = "Registers a public customer account, records device metadata, and returns access/refresh tokens.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Account created"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid signup payload"),
@@ -126,7 +128,7 @@ public class AuthController {
     ) {
 
         if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails user)) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
 
         authService.revokeRefreshToken(
@@ -148,7 +150,7 @@ public class AuthController {
     public ResponseEntity<?> logoutAll(Authentication authentication) {
 
         if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails user)) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
 
         authService.revokeAllRefreshTokens(user.getId());

@@ -4,9 +4,9 @@ import * as Yup from 'yup';
 import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, Mail, Phone, Lock, Loader2, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Sparkles, ArrowRight } from 'lucide-react';
-import { signup } from '@/Redux/auth/authThunk';
+import { User, Mail, Phone, Loader2, CheckCircle, AlertCircle, Shield, Sparkles, ArrowRight } from 'lucide-react';
 import { getUserProfile } from '@/Redux/user/userThunks';
+import { getAccessToken } from '@/utils/authStorage';
 
   const validationSchema = Yup.object({
     fullName: Yup.string()
@@ -17,31 +17,19 @@ import { getUserProfile } from '@/Redux/user/userThunks';
       .required('Email is required'),
     phone: Yup.string()
       .required('Phone number is required')
-      .matches(/^\+?[-\d\s()]+$/, 'Invalid phone number format'),
-    password: Yup.string()
-      .required('Password is required')
-      .min(8, 'Password must be at least 8 characters')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
-    confirmPassword: Yup.string()
-      .required('Please confirm your password')
-      .oneOf([Yup.ref('password')], 'Passwords must match')
+      .matches(/^\+?[-\d\s()]+$/, 'Invalid phone number format')
   });
 const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
 
 
 
   const initialValues = {
     fullName: data?.fullName || '',
     email: data?.email || '',
-    phone: data?.phone || '',
-    password: data?.password || '',
-    confirmPassword: data?.confirmPassword || ''
+    phone: data?.phone || ''
   };
 
   const handleSubmit = async (values, { setFieldError }) => {
@@ -49,26 +37,23 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
     setSubmitError('');
 
     try {
-      // Dispatch signup thunk
-      const signupResult = await dispatch(signup({
-        fullName: values.fullName,
-        email: values.email,
-        phone: values.phone,
-        password: values.password,
-        role: 'ROLE_AIRLINE_OWNER'
-      })).unwrap();
-
-      if (!signupResult.accessToken) {
-        throw new Error('Signup failed. Please try again.');
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        throw new Error('Airline owner accounts must be created by a system admin first. Please sign in with the owner account before continuing onboarding.');
       }
 
-      // Fetch user profile after storing tokens
       const profileResult = await dispatch(getUserProfile()).unwrap();
+      if (profileResult?.role !== 'ROLE_AIRLINE_OWNER') {
+        throw new Error('Only airline owner accounts can continue airline onboarding.');
+      }
 
       onDataChange({
         ...values,
-        userId: profileResult?.id,
-        accessToken: signupResult.accessToken
+        fullName: profileResult.fullName || values.fullName,
+        email: profileResult.email || values.email,
+        phone: profileResult.phone || values.phone,
+        userId: profileResult.id,
+        accessToken
       });
 
       // Proceed to next step
@@ -86,10 +71,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   };
 
   const fetchUserProfile = useCallback(async () => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (accessToken) {
       const response = await dispatch(getUserProfile()).unwrap();
-      if (response && response.id) {
+      if (response?.id && response.role === 'ROLE_AIRLINE_OWNER') {
         onDataChange({
           fullName: response.fullName || response.name || data?.fullName || '',
           email: response.email || data?.email || '',
@@ -102,24 +87,13 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   }, [data?.email, data?.fullName, data?.phone, dispatch, onDataChange]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (accessToken && !data?.userId) {
       fetchUserProfile();
     }
   }, [data?.userId, fetchUserProfile]);
 
-  // Password strength calculator
-  const calculatePasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength += 1;
-    if (/[a-z]/.test(password)) strength += 1;
-    if (/[A-Z]/.test(password)) strength += 1;
-    if (/\d/.test(password)) strength += 1;
-    if (/[^\w\s]/.test(password)) strength += 1;
-    return strength;
-  };
-
-  const FormField = ({ name, label, type = 'text', icon: Icon, isPassword = false, ...props }) => (
+  const FormField = ({ name, label, type = 'text', icon: Icon, ...props }) => (
     <div className="space-y-2">
       <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
         {Icon && <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
@@ -132,7 +106,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
               {...field}
               {...props}
               id={name}
-              type={isPassword ? (name === 'password' ? (showPassword ? 'text' : 'password') : (showConfirmPassword ? 'text' : 'password')) : type}
+              type={type}
               className={`h-12 w-full rounded-lg bg-white/90 pr-10 text-slate-950 shadow-sm backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 hover:shadow-md focus:shadow-lg dark:bg-slate-950/60 dark:text-white dark:placeholder:text-slate-500 ${
                 meta.touched && meta.error
                   ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20'
@@ -140,31 +114,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                   ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20 dark:focus:ring-green-500/20'
                   : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/20'
               }`}
-              onChange={(e) => {
-                field.onChange(e);
-                if (name === 'password') {
-                  setPasswordStrength(calculatePasswordStrength(e.target.value));
-                }
-              }}
             />
 
-            {/* Password visibility toggle */}
-            {isPassword && (
-              <button
-                type="button"
-                onClick={() => name === 'password' ? setShowPassword(!showPassword) : setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
-              >
-                {(name === 'password' ? showPassword : showConfirmPassword) ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
-            )}
-
             {/* Validation icons */}
-            {meta.touched && !isPassword && (
+            {meta.touched && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {meta.error ? (
                   <AlertCircle className="w-4 h-4 text-red-500" />
@@ -178,12 +131,6 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
       </Field>
 
       <ErrorMessage name={name} component="div" className="mt-2 flex items-center gap-1 text-sm text-red-600 dark:text-red-400" />
-
-      {name === 'password' && passwordStrength > 0 && (
-        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Password strength: {passwordStrength <= 2 ? 'Weak' : passwordStrength <= 3 ? 'Fair' : passwordStrength <= 4 ? 'Good' : 'Strong'}
-        </div>
-      )}
     </div>
   );
 
@@ -195,10 +142,10 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
         </div>
         <div>
           <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
-            Create Airline Administrator
+            Verify Airline Owner
           </h3>
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
-            Securely create an administrator account to manage your airline.
+            Continue with an airline owner account created by a system admin.
           </p>
         </div>
       </div>
@@ -237,58 +184,16 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 icon={Phone}
               />
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-                <FormField
-                  name="password"
-                  label="Password"
-                  placeholder="Create a secure password"
-                  icon={Lock}
-                  isPassword={true}
-                />
-
-                <FormField
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  icon={Lock}
-                  isPassword={true}
-                />
-              </div>
-
-              {/* Security Requirements */}
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-400/30 dark:bg-blue-500/10">
                 <div className="flex items-start gap-3">
                   <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-300" />
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
-                      Security Requirements
+                      Account Requirement
                     </h4>
-                    <ul className="space-y-1 text-sm text-blue-700 dark:text-blue-200">
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 1 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}></div>
-                        <span>At least 8 characters</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 2 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}></div>
-                        <span>Contains lowercase letters</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 3 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}></div>
-                        <span>Contains uppercase letters</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          passwordStrength >= 4 ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}></div>
-                        <span>Contains numbers</span>
-                      </li>
-                    </ul>
+                    <p className="text-sm text-blue-700 dark:text-blue-200">
+                      Public registration creates customer accounts only. Airline owner accounts are created in Super Admin User Management, then used here to complete airline onboarding.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -309,12 +214,12 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                      Creating Your Account...
+                      Verifying Owner Account...
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5 mr-3" />
-                      Create Admin & Continue
+                      Verify Owner & Continue
                     </>
                   )}
                 </Button>
@@ -322,7 +227,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
 
               <div className="border-t border-slate-200 pt-5 text-center dark:border-white/10">
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Already have an account?{' '}
+                  Need to switch account?{' '}
                   <button
                     type="button"
                     className="inline-flex items-center font-semibold text-blue-600 transition-all duration-200 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
@@ -330,12 +235,12 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                       window.location.href = '/login';
                     }}
                   >
-                    Login here
+                    Sign in
                     <ArrowRight className="w-3 h-3 ml-1" />
                   </button>
                 </p>
                 <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  By creating an account, you agree to our Terms of Service and Privacy Policy.
+                  If you need owner access, ask a system admin to create an Airline Owner account.
                 </p>
               </div>
             </Form>

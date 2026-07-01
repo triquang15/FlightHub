@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.UserRole;
 import com.triquang.payload.SessionDTO;
+import com.triquang.payload.request.AdminCreateUserRequest;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
 import com.triquang.payload.request.UpdateProfileRequest;
@@ -17,6 +18,8 @@ public interface UserService {
     UserDTO getUserById(Long id);
 
     Page<UserDTO> getUsers(Pageable pageable, String keyword, UserRole role);
+
+    UserDTO createUserByAdmin(AdminCreateUserRequest request);
 
     UserDTO updateProfile(Long userId, UpdateProfileRequest request);
 

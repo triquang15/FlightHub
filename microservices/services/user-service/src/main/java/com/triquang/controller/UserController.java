@@ -22,6 +22,7 @@ import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
 import com.triquang.payload.SessionDTO;
+import com.triquang.payload.request.AdminCreateUserRequest;
 import com.triquang.payload.request.ChangePasswordRequest;
 import com.triquang.payload.request.ForgotPasswordRequest;
 import com.triquang.payload.request.ResetPasswordRequest;
@@ -96,9 +97,12 @@ public class UserController {
 
     // ================= GET BY ID =================
     @GetMapping("/{id}")
-    @Operation(summary = "Get user by ID", description = "Returns a user profile by ID for internal/admin read paths.")
-    public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
+    @Operation(summary = "Get user by ID", description = "System-admin endpoint. Returns a user profile by ID.")
+    public ResponseEntity<ApiResponse<UserDTO>> getUserById(
+            @Parameter(hidden = true) @RequestHeader("X-User-Roles") String roles,
+            @PathVariable Long id) {
 
+        requireSystemAdmin(roles);
         return ResponseUtil.ok(userService.getUserById(id));
     }
 
@@ -106,11 +110,28 @@ public class UserController {
     @GetMapping
     @Operation(summary = "Search users", description = "Returns a pageable user list with optional keyword and role filters for system administration.")
     public ResponseEntity<ApiResponse<Page<UserDTO>>> getUsers(
+            @Parameter(hidden = true) @RequestHeader("X-User-Roles") String roles,
             Pageable pageable,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role) {
 
+        requireSystemAdmin(roles);
         return ResponseUtil.ok(userService.getUsers(pageable, keyword, parseRole(role)));
+    }
+
+    @PostMapping
+    @Operation(summary = "Create user", description = "System-admin endpoint. Creates customer, airline owner, or system-admin accounts without public role escalation.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "User created"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "System admin role required"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email already exists")
+    })
+    public ResponseEntity<ApiResponse<UserDTO>> createUser(
+            @Parameter(hidden = true) @RequestHeader("X-User-Roles") String roles,
+            @Valid @RequestBody AdminCreateUserRequest request) {
+
+        requireSystemAdmin(roles);
+        return ResponseUtil.created(userService.createUserByAdmin(request));
     }
 
     // ================= DELETE USER =================

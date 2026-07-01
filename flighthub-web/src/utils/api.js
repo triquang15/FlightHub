@@ -2,7 +2,7 @@ import axios from "axios";
 import { getDeviceId } from "@/utils/device";
 import { clearAuthTokens, getAccessToken, getRefreshToken, updateAuthTokens } from "@/utils/authStorage";
 
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -16,6 +16,7 @@ const clearSession = () => {
 };
 
 export const AUTH_SESSION_EXPIRED_EVENT = "flighthub:auth-session-expired";
+export const AUTH_FORBIDDEN_EVENT = "flighthub:auth-forbidden";
 
 const notifySessionExpired = (reason = "Session expired") => {
   clearSession();
@@ -142,6 +143,21 @@ api.interceptors.response.use(
         );
         return Promise.reject(err);
       }
+    }
+
+    if (status === 403 || status === 429) {
+      window.dispatchEvent(
+        new CustomEvent(AUTH_FORBIDDEN_EVENT, {
+          detail: {
+            status,
+            reason:
+              message ||
+              (status === 429
+                ? "Too many requests. Please slow down and try again."
+                : "You do not have permission to perform this action."),
+          },
+        })
+      );
     }
 
     // ============================
