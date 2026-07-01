@@ -1,6 +1,5 @@
 package com.triquang.event;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -50,15 +49,6 @@ public class SecurityEventConsumer {
             log.error("❌ Processing failed", e);
             throw new RuntimeException(e); // retry + DLQ
         }
-    }
-
-    @KafkaListener(
-            topics = "${kafka.topics.suspicious-login-dlq:security.suspicious-login.DLQ}",
-            groupId = "${kafka.groups.notification-dlq:notification-dlq-group}"
-    )
-    public void handleDLQ(ConsumerRecord<String, Object> record) {
-
-        log.error("💀 DLQ EVENT → {}", record.value());
     }
 
     private String notificationKey(SuspiciousLoginEvent event) {

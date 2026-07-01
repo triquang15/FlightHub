@@ -177,10 +177,13 @@ public class NotificationAdminService {
 
         switch (event.getType()) {
             case PASSWORD_RESET_REQUESTED -> {
+                ensureEmailDelivery(delivery);
                 PasswordResetRequestedEvent payload = readPayload(event, PasswordResetRequestedEvent.class);
+                ensurePasswordResetStillValid(payload);
                 emailService.sendPasswordReset(payload, passwordResetUrl);
             }
             case SUSPICIOUS_LOGIN -> {
+                ensureEmailDelivery(delivery);
                 SuspiciousLoginEvent payload = readPayload(event, SuspiciousLoginEvent.class);
                 emailService.sendSuspiciousLogin(payload);
             }
@@ -189,9 +192,28 @@ public class NotificationAdminService {
                 if (delivery.getChannel() == DeliveryChannel.EMAIL) {
                     emailService.sendBookingConfirmation(payload);
                 } else {
+                    ensureSmsEnabled();
                     smsService.sendBookingConfirmation(payload);
                 }
             }
+        }
+    }
+
+    private void ensureEmailDelivery(NotificationDelivery delivery) {
+        if (delivery.getChannel() != DeliveryChannel.EMAIL) {
+            throw new IllegalStateException("Notification type only supports EMAIL retry");
+        }
+    }
+
+    private void ensureSmsEnabled() {
+        if (!smsService.isEnabled()) {
+            throw new IllegalStateException("SMS provider is disabled");
+        }
+    }
+
+    private void ensurePasswordResetStillValid(PasswordResetRequestedEvent payload) {
+        if (payload.getExpiresAt() != null && payload.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Password reset link has expired; request a new reset instead");
         }
     }
 

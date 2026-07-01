@@ -30,7 +30,7 @@ public class BookingNotificationListener {
     )
     public void handleBookingConfirmed(BookingConfirmedEvent event) {
 
-        log.info("📦 BookingConfirmed → {}", event.getBookingReference());
+        log.info("Booking confirmation notification requested booking={}", event.getBookingReference());
 
         try {
             if (event.getContactEmail() != null) {
@@ -49,7 +49,7 @@ public class BookingNotificationListener {
                 );
             }
 
-            if (event.getContactPhone() != null) {
+            if (event.getContactPhone() != null && smsService.isEnabled()) {
                 idempotencyService.runOnce(
                         notificationKey(event, "sms"),
                         () -> trackingService.sendTracked(
@@ -63,10 +63,12 @@ public class BookingNotificationListener {
                                 () -> smsService.sendBookingConfirmation(event)
                         )
                 );
+            } else if (event.getContactPhone() != null) {
+                log.info("Booking confirmation SMS skipped because provider is disabled booking={}", event.getBookingReference());
             }
 
         } catch (Exception e) {
-            log.error("❌ Booking processing failed", e);
+            log.error("Booking notification processing failed booking={}", event.getBookingReference(), e);
             throw new RuntimeException(e); // 🔥 retry + DLQ
         }
     }

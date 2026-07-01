@@ -112,6 +112,18 @@ notification:
   checkin-url: ${notification.frontend-base-url}/checkin
   manage-booking-url: ${notification.frontend-base-url}/booking
 
+# ================= TOPIC CONFIG =================
+kafka:
+  topics:
+    booking-confirmed: ${KAFKA_TOPIC_BOOKING_CONFIRMED:booking.confirmed}
+    booking-confirmed-dlq: ${KAFKA_TOPIC_BOOKING_CONFIRMED_DLQ:booking.confirmed.DLQ}
+    password-reset-requested: ${KAFKA_TOPIC_PASSWORD_RESET_REQUESTED:user.password-reset-requested}
+    password-reset-requested-dlq: ${KAFKA_TOPIC_PASSWORD_RESET_REQUESTED_DLQ:user.password-reset-requested.DLQ}
+    suspicious-login: ${KAFKA_TOPIC_SUSPICIOUS_LOGIN:security.suspicious-login}
+    suspicious-login-dlq: ${KAFKA_TOPIC_SUSPICIOUS_LOGIN_DLQ:security.suspicious-login.DLQ}
+  groups:
+    notification-dlq: ${KAFKA_GROUP_NOTIFICATION_DLQ:notification-dlq-group}
+
 # ================= OPENAPI / SWAGGER =================
 springdoc:
   api-docs:

@@ -78,6 +78,10 @@ public class SmsService {
         ).create();
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     // ── 160-char friendly message ─────────────────────────────────────────────
     private String buildSmsBody(BookingConfirmedEvent event) {
         int paxCount = event.getPassengers() != null ? event.getPassengers().size() : 1;
