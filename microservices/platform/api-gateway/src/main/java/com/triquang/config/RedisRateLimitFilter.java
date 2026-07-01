@@ -20,17 +20,23 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
     private final StringRedisTemplate redisTemplate;
     private final int capacity;
     private final long windowSeconds;
+    private final int authCapacity;
+    private final long authWindowSeconds;
     private final boolean failOpen;
 
     public RedisRateLimitFilter(
             StringRedisTemplate redisTemplate,
             @Value("${app.rate-limit.capacity:60}") int capacity,
             @Value("${app.rate-limit.window-seconds:60}") long windowSeconds,
+            @Value("${app.rate-limit.auth-capacity:10}") int authCapacity,
+            @Value("${app.rate-limit.auth-window-seconds:60}") long authWindowSeconds,
             @Value("${app.rate-limit.fail-open:false}") boolean failOpen
     ) {
         this.redisTemplate = redisTemplate;
         this.capacity = capacity;
         this.windowSeconds = windowSeconds;
+        this.authCapacity = authCapacity;
+        this.authWindowSeconds = authWindowSeconds;
         this.failOpen = failOpen;
     }
 
@@ -44,6 +50,8 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
         String ip = request.servletRequest().getRemoteAddr();
 
         String key = "rl:" + (userId != null ? userId : ip) + ":" + normalizePath(path);
+        int routeCapacity = isAuthSensitivePath(path) ? authCapacity : capacity;
+        long routeWindowSeconds = isAuthSensitivePath(path) ? authWindowSeconds : windowSeconds;
 
         Long current;
 
@@ -51,7 +59,7 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
             current = redisTemplate.opsForValue().increment(key);
 
             if (current != null && current == 1) {
-                redisTemplate.expire(key, Duration.ofSeconds(windowSeconds));
+                redisTemplate.expire(key, Duration.ofSeconds(routeWindowSeconds));
             }
 
         } catch (Exception ex) {
@@ -65,7 +73,7 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
         }
 
         // 3. Limit check
-        if (current != null && current > capacity) {
+        if (current != null && current > routeCapacity) {
 
             log.warn("Rate limit exceeded key={}", key);
 
@@ -75,9 +83,9 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
             );
 
             return ServerResponse.status(ErrorCode.TOO_MANY_REQUESTS.getStatus())
-                    .header("X-RateLimit-Limit", String.valueOf(capacity))
+                    .header("X-RateLimit-Limit", String.valueOf(routeCapacity))
                     .header("X-RateLimit-Remaining", "0")
-                    .header("X-RateLimit-Reset", String.valueOf(windowSeconds))
+                    .header("X-RateLimit-Reset", String.valueOf(routeWindowSeconds))
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(response);
         }
@@ -88,6 +96,14 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
     private String normalizePath(String path) {
         return path.replaceAll("/[0-9]+(?=/|$)", "/{id}")
                 .replaceAll("/[0-9a-fA-F-]{36}(?=/|$)", "/{id}");
+    }
+
+    private boolean isAuthSensitivePath(String path) {
+        return path.equals("/api/auth/login")
+                || path.equals("/api/auth/signup")
+                || path.equals("/api/auth/refresh")
+                || path.equals("/api/users/forgot-password")
+                || path.equals("/api/users/reset-password");
     }
 
     private String traceId() {

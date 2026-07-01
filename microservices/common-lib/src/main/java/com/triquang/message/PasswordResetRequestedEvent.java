@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PasswordResetRequestedEvent {
+    private String eventId;
     private Long userId;
     private String email;
     private String fullName;

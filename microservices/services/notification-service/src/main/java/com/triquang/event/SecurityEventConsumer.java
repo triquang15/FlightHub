@@ -29,7 +29,7 @@ public class SecurityEventConsumer {
     )
     public void handle(SuspiciousLoginEvent event) {
 
-        log.warn("🔐 Suspicious login → {}", event.getEmail());
+        log.warn("Suspicious login notification requested email={} eventId={}", event.getEmail(), event.getEventId());
 
         try {
             idempotencyService.runOnce(
@@ -62,10 +62,13 @@ public class SecurityEventConsumer {
     }
 
     private String notificationKey(SuspiciousLoginEvent event) {
-        return "suspicious-login:" + businessKey(event);
+        return "suspicious-login:" + valueOrFallback(event.getEventId(), businessKey(event));
     }
 
     private String businessKey(SuspiciousLoginEvent event) {
+        if (event.getEventId() != null && !event.getEventId().isBlank()) {
+            return event.getEventId();
+        }
         String timestamp = event.getTimestamp() != null ? event.getTimestamp().toString() : "unknown-time";
         return valueOrUnknown(event.getEmail()) + ":"
                 + valueOrUnknown(event.getDeviceId()) + ":"
@@ -75,5 +78,9 @@ public class SecurityEventConsumer {
 
     private String valueOrUnknown(String value) {
         return value != null && !value.isBlank() ? value : "unknown";
+    }
+
+    private String valueOrFallback(String value, String fallback) {
+        return value != null && !value.isBlank() ? value : fallback;
     }
 }

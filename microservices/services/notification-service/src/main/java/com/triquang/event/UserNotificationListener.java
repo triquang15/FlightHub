@@ -31,7 +31,7 @@ public class UserNotificationListener {
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
-        log.info("Password reset notification requested email={}", event.getEmail());
+        log.info("Password reset notification requested email={} eventId={}", event.getEmail(), event.getEventId());
 
         String businessKey = businessKey(event);
         String subject = "Reset your FlightHub password";
@@ -57,6 +57,9 @@ public class UserNotificationListener {
     }
 
     private String businessKey(PasswordResetRequestedEvent event) {
+        if (event.getEventId() != null && !event.getEventId().isBlank()) {
+            return event.getEventId();
+        }
         String requestedAt = event.getRequestedAt() != null ? event.getRequestedAt().toString() : "unknown-time";
         return valueOrUnknown(event.getEmail()) + ":" + requestedAt;
     }

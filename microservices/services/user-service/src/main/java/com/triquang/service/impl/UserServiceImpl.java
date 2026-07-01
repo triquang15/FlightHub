@@ -108,8 +108,9 @@ public class UserServiceImpl implements UserService {
     // ================= FORGOT PASSWORD =================
     @Override
     public void forgotPassword(String email) {
+        String normalizedEmail = normalizeEmail(email);
 
-        userRepository.findByEmail(email).ifPresent(user -> {
+        userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
 
             String rawToken = UUID.randomUUID().toString();
             String hash = tokenHashUtil.hash(rawToken);
@@ -121,6 +122,7 @@ public class UserServiceImpl implements UserService {
             userRepository.save(user);
 
             securityEventProducer.sendPasswordResetRequestedEvent(PasswordResetRequestedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
                     .userId(user.getId())
                     .email(user.getEmail())
                     .fullName(user.getFullName())
@@ -129,7 +131,7 @@ public class UserServiceImpl implements UserService {
                     .requestedAt(LocalDateTime.now())
                     .build());
 
-            log.info("Reset password token generated and notification queued for {}", email);
+            log.info("Reset password token generated and notification queued for {}", normalizedEmail);
         });
     }
 
@@ -234,5 +236,9 @@ public class UserServiceImpl implements UserService {
 
         refreshTokenRepo.revokeAllByUserId(user.getId());
         sessionRepo.deleteByUserId(user.getId());
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }

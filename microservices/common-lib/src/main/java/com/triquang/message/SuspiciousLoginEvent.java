@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SuspiciousLoginEvent {
+    private String eventId;
     private Long userId;
     private String email;
     private String deviceId;

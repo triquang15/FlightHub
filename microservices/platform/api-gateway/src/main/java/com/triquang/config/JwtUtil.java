@@ -77,6 +77,10 @@ public class JwtUtil {
         return claims.get("tokenVersion", Integer.class);
     }
 
+    public String extractTokenType(Claims claims) {
+        return claims.get(JwtConstant.CLAIM_TOKEN_TYPE, String.class);
+    }
+
     // ===================== VALIDATION =====================
 
     public boolean isTokenExpired(Claims claims) {

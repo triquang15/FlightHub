@@ -504,6 +504,10 @@ public class RouteConfig {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token expired");
         }
 
+        if (!JwtConstant.ACCESS_TOKEN.equals(jwtUtil.extractTokenType(claims))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access token required");
+        }
+
         // =========================
         // EXTRACT USER INFO
         // =========================

@@ -63,8 +63,9 @@ public class AuthServiceImpl implements AuthService {
     // ================= SIGNUP =================
     @Override
     public AuthResponse signup(SignupRequest req, String ip, String agent) {
+        String email = normalizeEmail(req.getEmail());
 
-        if (userRepository.findByEmail(req.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new BaseException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
@@ -73,10 +74,10 @@ public class AuthServiceImpl implements AuthService {
         UserRole userRole = resolveSignupRole(req.getRole());
 
         User user = User.builder()
-                .email(req.getEmail())
+                .email(email)
                 .password(passwordEncoder.encode(req.getPassword()))
-                .fullName(req.getFullName())
-                .phone(req.getPhone())
+                .fullName(trimToNull(req.getFullName()))
+                .phone(trimToNull(req.getPhone()))
                 .role(userRole)
                 .verified(true)
                 .active(true)
@@ -98,34 +99,35 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(String email, String password,
                              String deviceId, String ip, String agent) {
 
+        String normalizedEmail = normalizeEmail(email);
         String normalizedDeviceId = normalizeDeviceId(deviceId);
         
-        checkBruteForce(email);
+        checkBruteForce(normalizedEmail);
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, password)
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, password)
             );
 
-            User user = userRepository.findByEmail(email)
+            User user = userRepository.findByEmail(normalizedEmail)
                     .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
             if (!user.isActive()) throw new BaseException(ErrorCode.ACCOUNT_DISABLED);
             if (!user.isVerified()) throw new BaseException(ErrorCode.EMAIL_NOT_VERIFIED);
 
             boolean suspicious = suspiciousLoginService.isSuspicious(
-                    user.getId(), email, normalizedDeviceId, ip
+                    user.getId(), normalizedEmail, normalizedDeviceId, ip
             );
 
             if (suspicious) {
                 suspiciousLoginService.handleSuspicious(
-                        user.getId(), email, normalizedDeviceId, ip
+                        user.getId(), normalizedEmail, normalizedDeviceId, ip
                 );
             }
 
             user.setLastLogin(LocalDateTime.now());
 
-            auditService.saveLoginAudit(email, true, ip, agent);
+            auditService.saveLoginAudit(normalizedEmail, true, ip, agent);
 
             upsertKnownDevice(user, normalizedDeviceId, ip, agent);
             upsertSession(user, normalizedDeviceId, ip, agent);
@@ -136,9 +138,9 @@ public class AuthServiceImpl implements AuthService {
             throw ex;
         } catch (Exception ex) {
 
-            auditService.saveLoginAudit(email, false, ip, agent);
+            auditService.saveLoginAudit(normalizedEmail, false, ip, agent);
 
-            checkBruteForce(email);
+            checkBruteForce(normalizedEmail);
 
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -235,16 +237,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserRole resolveSignupRole(UserRole requestedRole) {
-        if (requestedRole == null) {
-            return UserRole.ROLE_CUSTOMER;
-        }
-
-        if (requestedRole == UserRole.ROLE_SYSTEM_ADMIN) {
+        if (requestedRole != null && requestedRole != UserRole.ROLE_CUSTOMER) {
             log.warn("Blocked public signup with elevated role={}", requestedRole);
             throw new BaseException(ErrorCode.ACCESS_DENIED);
         }
 
-        return requestedRole;
+        return UserRole.ROLE_CUSTOMER;
     }
 
     private void checkBruteForce(String email) {
@@ -257,6 +255,18 @@ public class AuthServiceImpl implements AuthService {
         if (failCount >= MAX_FAILED_ATTEMPTS) {
             throw new BaseException(ErrorCode.ACCOUNT_LOCKED);
         }
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void upsertSession(User user, String deviceId, String ip, String agent) {

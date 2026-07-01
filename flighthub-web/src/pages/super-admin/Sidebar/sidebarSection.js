@@ -20,6 +20,7 @@ import {
   UserRound,
   Gauge,
   MailCheck,
+  Search,
 } from "lucide-react";
 
 export const sidebarSections = [
@@ -103,6 +104,12 @@ export const sidebarSections = [
         label: "Flight Inventory",
         icon: Plane,
         path: "/super-admin/flights",
+      },
+      {
+        id: "search-data",
+        label: "Search Data",
+        icon: Search,
+        path: "/super-admin/search-data",
       },
     ],
   },

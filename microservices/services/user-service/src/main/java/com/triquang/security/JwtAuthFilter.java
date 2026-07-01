@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.triquang.config.JwtProvider;
+import com.triquang.model.User;
+import com.triquang.repository.UserRepository;
 import com.triquang.service.impl.CustomUserDetailsService;
 
 import java.io.IOException;
@@ -21,6 +23,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,9 +37,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             String token = header.substring(7);
 
-            if (jwtProvider.validateToken(token)) {
+            if (jwtProvider.validateToken(token) && jwtProvider.isAccessToken(token)) {
 
                 String email = jwtProvider.getUsername(token);
+                Long userId = jwtProvider.getUserId(token);
+                Integer tokenVersion = jwtProvider.getTokenVersion(token);
+
+                User user = userRepository.findById(userId).orElse(null);
+                if (user == null || tokenVersion == null || !tokenVersion.equals(user.getTokenVersion())) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 var userDetails = userDetailsService.loadUserByUsername(email);
 

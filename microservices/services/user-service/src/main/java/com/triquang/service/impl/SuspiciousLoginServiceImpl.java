@@ -2,6 +2,7 @@ package com.triquang.service.impl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -52,6 +53,7 @@ public class SuspiciousLoginServiceImpl implements SuspiciousLoginService {
         // 2. Publish Kafka event (decoupled notification)
         try {
             var event = SuspiciousLoginEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
                     .userId(userId)
                     .email(email)
                     .deviceId(deviceId)

@@ -4,6 +4,7 @@ import AirportManagementNew from '../airport/AirportManagementNew';
 import CreateAirport from '../airport/CreateAirport';
 import EditAirport from '../airport/EditAirport';
 import FlightInventory from '../Dashboard/FlightInventory';
+import SearchDataInspector from '../Dashboard/SearchDataInspector';
 
 import UserManagement from '../Dashboard/UserManagement';
 import FinancialManagement from '../Dashboard/FinancialManagement';
@@ -54,6 +55,7 @@ const SuperAdminRoutes = ({ platformStats }) => {
       {/* Flight Management */}
       <Route path="/flights" element={<FlightInventory />} />
       <Route path="/flights/:flightId" element={<FlightInventory />} />
+      <Route path="/search-data" element={<SearchDataInspector />} />
   
 
       {/* User Management */}
