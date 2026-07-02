@@ -25,6 +25,14 @@ public interface AirlineRepository extends JpaRepository<Airline, Long>, JpaSpec
 
     boolean existsByIcaoCode(String code);
 
+    boolean existsByNameIgnoreCase(String name);
+
+    boolean existsByIataCodeAndIdNot(String code, Long id);
+
+    boolean existsByIcaoCodeAndIdNot(String code, Long id);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
     Page<Airline> findByStatus(AirlineStatus status, Pageable pageable);
 
     List<Airline> findByStatus(AirlineStatus status);

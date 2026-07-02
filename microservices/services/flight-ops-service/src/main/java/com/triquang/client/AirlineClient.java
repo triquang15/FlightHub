@@ -18,7 +18,7 @@ public interface AirlineClient {
 	@GetMapping("/api/airlines/admin")
 	ApiResponse<List<AirlineResponse>> getAirlinesByOwnerResponse(@RequestHeader("X-User-Id") Long userId);
 
-	@GetMapping("/api/airlines/{airlineId}")
+	@GetMapping("/api/airlines/reference/{airlineId}")
 	ApiResponse<AirlineResponse> getAirlineByIdResponse(@PathVariable Long airlineId);
 
 	@GetMapping("/api/aircrafts/{id}")

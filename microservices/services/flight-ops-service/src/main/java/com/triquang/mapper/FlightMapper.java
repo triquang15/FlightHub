@@ -30,6 +30,7 @@ public class FlightMapper {
         return FlightResponse.builder()
                 .id(flight.getId())
                 .flightNumber(flight.getFlightNumber())
+                .airlineId(flight.getAirlineId())
                 .airline(airlineResponse)
                 .aircraft(aircraft)
                 .departureAirport(departureAirport)

@@ -111,7 +111,7 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = BookingMapper.toEntity(
                 request, userId, passengers, bookingReference);
         booking.setStatus(BookingStatus.PENDING);
-        booking.setAirlineId(flightResponse.getAirline().getId());
+        booking.setAirlineId(resolveAirlineId(flightResponse, primaryLeg.getFlightId(), bookingReference));
         booking.setCurrency(currency);
         booking.setTotalAmount(BigDecimal.ZERO);
 
@@ -570,6 +570,24 @@ public class BookingServiceImpl implements BookingService {
 
     private boolean hasItems(List<Long> ids) {
         return ids != null && !ids.isEmpty();
+    }
+
+    private Long resolveAirlineId(FlightResponse flightResponse, Long flightId, String bookingReference) {
+        if (flightResponse == null) {
+            log.error("Booking {} failed because flightId={} was not resolved", bookingReference, flightId);
+            throw new BaseException(ErrorCode.FLIGHT_NOT_FOUND);
+        }
+
+        if (flightResponse.getAirlineId() != null) {
+            return flightResponse.getAirlineId();
+        }
+
+        if (flightResponse.getAirline() != null && flightResponse.getAirline().getId() != null) {
+            return flightResponse.getAirline().getId();
+        }
+
+        log.error("Booking {} failed because flightId={} has no airline reference", bookingReference, flightId);
+        throw new BaseException(ErrorCode.FLIGHT_NOT_FOUND);
     }
 
     private void ensureCommercialTermsUnchanged(

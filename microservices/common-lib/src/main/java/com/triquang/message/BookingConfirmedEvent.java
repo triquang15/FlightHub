@@ -33,6 +33,7 @@ public class BookingConfirmedEvent {
     private List<PassengerNotificationData> passengers;
 
     // ── Flight ───────────────────────────────────────────────────────────────
+    private List<BookingLegNotificationData> legs;
     private Long flightInstanceId;
     private String flightNumber;
     private String airlineName;

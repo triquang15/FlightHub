@@ -3,26 +3,19 @@ import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import {
   User,
-  Mail,
-  Phone,
-  Building2,
   Plane,
   Globe,
-  MapPin,
   HeadphonesIcon,
   Edit,
   ArrowLeft,
-  Check,
   Loader2,
-  AlertCircle,
   Zap,
   Shield,
   CheckCircle,
   Sparkles,
-  Trophy,
-  Rocket
 } from 'lucide-react';
 import { createAirline } from '@/Redux/airline/airlineThunks';
 
@@ -66,31 +59,35 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
     } catch (error) {
       setIsSubmitting(false);
       const message = String(error || '');
+      let userMessage;
 
       if (message.includes('session has expired') || message.includes('Unauthorized')) {
-        setSubmitError('Your session has expired. Please refresh the page and try again.');
+        userMessage = 'Your session has expired. Please refresh the page and try again.';
       } else if (message.includes('already exists') || message.includes('IATA') || message.includes('ICAO')) {
-        setSubmitError('An airline with this IATA or ICAO code already exists.');
+        userMessage = message;
       } else {
-        setSubmitError(message || 'An error occurred while creating your airline. Please try again.');
+        userMessage = message || 'An error occurred while creating your airline. Please try again.';
       }
+
+      setSubmitError(userMessage);
+      toast.error(userMessage);
     }
   };
 
   const DataCard = ({ title, icon: Icon, children, onEdit, editLabel = "Edit", gradient = "from-blue-500 to-purple-600" }) => (
-    <Card className="relative border-0 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+    <Card className="overflow-hidden rounded-lg border border-slate-200 bg-white/90 text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md dark:border-white/10 dark:bg-white/[0.03] dark:text-white">
       <div className={`h-1 bg-gradient-to-r ${gradient}`}></div>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xl flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
-              <Icon className="w-5 h-5 text-white" />
+      <CardHeader className="border-b border-slate-200 pb-4 dark:border-white/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex items-center gap-3 text-base sm:text-lg">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${gradient} shadow-sm`}>
+              <Icon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h4 className="font-bold text-gray-900">{title}</h4>
-              <div className="flex items-center space-x-1 mt-1">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-sm text-green-600 font-medium">Verified</span>
+              <h4 className="font-semibold text-slate-950 dark:text-white">{title}</h4>
+              <div className="mt-1 flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Ready for review</span>
               </div>
             </div>
           </CardTitle>
@@ -98,9 +95,9 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
             variant="outline"
             size="sm"
             onClick={onEdit}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300 transition-all duration-200"
+            className="h-9 rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="h-4 w-4" />
             {editLabel}
           </Button>
         </div>
@@ -112,29 +109,29 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
   );
 
   const DataRow = ({ label, value, className = "" }) => (
-    <div className={`flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors duration-200 rounded-lg px-2 ${className}`}>
-      <span className="text-gray-700 font-semibold">{label}:</span>
-      <span className="text-gray-900 font-medium">{value || <span className="text-gray-400 italic">Not provided</span>}</span>
+    <div className={`flex flex-col gap-1 rounded-lg border-b border-slate-200 px-2 py-3 last:border-b-0 hover:bg-slate-50/70 dark:border-white/10 dark:hover:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between ${className}`}>
+      <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-sm font-medium text-slate-950 dark:text-white">{value || <span className="italic text-slate-400 dark:text-slate-500">Not provided</span>}</span>
     </div>
   );
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-lg">
-          <Zap className="w-8 h-8 text-white" />
+    <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-4 text-center">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg shadow-orange-500/20 sm:h-16 sm:w-16">
+          <Zap className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            Final Review & Launch
+          <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
+            Final Review & Submission
           </h3>
-          <p className="text-gray-600 text-lg">
-            Verify your information and activate your airline on our global platform
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
+            Confirm the details before sending this airline profile to Super Admin for approval.
           </p>
         </div>
-        <div className="inline-flex items-center space-x-2 bg-orange-100 text-orange-800 px-4 py-2 rounded-full text-sm font-medium">
-          <Trophy className="w-4 h-4" />
-          <span>Almost there! One final step</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <Shield className="h-4 w-4" />
+          <span>Submission status will be pending approval</span>
         </div>
       </div>
 
@@ -146,7 +143,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
           onEdit={() => onEdit(1)}
           gradient="from-blue-500 to-cyan-600"
         >
-          <div className="space-y-0 bg-blue-50/50 rounded-xl p-4">
+          <div className="space-y-0 rounded-lg bg-slate-50/80 p-3 dark:bg-slate-950/50">
             <DataRow label="Full Name" value={formData.owner.fullName} />
             <DataRow label="Email" value={formData.owner.email} />
             <DataRow label="Phone" value={formData.owner.phone} />
@@ -160,26 +157,26 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
           onEdit={() => onEdit(2)}
           gradient="from-purple-500 to-pink-600"
         >
-          <div className="space-y-0 bg-purple-50/50 rounded-xl p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="bg-white rounded-lg p-3 border border-purple-200">
-                <div className="text-sm text-gray-600 mb-1">IATA Code</div>
+          <div className="space-y-0 rounded-lg bg-slate-50/80 p-3 dark:bg-slate-950/50">
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-white/10 dark:bg-slate-950/60">
+                <div className="mb-1 text-sm text-slate-500 dark:text-slate-400">IATA Code</div>
                 {formData.airline.iataCode ? (
-                  <Badge variant="outline" className="font-mono text-lg px-3 py-1 bg-blue-100 text-blue-800 border-blue-300">
+                  <Badge variant="outline" className="border-blue-200 bg-blue-50 px-3 py-1 font-mono text-lg text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
                     {formData.airline.iataCode}
                   </Badge>
                 ) : (
-                  <span className="text-gray-400 italic">Not provided</span>
+                  <span className="italic text-slate-400 dark:text-slate-500">Not provided</span>
                 )}
               </div>
-              <div className="bg-white rounded-lg p-3 border border-purple-200">
-                <div className="text-sm text-gray-600 mb-1">ICAO Code</div>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-white/10 dark:bg-slate-950/60">
+                <div className="mb-1 text-sm text-slate-500 dark:text-slate-400">ICAO Code</div>
                 {formData.airline.icaoCode ? (
-                  <Badge variant="outline" className="font-mono text-lg px-3 py-1 bg-purple-100 text-purple-800 border-purple-300">
+                  <Badge variant="outline" className="border-purple-200 bg-purple-50 px-3 py-1 font-mono text-lg text-purple-800 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-200">
                     {formData.airline.icaoCode}
                   </Badge>
                 ) : (
-                  <span className="text-gray-400 italic">Not provided</span>
+                  <span className="italic text-slate-400 dark:text-slate-500">Not provided</span>
                 )}
               </div>
             </div>
@@ -193,7 +190,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
               value={(
                 <Badge
                   variant="secondary"
-                  className="bg-yellow-100 text-yellow-800 border-yellow-300"
+                  className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
                 >
                   Pending super-admin approval
                 </Badge>
@@ -203,19 +200,19 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
             <DataRow label="Alliance" value={formData.airline.alliance} />
 
             {formData.airline.logoUrl && (
-              <div className="bg-white rounded-lg p-4 border border-purple-200 mt-4">
-                <div className="flex items-center space-x-4">
+              <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/60">
+                <div className="flex items-center gap-4">
                   <img
                     src={formData.airline.logoUrl}
                     alt="Airline logo"
-                    className="w-20 h-20 object-contain border-2 border-gray-200 rounded-lg shadow-sm"
+                    className="h-20 w-20 rounded-lg border border-slate-200 bg-white object-contain p-2 shadow-sm dark:border-white/10"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
                   />
                   <div>
-                    <div className="font-semibold text-gray-900">Brand Logo</div>
-                    <div className="text-sm text-gray-600">Ready for display</div>
+                    <div className="font-semibold text-slate-950 dark:text-white">Brand Logo</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">Ready for display</div>
                   </div>
                 </div>
               </div>
@@ -230,57 +227,57 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
           onEdit={() => onEdit(3)}
           gradient="from-green-500 to-emerald-600"
         >
-          <div className="space-y-0 bg-green-50/50 rounded-xl p-4">
+          <div className="space-y-0 rounded-lg bg-slate-50/80 p-3 dark:bg-slate-950/50">
             <DataRow label="Support Email" value={formData.support.supportEmail} />
             <DataRow label="Support Phone" value={formData.support.supportPhone} />
             <DataRow label="Support Hours" value={formData.support.supportHours} />
             {formData.support.additionalNotes && (
-              <div className="bg-white rounded-lg p-4 border border-green-200 mt-4">
-                <div className="font-semibold text-gray-900 mb-2">Additional Notes:</div>
-                <p className="text-gray-700 text-sm leading-relaxed">{formData.support.additionalNotes}</p>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/60">
+                <div className="mb-2 font-semibold text-slate-950 dark:text-white">Additional Notes</div>
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{formData.support.additionalNotes}</p>
               </div>
             )}
           </div>
         </DataCard>
       </div>
 
-      {/* Enhanced Terms and Conditions */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
-        <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Shield className="w-6 h-6 text-white" />
+      {/* Terms and Conditions */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20 sm:p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm">
+            <Shield className="h-5 w-5 text-white" />
           </div>
-          <div className="space-y-3 flex-1">
-            <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex-1 space-y-3">
+            <h4 className="flex items-center gap-2 text-base font-semibold text-amber-950 dark:text-amber-100 sm:text-lg">
               Terms & Conditions
-              <Sparkles className="w-5 h-5 text-amber-600" />
+              <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-300" />
             </h4>
-            <div className="text-sm text-gray-700 space-y-3">
+            <div className="space-y-3 text-sm leading-6 text-amber-900 dark:text-amber-100">
               <p className="font-medium">By submitting this registration, you agree to:</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
                   <span>Provide accurate and up-to-date information</span>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
                   <span>Comply with all GDS platform policies</span>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
                   <span>Maintain valid operating certificates</span>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
                   <span>Pay applicable platform service fees</span>
                 </div>
               </div>
-              <div className="bg-white rounded-lg p-3 border border-amber-200">
-                <div className="flex items-center space-x-2">
-                  <Globe className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-gray-900">Global Compliance:</span>
+              <div className="rounded-lg border border-amber-200 bg-white/70 p-3 dark:border-amber-900/60 dark:bg-slate-950/40">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                  <span className="font-medium text-slate-950 dark:text-white">Global Compliance</span>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">Your registration will be processed according to international aviation standards and GDPR requirements.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Your registration will be processed according to international aviation standards and GDPR requirements.</p>
               </div>
             </div>
           </div>
@@ -289,19 +286,19 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
 
       {/* Submit Error */}
       {submitError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600 text-sm">{submitError}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/30">
+          <p className="text-sm text-red-700 dark:text-red-300">{submitError}</p>
         </div>
       )}
 
-      {/* Enhanced Navigation Buttons */}
-      <div className="flex justify-between pt-8 border-t border-gray-200">
+      {/* Navigation Buttons */}
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-white/10 sm:flex-row sm:justify-between">
         <Button
           type="button"
           variant="outline"
           onClick={onPrevious}
           disabled={isSubmitting}
-          className="flex items-center gap-2 px-6 py-3 hover:bg-gray-50 transition-all duration-200"
+          className="h-11 rounded-lg px-5"
         >
           <ArrowLeft className="w-4 h-4" />
           Previous Step
@@ -310,24 +307,19 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 hover:from-orange-700 hover:via-red-700 hover:to-pink-700 text-white font-bold py-4 px-10 rounded-2xl shadow-2xl transition-all duration-500 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-3 group relative overflow-hidden"
-          size="lg"
+          className="h-11 rounded-lg px-5"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <div className="relative flex items-center gap-3">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-6 h-6 animate-spin" />
-                <span className="text-lg">Launching Your Airline...</span>
-              </>
-            ) : (
-              <>
-                <Rocket className="w-6 h-6 group-hover:animate-bounce" />
-                <span className="text-xl">Launch My Airline</span>
-                <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-              </>
-            )}
-          </div>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              Submit for Review
+              <Sparkles className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </div>

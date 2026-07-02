@@ -26,6 +26,7 @@ import com.triquang.payload.response.AirportResponse;
 import com.triquang.payload.response.FlightResponse;
 import com.triquang.repository.FlightRepository;
 import com.triquang.service.FlightService;
+import com.triquang.service.ReferenceDataService;
 
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class FlightServiceImpl implements FlightService {
 	private final FlightRepository flightRepository;
 	private final AirlineClient airlineClient;
 	private final LocationClient locationClient;
+	private final ReferenceDataService referenceDataService;
 
 	// =========================
 	// CREATE FLIGHT
@@ -237,22 +239,22 @@ public class FlightServiceImpl implements FlightService {
 
 			var airline = airlineCache.computeIfAbsent(
 					flight.getAirlineId(),
-					airlineClient::getAirlineById
+					referenceDataService::getAirline
 			);
 
 			var aircraft = aircraftCache.computeIfAbsent(
 					flight.getAircraftId(),
-					airlineClient::getAircraftById
+					referenceDataService::getAircraft
 			);
 
 			var departure = airportCache.computeIfAbsent(
 					flight.getDepartureAirportId(),
-					this::getAirport
+					referenceDataService::getAirport
 			);
 
 			var arrival = airportCache.computeIfAbsent(
 					flight.getArrivalAirportId(),
-					this::getAirport
+					referenceDataService::getAirport
 			);
 
 			result.put(
@@ -315,10 +317,10 @@ public class FlightServiceImpl implements FlightService {
 
 	private FlightResponse getFlightResponse(Flight flight) {
 
-		AircraftResponse aircraft = airlineClient.getAircraftById(flight.getAircraftId());
-		AirlineResponse airline = airlineClient.getAirlineById(flight.getAirlineId());
-		AirportResponse departure = locationClient.getAirportById(flight.getDepartureAirportId());
-		AirportResponse arrival = locationClient.getAirportById(flight.getArrivalAirportId());
+		AircraftResponse aircraft = referenceDataService.getAircraft(flight.getAircraftId());
+		AirlineResponse airline = referenceDataService.getAirline(flight.getAirlineId());
+		AirportResponse departure = referenceDataService.getAirport(flight.getDepartureAirportId());
+		AirportResponse arrival = referenceDataService.getAirport(flight.getArrivalAirportId());
 
 		return FlightMapper.toResponse(flight, aircraft, airline, departure, arrival);
 	}

@@ -6,11 +6,12 @@ import { login } from '@/Redux/auth/authThunk';
 import { Form, Formik } from 'formik';
 import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
 
@@ -29,11 +30,32 @@ const LoginForm = () => {
     rememberMe: false
   };
 
+  const getRedirectTarget = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryRedirect = searchParams.get('redirect');
+    const stateRedirect = location.state?.from
+      ? `${location.state.from.pathname || ''}${location.state.from.search || ''}`
+      : null;
+    const target = stateRedirect || queryRedirect;
+
+    if (!target || !target.startsWith('/') || target.startsWith('//')) {
+      return null;
+    }
+
+    return target;
+  };
+
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       const result = await dispatch(login(values)).unwrap();
 
       const role = result.user?.role;
+      const redirectTarget = getRedirectTarget();
+
+      if (redirectTarget) {
+        navigate(redirectTarget, { replace: true });
+        return;
+      }
 
       if (role === 'ROLE_AIRLINE_OWNER') {
         navigate('/airline/dashboard');

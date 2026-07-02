@@ -12,12 +12,14 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import com.triquang.message.BookingConfirmedEvent;
+import com.triquang.message.BookingLegNotificationData;
 import java.math.BigDecimal;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.message.SuspiciousLoginEvent;
 
 import java.io.UnsupportedEncodingException;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -57,12 +59,15 @@ public class EmailService {
     }
 
     private String buildSubject(BookingConfirmedEvent event) {
-        String depDate = event.getDepartureDateTime() != null
-                ? event.getDepartureDateTime().format(DATE_FMT) : "";
-        return String.format("Booking Confirmed | %s | %s\u2192%s | %s",
+        BookingLegNotificationData firstLeg = firstLeg(event);
+        String depCode = firstLeg != null ? firstLeg.getDepartureAirportCode() : event.getDepartureAirportCode();
+        String arrCode = firstLeg != null ? firstLeg.getArrivalAirportCode() : event.getArrivalAirportCode();
+        String depDate = firstLeg != null ? firstLeg.getDepartureDate() :
+                (event.getDepartureDateTime() != null ? event.getDepartureDateTime().format(DATE_FMT) : "");
+        return String.format("Booking confirmed | %s | %s\u2192%s | %s",
                 event.getBookingReference(),
-                event.getDepartureAirportCode(),
-                event.getArrivalAirportCode(),
+                depCode,
+                arrCode,
                 depDate);
     }
 
@@ -73,6 +78,8 @@ public class EmailService {
         ctx.setVariable("event", event);
         ctx.setVariable("passengerCount",
                 event.getPassengers() != null ? event.getPassengers().size() : 1);
+        ctx.setVariable("hasLegs", event.getLegs() != null && !event.getLegs().isEmpty());
+        ctx.setVariable("tripTypeDisplay", tripTypeDisplay(event.getTripType()));
         ctx.setVariable("supportEmail", supportEmail);
         ctx.setVariable("manageBookingUrl", frontendBaseUrl + "/bookings");
         ctx.setVariable("viewTicketUrl", event.getBookingId() != null
@@ -159,6 +166,21 @@ public class EmailService {
             case "BUSINESS"        -> "Business";
             case "FIRST"           -> "First Class";
             default                -> cabinClass;
+        };
+    }
+
+    private static BookingLegNotificationData firstLeg(BookingConfirmedEvent event) {
+        List<BookingLegNotificationData> legs = event != null ? event.getLegs() : null;
+        return legs != null && !legs.isEmpty() ? legs.getFirst() : null;
+    }
+
+    private static String tripTypeDisplay(String tripType) {
+        if (tripType == null) return "One-way";
+        return switch (tripType) {
+            case "ROUND_TRIP" -> "Round trip";
+            case "MULTI_CITY" -> "Multi-city";
+            case "ONE_WAY" -> "One-way";
+            default -> tripType.replace('_', ' ');
         };
     }
 

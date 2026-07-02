@@ -107,6 +107,22 @@ export const deleteAirline = createAsyncThunk(
   }
 );
 
+export const rejectAirline = createAsyncThunk(
+  "airline/reject",
+  async (airlineId, { rejectWithValue }) => {
+    try {
+      await api.post(`/api/airlines/${airlineId}/reject`, null);
+      console.log("Reject airline success");
+      return airlineId;
+    } catch (err) {
+      console.error("Reject airline error:", err);
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to reject airline"
+      );
+    }
+  }
+);
+
 
 
 
@@ -162,4 +178,3 @@ export const banAirline = createAsyncThunk(
     }
   }
 );
-

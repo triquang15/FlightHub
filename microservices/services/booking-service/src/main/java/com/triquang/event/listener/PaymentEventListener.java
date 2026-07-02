@@ -26,6 +26,10 @@ import com.triquang.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,7 +51,7 @@ public class PaymentEventListener {
 	public void handlePaymentCompleted(PaymentCompletedEvent event) {
 		log.info("Received PaymentCompletedEvent for bookingId={}", event.getBookingId());
 
-		Booking booking = bookingRepository.findById(event.getBookingId()).orElse(null);
+		Booking booking = bookingRepository.findByIdWithDetails(event.getBookingId()).orElse(null);
 		if (booking == null) {
 			log.error("Booking not found for id={}", event.getBookingId());
 			return;
@@ -77,11 +81,12 @@ public class PaymentEventListener {
 
 		// Fetch enrichment data for notification — failures are non-fatal
 		FlightInstanceResponse flightInstance = fetchFlightInstance(booking.getFlightInstanceId());
+		Map<Long, FlightInstanceResponse> legFlightInstances = fetchLegFlightInstances(booking);
 		FareResponse fareResponse = fetchFare(booking.getFareId());
 		UserDTO userDTO = fetchUser(booking.getUserId());
 
 		// Publish enriched event (seat-service + notification-service both consume it)
-		bookingEventProducer.sendBookingConfirmed(booking, event, flightInstance, fareResponse, userDTO);
+		bookingEventProducer.sendBookingConfirmed(booking, event, flightInstance, legFlightInstances, fareResponse, userDTO);
 	}
 
 	@KafkaListener(
@@ -142,6 +147,28 @@ public class PaymentEventListener {
 			log.warn("Could not fetch FlightInstance id={} for notification enrichment: {}", flightInstanceId,
 					e.getMessage());
 			return null;
+		}
+	}
+
+	private Map<Long, FlightInstanceResponse> fetchLegFlightInstances(Booking booking) {
+		if (booking == null || booking.getLegs() == null || booking.getLegs().isEmpty()) {
+			return Collections.emptyMap();
+		}
+
+		List<Long> flightInstanceIds = booking.getLegs().stream()
+				.map(leg -> leg.getFlightInstanceId())
+				.distinct()
+				.toList();
+		if (flightInstanceIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+
+		try {
+			return flightClient.getFlightInstancesByIds(flightInstanceIds);
+		} catch (Exception e) {
+			log.warn("Could not fetch leg FlightInstances ids={} for notification enrichment: {}",
+					flightInstanceIds, e.getMessage());
+			return Collections.emptyMap();
 		}
 	}
 

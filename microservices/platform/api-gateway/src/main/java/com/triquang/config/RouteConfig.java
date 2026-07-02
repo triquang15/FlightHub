@@ -206,6 +206,7 @@ public class RouteConfig {
     public RouterFunction<ServerResponse> airlineAdminMutationRoutes() {
         return routeWithoutCB("airline-admin-mutations", "airline-core-service")
                 .route(RequestPredicates.POST("/api/airlines/{id}/approve"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/airlines/{id}/reject"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/airlines/{id}/suspend"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/airlines/{id}/ban"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)

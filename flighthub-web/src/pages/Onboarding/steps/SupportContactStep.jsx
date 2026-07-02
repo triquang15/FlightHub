@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Mail,
@@ -16,7 +15,6 @@ import {
   Sparkles,
   CheckCircle,
   AlertCircle,
-  Globe,
   MessageSquare
 } from 'lucide-react';
 
@@ -59,36 +57,51 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
     'Available during flight operations only'
   ];
 
+  const inputStateClass = (meta, value) => {
+    if (meta?.touched && meta?.error) {
+      return 'border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-500 dark:focus:ring-red-500/20';
+    }
+
+    if (meta?.touched && value) {
+      return 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-emerald-500 dark:focus:ring-emerald-500/20';
+    }
+
+    return 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/20';
+  };
+
+  const baseInputClass =
+    'h-12 rounded-lg bg-white/90 text-slate-950 shadow-sm transition-all duration-200 placeholder:text-slate-400 hover:shadow-md focus:shadow-lg dark:bg-slate-950/60 dark:text-white dark:placeholder:text-slate-500';
+
   const FormField = ({ name, label, children, helpText, optional = true, ...props }) => (
     <div className="space-y-2">
-      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
-        {props.icon && <props.icon className="h-4 w-4 text-gray-400" />}
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+        {props.icon && <props.icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
         <span>{label}</span>
-        {optional && <span className="text-xs font-normal text-gray-400">(Optional)</span>}
+        {optional && <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(Optional)</span>}
       </label>
       {children}
-      <ErrorMessage name={name} component="div" className="text-red-500 text-sm flex items-center gap-1 mt-2" />
+      <ErrorMessage name={name} component="div" className="mt-2 flex items-center gap-1 text-sm text-red-600 dark:text-red-400" />
       {helpText && (
-        <div className="text-xs text-gray-400 mt-1">{helpText}</div>
+        <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{helpText}</div>
       )}
     </div>
   );
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg">
-          <Users className="w-8 h-8 text-white" />
+    <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-4 text-center">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-emerald-500/20 sm:h-16 sm:w-16">
+          <Users className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
             Customer Support & Contact
           </h3>
-          <p className="text-gray-600 text-lg">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
             Provide preferred contact channels so customers and partners can reach you.
           </p>
         </div>
-        <div className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+        <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
           <CheckCircle className="w-4 h-4" />
           <span>Email or phone is required for operational review</span>
         </div>
@@ -100,20 +113,22 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
         onSubmit={handleSubmit}
         enableReinitialize
       >
-        {({ values, setFieldValue, isValid, dirty }) => {
+        {({ setFieldValue, isValid }) => {
           return (
-            <Form className="space-y-8">
+            <Form className="space-y-5">
               {/* Contact Information Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6 border border-blue-200">
-                <div className="flex items-center space-x-3 mb-6">
-                  <MessageSquare className="w-6 h-6 text-blue-600" />
+              <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Contact Channels</h4>
-                    <p className="text-sm text-gray-600">Primary ways customers can reach your support team</p>
+                    <h4 className="font-semibold text-slate-950 dark:text-white">Contact Channels</h4>
+                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">Primary ways customers can reach your support team</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                   {/* Support Email */}
                   <FormField
                     name="supportEmail"
@@ -129,16 +144,10 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                             id="supportEmail"
                             type="email"
                             placeholder="support@yourairline.com"
-                            className={`transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 ${
-                              meta.touched && meta.error
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : meta.touched && field.value
-                                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20'
-                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
-                            }`}
+                            className={`${baseInputClass} pr-10 ${inputStateClass(meta, field.value)}`}
                           />
                           {meta.touched && field.value && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
                               {meta.error ? (
                                 <AlertCircle className="w-4 h-4 text-red-500" />
                               ) : (
@@ -166,16 +175,10 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                             id="supportPhone"
                             type="tel"
                             placeholder="+1 800 123 4567"
-                            className={`transition-all duration-300 hover:shadow-md focus:shadow-lg pr-10 ${
-                              meta.touched && meta.error
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : meta.touched && field.value
-                                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20'
-                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
-                            }`}
+                            className={`${baseInputClass} pr-10 ${inputStateClass(meta, field.value)}`}
                           />
                           {meta.touched && field.value && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
                               {meta.error ? (
                                 <AlertCircle className="w-4 h-4 text-red-500" />
                               ) : (
@@ -188,15 +191,17 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                     </Field>
                   </FormField>
                 </div>
-              </div>
+              </section>
 
               {/* Support Hours Section */}
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
-                <div className="flex items-center space-x-3 mb-6">
-                  <Clock className="w-6 h-6 text-purple-600" />
+              <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-400/10 dark:text-purple-300">
+                    <Clock className="h-5 w-5" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Availability Schedule</h4>
-                    <p className="text-sm text-gray-600">When customers can expect support response</p>
+                    <h4 className="font-semibold text-slate-950 dark:text-white">Availability Schedule</h4>
+                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">When customers can expect support response</p>
                   </div>
                 </div>
 
@@ -213,17 +218,17 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                           {...field}
                           id="supportHours"
                           placeholder="e.g., Monday - Friday: 9:00 AM - 6:00 PM (UTC)"
-                          className="transition-all duration-300 hover:shadow-md focus:shadow-lg"
+                          className={baseInputClass}
                         />
-                        <div className="bg-white rounded-lg border p-4">
-                          <p className="text-sm font-medium text-gray-700 mb-3">Quick Templates:</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/50">
+                          <p className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">Quick Templates</p>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             {supportHoursExamples.map((example, index) => (
                               <button
                                 key={index}
                                 type="button"
                                 onClick={() => setFieldValue('supportHours', example)}
-                                className="text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-all p-2 rounded-lg border border-transparent hover:border-blue-200"
+                                className="rounded-lg border border-transparent p-2 text-left text-sm leading-5 text-blue-700 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-300 dark:hover:border-blue-900/60 dark:hover:bg-blue-950/30 dark:hover:text-blue-200"
                               >
                                 {example}
                               </button>
@@ -234,7 +239,7 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                     )}
                   </Field>
                 </FormField>
-              </div>
+              </section>
 
               {/* Additional Notes */}
               <FormField name="additionalNotes" label="Additional Notes" icon={HeadphonesIcon} optional>
@@ -245,27 +250,26 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                       id="additionalNotes"
                       placeholder="Any additional information about your support services, special procedures, or contact preferences..."
                       rows={4}
-                      className="transition-all duration-200 hover:shadow-md focus:shadow-lg"
+                      className="min-h-28 rounded-lg border-slate-200 bg-white/90 text-slate-950 shadow-sm transition-all duration-200 placeholder:text-slate-400 hover:shadow-md focus:border-blue-500 focus:shadow-lg focus:ring-blue-500/20 dark:border-white/10 dark:bg-slate-950/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
                     />
                   )}
                 </Field>
               </FormField>
 
               {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <HeadphonesIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                <div className="flex items-start gap-3">
+                  <HeadphonesIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-300" />
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-blue-900">
+                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
                       Why provide support information?
                     </h4>
-                    <div className="text-sm text-blue-700 space-y-1">
-                      <p>• Help customers reach you directly for urgent matters</p>
-                      <p>• Improve customer satisfaction and trust</p>
-                      <p>• Enable better coordination with travel agents</p>
-                      <p>• Provide transparency about service availability</p>
+                    <div className="space-y-1 text-sm leading-6 text-blue-700 dark:text-blue-200">
+                      <p>Help customers reach you directly for urgent matters.</p>
+                      <p>Improve customer trust and coordination with travel agents.</p>
+                      <p>Provide transparent service availability for operational review.</p>
                     </div>
-                    <p className="text-xs text-blue-600 mt-2">
+                    <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
                       You can update this information anytime from your dashboard.
                     </p>
                   </div>
@@ -273,12 +277,12 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-8 border-t border-gray-200">
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-white/10 sm:flex-row sm:justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onPrevious}
-                  className="flex items-center gap-2 px-6 py-3 hover:bg-gray-50 transition-all duration-200"
+                  className="h-11 rounded-lg px-5"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Previous Step
@@ -287,9 +291,9 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
                 <Button
                   type="submit"
                   disabled={!isValid}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-3xl flex items-center gap-2 group"
+                  className="h-11 rounded-lg px-5"
                 >
-                  Review & Launch Setup
+                  Review Submission
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>

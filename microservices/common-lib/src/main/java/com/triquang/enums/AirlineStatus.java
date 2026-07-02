@@ -1,5 +1,5 @@
 package com.triquang.enums;
 
 public enum AirlineStatus {
-	ACTIVE, INACTIVE, BANNED
+	PENDING, ACTIVE, INACTIVE, BANNED
 }

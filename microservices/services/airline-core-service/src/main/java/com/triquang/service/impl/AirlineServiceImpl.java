@@ -43,6 +43,7 @@ public class AirlineServiceImpl implements AirlineService {
     public AirlineResponse createAirline(AirlineRequest request, Long ownerId) {
 
         validateRequest(request);
+        validateUniqueCodes(request, null);
 
         Airline airline = AirlineMapper.toEntity(request, ownerId);
         Airline saved = airlineRepository.save(airline);
@@ -139,6 +140,7 @@ public class AirlineServiceImpl implements AirlineService {
     public AirlineResponse updateAirline(Long id, AirlineRequest request, Long ownerId) {
 
         validateRequest(request);
+        validateUniqueCodes(request, id);
 
         Airline airline = airlineRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
@@ -185,9 +187,31 @@ public class AirlineServiceImpl implements AirlineService {
         Airline airline = airlineRepository.findById(airlineId)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
 
+        if (airline.getStatus() == AirlineStatus.BANNED && status == AirlineStatus.ACTIVE) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
         airline.setStatus(status);
 
         return AirlineMapper.toResponse(airlineRepository.save(airline));
+    }
+
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#airlineId"),
+            @CacheEvict(cacheNames = "airlinesByOwner", allEntries = true),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public void rejectAirlineByAdmin(Long airlineId) {
+        Airline airline = airlineRepository.findById(airlineId)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+
+        if (airline.getStatus() != AirlineStatus.PENDING) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        airlineRepository.delete(airline);
+        log.info("Rejected pending airline id={} ownerId={}", airlineId, airline.getOwnerId());
     }
 
     // ================= DROPDOWN =================
@@ -280,5 +304,33 @@ public class AirlineServiceImpl implements AirlineService {
         if (request.getIcaoCode() != null && request.getIcaoCode().length() != 3) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    private void validateUniqueCodes(AirlineRequest request, Long currentAirlineId) {
+        String iataCode = normalizeCode(request.getIataCode());
+        String icaoCode = normalizeCode(request.getIcaoCode());
+        String name = request.getName() == null ? null : request.getName().trim();
+
+        if (iataCode != null && (currentAirlineId == null
+                ? airlineRepository.existsByIataCode(iataCode)
+                : airlineRepository.existsByIataCodeAndIdNot(iataCode, currentAirlineId))) {
+            throw new BaseException(ErrorCode.AIRLINE_IATA_ALREADY_EXISTS);
+        }
+
+        if (icaoCode != null && (currentAirlineId == null
+                ? airlineRepository.existsByIcaoCode(icaoCode)
+                : airlineRepository.existsByIcaoCodeAndIdNot(icaoCode, currentAirlineId))) {
+            throw new BaseException(ErrorCode.AIRLINE_ICAO_ALREADY_EXISTS);
+        }
+
+        if (name != null && (currentAirlineId == null
+                ? airlineRepository.existsByNameIgnoreCase(name)
+                : airlineRepository.existsByNameIgnoreCaseAndIdNot(name, currentAirlineId))) {
+            throw new BaseException(ErrorCode.AIRLINE_NAME_ALREADY_EXISTS);
+        }
+    }
+
+    private String normalizeCode(String value) {
+        return value == null || value.isBlank() ? null : value.trim().toUpperCase();
     }
 }

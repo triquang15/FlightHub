@@ -87,7 +87,7 @@ public class Airline {
     @PrePersist
     public void prePersist() {
         if (status == null) {
-            status = AirlineStatus.INACTIVE;
+            status = AirlineStatus.PENDING;
         }
     }
 }

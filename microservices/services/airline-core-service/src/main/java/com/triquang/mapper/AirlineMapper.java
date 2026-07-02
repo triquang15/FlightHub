@@ -19,7 +19,7 @@ public class AirlineMapper {
                 .alias(trim(request.getAlias()))
                 .logoUrl(request.getLogoUrl())
                 .website(request.getWebsite())
-                .status(AirlineStatus.INACTIVE)
+                .status(AirlineStatus.PENDING)
                 .alliance(trim(request.getAlliance()))
                 .headquartersCityId(request.getHeadquartersCityId())
                 .ownerId(ownerId)

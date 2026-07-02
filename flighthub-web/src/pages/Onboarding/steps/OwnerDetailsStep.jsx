@@ -39,7 +39,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
     try {
       const accessToken = getAccessToken();
       if (!accessToken) {
-        throw new Error('Airline owner accounts must be created by a system admin first. Please sign in with the owner account before continuing onboarding.');
+        throw new Error('Please sign in with an airline owner account before continuing onboarding.');
       }
 
       const profileResult = await dispatch(getUserProfile()).unwrap();
@@ -145,7 +145,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
             Verify Airline Owner
           </h3>
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
-            Continue with an airline owner account created by a system admin.
+            We will use your signed-in airline owner account for this onboarding request.
           </p>
         </div>
       </div>

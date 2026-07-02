@@ -15,6 +15,7 @@ SEED_ANCILLARY="${SEED_ANCILLARY:-true}"
 USER_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-users.sql"
 CITY_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-cities.sql"
 AIRPORT_SEED_SQL="$SQL_DIR/2026-06-03-seed-production-airports.sql"
+AIRLINE_CORE_MIGRATION_SQL="$SQL_DIR/2026-07-02-migrate-airline-status-pending.sql"
 AIRLINE_CORE_SEED_SQL="$SQL_DIR/2026-06-05-seed-production-airline-core.sql"
 SEAT_SEED_SQL="$SQL_DIR/2026-06-08-seed-production-seat-service.sql"
 FLIGHT_OPS_SEED_SQL="$SQL_DIR/2026-06-07-seed-production-flight-ops.sql"
@@ -24,7 +25,7 @@ PAYMENT_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-payment-idempotency.sql"
 ANCILLARY_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-ancillary-commercial-integrity.sql"
 ANCILLARY_SEED_SQL="$SQL_DIR/2026-06-20-seed-production-ancillary-service.sql"
 
-for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_SEED_SQL" \
+for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE_MIGRATION_SQL" "$AIRLINE_CORE_SEED_SQL" \
   "$SEAT_SEED_SQL" "$FLIGHT_OPS_SEED_SQL" "$PRICING_SEED_SQL" \
   "$BOOKING_MIGRATION_SQL" "$PAYMENT_MIGRATION_SQL" "$ANCILLARY_MIGRATION_SQL" "$ANCILLARY_SEED_SQL"; do
   if [ ! -f "$file" ]; then
@@ -88,6 +89,8 @@ if [ "$SEED_BASE_DATA" = "true" ]; then
   run_sql_file locationdb airline_location_db "$CITY_SEED_SQL"
   run_sql_file locationdb airline_location_db "$AIRPORT_SEED_SQL"
 fi
+
+run_sql_file airlinecoredb airline_core_db "$AIRLINE_CORE_MIGRATION_SQL"
 
 echo "==> Resolving cross-service IDs"
 

@@ -23,6 +23,8 @@ public interface AirlineService {
 
 	AirlineResponse changeStatusByAdmin(Long airlineId, AirlineStatus status);
 
+	void rejectAirlineByAdmin(Long airlineId);
+
 	// ----- Dropdown -----
 	List<AirlineDropdownItem> getAirlinesForDropdown();
 

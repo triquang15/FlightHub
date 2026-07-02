@@ -38,7 +38,7 @@ import {
   approveAirline,
   suspendAirline,
   banAirline,
-  deleteAirline
+  rejectAirline
 } from "@/Redux/airline/airlineThunks"
 import { toast } from "sonner"
 import AirlineCard from "./AirineCard"
@@ -93,7 +93,7 @@ const AirlineManagement = ({ activeSection }) => {
       "INACTIVE": {
         color: "border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/40 dark:text-yellow-300",
         icon: Clock,
-        label: "Inactive"
+        label: "Suspended"
       },
       "BANNED": {
         color: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300",
@@ -139,7 +139,7 @@ const AirlineManagement = ({ activeSection }) => {
   const handleReject = async (airlineId) => {
     if (window.confirm("Are you sure you want to reject this airline application?")) {
       try {
-        await dispatch(deleteAirline(airlineId)).unwrap()
+        await dispatch(rejectAirline(airlineId)).unwrap()
         toast.success("Airline rejected and deleted successfully")
       } catch (err) {
         toast.error(err || "Failed to reject airline")
@@ -191,7 +191,7 @@ const AirlineManagement = ({ activeSection }) => {
   const renderAirlinesOverview = () => {
     const totalAirlines = paginatedAirlines?.totalElements || airlines?.length || 0
     const activeAirlines = airlines?.filter(a => a.status === "ACTIVE")?.length || 0
-    const inactiveAirlines = airlines?.filter(a => a.status === "INACTIVE")?.length || 0
+    const pendingAirlines = airlines?.filter(a => a.status === "PENDING")?.length || 0
     const bannedAirlines = airlines?.filter(a => a.status === "BANNED")?.length || 0
 
     return (
@@ -223,8 +223,8 @@ const AirlineManagement = ({ activeSection }) => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Inactive</p>
-                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{inactiveAirlines}</p>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{pendingAirlines}</p>
                 </div>
                 <Clock className="h-8 w-8 text-yellow-600" />
               </div>
@@ -292,6 +292,7 @@ const AirlineManagement = ({ activeSection }) => {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
               <SelectItem value="banned">Banned</SelectItem>
             </SelectContent>
@@ -344,7 +345,7 @@ const AirlineManagement = ({ activeSection }) => {
   )
 
   const renderPendingAirlines = () => {
-    const pendingAirlines = airlines?.filter(a => a.status === "INACTIVE") || []
+    const pendingAirlines = airlines?.filter(a => a.status === "PENDING") || []
     const totalPending = pendingAirlines.length
     const withOwner = pendingAirlines.filter((airline) => airline.owner?.fullName || airline.ownerId).length
     const completeRegistry = pendingAirlines.filter((airline) => airline.iataCode && airline.icaoCode).length
@@ -595,7 +596,7 @@ const AirlineManagement = ({ activeSection }) => {
   }
 
   const renderSuspendedAirlines = () => {
-    const suspendedAirlines = airlines?.filter(a => a.status === "BANNED") || []
+    const suspendedAirlines = airlines?.filter(a => a.status === "INACTIVE" || a.status === "BANNED") || []
     const totalSuspended = suspendedAirlines.length
     const withOwner = suspendedAirlines.filter((airline) => airline.owner?.fullName || airline.ownerId).length
     const withSupportContact = suspendedAirlines.filter((airline) => airline.support?.email || airline.support?.phone || airline.supportEmail || airline.supportPhone || airline.email || airline.phone).length

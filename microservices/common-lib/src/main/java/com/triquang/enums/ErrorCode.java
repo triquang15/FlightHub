@@ -66,6 +66,9 @@ public enum ErrorCode {
     // AIRLINE
     // =========================
     AIRLINE_NOT_FOUND("ALN_001", "Airline not found", HttpStatus.NOT_FOUND),
+    AIRLINE_IATA_ALREADY_EXISTS("ALN_002", "IATA code already exists", HttpStatus.BAD_REQUEST),
+    AIRLINE_ICAO_ALREADY_EXISTS("ALN_003", "ICAO code already exists", HttpStatus.BAD_REQUEST),
+    AIRLINE_NAME_ALREADY_EXISTS("ALN_004", "Airline name already exists", HttpStatus.BAD_REQUEST),
 
     // =========================
     // AIRCRAFT

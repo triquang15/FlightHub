@@ -19,6 +19,7 @@ const emptyPlatformStats = {
   loading: true,
   totalAirlines: null,
   activeAirlines: null,
+  pendingAirlines: null,
   inactiveAirlines: null,
   bannedAirlines: null,
   restrictedAirlines: null,
@@ -102,6 +103,7 @@ const SuperAdminDashboard = () => {
     const [
       airlinesRes,
       activeAirlinesRes,
+      pendingAirlinesRes,
       inactiveAirlinesRes,
       bannedAirlinesRes,
       airportsRes,
@@ -111,6 +113,7 @@ const SuperAdminDashboard = () => {
     ] = await Promise.all([
       safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1 } })),
       safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "ACTIVE" } })),
+      safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "PENDING" } })),
       safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "INACTIVE" } })),
       safeRequest(() => api.get("/api/airlines", { params: { page: 0, size: 1, status: "BANNED" } })),
       safeRequest(() => api.get("/api/airports", { params: { page: 0, size: 1 } })),
@@ -120,6 +123,7 @@ const SuperAdminDashboard = () => {
     ]);
 
     const notificationOverview = getPayload(notificationsRes);
+    const pendingAirlines = pendingAirlinesRes ? getPageTotal(pendingAirlinesRes) : null;
     const inactiveAirlines = inactiveAirlinesRes ? getPageTotal(inactiveAirlinesRes) : null;
     const bannedAirlines = bannedAirlinesRes ? getPageTotal(bannedAirlinesRes) : null;
     const failedNotifications = notificationOverview?.deliveriesByStatus?.FAILED ?? null;
@@ -129,6 +133,7 @@ const SuperAdminDashboard = () => {
       loading: false,
       totalAirlines: airlinesRes ? getPageTotal(airlinesRes) : null,
       activeAirlines: activeAirlinesRes ? getPageTotal(activeAirlinesRes) : null,
+      pendingAirlines,
       inactiveAirlines,
       bannedAirlines,
       restrictedAirlines: Number.isFinite(inactiveAirlines) || Number.isFinite(bannedAirlines)
@@ -138,7 +143,7 @@ const SuperAdminDashboard = () => {
       totalCities: citiesRes ? getPageTotal(citiesRes) : null,
       totalUsers: usersRes ? getPageTotal(usersRes) : null,
       totalAgents: null,
-      pendingApprovals: null,
+      pendingApprovals: pendingAirlines,
       securityAlerts: failedNotifications,
       totalNotificationEvents: notificationOverview?.totalEvents ?? null,
       totalNotificationDeliveries: notificationOverview?.totalDeliveries ?? null,

@@ -72,9 +72,19 @@ public class AirlineController {
 	}
 
 	// ---------- GET BY ID ----------
+	@GetMapping("/reference/{id}")
+	@Operation(summary = "Get airline reference by ID", description = "Returns read-only airline reference data for service-to-service and traveler display use cases.")
+	public ResponseEntity<ApiResponse<AirlineResponse>> getAirlineReferenceById(@PathVariable Long id) {
+		return ResponseUtil.ok(airlineService.getAirlineById(id));
+	}
+
+	// ---------- ADMIN GET BY ID ----------
 	@GetMapping("/{id}")
-	@Operation(summary = "Get an airline by ID", description = "Returns a single airline profile by its identifier.")
-	public ResponseEntity<ApiResponse<AirlineResponse>> getAirlineById(@PathVariable Long id) {
+	@Operation(summary = "Get an airline by ID", description = "System-admin endpoint. Returns a single airline profile by its identifier.")
+	public ResponseEntity<ApiResponse<AirlineResponse>> getAirlineById(
+			@PathVariable Long id,
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
+		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.getAirlineById(id));
 	}
 
@@ -82,12 +92,15 @@ public class AirlineController {
 	@GetMapping
 	@Operation(summary = "Search airlines", description = "Returns a paginated airline list with optional keyword and status filters.")
 	public ResponseEntity<ApiResponse<Page<AirlineResponse>>> getAllAirlines(
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size,
 			@RequestParam(defaultValue = "name") String sortBy,
 			@RequestParam(defaultValue = "asc") String sortDirection,
 			@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) AirlineStatus status) {
+
+		requireSystemAdmin(roles);
 
 		Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
 		Pageable pageable = PageRequest.of(page, size, sort);
@@ -132,6 +145,16 @@ public class AirlineController {
 			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
 		requireSystemAdmin(roles);
 		return ResponseUtil.ok(airlineService.changeStatusByAdmin(id, AirlineStatus.ACTIVE));
+	}
+
+	@PostMapping("/{id}/reject")
+	@Operation(summary = "Reject an airline", description = "Deletes a pending airline application. Requires the system administrator role.")
+	public ResponseEntity<ApiResponse<String>> rejectAirline(
+			@PathVariable Long id,
+			@Parameter(hidden = true) @RequestHeader(value = "X-User-Roles", required = false) String roles) {
+		requireSystemAdmin(roles);
+		airlineService.rejectAirlineByAdmin(id);
+		return ResponseUtil.ok("Airline application rejected");
 	}
 
 	@PostMapping("/{id}/suspend")

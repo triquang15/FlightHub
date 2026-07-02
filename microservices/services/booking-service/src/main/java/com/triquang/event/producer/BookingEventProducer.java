@@ -8,9 +8,11 @@ import org.springframework.stereotype.Service;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.message.BookingConfirmedEvent;
+import com.triquang.message.BookingLegNotificationData;
 import com.triquang.message.PassengerNotificationData;
 import com.triquang.message.PaymentCompletedEvent;
 import com.triquang.model.Booking;
+import com.triquang.model.BookingLeg;
 import com.triquang.model.Passenger;
 import com.triquang.model.Ticket;
 import com.triquang.payload.response.AirportResponse;
@@ -20,7 +22,11 @@ import com.triquang.payload.response.FareResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -30,6 +36,8 @@ import java.util.stream.Collectors;
 public class BookingEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH);
 
     @Value("${kafka.topics.booking-confirmed:booking.confirmed}")
     private String bookingConfirmedTopic;
@@ -37,6 +45,7 @@ public class BookingEventProducer {
     public void sendBookingConfirmed(Booking booking,
                                      PaymentCompletedEvent payment,
                                      FlightInstanceResponse flight,
+                                     Map<Long, FlightInstanceResponse> legFlightInstances,
                                      FareResponse fare,
                                      UserDTO user) {
 
@@ -119,6 +128,7 @@ public class BookingEventProducer {
         Double  ciWeightPer     = bag  != null ? bag.getCheckInBaggageWeightPerPiece() : null;
         Integer cbPieces        = bag  != null ? bag.getCabinBaggagePieces()        : null;
         Double  cbWeightPer     = bag  != null ? bag.getCabinBaggageWeightPerPiece() : null;
+        List<BookingLegNotificationData> legs = buildLegs(booking, legFlightInstances, flight, fareName);
 
         // ── Build & Publish ───────────────────────────────────────────────────
         BookingConfirmedEvent event = BookingConfirmedEvent.builder()
@@ -137,6 +147,7 @@ public class BookingEventProducer {
                 // Passengers
                 .passengers(passengers)
                 // Flight
+                .legs(legs)
                 .flightInstanceId(booking.getFlightInstanceId())
                 .flightNumber(flightNumber)
                 .airlineName(airlineName)
@@ -184,5 +195,89 @@ public class BookingEventProducer {
 
         kafkaTemplate.send(bookingConfirmedTopic, event);
         log.info("Published enriched BookingConfirmedEvent for booking={}", booking.getBookingReference());
+    }
+
+    private List<BookingLegNotificationData> buildLegs(
+            Booking booking,
+            Map<Long, FlightInstanceResponse> legFlightInstances,
+            FlightInstanceResponse primaryFlight,
+            String fareName) {
+        if (booking.getLegs() == null || booking.getLegs().isEmpty()) {
+            return primaryFlight == null
+                    ? Collections.emptyList()
+                    : List.of(toLegData(0, "Flight", booking.getCabinClass() != null ? booking.getCabinClass().name() : null,
+                            fareName, primaryFlight));
+        }
+
+        Map<Long, FlightInstanceResponse> flightInstances = legFlightInstances != null
+                ? legFlightInstances
+                : Collections.emptyMap();
+        List<BookingLeg> sortedLegs = booking.getLegs().stream()
+                .sorted(Comparator.comparing(leg -> leg.getLegOrder() == null ? Integer.MAX_VALUE : leg.getLegOrder()))
+                .toList();
+
+        return sortedLegs.stream()
+                .map(leg -> toLegData(
+                        leg.getLegOrder(),
+                        legLabel(booking.getTripType() != null ? booking.getTripType().name() : null, leg.getLegOrder()),
+                        leg.getCabinClass() != null ? leg.getCabinClass().name() : null,
+                        fareName,
+                        flightInstances.getOrDefault(leg.getFlightInstanceId(), primaryFlight)))
+                .collect(Collectors.toList());
+    }
+
+    private BookingLegNotificationData toLegData(
+            Integer legOrder,
+            String label,
+            String cabinClass,
+            String fareName,
+            FlightInstanceResponse flight) {
+        AirportResponse dep = flight != null ? flight.getDepartureAirport() : null;
+        AirportResponse arr = flight != null ? flight.getArrivalAirport() : null;
+        CityResponse depCity = dep != null ? dep.getCity() : null;
+        CityResponse arrCity = arr != null ? arr.getCity() : null;
+
+        return BookingLegNotificationData.builder()
+                .legOrder(legOrder)
+                .label(label)
+                .flightNumber(flight != null ? flight.getFlightNumber() : "N/A")
+                .airlineName(flight != null ? flight.getAirlineName() : "N/A")
+                .aircraftModel(flight != null ? flight.getAircraftModal() : null)
+                .cabinClass(cabinClass)
+                .fareName(fareName)
+                .departureAirportCode(dep != null ? dep.getIataCode() : "N/A")
+                .departureAirportName(dep != null ? dep.getName() : "N/A")
+                .departureCity(depCity != null ? depCity.getName() : "N/A")
+                .departureCountry(depCity != null ? depCity.getCountryName() : null)
+                .departureTerminal(flight != null ? flight.getTerminal() : null)
+                .departureGate(flight != null ? flight.getGate() : null)
+                .departureDate(formatDate(flight != null ? flight.getDepartureDateTime() : null))
+                .departureTime(formatTime(flight != null ? flight.getDepartureDateTime() : null))
+                .arrivalAirportCode(arr != null ? arr.getIataCode() : "N/A")
+                .arrivalAirportName(arr != null ? arr.getName() : "N/A")
+                .arrivalCity(arrCity != null ? arrCity.getName() : "N/A")
+                .arrivalCountry(arrCity != null ? arrCity.getCountryName() : null)
+                .arrivalDate(formatDate(flight != null ? flight.getArrivalDateTime() : null))
+                .arrivalTime(formatTime(flight != null ? flight.getArrivalDateTime() : null))
+                .duration(flight != null ? flight.getFormattedDuration() : null)
+                .build();
+    }
+
+    private String legLabel(String tripType, Integer legOrder) {
+        if ("ROUND_TRIP".equals(tripType)) {
+            return legOrder != null && legOrder == 1 ? "Return" : "Departure";
+        }
+        if ("MULTI_CITY".equals(tripType)) {
+            return "Leg " + ((legOrder != null ? legOrder : 0) + 1);
+        }
+        return "Flight";
+    }
+
+    private String formatDate(LocalDateTime value) {
+        return value != null ? value.format(DATE_FMT) : "N/A";
+    }
+
+    private String formatTime(LocalDateTime value) {
+        return value != null ? value.format(TIME_FMT) : "N/A";
     }
 }

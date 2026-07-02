@@ -6,8 +6,7 @@ import {
   getAllAirlines,
   updateAirline,
   deleteAirline,
-
- 
+  rejectAirline,
   approveAirline,
   suspendAirline,
   banAirline
@@ -227,11 +226,31 @@ const airlineSlice = createSlice({
         state.deleteLoading = false;
         state.error = action.payload;
       })
-      
-     
-    
-      
-      
+
+      // Reject Airline Application
+      .addCase(rejectAirline.pending, (state) => {
+        state.loading = true;
+        state.deleteLoading = true;
+        state.error = null;
+      })
+      .addCase(rejectAirline.fulfilled, (state, action) => {
+        state.loading = false;
+        state.deleteLoading = false;
+        state.airlines = state.airlines.filter(airline => airline.id !== action.payload);
+        state.paginatedAirlines.content = state.paginatedAirlines.content.filter(airline => airline.id !== action.payload);
+        if (state.paginatedAirlines.numberOfElements > 0) {
+          state.paginatedAirlines.numberOfElements -= 1;
+        }
+        if (state.paginatedAirlines.totalElements > 0) {
+          state.paginatedAirlines.totalElements -= 1;
+        }
+      })
+      .addCase(rejectAirline.rejected, (state, action) => {
+        state.loading = false;
+        state.deleteLoading = false;
+        state.error = action.payload;
+      })
+
       // Approve Airline
       .addCase(approveAirline.pending, (state) => {
         state.loading = true;

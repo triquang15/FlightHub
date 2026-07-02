@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { logoutLocal } from "@/Redux/auth/authSlice";
 import { clearUserState } from "@/Redux/user/userSlice";
 import { getUserProfile } from "@/Redux/user/userThunks";
@@ -16,6 +16,7 @@ const getRoleHome = (role) => {
 
 const AuthRequired = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const [checkingSession, setCheckingSession] = useState(false);
   const hasValidSession = isAuthenticated && hasValidAccessToken();
@@ -63,7 +64,7 @@ const AuthRequired = ({ children, allowedRoles }) => {
   }
 
   if (!hasValidSession) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(user?.role)) {

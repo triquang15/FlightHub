@@ -3,7 +3,6 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,12 +19,10 @@ import {
   MapPin,
   ArrowLeft,
   ArrowRight,
-  Search,
   Sparkles,
   CheckCircle,
   AlertCircle,
   Image,
-  Star,
   Shield
 } from "lucide-react";
 import { useSelector } from "react-redux";
@@ -66,7 +63,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
   useEffect(() => {
     dispatch(getAllCities());
-  }, []);
+  }, [dispatch]);
 
   // console.
 
@@ -106,10 +103,25 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
     onNext();
   };
 
+  const inputStateClass = (meta) => {
+    if (meta?.touched && meta?.error) {
+      return "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-500 dark:focus:ring-red-500/20";
+    }
+
+    if (meta?.touched && !meta?.error) {
+      return "border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-emerald-500 dark:focus:ring-emerald-500/20";
+    }
+
+    return "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/20";
+  };
+
+  const baseInputClass =
+    "h-12 rounded-lg bg-white/90 text-slate-950 shadow-sm transition-all duration-200 placeholder:text-slate-400 hover:shadow-md focus:shadow-lg dark:bg-slate-950/60 dark:text-white dark:placeholder:text-slate-500";
+
   const FormField = ({ name, label, children, required = false, helpText, ...props }) => (
     <div className="space-y-2">
-      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-gray-700">
-        {props.icon && <props.icon className="h-4 w-4 text-gray-400" />}
+      <label htmlFor={name} className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+        {props.icon && <props.icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
         <span>
           {label} {required && <span className="text-red-500">*</span>}
         </span>
@@ -118,25 +130,25 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
       <ErrorMessage
         name={name}
         component="div"
-        className="text-red-500 text-sm flex items-center gap-1 mt-2"
+        className="mt-2 flex items-center gap-1 text-sm text-red-600 dark:text-red-400"
       />
       {helpText && (
-        <div className="text-xs text-gray-400 mt-1">{helpText}</div>
+        <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{helpText}</div>
       )}
     </div>
   );
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
-          <Sparkles className="w-8 h-8 text-white" />
+    <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-4 text-center">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/20 sm:h-16 sm:w-16">
+          <Sparkles className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
             Airline Details & Branding
           </h3>
-          <p className="text-gray-600 text-lg">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-lg">
             Enter your airline's identity, codes and brand assets to get listed.
           </p>
         </div>
@@ -148,19 +160,21 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
         onSubmit={handleSubmit}
         enableReinitialize
       >
-        {({ values, setFieldValue, isValid, dirty }) => {
+        {({ values, setFieldValue, isValid }) => {
           return (
-            <Form className="space-y-4">
+            <Form className="space-y-5">
               {/* IATA and ICAO Codes */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Plane className="w-6 h-6 text-blue-600" />
+              <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300">
+                    <Plane className="h-5 w-5" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Airline Identification Codes</h4>
-                    <p className="text-sm text-gray-600">Official IATA and ICAO codes for your airline</p>
+                    <h4 className="font-semibold text-slate-950 dark:text-white">Airline Identification Codes</h4>
+                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">Official IATA and ICAO codes for your airline</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <FormField
                     name="iataCode"
                     label="IATA Code"
@@ -176,20 +190,14 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                             id="iataCode"
                             placeholder="e.g., AA"
                             maxLength={2}
-                            className={`uppercase transition-all duration-300 hover:shadow-md focus:shadow-lg font-mono text-center text-lg pr-10 ${
-                              meta.touched && meta.error
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                                : meta.touched && !meta.error
-                                ? "border-green-500 focus:border-green-500 focus:ring-green-500/20"
-                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
-                            }`}
+                            className={`${baseInputClass} pr-10 text-center font-mono text-lg uppercase ${inputStateClass(meta)}`}
                             onChange={(e) => {
                               const value = e.target.value.toUpperCase();
                               setFieldValue("iataCode", value);
                             }}
                           />
                           {meta.touched && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
                               {meta.error ? (
                                 <AlertCircle className="w-4 h-4 text-red-500" />
                               ) : (
@@ -217,20 +225,14 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                             id="icaoCode"
                             placeholder="e.g., AAL"
                             maxLength={3}
-                            className={`uppercase transition-all duration-300 hover:shadow-md focus:shadow-lg font-mono text-center text-lg pr-10 ${
-                              meta.touched && meta.error
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                                : meta.touched && !meta.error
-                                ? "border-green-500 focus:border-green-500 focus:ring-green-500/20"
-                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
-                            }`}
+                            className={`${baseInputClass} pr-10 text-center font-mono text-lg uppercase ${inputStateClass(meta)}`}
                             onChange={(e) => {
                               const value = e.target.value.toUpperCase();
                               setFieldValue("icaoCode", value);
                             }}
                           />
                           {meta.touched && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
                               {meta.error ? (
                                 <AlertCircle className="w-4 h-4 text-red-500" />
                               ) : (
@@ -243,10 +245,10 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                     </Field>
                   </FormField>
                 </div>
-              </div>
+              </section>
 
               {/* Airline Name and Alias */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   name="airlineName"
                   label="Airline Name"
@@ -258,9 +260,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                         {...field}
                         id="airlineName"
                         placeholder="Enter airline name"
-                        className={`transition-all duration-200 hover:shadow-md focus:shadow-lg ${
-                          meta.touched && meta.error ? "border-red-500" : ""
-                        }`}
+                        className={`${baseInputClass} ${inputStateClass(meta)}`}
                       />
                     )}
                   </Field>
@@ -273,7 +273,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                         {...field}
                         id="alias"
                         placeholder="Enter airline alias"
-                        className="transition-all duration-200 hover:shadow-md focus:shadow-lg"
+                        className={baseInputClass}
                       />
                     )}
                   </Field>
@@ -281,7 +281,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
               </div>
 
               {/* Country and Headquarters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Country field removed (not used by backend) */}
 
                 <FormField
@@ -297,13 +297,13 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   >
                     <SelectTrigger
 
-                      className={`w-full transition-all duration-200 hover:shadow-md focus:shadow-lg ${
-                        values.headquartersCity === "" ? "border-red-500" : ""
+                      className={`h-12 w-full rounded-lg bg-white/90 text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md focus:shadow-lg dark:border-white/10 dark:bg-slate-950/60 dark:text-white ${
+                        values.headquartersCity === "" ? "border-red-500 dark:border-red-500" : ""
                       }`}
                     >
                       <SelectValue placeholder="Search and select a city..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-72">
                       {cities &&
                         cities.map((city) => (
                           <SelectItem key={city.id} value={city.id.toString()}>
@@ -312,34 +312,31 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                         ))}
                     </SelectContent>
                   </Select>
-                  <ErrorMessage
-                    name="headquartersCity"
-                    component="div"
-                    className="text-red-500 text-sm"
-                  />
                 </FormField>
               </div>
 
               {/* Logo Upload Section */}
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Image className="w-6 h-6 text-green-600" />
+              <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+                    <Image className="h-5 w-5" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Brand Identity</h4>
-                    <p className="text-sm text-gray-600">Upload your airline logo to establish brand presence</p>
+                    <h4 className="font-semibold text-slate-950 dark:text-white">Brand Identity</h4>
+                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">Upload your airline logo to establish brand presence</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
-                    <div className="flex-1 w-full">
+                  <div className="flex flex-col items-start gap-4 lg:flex-row lg:items-center">
+                    <div className="w-full flex-1">
                       <Field name="logoUrl">
                         {({ field }) => (
                           <Input
                             {...field}
                             id="logoUrl"
                             placeholder="Enter logo URL or upload file below"
-                            className="transition-all duration-300 hover:shadow-md focus:shadow-lg"
+                            className={baseInputClass}
                             onChange={(e) => {
                               setFieldValue("logoUrl", e.target.value);
                               setLogoPreview(e.target.value);
@@ -348,7 +345,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                         )}
                       </Field>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2">
                       <input
                         type="file"
                         accept="image/*"
@@ -362,7 +359,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                         onClick={() =>
                           document.getElementById("logo-upload").click()
                         }
-                        className="hover:bg-green-50 border-green-300 hover:border-green-400"
+                        className="h-12 rounded-lg border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/60 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Upload
@@ -371,25 +368,25 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   </div>
 
                   {logoPreview && (
-                    <div className="flex items-center space-x-4 bg-white rounded-lg p-4 border">
+                    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/50">
                       <img
                         src={logoPreview}
                         alt="Logo preview"
-                        className="w-20 h-20 object-contain border rounded-lg shadow-sm"
+                        className="h-20 w-20 rounded-lg border border-slate-200 bg-white object-contain p-2 shadow-sm dark:border-white/10"
                         onError={() => setLogoPreview("")}
                       />
                       <div>
-                        <p className="font-medium text-gray-900">Logo Preview</p>
-                        <p className="text-sm text-gray-600">This is how your logo will appear</p>
+                        <p className="font-medium text-slate-950 dark:text-white">Logo Preview</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">This is how your logo will appear</p>
                       </div>
                     </div>
                   )}
 
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
                     Recommended: PNG or SVG format, minimum 200x200px, transparent background
                   </p>
                 </div>
-              </div>
+              </section>
 
               {/* Website */}
               <FormField name="website" label="Website (Optional)" icon={Globe}>
@@ -399,21 +396,21 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                       {...field}
                       id="website"
                       placeholder="https://example.com"
-                      className="transition-all duration-200 hover:shadow-md focus:shadow-lg"
+                      className={baseInputClass}
                     />
                   )}
                 </Field>
               </FormField>
 
               {/* Review status and Alliance */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
                   <div className="flex items-start gap-3">
-                    <Shield className="mt-0.5 h-5 w-5 text-yellow-700" />
+                    <Shield className="mt-0.5 h-5 w-5 text-amber-700 dark:text-amber-300" />
                     <div>
-                      <p className="font-semibold text-yellow-900">Pending review</p>
-                      <p className="mt-1 text-sm text-yellow-800">
-                        New airline registrations are submitted as inactive until a super admin approves them.
+                      <p className="font-semibold text-amber-900 dark:text-amber-100">Pending review</p>
+                      <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">
+                        New airline registrations are submitted as pending until a super admin approves them.
                       </p>
                     </div>
                   </div>
@@ -424,7 +421,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                     onValueChange={(value) => setFieldValue("alliance", value)}
                     value={values.alliance}
                   >
-                    <SelectTrigger className="transition-all duration-200 hover:shadow-md focus:shadow-lg">
+                    <SelectTrigger className="h-12 rounded-lg bg-white/90 text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md focus:shadow-lg dark:border-white/10 dark:bg-slate-950/60 dark:text-white">
                       <SelectValue placeholder="Select alliance" />
                     </SelectTrigger>
                     <SelectContent>
@@ -440,12 +437,12 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
 
               
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-8 border-t border-gray-200">
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-white/10 sm:flex-row sm:justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onPrevious}
-                  className="flex items-center gap-2 px-6 py-3 hover:bg-gray-50 transition-all duration-200"
+                  className="h-11 rounded-lg px-5"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Previous Step
@@ -454,6 +451,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                 <Button
                   type="submit"
                   disabled={!isValid}
+                  className="h-11 rounded-lg px-5"
                 >
                   Save & Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

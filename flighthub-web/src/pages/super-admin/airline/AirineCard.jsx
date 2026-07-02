@@ -112,7 +112,7 @@ const AirlineCard = ({
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          {showApprovalActions && airline.status === "INACTIVE" && (
+          {showApprovalActions && airline.status === "PENDING" && (
             <>
               <Button size="sm" onClick={() => onApprove(airline.id)} className="bg-green-600 hover:bg-green-700">
                 <CheckCircle className="mr-1 h-3.5 w-3.5" />
@@ -138,7 +138,7 @@ const AirlineCard = ({
             </>
           )}
 
-          {(airline.status === "INACTIVE" || airline.status === "BANNED") && !showApprovalActions && (
+          {airline.status === "INACTIVE" && !showApprovalActions && (
             <Button size="sm" onClick={() => onApprove(airline.id)} className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="mr-1 h-3.5 w-3.5" />
               Activate

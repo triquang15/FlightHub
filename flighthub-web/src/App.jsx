@@ -200,7 +200,11 @@ function App() {
             {/* ================= ONBOARDING ================= */}
             <Route
               path="/airline-onboarding"
-              element={<AirlineOnboardingWizard />}
+              element={
+                <AuthRequired allowedRoles={["ROLE_AIRLINE_OWNER"]}>
+                  <AirlineOnboardingWizard />
+                </AuthRequired>
+              }
             />
 
             {/* ================= TRAVELER ================= */}

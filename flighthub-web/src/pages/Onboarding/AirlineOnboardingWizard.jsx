@@ -13,8 +13,8 @@ import {
 const steps = [
   {
     id: 'owner',
-    title: 'Account Setup',
-    description: 'Create your admin account',
+    title: 'Owner Verification',
+    description: 'Confirm the signed-in owner account',
     icon: Shield,
     color: 'from-blue-500 to-cyan-500'
   },
@@ -34,8 +34,8 @@ const steps = [
   },
   {
     id: 'review',
-    title: 'Launch Ready',
-    description: 'Review and activate',
+    title: 'Submit for Review',
+    description: 'Review and send for approval',
     icon: Zap,
     color: 'from-orange-500 to-red-500'
   }
@@ -191,7 +191,7 @@ const AirlineOnboardingWizard = () => {
               Join Our Global Network
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300 md:text-lg">
-              Register your airline profile, support contacts and administrator account for review by the FlightHub operations team.
+              Register your airline profile and support contacts for review by the FlightHub operations team.
             </p>
           </div>
 

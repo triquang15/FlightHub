@@ -48,7 +48,11 @@ const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const searchData = readTravelerSearchParams(searchParams);
+  const searchParamKey = searchParams.toString();
+  const searchData = React.useMemo(
+    () => readTravelerSearchParams(new URLSearchParams(searchParamKey)),
+    [searchParamKey],
+  );
 
   const { searchResults, loading, error } = useSelector((state) => state.flightSearch);
   const { airports = [] } = useSelector((state) => state.airport);
