@@ -6,7 +6,6 @@ import {
   Users,
   Search,
   Shield,
-  User,
   Plane,
   RefreshCw,
   ChevronLeft,
@@ -22,6 +21,10 @@ import {
   Plus,
   X,
   Lock,
+  CheckCircle2,
+  UserCheck,
+  CalendarDays,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -54,20 +57,49 @@ const ROLE_OPTIONS = [
 function getRoleMeta(role) {
   switch (role) {
     case SYSTEM_ADMIN_ROLE:
-      return { label: "System Admin", color: "bg-purple-100 text-purple-700" };
+      return { label: "System Admin", color: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" };
     case "ROLE_AIRLINE_OWNER":
-      return { label: "Airline Owner", color: "bg-blue-100 text-blue-700" };
+      return { label: "Airline Owner", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" };
     case "ROLE_CUSTOMER":
-      return { label: "Customer", color: "bg-teal-100 text-teal-700" };
+      return { label: "Customer", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" };
     default:
-      return { label: role, color: "bg-gray-100 text-gray-600" };
+      return { label: role || "Unknown", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" };
   }
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return "Never";
+function getInitials(user) {
+  const value = user?.fullName || user?.email || "?";
+  return value
+    .split(/[ .@_-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?";
+}
+
+function getAccountState(user) {
+  if (user?.active === false) {
+    return {
+      label: "Inactive",
+      color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+    };
+  }
+  if (user?.verified === false) {
+    return {
+      label: "Unverified",
+      color: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    };
+  }
+  return {
+    label: "Active",
+    color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+  };
+}
+
+function formatDate(dateStr, fallback = "Never") {
+  if (!dateStr) return fallback;
   try {
-    return new Date(dateStr).toLocaleDateString("en-IN", {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -96,26 +128,29 @@ const DEFAULT_CREATE_FORM = {
 };
 
 /* ─────────────────────── stat card ─────────────────────── */
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, detail, color }) {
   return (
-    <div className={`rounded-xl p-4 flex items-center gap-4 ${color}`}>
-      <div className="p-3 bg-white/40 rounded-lg">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">{value}</p>
+          {detail && <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">{detail}</p>}
+        </div>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${color}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <div>
-        <p className="text-2xl font-bold">{value}</p>
-        <p className="text-sm opacity-80">{label}</p>
       </div>
     </div>
   );
 }
 
 /* ─────────────────────── sort header ─────────────────────── */
-function SortHeader({ label, field, sortField, sortDir, onSort }) {
+function SortHeader({ label, field, sortField, sortDir, onSort, className = "" }) {
   const active = sortField === field;
   return (
     <th
-      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+      className={`cursor-pointer select-none px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ${className}`}
       onClick={() => onSort(field)}
     >
       <span className="flex items-center gap-1">
@@ -376,15 +411,6 @@ const UserManagement = () => {
     setCurrentPage(1);
   }
 
-  /* stats derived from real data */
-  const stats = useMemo(() => {
-    const totalUsers = total || safeUsers.length;
-    const customers = safeUsers.filter((u) => u.role === "ROLE_CUSTOMER").length;
-    const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
-    const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
-    return { total: totalUsers, customers, airlineOwners, superAdmins };
-  }, [safeUsers, total]);
-
   /* filtered + sorted list */
   const filtered = useMemo(() => {
     let list = [...safeUsers];
@@ -406,7 +432,7 @@ const UserManagement = () => {
     list.sort((a, b) => {
       let av = a[sortField] ?? "";
       let bv = b[sortField] ?? "";
-      if (sortField === "lastLogin") {
+      if (sortField === "lastLogin" || sortField === "createdAt") {
         av = av ? new Date(av).getTime() : 0;
         bv = bv ? new Date(bv).getTime() : 0;
       } else {
@@ -421,16 +447,31 @@ const UserManagement = () => {
     return list;
   }, [safeUsers, search, roleFilter, sortField, sortDir]);
 
+  /* stats derived from real data */
+  const stats = useMemo(() => {
+    const visibleUsers = filtered.length;
+    const activeUsers = filtered.filter((u) => u.active !== false).length;
+    const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
+    const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
+    return { visible: visibleUsers, active: activeUsers, airlineOwners, superAdmins };
+  }, [filtered, safeUsers]);
+
   const uniqueRoles = useMemo(() => ROLE_OPTIONS, []);
+  const hasFilters = search.trim() || roleFilter !== "all";
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       {/* header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-950 dark:text-gray-50">User Management</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Create controlled platform accounts and manage existing users.
+            <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-300">
+              <Shield className="h-3.5 w-3.5" />
+              System administration
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-gray-50">User Management</h2>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+              Create controlled platform accounts, review access level, and remove accounts that no longer need access.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -451,18 +492,19 @@ const UserManagement = () => {
             Refresh
           </button>
         </div>
+        </div>
       </div>
 
       {createOpen && (
         <form
           onSubmit={handleCreateUser}
-          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+          className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h3 className="text-base font-semibold text-gray-950 dark:text-gray-50">Create platform account</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Use this for airline owners and support accounts. Public signup remains customer-only.
+                Use this for airline owner onboarding or controlled admin-created accounts.
               </p>
             </div>
             <button
@@ -478,7 +520,8 @@ const UserManagement = () => {
             </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+            <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Full name</span>
               <input
@@ -486,6 +529,7 @@ const UserManagement = () => {
                 onChange={(event) => updateCreateField("fullName", event.target.value)}
                 className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
                 placeholder="Nguyen Van A"
+                required
               />
             </label>
 
@@ -499,6 +543,7 @@ const UserManagement = () => {
                   onChange={(event) => updateCreateField("email", event.target.value)}
                   className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
                   placeholder="owner@flighthub.local"
+                  required
                 />
               </div>
             </label>
@@ -511,7 +556,7 @@ const UserManagement = () => {
                   value={createForm.phone}
                   onChange={(event) => updateCreateField("phone", event.target.value)}
                   className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
-                  placeholder="0912345678"
+                  placeholder="+84912345678"
                 />
               </div>
             </label>
@@ -529,7 +574,7 @@ const UserManagement = () => {
               </select>
             </label>
 
-            <label className="space-y-1.5">
+            <label className="space-y-1.5 md:col-span-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Temporary password</span>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -539,9 +584,29 @@ const UserManagement = () => {
                   onChange={(event) => updateCreateField("password", event.target.value)}
                   className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
                   placeholder="Min 8 characters"
+                  minLength={8}
+                  required
                 />
               </div>
             </label>
+          </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-900/60">
+              <p className="font-semibold text-gray-950 dark:text-gray-50">Creation rules</p>
+              <div className="mt-3 space-y-2 text-gray-600 dark:text-gray-400">
+                <div className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span>Public signup cannot create privileged roles.</span>
+                </div>
+                <div className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span>Phone must match Vietnamese local or +84 format when provided.</span>
+                </div>
+                <div className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span>System admin accounts are protected from deletion.</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
@@ -564,18 +629,38 @@ const UserManagement = () => {
       )}
 
       {/* stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Total Users" value={stats.total} color="bg-indigo-100 text-indigo-700" />
-        <StatCard icon={User} label="Customers" value={stats.customers} color="bg-green-100 text-green-700" />
-        <StatCard icon={Plane} label="Airline Owners" value={stats.airlineOwners} color="bg-blue-100 text-blue-700" />
-        <StatCard icon={Shield} label="System Admins" value={stats.superAdmins} color="bg-purple-100 text-purple-700" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Users} label="Results shown" value={stats.visible} detail={`${total || 0} total matching records`} color="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" />
+        <StatCard icon={UserCheck} label="Active visible" value={stats.active} detail="Accounts not disabled" color="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" />
+        <StatCard icon={Plane} label="Airline owners" value={stats.airlineOwners} detail="Current page count" color="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" />
+        <StatCard icon={Shield} label="Protected admins" value={stats.superAdmins} detail="Deletion disabled" color="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" />
       </div>
 
       {/* filters */}
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col sm:flex-row gap-3 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-950 dark:text-gray-50">
+          <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+          Filters
+        </div>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setRoleFilter("all");
+              setCurrentPage(1);
+            }}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          >
+            Reset filters
+          </button>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
 
       {/* search */}
-      <div className="relative flex-1">
+      <div className="relative min-w-0 flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         
         <input
@@ -600,7 +685,7 @@ const UserManagement = () => {
       </div>
 
       {/* role filter */}
-      <div className="relative min-w-[180px]">
+      <div className="relative min-w-[180px] shrink-0">
         <select
           value={roleFilter}
           onChange={(e) => {
@@ -630,10 +715,20 @@ const UserManagement = () => {
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
       </div>
 
+      </div>
     </div>
 
       {/* table */}
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-950 dark:text-gray-50">Accounts</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Sorted by {sortField} ({sortDir})</p>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {hasFilters ? "Filtered result set" : "All accounts"}
+        </p>
+      </div>
 
       {usersLoading ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
@@ -652,13 +747,13 @@ const UserManagement = () => {
           <p className="text-sm mt-1">Try adjusting your search or filter</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-b-lg [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
+          <table className="w-[1600px] min-w-[1600px] table-fixed text-sm">
 
             {/* header */}
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="w-14 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   #
                 </th>
 
@@ -668,6 +763,7 @@ const UserManagement = () => {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  className="w-80"
                 />
 
                 <SortHeader
@@ -676,13 +772,18 @@ const UserManagement = () => {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  className="w-80"
                 />
 
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Role
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+
+                <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Phone
                 </th>
 
@@ -692,9 +793,19 @@ const UserManagement = () => {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  className="w-44"
                 />
 
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <SortHeader
+                  label="Created"
+                  field="createdAt"
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                  className="w-44"
+                />
+
+                <th className="w-24 bg-gray-50 px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -704,6 +815,7 @@ const UserManagement = () => {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {filtered.map((user, idx) => {
                 const roleMeta = getRoleMeta(user.role);
+                const accountState = getAccountState(user);
                 const protectedUser = isSystemAdmin(user);
                 const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
@@ -713,18 +825,18 @@ const UserManagement = () => {
                     className="hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
                   >
                     {/* index */}
-                    <td className="px-4 py-3 text-gray-400 text-xs">
+                    <td className="w-14 px-4 py-3 text-gray-400 text-xs">
                       {rowNumber}
                     </td>
 
                     {/* name */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
+                    <td className="w-80 px-4 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
 
                         {/* avatar */}
                         <div
                           className="
-                            h-9 w-9 rounded-full
+                            h-10 w-10 shrink-0 rounded-full
                             bg-gradient-to-br from-indigo-100 to-indigo-200
                             dark:from-indigo-800 dark:to-indigo-700
                             flex items-center justify-center
@@ -733,11 +845,11 @@ const UserManagement = () => {
                             shadow-sm
                           "
                         >
-                          {(user.fullName || user.email || "?")[0].toUpperCase()}
+                          {getInitials(user)}
                         </div>
 
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-gray-900 dark:text-gray-100">
                             {user.fullName || "—"}
                           </p>
 
@@ -751,15 +863,17 @@ const UserManagement = () => {
                     </td>
 
                     {/* email */}
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                        <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    <td className="w-80 px-4 py-3">
+                      <span className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-300">
+                        <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">
                         {user.email || "—"}
+                        </span>
                       </span>
                     </td>
 
                     {/* role */}
-                    <td className="px-4 py-3">
+                    <td className="w-40 px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleMeta.color}`}
                       >
@@ -767,24 +881,44 @@ const UserManagement = () => {
                       </span>
                     </td>
 
+                    {/* status */}
+                    <td className="w-32 px-4 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${accountState.color}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {accountState.label}
+                      </span>
+                    </td>
+
                     {/* phone */}
-                    <td className="px-4 py-3">
+                    <td className="w-40 px-4 py-3">
                       <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                        <Phone className="h-3.5 w-3.5 text-gray-400" />
+                        <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">
                         {user.phone || "—"}
+                        </span>
                       </span>
                     </td>
 
                     {/* last login */}
-                    <td className="px-4 py-3">
+                    <td className="w-44 px-4 py-3">
                       <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
-                        <Clock className="h-3.5 w-3.5 text-gray-400" />
+                        <Clock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                         {formatDate(user.lastLogin)}
                       </span>
                     </td>
 
+                    {/* created */}
+                    <td className="w-44 px-4 py-3">
+                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        {formatDate(user.createdAt, "—")}
+                      </span>
+                    </td>
+
                     {/* actions */}
-                    <td className="px-4 py-3 text-right">
+                    <td className="w-24 bg-white px-4 py-3 text-right dark:bg-gray-950">
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(user)}

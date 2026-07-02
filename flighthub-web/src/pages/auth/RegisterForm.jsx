@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import InputField from '../../components/InputField';
 import PasswordField from '../../components/PasswordField';
 import { signup } from '../../Redux/auth/authThunk';
+import { getRoleHome } from '@/utils/roleRedirect';
 
 const validationSchema = Yup.object().shape({
   fullName: Yup.string()
@@ -71,13 +72,7 @@ const Register = () => {
       const result = await dispatch(signup(payload)).unwrap();
       const role = result.user?.role;
 
-      if (role === 'ROLE_AIRLINE_OWNER') {
-        navigate('/airline/dashboard');
-      } else if (role === 'ROLE_SYSTEM_ADMIN') {
-        navigate('/super-admin/dashboard');
-      } else {
-        navigate('/traveler');
-      }
+      navigate(getRoleHome(role), { replace: true });
     } catch (err) {
       console.error('Registration failed:', err);
     } finally {

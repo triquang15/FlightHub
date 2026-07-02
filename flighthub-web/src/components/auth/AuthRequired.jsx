@@ -7,12 +7,7 @@ import { clearUserState } from "@/Redux/user/userSlice";
 import { getUserProfile } from "@/Redux/user/userThunks";
 import { refreshAccessToken } from "@/utils/api";
 import { clearAuthTokens, getRefreshToken, hasValidAccessToken } from "@/utils/authStorage";
-
-const getRoleHome = (role) => {
-  if (role === "ROLE_SYSTEM_ADMIN") return "/super-admin";
-  if (role === "ROLE_AIRLINE_OWNER") return "/airline";
-  return "/traveler";
-};
+import { getRoleHome } from "@/utils/roleRedirect";
 
 const AuthRequired = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();

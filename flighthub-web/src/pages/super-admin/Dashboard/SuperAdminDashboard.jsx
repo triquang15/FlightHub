@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import SuperAdminSidebar from "../Sidebar/SuperAdminSidebar";
 import SuperAdminRoutes from "../routes/SuperAdminRoutes";
@@ -175,8 +174,10 @@ const SuperAdminDashboard = () => {
       {/* Main Content Area */}
       <div
         className={cn(
-          "min-w-0 flex-1 transition-all duration-300 ease-in-out",
-          isSidebarCollapsed ? "lg:ml-16" : "lg:ml-80"
+          "flex min-h-screen min-w-0 w-full flex-col overflow-hidden transition-all duration-300 ease-in-out",
+          isSidebarCollapsed
+            ? "lg:ml-16 lg:w-[calc(100vw_-_4rem)] lg:max-w-[calc(100vw_-_4rem)]"
+            : "lg:ml-80 lg:w-[calc(100vw_-_20rem)] lg:max-w-[calc(100vw_-_20rem)]"
         )}
       >
         <WorkspaceHeader
@@ -190,9 +191,11 @@ const SuperAdminDashboard = () => {
         />
 
         {/* Main Content */}
-        <ScrollArea className="flex-1 p-4 sm:p-6">
-          <SuperAdminRoutes platformStats={platformStats} />
-        </ScrollArea>
+        <main className="min-h-0 min-w-0 flex-1 overflow-auto p-4 sm:p-6">
+          <div className="mx-auto min-w-0 max-w-full">
+            <SuperAdminRoutes platformStats={platformStats} />
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -23,6 +23,18 @@ const moduleConfig = {
     entities: ["Actor", "Action", "Resource", "Timestamp", "Request metadata"],
     workflows: ["Search events", "Filter by actor", "Export evidence", "Investigate changes"],
   },
+  airlineCompliance: {
+    title: "Airline Compliance",
+    description: "Review airline verification evidence, operating permissions, and compliance attestations.",
+    entities: ["Airline", "Document", "Verification status", "Reviewer", "Expiry date"],
+    workflows: ["Review document", "Request update", "Approve evidence", "Export compliance pack"],
+  },
+  airlineCommission: {
+    title: "Airline Commission Rules",
+    description: "Manage commercial commission rules and settlement terms for airline partners.",
+    entities: ["Airline", "Rule", "Commission rate", "Effective period", "Settlement policy"],
+    workflows: ["Draft rule", "Review impact", "Approve rule", "Publish version"],
+  },
   transactions: {
     title: "Platform Transactions",
     description: "Monitor payment activity across bookings, refunds, and partner settlements.",
@@ -40,6 +52,12 @@ const moduleConfig = {
     description: "Manage financial exceptions, refund requests, and payment disputes.",
     entities: ["Case", "Transaction", "Reason", "Evidence", "Resolution"],
     workflows: ["Triage case", "Request evidence", "Approve refund", "Resolve dispute"],
+  },
+  reports: {
+    title: "Platform Reports",
+    description: "Build exportable operational and commercial reports from verified platform datasets.",
+    entities: ["Report", "Dataset", "Date range", "Owner", "Export format"],
+    workflows: ["Choose dataset", "Apply filters", "Generate report", "Schedule export"],
   },
   health: {
     title: "Service Health",
@@ -71,7 +89,7 @@ const PlatformModulePlaceholder = ({ module }) => {
   const config = moduleConfig[module] || moduleConfig.health
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div className="flex flex-col gap-3 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">

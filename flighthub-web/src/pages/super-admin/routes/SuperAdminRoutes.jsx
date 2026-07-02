@@ -7,14 +7,10 @@ import FlightInventory from '../Dashboard/FlightInventory';
 import SearchDataInspector from '../Dashboard/SearchDataInspector';
 
 import UserManagement from '../Dashboard/UserManagement';
-import FinancialManagement from '../Dashboard/FinancialManagement';
-import ReportsAnalytics from '../Dashboard/ReportsAnalytics';
-import SystemConfiguration from '../Dashboard/SystemConfiguration';
 import NotificationsManagement from '../Dashboard/NotificationsManagement';
 import AirportPerformancePage from "../Dashboard/AirportPerformancePage";
 import RoutePerformancePage from "../Dashboard/RoutePerformancePage";
 import AirlinePerformancePage from "../Dashboard/Airport Anlitics/AirlinePerformancePage";
-import SecurityCompliance from '../Dashboard/SecurityCompliance';
 import CityManagement from '../city/CityManagement';
 import PlatformOverview from '../Dashboard/PlateformOverview';
 import PlatformModulePlaceholder from '../Dashboard/PlatformModulePlaceholder';
@@ -35,8 +31,8 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/airlines" element={<AirlineManagement />} />
       <Route path="/airlines/pending" element={<AirlineManagement activeSection={"airlines-pending"} />} />
       <Route path="/airlines/suspended" element={<AirlineManagement activeSection={"airlines-suspended"} />} />
-      <Route path="/airlines/compliance" element={<AirlineManagement activeSection={"airlines-compliance"} />} />
-      <Route path="/airlines/commission" element={<AirlineManagement activeSection={"airlines-commission"} />} />
+      <Route path="/airlines/compliance" element={<PlatformModulePlaceholder module="airlineCompliance" />} />
+      <Route path="/airlines/commission" element={<PlatformModulePlaceholder module="airlineCommission" />} />
     
 
       {/* Airport Management */}
@@ -67,19 +63,19 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/access/audit" element={<PlatformModulePlaceholder module="audit" />} />
 
       {/* Financial Management */}
-      <Route path="/financial" element={<FinancialManagement />} />
+      <Route path="/financial" element={<PlatformModulePlaceholder module="transactions" />} />
       <Route path="/finance/transactions" element={<PlatformModulePlaceholder module="transactions" />} />
       <Route path="/finance/settlements" element={<PlatformModulePlaceholder module="settlements" />} />
       <Route path="/finance/disputes" element={<PlatformModulePlaceholder module="disputes" />} />
 
       {/* Reports & Analytics */}
-      <Route path="/reports" element={<ReportsAnalytics />} />
-      <Route path="/reports/platform" element={<ReportsAnalytics />} />
-      <Route path="/reports/airline/:airlineId" element={<ReportsAnalytics />} />
-      <Route path="/analytics" element={<ReportsAnalytics />} />
+      <Route path="/reports" element={<PlatformModulePlaceholder module="reports" />} />
+      <Route path="/reports/platform" element={<PlatformModulePlaceholder module="reports" />} />
+      <Route path="/reports/airline/:airlineId" element={<PlatformModulePlaceholder module="reports" />} />
+      <Route path="/analytics" element={<PlatformModulePlaceholder module="reports" />} />
 
       {/* System Configuration */}
-      <Route path="/system" element={<SystemConfiguration />} />
+      <Route path="/system" element={<PlatformModulePlaceholder module="settings" />} />
 
       {/* Notifications */}
       <Route path="/notifications" element={<NotificationsManagement activeSection="notifications-system" />} />
@@ -93,8 +89,8 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/configuration/integrations" element={<PlatformModulePlaceholder module="integrations" />} />
 
       {/* Security & Compliance */}
-      <Route path="/security" element={<SecurityCompliance />} />
-      <Route path="/security/audit" element={<SecurityCompliance />} />
+      <Route path="/security" element={<PlatformModulePlaceholder module="audit" />} />
+      <Route path="/security/audit" element={<PlatformModulePlaceholder module="audit" />} />
       {/* Performance Analytics */}
       <Route path="/airport-performance" element={<AirportPerformancePage />} />
       <Route path="/route-performance" element={<RoutePerformancePage />} />

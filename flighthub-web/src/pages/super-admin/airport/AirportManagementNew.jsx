@@ -218,7 +218,7 @@ const AirportManagementNew = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       {/* Notification */}
       <AirportNotification
         notification={notification}
@@ -283,7 +283,7 @@ const AirportManagementNew = () => {
       />
 
       {/* Airport Table */}
-      <Card className="dark:bg-gray-900 dark:border-gray-800">
+      <Card className="min-w-0 max-w-full overflow-hidden dark:bg-gray-900 dark:border-gray-800">
         <CardContent className="p-0">
           <AirportTable
             airports={airports || []}

@@ -81,7 +81,7 @@ const FlightInventory = () => {
   const totalPages = Math.max(pageInfo.totalPages, 1);
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold">Flight Operations</h1>

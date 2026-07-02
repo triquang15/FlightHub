@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
 import SessionExpiryWarning from "./components/auth/SessionExpiryWarning.jsx";
+import { getRoleHome } from "./utils/roleRedirect.js";
 
 // ============================
 // ROLE REDIRECT
@@ -62,16 +63,7 @@ function RoleRedirect() {
   useEffect(() => {
     if (!isAuthenticated || loading || !user?.role) return;
 
-    switch (user.role) {
-      case "ROLE_SYSTEM_ADMIN":
-        navigate("/super-admin");
-        break;
-      case "ROLE_AIRLINE_OWNER":
-        navigate("/airline");
-        break;
-      default:
-        navigate("/traveler");
-    }
+    navigate(getRoleHome(user.role));
   }, [isAuthenticated, user, loading, navigate]);
 
   return null;

@@ -1342,7 +1342,7 @@ const AirlineManagement = ({ activeSection }) => {
     )
   }
 
-  return <div className="space-y-6">{renderContent()}</div>
+  return <div className="min-w-0 max-w-full space-y-6">{renderContent()}</div>
 }
 
 

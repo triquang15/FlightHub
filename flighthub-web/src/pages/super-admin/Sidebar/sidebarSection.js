@@ -3,7 +3,6 @@ import {
   MapPin,
   Plane,
   Users,
-  DollarSign,
   BarChart3,
   Bell,
   Clock,
@@ -14,13 +13,17 @@ import {
   Activity,
   Zap,
   LayoutDashboard,
-  ShieldCheck,
   Route,
   UserCog,
   UserRound,
   Gauge,
   MailCheck,
   Search,
+  ClipboardList,
+  Settings,
+  ServerCog,
+  Siren,
+  PlugZap,
 } from "lucide-react";
 
 export const sidebarSections = [
@@ -36,11 +39,17 @@ export const sidebarSections = [
         icon: BarChart3,
         path: "/super-admin/dashboard",
       },
+      {
+        id: "search-data",
+        label: "Search Data",
+        icon: Search,
+        path: "/super-admin/search-data",
+      },
     ],
   },
   {
     id: "airlines",
-    title: "Airline Operations",
+    title: "Airline Registry",
     icon: Building2,
     color: "from-blue-500 to-sky-600",
     items: [
@@ -64,18 +73,6 @@ export const sidebarSections = [
         icon: XCircle,
         countKey: "restrictedAirlines",
         path: "/super-admin/airlines/suspended",
-      },
-      {
-        id: "airlines-compliance",
-        label: "Compliance",
-        icon: ShieldCheck,
-        path: "/super-admin/airlines/compliance",
-      },
-      {
-        id: "airlines-commission",
-        label: "Commissions",
-        icon: DollarSign,
-        path: "/super-admin/airlines/commission",
       },
     ],
   },
@@ -105,18 +102,12 @@ export const sidebarSections = [
         icon: Plane,
         path: "/super-admin/flights",
       },
-      {
-        id: "search-data",
-        label: "Search Data",
-        icon: Search,
-        path: "/super-admin/search-data",
-      },
     ],
   },
 
   {
-    id: "users",
-    title: "Identity & Access",
+    id: "identity",
+    title: "Identity & Security",
     icon: UserCog,
     color: "from-violet-500 to-indigo-600",
     items: [
@@ -126,6 +117,12 @@ export const sidebarSections = [
         icon: Users,
         countKey: "totalUsers",
         path: "/super-admin/users",
+      },
+      {
+        id: "security-audit",
+        label: "Security Audit",
+        icon: ClipboardList,
+        path: "/super-admin/security/audit",
       },
       {
         id: "account-profile",
@@ -165,7 +162,7 @@ export const sidebarSections = [
  
   {
     id: "notifications",
-    title: "Platform Operations",
+    title: "Notification Center",
     icon: Bell,
     color: "from-amber-500 to-orange-500",
     items: [
@@ -201,6 +198,38 @@ export const sidebarSections = [
         label: "Channel Health",
         icon: Zap,
         path: "/super-admin/notifications/channels",
+      },
+    ],
+  },
+  {
+    id: "operations",
+    title: "Platform Controls",
+    icon: ServerCog,
+    color: "from-slate-500 to-slate-700",
+    items: [
+      {
+        id: "operations-health",
+        label: "Service Health",
+        icon: Activity,
+        path: "/super-admin/operations/health",
+      },
+      {
+        id: "operations-incidents",
+        label: "Incidents",
+        icon: Siren,
+        path: "/super-admin/operations/incidents",
+      },
+      {
+        id: "configuration-settings",
+        label: "Settings",
+        icon: Settings,
+        path: "/super-admin/configuration/settings",
+      },
+      {
+        id: "configuration-integrations",
+        label: "Integrations",
+        icon: PlugZap,
+        path: "/super-admin/configuration/integrations",
       },
     ],
   },

@@ -213,7 +213,7 @@ const SearchDataInspector = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 lg:flex-row lg:items-end">
         <div>
           <div className="mb-2 flex items-center gap-2">

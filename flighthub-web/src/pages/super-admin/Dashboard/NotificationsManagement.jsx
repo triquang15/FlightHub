@@ -332,7 +332,7 @@ const NotificationFilters = ({ isVisible, filters, onFiltersChange, onReset }) =
   };
 
   return (
-    <Card>
+    <Card className="min-w-0 max-w-full overflow-hidden">
       <CardContent className="p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
@@ -487,7 +487,7 @@ const NotificationPagination = ({
 
 const Overview = ({ overview, loading, error }) => {
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <SectionHeader
         title="Backend notification operations"
         description="Live operational view backed by notification-service tracking tables."
@@ -550,32 +550,32 @@ const DeliveryTable = ({ rows, loading, error, onDelete, deletingId }) => {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table className="w-full text-sm">
+    <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
+      <Table className="w-[1530px] min-w-[1530px] table-fixed text-sm">
         <TableHeader className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
           <TableRow>
-            <TableHead className={tableHeadClassName}>
+            <TableHead className={`${tableHeadClassName} w-[360px]`}>
               Delivery
             </TableHead>
-            <TableHead className={tableHeadClassName}>
+            <TableHead className={`${tableHeadClassName} w-48`}>
               Type
             </TableHead>
-            <TableHead className={tableHeadClassName}>
+            <TableHead className={`${tableHeadClassName} w-36`}>
               Channel
             </TableHead>
-            <TableHead className={tableHeadClassName}>
+            <TableHead className={`${tableHeadClassName} w-72`}>
               Recipient
             </TableHead>
-            <TableHead className={`${tableHeadClassName} text-center`}>
+            <TableHead className={`${tableHeadClassName} w-28 text-center`}>
               Attempts
             </TableHead>
-            <TableHead className={tableHeadClassName}>
+            <TableHead className={`${tableHeadClassName} w-40`}>
               Status
             </TableHead>
-            <TableHead className={`${tableHeadClassName} text-right`}>
+            <TableHead className={`${tableHeadClassName} w-44 text-right`}>
               Updated
             </TableHead>
-            <TableHead className={`${tableHeadClassName} text-right`}>
+            <TableHead className={`${tableHeadClassName} w-24 text-right`}>
               Actions
             </TableHead>
           </TableRow>
@@ -591,49 +591,51 @@ const DeliveryTable = ({ rows, loading, error, onDelete, deletingId }) => {
             key={row.id}
             className="border-l-4 border-l-transparent transition hover:border-l-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30"
           >
-            <TableCell className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${channel.avatarClassName}`}>
+            <TableCell className="w-[360px] px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${channel.avatarClassName}`}>
                   <ChannelIcon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">#{index + 1}</span>
-                    <p className="max-w-[320px] truncate font-medium text-gray-900 dark:text-gray-100">{row.eventKey}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">#{index + 1}</span>
+                    <p className="truncate font-medium text-gray-900 dark:text-gray-100">{row.eventKey}</p>
                   </div>
-                  <p className="mt-0.5 max-w-[340px] truncate text-xs text-gray-400 dark:text-gray-500">
+                  <p className="mt-0.5 truncate text-xs text-gray-400 dark:text-gray-500">
                     {row.businessKey || row.deliveryKey}
                   </p>
                 </div>
               </div>
             </TableCell>
-            <TableCell className="px-4 py-3">
+            <TableCell className="w-48 px-4 py-3">
               <div className="space-y-1">
                 <Badge className="rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                   {typeLabel[row.type] || row.type}
                 </Badge>
-                <p className="text-xs text-gray-400 dark:text-gray-500">{row.sourceService || "notification-service"}</p>
+                <p className="truncate text-xs text-gray-400 dark:text-gray-500">{row.sourceService || "notification-service"}</p>
               </div>
             </TableCell>
-            <TableCell className="px-4 py-3">
+            <TableCell className="w-36 px-4 py-3">
               <Badge className={`rounded-full ${channel.badgeClassName}`}>
                 {channel.label}
               </Badge>
             </TableCell>
-            <TableCell className="px-4 py-3 text-gray-600 dark:text-gray-300">{row.recipient}</TableCell>
-            <TableCell className="px-4 py-3 text-center">
+            <TableCell className="w-72 px-4 py-3 text-gray-600 dark:text-gray-300">
+              <span className="block truncate">{row.recipient}</span>
+            </TableCell>
+            <TableCell className="w-28 px-4 py-3 text-center">
               <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                 {row.attempts}
               </span>
             </TableCell>
-            <TableCell className="px-4 py-3">
+            <TableCell className="w-40 px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${statusDotClassName[row.status] || "bg-slate-400"}`} />
                 <StatusBadge status={row.status} />
               </div>
             </TableCell>
-            <TableCell className="px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">{formatDateTime(row.updatedAt)}</TableCell>
-            <TableCell className="px-4 py-3 text-right">
+            <TableCell className="w-44 px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">{formatDateTime(row.updatedAt)}</TableCell>
+            <TableCell className="w-24 px-4 py-3 text-right">
               <Button
                 variant="ghost"
                 size="sm"
@@ -667,12 +669,12 @@ const Deliveries = ({
   onDelete,
   deletingId,
 }) => (
-  <div className="space-y-6">
+  <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Delivery logs"
       description="Live records from notification_events and notification_deliveries."
     />
-    <Card>
+    <Card className="min-w-0 max-w-full overflow-hidden">
       <CardContent className="p-0">
         <DeliveryTable
           rows={deliveries}
@@ -710,7 +712,7 @@ const FailedRetry = ({
   onDelete,
   deletingId,
 }) => (
-  <div className="space-y-6">
+  <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Failed deliveries and retry queue"
       description="Retry failed deliveries using the saved notification event payload."
@@ -772,7 +774,7 @@ const FailedRetry = ({
 );
 
 const Templates = () => (
-  <div className="space-y-6">
+  <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Transactional templates"
       description="Templates are mapped to the notification types that currently exist in notification-service."
@@ -800,7 +802,7 @@ const Templates = () => (
 );
 
 const ChannelHealth = () => (
-  <div className="space-y-6">
+  <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Channel health"
       description="Operational view for the delivery dependencies represented by the backend."

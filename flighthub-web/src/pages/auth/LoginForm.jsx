@@ -8,6 +8,7 @@ import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
+import { getSafeRedirectForRole } from '@/utils/roleRedirect';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
@@ -52,18 +53,7 @@ const LoginForm = () => {
       const role = result.user?.role;
       const redirectTarget = getRedirectTarget();
 
-      if (redirectTarget) {
-        navigate(redirectTarget, { replace: true });
-        return;
-      }
-
-      if (role === 'ROLE_AIRLINE_OWNER') {
-        navigate('/airline/dashboard');
-      } else if (role === 'ROLE_SYSTEM_ADMIN') {
-        navigate('/super-admin/dashboard');
-      } else {
-        navigate('/traveler');
-      }
+      navigate(getSafeRedirectForRole(role, redirectTarget), { replace: true });
 
     } catch (err) {
       console.error('Login failed:', err);
