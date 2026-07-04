@@ -31,16 +31,28 @@ const Toaster = ({
       }}
       style={
         {
-          "--normal-bg": "#ECFDF5",
-          "--normal-text": "#065F46",
-          "--normal-border": "#D1FAE5",
+          "--normal-bg": "#ffffff",
+          "--normal-text": "#0f172a",
+          "--normal-border": "#e2e8f0",
+          "--success-bg": "#ecfdf5",
+          "--success-text": "#065f46",
+          "--success-border": "#d1fae5",
+          "--error-bg": "#fef2f2",
+          "--error-text": "#7f1d1d",
+          "--error-border": "#fecaca",
+          "--warning-bg": "#fefce8",
+          "--warning-text": "#78350f",
+          "--warning-border": "#fde68a",
+          "--info-bg": "#eff6ff",
+          "--info-text": "#1d4ed8",
+          "--info-border": "#bfdbfe",
           "--border-radius": "var(--radius)",
           "--box-shadow": "0 15px 40px rgba(15, 23, 42, 0.08)",
         }
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900 shadow-lg",
+          toast: "cn-toast rounded-2xl border bg-white text-slate-950 shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100",
         },
         duration: 4000,
       }}

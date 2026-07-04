@@ -1,5 +1,6 @@
 package com.triquang.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -123,7 +124,7 @@ public class SeatMapServiceImpl implements SeatMapService {
 
         Long airlineId = getAirlineForUser(userId);
 
-        SeatMap existing = seatMapRepository.findById(id)
+        SeatMap existing = seatMapRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.SEAT_MAP_NOT_FOUND));
 
         if (seatMapRepository.existsByAirlineIdAndNameAndIdNot(
@@ -132,9 +133,9 @@ public class SeatMapServiceImpl implements SeatMapService {
         }
 
         SeatMapMapper.updateEntity(request, existing);
+        replaceZones(existing, request);
 
         SeatMap saved = seatMapRepository.save(existing);
-        replaceZones(saved, request);
 
         return SeatMapMapper.toResponse(saved);
     }
@@ -150,7 +151,11 @@ public class SeatMapServiceImpl implements SeatMapService {
 
     private Long getAirlineForUser(Long userId) {
         try {
-            return airlineClient.getAirlineByOwner(userId).getId();
+            var airline = airlineClient.getAirlineByOwner(userId);
+            if (airline == null) {
+                throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+            }
+            return airline.getId();
 
         } catch (FeignException.NotFound e) {
             throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
@@ -178,8 +183,23 @@ public class SeatMapServiceImpl implements SeatMapService {
     }
 
     private void replaceZones(SeatMap seatMap, SeatMapRequest request) {
-        seatMapZoneRepository.deleteBySeatMapId(seatMap.getId());
-        saveZones(seatMap, request);
+        List<SeatMapZone> existingZones = seatMap.getZones();
+        if (existingZones == null) {
+            existingZones = new ArrayList<>();
+            seatMap.setZones(existingZones);
+        } else {
+            existingZones.clear();
+        }
+
+        if (request.getZones() == null || request.getZones().isEmpty()) {
+            return;
+        }
+
+        validateZones(request);
+
+        for (var zoneRequest : request.getZones()) {
+            existingZones.add(SeatMapZoneMapper.toEntity(zoneRequest, seatMap));
+        }
     }
 
     private void validateZones(SeatMapRequest request) {

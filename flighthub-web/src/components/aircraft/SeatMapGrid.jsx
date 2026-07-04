@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plane, Users, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { getSeatColor } from "@/utils/seatColor";
-import { useSelector } from "react-redux";
 import { getSeatIcon } from "@/utils/seatIcon";
 
 const SeatMapGrid = ({
-  
   seats = [],
+  cabinClass = null,
   onSeatClick,
   selectedSeat,
   className = "",
@@ -17,7 +16,6 @@ const SeatMapGrid = ({
   const [zoom, setZoom] = useState(1);
   const [showRowNumbers, setShowRowNumbers] = useState(true);
   const [showSeatLabels, setShowSeatLabels] = useState(true);
-  const {cabinClass}=useSelector(state=>state.cabinClass)
 
   // Extract seat data from cabin structure
   const seatLayout = useMemo(() => {

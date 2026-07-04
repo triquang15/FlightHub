@@ -61,7 +61,9 @@ public class CouponServiceImpl implements CouponService {
     public Page<CouponResponse> getCoupons(Long userId, String status, String keyword, Pageable pageable) {
         Long airlineId = getAirlineForUser(userId);
         CouponStatus couponStatus = parseStatus(status);
-        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        String normalizedKeyword = keyword == null || keyword.isBlank()
+                ? null
+                : "%" + keyword.trim().toLowerCase() + "%";
         return couponRepository.searchOwnedCoupons(airlineId, couponStatus, normalizedKeyword, pageable)
                 .map(CouponMapper::toResponse);
     }
@@ -174,7 +176,7 @@ public class CouponServiceImpl implements CouponService {
             if (airlines == null || airlines.isEmpty()) {
                 throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
             }
-            return airlines.getFirst().getId();
+            return airlines.get(0).getId();
         } catch (FeignException.NotFound e) {
             throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
         } catch (FeignException e) {

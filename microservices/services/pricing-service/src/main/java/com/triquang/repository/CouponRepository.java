@@ -42,8 +42,8 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
           AND (:status IS NULL OR c.status = :status)
           AND (
             :keyword IS NULL
-            OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(c.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(c.code) LIKE :keyword
+            OR LOWER(c.description) LIKE :keyword
           )
     """)
     Page<Coupon> searchOwnedCoupons(

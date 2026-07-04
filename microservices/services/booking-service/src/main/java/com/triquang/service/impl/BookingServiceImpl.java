@@ -423,6 +423,10 @@ public class BookingServiceImpl implements BookingService {
             throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
         }
 
+        if (airlineResponse == null || airlineResponse.getId() == null) {
+            throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+        }
+
         Long airlineId = airlineResponse.getId();
 
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection)

@@ -239,7 +239,7 @@ public class FareServiceImpl implements FareService {
 			if (airlines == null || airlines.isEmpty()) {
 				throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 			}
-			return airlines.getFirst().getId();
+			return airlines.get(0).getId();
 		} catch (FeignException.NotFound e) {
 			throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
 		} catch (FeignException e) {

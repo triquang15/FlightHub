@@ -24,6 +24,7 @@ const SeatMapView = () => {
   const { cabinClass, loading: cabinLoading } = useSelector(
     (state) => state.cabinClass
   );
+  const { seatMap } = useSelector((state) => state.seatMap);
 
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [showSeatDrawer, setShowSeatDrawer] = useState(false);
@@ -95,7 +96,8 @@ const SeatMapView = () => {
   }
 
   // Check if seat map exists
-  const hasSeatMap = cabinClass?.seatMap || cabinClass?.seatMapId;
+  const activeSeatMap = seatMap || cabinClass?.seatMap;
+  const hasSeatMap = Boolean(activeSeatMap || cabinClass?.seatMapId);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -186,8 +188,8 @@ const SeatMapView = () => {
         </Card>
       ) : (
         <SeatMapGrid
-          cabin={cabinClass}
-          seats={cabinClass?.seatMap?.seats || []}
+          cabinClass={cabinClass}
+          seats={activeSeatMap?.seats || []}
           onSeatClick={handleSeatClick}
           selectedSeat={selectedSeat}
           className="border-0 shadow-lg"
@@ -203,15 +205,13 @@ const SeatMapView = () => {
       />
 
       {/* Quick Stats */}
-      {hasSeatMap && cabinClass?.seatMap && (
+      {hasSeatMap && activeSeatMap && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-2xl font-bold">
-                  {cabinClass.seatMap.totalSeats ||
-                    cabinClass.seatMap.seats?.length ||
-                    0}
+                  {activeSeatMap.totalSeats || activeSeatMap.seats?.length || 0}
                 </p>
                 <p className="text-sm text-gray-600">Total Seats</p>
               </div>
@@ -222,8 +222,8 @@ const SeatMapView = () => {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-2xl font-bold">
-                  {cabinClass.seatMap.availableSeats ||
-                    cabinClass.seatMap.seats?.filter((s) => s.isAvailable)
+                  {activeSeatMap.availableSeats ||
+                    activeSeatMap.seats?.filter((s) => s.isAvailable)
                       ?.length ||
                     0}
                 </p>
@@ -236,7 +236,7 @@ const SeatMapView = () => {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-2xl font-bold">
-                  {cabinClass.seatMap.seats?.filter((s) => s.isPremiumSeat)
+                  {activeSeatMap.seats?.filter((s) => s.isPremiumSeat)
                     ?.length || 0}
                 </p>
                 <p className="text-sm text-gray-600">Premium Seats</p>
@@ -248,7 +248,7 @@ const SeatMapView = () => {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-2xl font-bold">
-                  {cabinClass.seatMap.totalRows || 0}
+                  {activeSeatMap.totalRows || 0}
                 </p>
                 <p className="text-sm text-gray-600">Total Rows</p>
               </div>
