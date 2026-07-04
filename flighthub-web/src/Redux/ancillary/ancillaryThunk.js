@@ -1,77 +1,64 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
+import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
 
-// Create Ancillary
+const API_URL = "/api/ancillaries";
+
+const rejectAncillaryError = (err, rejectWithValue, fallback) =>
+  rejectWithValue(getApiErrorMessage(err, fallback));
+
 export const createAncillary = createAsyncThunk(
   "ancillary/create",
   async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/ancillaries", data);
-      console.log("✅ createAncillary success:", res.data);
-      return res.data;
+      return unwrapApiData(await api.post(API_URL, data));
     } catch (err) {
-      console.error("❌ createAncillary error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to create ancillary");
+      return rejectAncillaryError(err, rejectWithValue, "Failed to create ancillary");
     }
-  }
+  },
 );
 
-// Get by ID
 export const getAncillaryById = createAsyncThunk(
   "ancillary/getById",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/api/ancillaries/${id}`);
-      console.log("✅ getAncillaryById success:", res.data);
-      return res.data;
+      return unwrapApiData(await api.get(`${API_URL}/${id}`));
     } catch (err) {
-      console.error("❌ getAncillaryById error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Ancillary not found");
+      return rejectAncillaryError(err, rejectWithValue, "Ancillary not found");
     }
-  }
+  },
 );
 
-// Get All
 export const getAllAncillaries = createAsyncThunk(
   "ancillary/getAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get("/api/ancillaries");
-      console.log("✅ getAllAncillaries success:", res.data);
-      return res.data;
+      return unwrapApiData(await api.get(API_URL));
     } catch (err) {
-      console.error("❌ getAllAncillaries error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to fetch ancillaries");
+      return rejectAncillaryError(err, rejectWithValue, "Failed to fetch ancillaries");
     }
-  }
+  },
 );
 
-// Update
 export const updateAncillary = createAsyncThunk(
   "ancillary/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/api/ancillaries/${id}`, data);
-      console.log("✅ updateAncillary success:", res.data);
-      return res.data;
+      return unwrapApiData(await api.put(`${API_URL}/${id}`, data));
     } catch (err) {
-      console.error("❌ updateAncillary error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to update ancillary");
+      return rejectAncillaryError(err, rejectWithValue, "Failed to update ancillary");
     }
-  }
+  },
 );
 
-// Delete
 export const deleteAncillary = createAsyncThunk(
   "ancillary/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/ancillaries/${id}`);
-      console.log("✅ deleteAncillary success:", id);
+      await api.delete(`${API_URL}/${id}`);
       return id;
     } catch (err) {
-      console.error("❌ deleteAncillary error:", err.response?.data?.message || err.message);
-      return rejectWithValue(err.response?.data?.message || "Failed to delete ancillary");
+      return rejectAncillaryError(err, rejectWithValue, "Failed to delete ancillary");
     }
-  }
+  },
 );

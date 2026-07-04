@@ -46,6 +46,7 @@ public class BookingMapper {
                 .tripType(request.getTripType())
                 .ancillaryIds(request.getAncillaryIds())
                 .mealIds(request.getMealIds())
+                .promoCode(normalizePromoCode(request.getPromoCode()))
                 .build();
     }
 
@@ -121,6 +122,9 @@ public class BookingMapper {
                         : fareResponse != null && fareResponse.getTotalPrice() != null
                                 ? BigDecimal.valueOf(fareResponse.getTotalPrice())
                                 : null)
+                .subtotalAmount(booking.getSubtotalAmount())
+                .discountAmount(booking.getDiscountAmount())
+                .promoCode(booking.getPromoCode())
                 .currency(booking.getCurrency())
 
 //                arline details
@@ -208,5 +212,11 @@ public class BookingMapper {
             return airport.getName();
         }
         return airport.getIataCode();
+    }
+
+    private static String normalizePromoCode(String promoCode) {
+        return promoCode == null || promoCode.isBlank()
+                ? null
+                : promoCode.trim().toUpperCase();
     }
 }

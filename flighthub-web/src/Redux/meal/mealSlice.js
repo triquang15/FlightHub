@@ -21,6 +21,22 @@ const initialState = {
   pageSize: 20,
 };
 
+const toMealArray = (payload) => {
+  if (Array.isArray(payload)) return payload.filter(Boolean);
+  if (Array.isArray(payload?.content)) return payload.content.filter(Boolean);
+  if (Array.isArray(payload?.items)) return payload.items.filter(Boolean);
+  return [];
+};
+
+const normalizeMeal = (meal) => {
+  if (!meal || typeof meal !== "object") return null;
+  return {
+    ...meal,
+    available: meal.available !== false,
+    requiresAdvanceBooking: Boolean(meal.requiresAdvanceBooking),
+  };
+};
+
 const mealSlice = createSlice({
   name: "meal",
   initialState,
@@ -41,8 +57,14 @@ const mealSlice = createSlice({
       })
       .addCase(createMeal.fulfilled, (state, action) => {
         state.loading = false;
-        state.meals.push(action.payload);
-        state.currentMeal = action.payload;
+        const created = normalizeMeal(action.payload);
+        if (created) {
+          state.meals = [
+            created,
+            ...toMealArray(state.meals).filter((meal) => meal.id !== created.id),
+          ];
+          state.currentMeal = created;
+        }
       })
       .addCase(createMeal.rejected, (state, action) => {
         state.loading = false;
@@ -56,7 +78,7 @@ const mealSlice = createSlice({
       })
       .addCase(fetchMealById.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentMeal = action.payload;
+        state.currentMeal = normalizeMeal(action.payload);
       })
       .addCase(fetchMealById.rejected, (state, action) => {
         state.loading = false;
@@ -70,7 +92,7 @@ const mealSlice = createSlice({
       })
       .addCase(fetchMealsByAirlineId.fulfilled, (state, action) => {
         state.loading = false;
-        state.meals = action.payload;
+        state.meals = toMealArray(action.payload).map(normalizeMeal).filter(Boolean);
       })
       .addCase(fetchMealsByAirlineId.rejected, (state, action) => {
         state.loading = false;
@@ -86,7 +108,7 @@ const mealSlice = createSlice({
       })
       .addCase(searchMeals.fulfilled, (state, action) => {
         state.loading = false;
-        state.meals = action.payload.content || [];
+        state.meals = toMealArray(action.payload).map(normalizeMeal).filter(Boolean);
         state.totalPages = action.payload.totalPages || 0;
         state.totalElements = action.payload.totalElements || 0;
         state.currentPage = action.payload.number || 0;
@@ -104,11 +126,17 @@ const mealSlice = createSlice({
       })
       .addCase(updateMeal.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.meals.findIndex((m) => m.id === action.payload.id);
+        const updated = normalizeMeal(action.payload);
+        if (!updated) return;
+        const meals = toMealArray(state.meals);
+        const index = meals.findIndex((m) => m.id === updated.id);
         if (index !== -1) {
-          state.meals[index] = action.payload;
+          meals[index] = updated;
+          state.meals = meals;
+        } else {
+          state.meals = [updated, ...meals];
         }
-        state.currentMeal = action.payload;
+        state.currentMeal = updated;
       })
       .addCase(updateMeal.rejected, (state, action) => {
         state.loading = false;
@@ -122,11 +150,15 @@ const mealSlice = createSlice({
       })
       .addCase(updateMealAvailability.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.meals.findIndex((m) => m.id === action.payload.id);
+        const updated = normalizeMeal(action.payload);
+        if (!updated) return;
+        const meals = toMealArray(state.meals);
+        const index = meals.findIndex((m) => m.id === updated.id);
         if (index !== -1) {
-          state.meals[index] = action.payload;
+          meals[index] = updated;
+          state.meals = meals;
         }
-        state.currentMeal = action.payload;
+        state.currentMeal = updated;
       })
       .addCase(updateMealAvailability.rejected, (state, action) => {
         state.loading = false;
@@ -140,7 +172,7 @@ const mealSlice = createSlice({
       })
       .addCase(deleteMeal.fulfilled, (state, action) => {
         state.loading = false;
-        state.meals = state.meals.filter((m) => m.id !== action.payload);
+        state.meals = toMealArray(state.meals).filter((m) => m.id !== action.payload);
         if (state.currentMeal?.id === action.payload) {
           state.currentMeal = null;
         }

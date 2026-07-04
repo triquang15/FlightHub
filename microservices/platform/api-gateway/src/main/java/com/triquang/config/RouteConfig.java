@@ -400,6 +400,9 @@ public class RouteConfig {
                 .route(RequestPredicates.POST("/api/baggage-policies"), HandlerFunctions.http())
                 .route(RequestPredicates.PUT("/api/baggage-policies/**"), HandlerFunctions.http())
                 .route(RequestPredicates.DELETE("/api/baggage-policies/**"), HandlerFunctions.http())
+                .route(RequestPredicates.POST("/api/coupons"), HandlerFunctions.http())
+                .route(RequestPredicates.PUT("/api/coupons/**"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/coupons/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
                 .filter(redisRateLimitFilter)
@@ -413,6 +416,7 @@ public class RouteConfig {
                 .route(RequestPredicates.path("/api/fares/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/fare-rules/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/baggage-policies/**"), HandlerFunctions.http())
+                .route(RequestPredicates.path("/api/coupons/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter)
                 .build();

@@ -22,6 +22,8 @@ import {
   getAncillaryById,
   updateAncillary,
 } from "@/Redux/ancillary/ancillaryThunk";
+import { clearAncillaryError, clearCurrentAncillary } from "@/Redux/ancillary/ancillarySlice";
+import { toast } from "sonner";
 
 const ANCILLARY_TYPES = [
   { value: "BAGGAGE", label: "Baggage" },
@@ -111,22 +113,31 @@ const AncillaryForm = () => {
           payload.metadata = null;
         }
 
-        if (isEditMode) {
-          await dispatch(updateAncillary({ id, data: payload })).unwrap();
-        } else {
-          await dispatch(createAncillary(payload)).unwrap();
-        }
+        const saved = isEditMode
+          ? await dispatch(updateAncillary({ id, data: payload })).unwrap()
+          : await dispatch(createAncillary(payload)).unwrap();
+        toast.success(isEditMode ? "Ancillary updated" : "Ancillary created", {
+          description: `${saved?.name || payload.name} is ready in the master catalog.`,
+        });
         navigate("/airline/ancillaries");
       } catch (error) {
-        console.error("Error saving ancillary:", error);
+        toast.error(isEditMode ? "Unable to update ancillary" : "Unable to create ancillary", {
+          description: String(error),
+        });
       }
     },
   });
 
   useEffect(() => {
+    dispatch(clearAncillaryError());
+    dispatch(clearCurrentAncillary());
     if (isEditMode && id) {
       dispatch(getAncillaryById(id));
     }
+    return () => {
+      dispatch(clearAncillaryError());
+      dispatch(clearCurrentAncillary());
+    };
   }, [dispatch, id, isEditMode]);
 
   useEffect(() => {
@@ -156,36 +167,40 @@ const AncillaryForm = () => {
   }, [ancillary, isEditMode]);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-6">
+    <div className="space-y-5 pb-8">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start">
         <Button
           variant="ghost"
+          size="icon"
+          aria-label="Back to master ancillaries"
           onClick={() => navigate("/airline/ancillaries")}
-          className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
         </Button>
 
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Package className="h-8 w-8" />
+        <div className="flex min-w-0 gap-4">
+          <div className="hidden size-12 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary sm:flex">
+            <Package className="h-6 w-6" />
+          </div>
+          <div>
+          <p className="mb-1 text-sm font-medium text-primary">Service catalog</p>
+          <h1 className="text-2xl font-semibold text-foreground">
             {isEditMode ? "Edit Ancillary" : "Create Ancillary"}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {isEditMode
               ? "Update ancillary details"
               : "Add a new ancillary service to your catalog"}
           </p>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Form */}
       <form onSubmit={formik.handleSubmit}>
-        <Card>
+        <Card className="rounded-md border-border bg-card">
           <CardHeader>
-            <CardTitle>Ancillary Details</CardTitle>
+            <CardTitle className="text-base">Ancillary Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Basic Info */}
@@ -201,7 +216,7 @@ const AncillaryForm = () => {
                   placeholder="e.g., Extra Checked Bag 23kg"
                 />
                 {formik.touched.name && formik.errors.name && (
-                  <p className="text-sm text-red-600">{formik.errors.name}</p>
+                  <p className="text-sm text-destructive">{formik.errors.name}</p>
                 )}
               </div>
 
@@ -223,7 +238,7 @@ const AncillaryForm = () => {
                   </SelectContent>
                 </Select>
                 {formik.touched.type && formik.errors.type && (
-                  <p className="text-sm text-red-600">{formik.errors.type}</p>
+                  <p className="text-sm text-destructive">{formik.errors.type}</p>
                 )}
               </div>
             </div>
@@ -287,9 +302,9 @@ const AncillaryForm = () => {
 
             {/* BAGGAGE METADATA - Show only if type is BAGGAGE */}
             {formik.values.type === "BAGGAGE" && (
-              <Card className="bg-blue-50 dark:bg-blue-950">
+              <Card className="rounded-md border-border bg-muted/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Baggage Details</CardTitle>
+                  <CardTitle className="text-base">Baggage Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -399,9 +414,9 @@ const AncillaryForm = () => {
 
             {/* TRAVEL PROTECTION METADATA */}
             {formik.values.type === "TRAVEL_PROTECTION" && (
-              <Card className="bg-purple-50 dark:bg-purple-950">
+              <Card className="rounded-md border-border bg-muted/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Protection Details</CardTitle>
+                  <CardTitle className="text-base">Protection Details</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -411,7 +426,7 @@ const AncillaryForm = () => {
                       name="metadata.protectionSummary"
                       value={formik.values.metadata.protectionSummary || ""}
                       onChange={formik.handleChange}
-                      placeholder="e.g., Trip cancellation, baggage loss, medical coverage up to ₹5,00,000"
+                      placeholder="e.g., Trip cancellation, baggage loss, medical coverage up to USD 5,000"
                       rows={3}
                       maxLength={1000}
                     />
@@ -425,9 +440,9 @@ const AncillaryForm = () => {
 
             {/* SPECIAL SERVICE METADATA */}
             {formik.values.type === "SPECIAL_SERVICE" && (
-              <Card className="bg-green-50 dark:bg-green-950">
+              <Card className="rounded-md border-border bg-muted/30">
                 <CardHeader>
-                  <CardTitle className="text-lg">Service Details</CardTitle>
+                  <CardTitle className="text-base">Service Details</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -452,7 +467,7 @@ const AncillaryForm = () => {
         </Card>
 
         {/* Form Actions */}
-        <div className="flex justify-between pt-6">
+        <div className="mt-5 flex items-center justify-between rounded-md border border-border bg-card/95 p-4">
           <Button
             type="button"
             variant="outline"
@@ -463,7 +478,6 @@ const AncillaryForm = () => {
           <Button
             type="submit"
             disabled={loading || !formik.isValid}
-            className="bg-gradient-to-r from-blue-600 to-purple-600"
           >
             {loading ? (
               <>

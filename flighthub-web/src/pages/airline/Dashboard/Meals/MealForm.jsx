@@ -100,7 +100,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Code and Name */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="code">
             Meal Code <span className="text-destructive">*</span>
@@ -137,7 +137,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
       </div>
 
       {/* Meal Type and Dietary Restriction */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="mealType">
             Meal Type <span className="text-destructive">*</span>
@@ -213,7 +213,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
       </div>
 
       {/* Advance Booking Settings */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <Switch
@@ -261,7 +261,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
       </div>
 
       {/* Available Switch */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 rounded-md border border-border bg-muted/30 p-4">
         <Switch
           id="available"
           checked={formData.available}
@@ -273,7 +273,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-2 rounded-md border border-border bg-card/95 p-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>

@@ -1,20 +1,34 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
   createPolicy,
-  updatePolicy,
-  getPolicyById,
- 
   deletePolicy,
- 
   getBaggagePolicyByFare,
-  getPolicyByAirline
+  getPolicyByAirline,
+  getPolicyById,
+  updatePolicy,
 } from "./baggagePolicyThunk.js";
+
+const toPolicyArray = (payload) => {
+  if (Array.isArray(payload)) return payload.filter(Boolean);
+  if (Array.isArray(payload?.content)) return payload.content.filter(Boolean);
+  if (Array.isArray(payload?.items)) return payload.items.filter(Boolean);
+  return [];
+};
+
+const normalizePolicy = (policy) => {
+  if (!policy || typeof policy !== "object") return null;
+  return {
+    ...policy,
+    priorityBaggage: Boolean(policy.priorityBaggage),
+    extraBaggageAllowance: Boolean(policy.extraBaggageAllowance),
+  };
+};
 
 const initialState = {
   policies: [],
   policy: null,
   loading: false,
-  error: null
+  error: null,
 };
 
 const baggagePolicySlice = createSlice({
@@ -23,115 +37,105 @@ const baggagePolicySlice = createSlice({
   reducers: {
     clearBaggagePolicyError: (state) => {
       state.error = null;
-    }
+    },
+    clearCurrentBaggagePolicy: (state) => {
+      state.policy = null;
+    },
   },
   extraReducers: (builder) => {
-
-    // ---------- CREATE ----------
-    builder.addCase(createPolicy.pending, (state) => {
-      console.log("⏳ createPolicy pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(createPolicy.fulfilled, (state, action) => {
-      console.log("✅ createPolicy fulfilled");
-      state.loading = false;
-      state.policy = action.payload;
-      state.policies.push(action.payload);
-    });
-    builder.addCase(createPolicy.rejected, (state, action) => {
-      console.log("❌ createPolicy rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
-
-    // ---------- UPDATE ----------
-    builder.addCase(updatePolicy.pending, (state) => {
-      console.log("⏳ updatePolicy pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(updatePolicy.fulfilled, (state, action) => {
-      console.log("✅ updatePolicy fulfilled");
-      state.loading = false;
-      state.policy = action.payload;
-      state.policies = state.policies.map(p => p.id === action.payload.id ? action.payload : p);
-    });
-    builder.addCase(updatePolicy.rejected, (state, action) => {
-      console.log("❌ updatePolicy rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
-
-    // ---------- GET BY ID ----------
-    builder.addCase(getPolicyById.pending, (state) => {
-      console.log("⏳ getPolicyById pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(getPolicyById.fulfilled, (state, action) => {
-      console.log("✅ getPolicyById fulfilled");
-      state.loading = false;
-      state.policy = action.payload;
-    });
-    builder.addCase(getPolicyById.rejected, (state, action) => {
-      console.log("❌ getPolicyById rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
-
-    // Get By Airline
-    builder.addCase(getPolicyByAirline.fulfilled, (state, action) => {
-      console.log("✅ getPolicyByAirline fulfilled");
-      state.loading = false;
-      state.policies = action.payload;
-    });
-
-    // ---------- GET BY FARE ID ----------
-    builder.addCase(getBaggagePolicyByFare.pending, (state) => {
-      console.log("⏳ getBaggagePolicyByFare pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(getBaggagePolicyByFare.fulfilled, (state, action) => {
-      console.log("✅ getBaggagePolicyByFare fulfilled");
-      state.loading = false;
-      state.policy = action.payload;
-    });
-    builder.addCase(getBaggagePolicyByFare.rejected, (state, action) => {
-      console.log("❌ getBaggagePolicyByFare rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
-
-    
-
-
-   
-    // ---------- DELETE ----------
-    builder.addCase(deletePolicy.pending, (state) => {
-      console.log("⏳ deletePolicy pending");
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(deletePolicy.fulfilled, (state, action) => {
-      console.log("✅ deletePolicy fulfilled");
-      state.loading = false;
-      state.policies = state.policies.filter(p => p.id !== action.payload);
-      if (state.policy?.id === action.payload) state.policy = null;
-    });
-    builder.addCase(deletePolicy.rejected, (state, action) => {
-      console.log("❌ deletePolicy rejected:", action.payload);
-      state.loading = false;
-      state.error = action.payload;
-    });
-
-  
-
-  
-
-  }
+    builder
+      .addCase(createPolicy.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createPolicy.fulfilled, (state, action) => {
+        state.loading = false;
+        const created = normalizePolicy(action.payload);
+        if (created) {
+          state.policy = created;
+          state.policies = [
+            created,
+            ...toPolicyArray(state.policies).filter((policy) => policy.id !== created.id),
+          ];
+        }
+      })
+      .addCase(createPolicy.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(updatePolicy.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updatePolicy.fulfilled, (state, action) => {
+        state.loading = false;
+        const updated = normalizePolicy(action.payload);
+        if (!updated) return;
+        state.policy = updated;
+        const policies = toPolicyArray(state.policies);
+        const index = policies.findIndex((policy) => policy.id === updated.id);
+        if (index >= 0) {
+          policies[index] = updated;
+          state.policies = policies;
+        } else {
+          state.policies = [updated, ...policies];
+        }
+      })
+      .addCase(updatePolicy.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(getPolicyById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPolicyById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.policy = normalizePolicy(action.payload);
+      })
+      .addCase(getPolicyById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(getPolicyByAirline.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPolicyByAirline.fulfilled, (state, action) => {
+        state.loading = false;
+        state.policies = toPolicyArray(action.payload).map(normalizePolicy).filter(Boolean);
+      })
+      .addCase(getPolicyByAirline.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(getBaggagePolicyByFare.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getBaggagePolicyByFare.fulfilled, (state, action) => {
+        state.loading = false;
+        state.policy = normalizePolicy(action.payload);
+      })
+      .addCase(getBaggagePolicyByFare.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(deletePolicy.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deletePolicy.fulfilled, (state, action) => {
+        state.loading = false;
+        state.policies = toPolicyArray(state.policies).filter((policy) => policy.id !== action.payload);
+        if (state.policy?.id === action.payload) state.policy = null;
+      })
+      .addCase(deletePolicy.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  },
 });
 
-export const { clearBaggagePolicyError } = baggagePolicySlice.actions;
+export const { clearBaggagePolicyError, clearCurrentBaggagePolicy } = baggagePolicySlice.actions;
 export default baggagePolicySlice.reducer;

@@ -144,6 +144,9 @@ const BookingReview = () => {
   const [selectedMeals, setSelectedMeals] = useState([]);
   const [selectedBaggage, setSelectedBaggage] = useState([]);
   const [paymentGateway, setPaymentGateway] = useState("STRIPE");
+  const [promoCode, setPromoCode] = useState(searchParams.get("promoCode") || "");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
   const [travellerValidationAttempted, setTravellerValidationAttempted] = useState(false);
   const [returnFlightInstance, setReturnFlightInstance] = useState(null);
   const [returnFare, setReturnFare] = useState(null);
@@ -323,20 +326,79 @@ const BookingReview = () => {
       0,
     );
 
+    const grossTotal =
+      baseFare +
+      taxes +
+      seatCharges +
+      mealCharges +
+      baggageCharges +
+      travelProtectionCharge * passengerCount;
+    const discountAmount = Math.min(Number(appliedCoupon?.discountAmount || 0), grossTotal);
+
     return {
       seatCharges,
       mealCharges,
       baggageCharges,
       travelProtectionCharge: travelProtectionCharge * passengerCount,
-      grandTotal:
-        baseFare +
-        taxes +
-        seatCharges +
-        mealCharges +
-        baggageCharges +
-        travelProtectionCharge * passengerCount,
+      grossTotal,
+      discountAmount,
+      grandTotal: Math.max(grossTotal - discountAmount, 0),
     };
-  }, [fareItems, passengerCount, selectedBaggage, selectedMeals, selectedSeats, selectedTravelProtection]);
+  }, [appliedCoupon, fareItems, passengerCount, selectedBaggage, selectedMeals, selectedSeats, selectedTravelProtection]);
+
+  useEffect(() => {
+    setAppliedCoupon(null);
+  }, [cabinClass, pricingSummary.grossTotal]);
+
+  const handleApplyPromo = async (code) => {
+    const normalizedCode = String(code || "").trim().toUpperCase();
+    if (!normalizedCode) {
+      setPromoCode("");
+      setAppliedCoupon(null);
+      return;
+    }
+
+    const airlineId =
+      fareItems[0]?.fare?.airlineId ||
+      selectedFare?.airlineId ||
+      flightInstance?.airlineId ||
+      flightInstance?.flight?.airlineId ||
+      flightInstance?.flight?.airline?.id;
+
+    if (!airlineId) {
+      toast.error("Unable to validate promo code because airline information is missing.");
+      return;
+    }
+
+    setPromoLoading(true);
+    try {
+      const response = await api.post("/api/coupons/validate", {
+        code: normalizedCode,
+        airlineId,
+        cabinClass,
+        bookingAmount: pricingSummary.grossTotal,
+      });
+      const coupon = response?.data?.data ?? response?.data;
+      setPromoCode(normalizedCode);
+      setAppliedCoupon(coupon);
+      toast.success("Promo code applied", {
+        description: `${normalizedCode} saved ${new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(Number(coupon?.discountAmount || 0))}.`,
+      });
+    } catch (error) {
+      setAppliedCoupon(null);
+      toast.error("Promo code is not valid for this booking", {
+        description:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Please check the code, route, cabin, and minimum spend.",
+      });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   // Handle seat selection with price calculation for multiple passengers
   const handleSeatSelection = (passengerIndex, seat) => {
@@ -591,6 +653,11 @@ const BookingReview = () => {
       return;
     }
 
+    if (promoCode.trim() && !appliedCoupon?.code) {
+      toast.error("Please apply the promo code before proceeding to payment.");
+      return;
+    }
+
     // Calculate totals for summary - sum up all seats for multiple passengers
     const seatCharges = selectedSeats.reduce(
       (sum, seat) => sum + (seat?.price || 0),
@@ -624,7 +691,9 @@ const BookingReview = () => {
       mealCharges +
       baggageCharges +
       travelProtectionCharge * passengerCount;
-    const grandTotal = subtotal + addOnsTotal;
+    const grossTotal = subtotal + addOnsTotal;
+    const discountAmount = Math.min(Number(appliedCoupon?.discountAmount || 0), grossTotal);
+    const grandTotal = Math.max(grossTotal - discountAmount, 0);
 
     // Collect all ancillary IDs
     const ancillaryIds = [];
@@ -749,7 +818,7 @@ const BookingReview = () => {
       contactInfo,
       ancillaryIds: ancillaryIds,
       mealIds: mealIds,
-      promoCode: searchParams.get("promoCode") || null,
+      promoCode: appliedCoupon?.code || null,
       seatNumbers: seatNumbers,
       seatHoldToken: selectedSeatCount > 0 ? seatHold?.holdToken : null,
       seatHoldExpiresAt: selectedSeatCount > 0 ? seatHold?.holdExpiresAt : null,
@@ -956,6 +1025,14 @@ const BookingReview = () => {
                   travelProtection={selectedTravelProtection}
                   paymentGateway={paymentGateway}
                   onPaymentGatewayChange={setPaymentGateway}
+                  promoCode={promoCode}
+                  appliedCoupon={appliedCoupon}
+                  promoLoading={promoLoading}
+                  onPromoCodeChange={(value) => {
+                    setPromoCode(value);
+                    setAppliedCoupon(null);
+                  }}
+                  onApplyPromo={handleApplyPromo}
                   onProceedToPayment={handleProceedToPayment}
                   isLoading={bookingLoading}
                   totalPassengers={totalPassengers}

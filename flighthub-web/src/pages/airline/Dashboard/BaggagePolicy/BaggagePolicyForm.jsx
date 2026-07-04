@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ArrowLeft,
   Save,
@@ -34,12 +34,22 @@ import {
   getPolicyById,
   updatePolicy,
 } from "@/Redux/baggagePolicy/baggagePolicyThunk";
-import { formatCurrency } from "@/utils/formateCurrency";
+import { clearBaggagePolicyError, clearCurrentBaggagePolicy } from "@/Redux/baggagePolicy/baggagePolicySlice";
 import { getFlightsByAirline } from "@/Redux/flight/flightThunk";
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
 
 import { toast } from "sonner";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
+
+const toArray = (value) => (Array.isArray(value) ? value : value?.content || []);
+const formatMoney = (value, currency = "USD") =>
+  Number.isFinite(Number(value))
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 2,
+      }).format(Number(value))
+    : "Price not set";
 
 const BaggagePolicyForm = () => {
   const navigate = useNavigate();
@@ -59,11 +69,20 @@ const BaggagePolicyForm = () => {
   const [selectedFlight, setSelectedFlight] = useState("");
   const [selectedCabin, setSelectedCabin] = useState("");
   const [selectedFare, setSelectedFare] = useState("");
+  const flightList = useMemo(() => toArray(flights), [flights]);
+  const cabinClassList = useMemo(() => toArray(cabinClasses), [cabinClasses]);
+  const fareList = useMemo(() => toArray(fares), [fares]);
 
   useEffect(() => {
+    dispatch(clearBaggagePolicyError());
+    dispatch(clearCurrentBaggagePolicy());
     if (id) {
       dispatch(getPolicyById(id));
     }
+    return () => {
+      dispatch(clearBaggagePolicyError());
+      dispatch(clearCurrentBaggagePolicy());
+    };
   }, [dispatch, id]);
 
   // Initial form values
@@ -166,28 +185,25 @@ const BaggagePolicyForm = () => {
       };
 
       // Dispatch action to save baggage policy
-      if (policy?.id) {
-        await dispatch(
-          updatePolicy({ id: policy.id, data: formattedValues })
-        ).unwrap();
+      const editing = Boolean(id);
+      const saved = editing
+        ? await dispatch(
+          updatePolicy({ id, data: formattedValues })
+        ).unwrap()
+        : await dispatch(createPolicy(formattedValues)).unwrap();
+
+      if (editing) {
         toast.success("Baggage policy updated successfully!", {
           description: `${formattedValues.name} has been updated.`,
         });
       } else {
-        await dispatch(createPolicy(formattedValues)).unwrap();
         toast.success("Baggage policy created successfully!", {
           description: `${formattedValues.name} has been created.`,
         });
-
-        // Reset form and selections after successful creation
-        resetForm();
-        setSelectedFlight(null);
-        setSelectedCabin(null);
-        setSelectedFare(null);
       }
 
-      console.log("Baggage Policy Data:", formattedValues);
-      // navigate("/airline/baggage-policies");
+      resetForm();
+      navigate(saved?.id ? `/airline/baggage-policies/${saved.id}` : "/airline/baggage-policies");
     } catch (error) {
       console.error("Error saving baggage policy:", error);
       toast.error("Failed to save baggage policy", {
@@ -208,12 +224,12 @@ const BaggagePolicyForm = () => {
   // Load cabin classes when flight is selected (from aircraft)
   useEffect(() => {
     if (selectedFlight) {
-      const flight = flights?.find((f) => f.id === parseInt(selectedFlight));
+      const flight = flightList.find((f) => f.id === parseInt(selectedFlight));
       if (flight?.aircraft?.id) {
         dispatch(getCabinClassesByAircraft(flight.aircraft.id));
       }
     }
-  }, [selectedFlight, flights, dispatch]);
+  }, [selectedFlight, flightList, dispatch]);
 
   // Load fares when cabin is selected
   useEffect(() => {
@@ -229,51 +245,54 @@ const BaggagePolicyForm = () => {
   }, [selectedCabin, selectedFlight, dispatch]);
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="bg-white rounded-lg shadow-sm border w-full">
-        <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50">
+    <div className="space-y-5 pb-8">
+      <div className="rounded-md border border-border bg-card">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Button
             variant="ghost"
+            size="icon"
+            aria-label="Back to baggage policies"
             onClick={() => navigate(-1)}
-            className="flex items-center hover:bg-gray-100"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="text-sm text-gray-500 font-medium">
-            / Baggage Policy / {policy ? "Edit" : "New Policy"}
+          <div className="text-sm font-medium text-muted-foreground">
+            Baggage Policies / {id ? "Edit" : "New Policy"}
           </div>
         </div>
 
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-purple-100 p-3 rounded-lg">
-                  <Luggage className="h-6 w-6 text-purple-600" />
+        <div className="border-b border-border p-5 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Luggage className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    {id ? "Edit Baggage Policy" : "Create Baggage Policy"}
+                  </h1>
+                  {id && (
+                    <Badge variant="secondary" className="rounded-md">
+                      Fare #{policy?.fareId || initialValues.fareId || "N/A"}
+                    </Badge>
+                  )}
                 </div>
-                {policy
-                  ? "Edit Baggage Policy"
-                  : "Create New Baggage Policy"}
-              </h2>
-              <p className="text-gray-600 mt-2">
-                Configure baggage allowances and policies for your flights
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-purple-900">
-                  💼 Smart Baggage
-                </p>
-                <p className="text-xs text-purple-700">
-                  Define policies for different fare classes
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  Configure carry-on, checked baggage, and handling benefits that traveler checkout and ticketing will display for this fare.
                 </p>
               </div>
             </div>
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+              <p className="font-medium text-foreground">Fare-level allowance</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                One baggage policy should map to one sellable fare.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <Formik
             initialValues={initialValues}
             validationSchema={validationSchema}
@@ -281,12 +300,12 @@ const BaggagePolicyForm = () => {
             enableReinitialize
           >
             {({ isSubmitting, values, setFieldValue }) => (
-              <Form className="space-y-8">
+              <Form className="space-y-5">
                 {/* Flight, Cabin, and Fare Selection */}
-             {!policy &&   <Card className="border-l-4 border-l-indigo-500">
+             {!policy &&   <Card className="rounded-md border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plane className="h-5 w-5 text-indigo-600" />
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Plane className="h-5 w-5 text-primary" />
                       Flight & Fare Selection
                     </CardTitle>
                   </CardHeader>
@@ -296,9 +315,9 @@ const BaggagePolicyForm = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="flightSelect"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Plane className="h-4 w-4 text-blue-600" />
+                          <Plane className="h-4 w-4 text-primary" />
                           Select Flight *
                         </Label>
                         <Select
@@ -311,8 +330,8 @@ const BaggagePolicyForm = () => {
                             <SelectValue placeholder="Select a flight" />
                           </SelectTrigger>
                           <SelectContent>
-                            {flights && flights?.length > 0 ? (
-                              flights.map((flight) => (
+                            {flightList.length > 0 ? (
+                              flightList.map((flight) => (
                                 <SelectItem
                                   key={flight.id}
                                   value={flight.id.toString()}
@@ -338,9 +357,9 @@ const BaggagePolicyForm = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="cabinSelect"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Armchair className="h-4 w-4 text-purple-600" />
+                          <Armchair className="h-4 w-4 text-primary" />
                           Select Cabin *
                         </Label>
                         <Select
@@ -349,15 +368,15 @@ const BaggagePolicyForm = () => {
                             setSelectedCabin(value);
                           }}
                           disabled={
-                            !selectedFlight || cabinClasses?.length === 0
+                            !selectedFlight || cabinClassList.length === 0
                           }
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select a cabin class" />
                           </SelectTrigger>
                           <SelectContent>
-                            {cabinClasses && cabinClasses.length > 0 ? (
-                              cabinClasses.map((cabinClass) => (
+                            {cabinClassList.length > 0 ? (
+                              cabinClassList.map((cabinClass) => (
                                 <SelectItem
                                   key={cabinClass.id}
                                   value={cabinClass.id.toString()}
@@ -384,9 +403,9 @@ const BaggagePolicyForm = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="fareSelect"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <DollarSign className="h-4 w-4 text-green-600" />
+                          <DollarSign className="h-4 w-4 text-primary" />
                           Select Fare *
                         </Label>
                         <Select
@@ -395,20 +414,20 @@ const BaggagePolicyForm = () => {
                             setSelectedFare(value);
                             setFieldValue("fareId", value);
                           }}
-                          disabled={!selectedCabin || fares?.length === 0}
+                          disabled={!selectedCabin || fareList.length === 0}
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select a fare" />
                           </SelectTrigger>
                           <SelectContent>
-                            {fares && fares.length > 0 ? (
-                              fares.map((fare) => (
+                            {fareList.length > 0 ? (
+                              fareList.map((fare) => (
                                 <SelectItem
                                   key={fare.id}
                                   value={fare.id.toString()}
                                 >
-                                  {fare.name || `Fare ${fare.id}`} -{" "}
-                                  {formatCurrency(fare.baseFare)}
+                                  {fare.name || fare.fareName || `Fare ${fare.id}`} -{" "}
+                                  {formatMoney(fare.currentPrice ?? fare.totalPrice ?? fare.baseFare, fare.currency || "USD")}
                                 </SelectItem>
                               ))
                             ) : (
@@ -426,19 +445,19 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="fareId"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                       </div>
                     </div>
 
                     {/* Display Selected Fare ID */}
                     {selectedFare && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-green-900">
+                          <span className="text-sm font-medium text-foreground">
                             Selected Fare ID:
                           </span>
-                          <Badge variant="default" className="bg-green-600">
+                          <Badge variant="default">
                             {selectedFare}
                           </Badge>
                         </div>
@@ -451,10 +470,10 @@ const BaggagePolicyForm = () => {
                 </Card>}
 
                 {/* Basic Information */}
-                <Card>
+                <Card className="rounded-md border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5 text-purple-600" />
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Package className="h-5 w-5 text-primary" />
                       Basic Information
                     </CardTitle>
                   </CardHeader>
@@ -463,7 +482,7 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="name"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
                           <Package className="h-4 w-4 text-primary" />
                           Policy Name *
@@ -477,16 +496,16 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="name"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                       </div>
 
                       <div>
                         <Label
                           htmlFor="description"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Info className="h-4 w-4 text-blue-600" />
+                          <Info className="h-4 w-4 text-primary" />
                           Description
                         </Label>
                         <Field
@@ -498,7 +517,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="description"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                       </div>
                     </div>
@@ -506,10 +525,10 @@ const BaggagePolicyForm = () => {
                 </Card>
 
                 {/* Cabin Baggage */}
-                <Card>
+                <Card className="rounded-md border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Briefcase className="h-5 w-5 text-blue-600" />
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Briefcase className="h-5 w-5 text-primary" />
                       Cabin Baggage (Carry-On)
                     </CardTitle>
                   </CardHeader>
@@ -518,9 +537,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="cabinBaggageMaxWeight"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Weight className="h-4 w-4 text-blue-600" />
+                          <Weight className="h-4 w-4 text-primary" />
                           Max Weight (kg)
                         </Label>
                         <Field
@@ -535,7 +554,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="cabinBaggageMaxWeight"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Maximum total weight allowed for cabin baggage
@@ -545,9 +564,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="cabinBaggagePieces"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Package className="h-4 w-4 text-blue-600" />
+                          <Package className="h-4 w-4 text-primary" />
                           Number of Pieces
                         </Label>
                         <Field
@@ -561,7 +580,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="cabinBaggagePieces"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Number of cabin baggage pieces allowed
@@ -571,9 +590,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="cabinBaggageWeightPerPiece"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Weight className="h-4 w-4 text-blue-600" />
+                          <Weight className="h-4 w-4 text-primary" />
                           Weight per Piece (kg)
                         </Label>
                         <Field
@@ -588,7 +607,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="cabinBaggageWeightPerPiece"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Maximum weight per piece of cabin baggage
@@ -598,9 +617,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="cabinBaggageMaxDimension"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Ruler className="h-4 w-4 text-blue-600" />
+                          <Ruler className="h-4 w-4 text-primary" />
                           Max Dimension (cm)
                         </Label>
                         <Field
@@ -615,7 +634,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="cabinBaggageMaxDimension"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Sum of length + width + height (in cm)
@@ -626,10 +645,10 @@ const BaggagePolicyForm = () => {
                 </Card>
 
                 {/* Checked Baggage */}
-                <Card>
+                <Card className="rounded-md border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Luggage className="h-5 w-5 text-green-600" />
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Luggage className="h-5 w-5 text-primary" />
                       Checked Baggage
                     </CardTitle>
                   </CardHeader>
@@ -638,9 +657,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="checkInBaggageMaxWeight"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Weight className="h-4 w-4 text-green-600" />
+                          <Weight className="h-4 w-4 text-primary" />
                           Max Weight (kg)
                         </Label>
                         <Field
@@ -655,7 +674,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="checkInBaggageMaxWeight"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Maximum total weight for checked baggage
@@ -665,9 +684,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="checkInBaggagePieces"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Package className="h-4 w-4 text-green-600" />
+                          <Package className="h-4 w-4 text-primary" />
                           Number of Pieces
                         </Label>
                         <Field
@@ -681,7 +700,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="checkInBaggagePieces"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Number of checked baggage pieces allowed
@@ -691,9 +710,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="checkInBaggageWeightPerPiece"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Weight className="h-4 w-4 text-green-600" />
+                          <Weight className="h-4 w-4 text-primary" />
                           Weight per Piece (kg)
                         </Label>
                         <Field
@@ -708,7 +727,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="checkInBaggageWeightPerPiece"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Maximum weight per piece of checked baggage
@@ -718,9 +737,9 @@ const BaggagePolicyForm = () => {
                       <div>
                         <Label
                           htmlFor="freeCheckedBagsAllowance"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-foreground"
                         >
-                          <Package className="h-4 w-4 text-green-600" />
+                          <Package className="h-4 w-4 text-primary" />
                           Free Bags Allowance
                         </Label>
                         <Field
@@ -734,7 +753,7 @@ const BaggagePolicyForm = () => {
                         <ErrorMessage
                           name="freeCheckedBagsAllowance"
                           component="div"
-                          className="text-sm text-red-600 mt-1"
+                          className="mt-1 text-sm text-destructive"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           Number of free checked bags allowed
@@ -745,20 +764,20 @@ const BaggagePolicyForm = () => {
                 </Card>
 
                 {/* Baggage Benefits */}
-                <Card>
+                <Card className="rounded-md border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5 text-orange-600" />
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Package className="h-5 w-5 text-primary" />
                       Baggage Benefits
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                      <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/30 p-4">
                         <div className="flex-1">
                           <Label
                             htmlFor="priorityBaggage"
-                            className="text-base font-medium cursor-pointer"
+                            className="cursor-pointer text-base font-medium text-foreground"
                           >
                             Priority Baggage
                           </Label>
@@ -779,11 +798,11 @@ const BaggagePolicyForm = () => {
                         </Field>
                       </div>
 
-                      <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                      <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/30 p-4">
                         <div className="flex-1">
                           <Label
                             htmlFor="extraBaggageAllowance"
-                            className="text-base font-medium cursor-pointer"
+                            className="cursor-pointer text-base font-medium text-foreground"
                           >
                             Extra Baggage Allowance
                           </Label>
@@ -811,9 +830,9 @@ const BaggagePolicyForm = () => {
                 </Card>
 
                 {/* Policy Summary */}
-                <Card className="bg-purple-50/50 border-purple-200">
+                <Card className="rounded-md border-border bg-muted/30">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-purple-900">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Info className="h-5 w-5" />
                       Policy Summary
                     </CardTitle>
@@ -821,7 +840,7 @@ const BaggagePolicyForm = () => {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                       <div className="space-y-2">
-                        <h4 className="font-medium text-purple-900 mb-2">
+                        <h4 className="mb-2 font-medium text-foreground">
                           Selection Details
                         </h4>
                         <div className="space-y-1">
@@ -829,7 +848,7 @@ const BaggagePolicyForm = () => {
                             <span>Flight:</span>
                             <span className="font-medium text-xs">
                               {selectedFlight
-                                ? flights?.find(
+                                ? flightList.find(
                                     (f) => f.id === parseInt(selectedFlight)
                                   )?.flightNumber
                                 : "N/A"}
@@ -839,7 +858,7 @@ const BaggagePolicyForm = () => {
                             <span>Cabin:</span>
                             <span className="font-medium text-xs">
                               {selectedCabin
-                                ? cabinClasses?.find(
+                                ? cabinClassList.find(
                                     (c) => c.id === parseInt(selectedCabin)
                                   )?.name
                                 : "N/A"}
@@ -849,7 +868,7 @@ const BaggagePolicyForm = () => {
                             <span>Fare:</span>
                             <span className="font-medium text-xs">
                               {selectedFare
-                                ? fares.find(
+                                ? fareList.find(
                                     (f) => f.id === parseInt(selectedFare)
                                   )?.name || `Fare ${selectedFare}`
                                 : "N/A"}
@@ -858,7 +877,7 @@ const BaggagePolicyForm = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h4 className="font-medium text-purple-900 mb-2">
+                        <h4 className="mb-2 font-medium text-foreground">
                           Cabin Baggage
                         </h4>
                         <div className="space-y-1">
@@ -889,7 +908,7 @@ const BaggagePolicyForm = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h4 className="font-medium text-purple-900 mb-2">
+                        <h4 className="mb-2 font-medium text-foreground">
                           Checked Baggage
                         </h4>
                         <div className="space-y-1">
@@ -920,7 +939,7 @@ const BaggagePolicyForm = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h4 className="font-medium text-purple-900 mb-2">
+                        <h4 className="mb-2 font-medium text-foreground">
                           Benefits & Info
                         </h4>
                         <div className="space-y-1">
@@ -959,14 +978,14 @@ const BaggagePolicyForm = () => {
                 </Card>
 
                 {/* Form Actions */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 z-10 ">
+                <div className="sticky bottom-0 z-10 rounded-md border border-border bg-card/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-card/80">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <span className="font-medium">
                         Policy: {values.name || "Untitled"}
                       </span>
                       {values.freeCheckedBagsAllowance && (
-                        <span className="ml-2 text-gray-500">
+                        <span className="ml-2 text-muted-foreground">
                           • {values.freeCheckedBagsAllowance} free bag(s)
                         </span>
                       )}

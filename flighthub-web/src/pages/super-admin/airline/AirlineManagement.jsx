@@ -32,6 +32,16 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import {
   getAllAirlines,
@@ -58,7 +68,16 @@ const AirlineManagement = ({ activeSection }) => {
   const [statusFilter, setStatusFilter] = React.useState("all")
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(10)
+  const [confirmAction, setConfirmAction] = React.useState(null)
+  const [actionLoading, setActionLoading] = React.useState(false)
 
+  const routeStatusFilter = React.useMemo(() => {
+    if (activeSection === "airlines-pending") return "PENDING"
+    return null
+  }, [activeSection])
+  const isQueueView = activeSection === "airlines-pending" || activeSection === "airlines-suspended"
+
+  const effectiveStatusFilter = routeStatusFilter || (statusFilter !== "all" ? statusFilter.toUpperCase() : undefined)
 
   React.useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -69,15 +88,23 @@ const AirlineManagement = ({ activeSection }) => {
   }, [searchQuery])
 
   React.useEffect(() => {
-    dispatch(getAllAirlines({
-      page: currentPage - 1,
-      size: itemsPerPage,
+    setCurrentPage(1)
+  }, [activeSection, statusFilter])
+
+  const loadAirlines = React.useCallback(() => {
+    return dispatch(getAllAirlines({
+      page: isQueueView ? 0 : currentPage - 1,
+      size: isQueueView ? 100 : itemsPerPage,
       sortBy: "name",
       sortDirection: "asc",
       keyword: debouncedSearchQuery || undefined,
-      status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined
+      status: effectiveStatusFilter
     }))
-  }, [dispatch, currentPage, itemsPerPage, debouncedSearchQuery, statusFilter])
+  }, [dispatch, currentPage, itemsPerPage, debouncedSearchQuery, effectiveStatusFilter, isQueueView])
+
+  React.useEffect(() => {
+    loadAirlines()
+  }, [loadAirlines])
 
   const filteredAirlines = React.useMemo(() => {
     return Array.isArray(airlines) ? airlines : []
@@ -127,46 +154,70 @@ const AirlineManagement = ({ activeSection }) => {
     )
   }
 
+  const reloadAfterAction = React.useCallback(async () => {
+    await loadAirlines()
+  }, [loadAirlines])
+
   const handleApprove = async (airlineId) => {
     try {
       await dispatch(approveAirline(airlineId)).unwrap()
       toast.success("Airline approved successfully")
+      await reloadAfterAction()
     } catch (err) {
       toast.error(err || "Failed to approve airline")
     }
   }
 
-  const handleReject = async (airlineId) => {
-    if (window.confirm("Are you sure you want to reject this airline application?")) {
-      try {
+  const requestAction = (type, airline) => {
+    setConfirmAction({ type, airline })
+  }
+
+  const runConfirmedAction = async () => {
+    if (!confirmAction?.airline?.id) return
+
+    setActionLoading(true)
+    try {
+      const airlineId = confirmAction.airline.id
+      if (confirmAction.type === "reject") {
         await dispatch(rejectAirline(airlineId)).unwrap()
-        toast.success("Airline rejected and deleted successfully")
-      } catch (err) {
-        toast.error(err || "Failed to reject airline")
+        toast.success("Airline application rejected")
       }
+      if (confirmAction.type === "suspend") {
+        await dispatch(suspendAirline(airlineId)).unwrap()
+        toast.success("Airline suspended successfully")
+      }
+      if (confirmAction.type === "ban") {
+        await dispatch(banAirline(airlineId)).unwrap()
+        toast.success("Airline banned successfully")
+      }
+      if (confirmAction.type === "reactivate") {
+        await dispatch(approveAirline(airlineId)).unwrap()
+        toast.success("Airline reactivated successfully")
+      }
+      setConfirmAction(null)
+      await reloadAfterAction()
+    } catch (err) {
+      toast.error(err || "Action failed")
+    } finally {
+      setActionLoading(false)
     }
+  }
+
+  const handleReject = (airlineOrId) => {
+    const airline = typeof airlineOrId === "object"
+      ? airlineOrId
+      : airlines?.find((item) => item.id === airlineOrId) || { id: airlineOrId }
+    requestAction("reject", airline)
   }
 
   const handleSuspend = async (airlineId) => {
-    if (window.confirm("Are you sure you want to suspend this airline?")) {
-      try {
-        await dispatch(suspendAirline(airlineId)).unwrap()
-        toast.success("Airline suspended successfully")
-      } catch (err) {
-        toast.error(err || "Failed to suspend airline")
-      }
-    }
+    const airline = airlines?.find((item) => item.id === airlineId) || { id: airlineId }
+    requestAction("suspend", airline)
   }
 
   const handleBan = async (airlineId) => {
-    if (window.confirm("Are you sure you want to ban this airline?")) {
-      try {
-        await dispatch(banAirline(airlineId)).unwrap()
-        toast.success("Airline banned successfully")
-      } catch (err) {
-        toast.error(err || "Failed to ban airline")
-      }
-    }
+    const airline = airlines?.find((item) => item.id === airlineId) || { id: airlineId }
+    requestAction("ban", airline)
   }
 
  
@@ -326,6 +377,7 @@ const AirlineManagement = ({ activeSection }) => {
                 onReject={handleReject}
                 onSuspend={handleSuspend}
                 onBan={handleBan}
+                showApprovalActions={airline.status === "PENDING"}
                 
               />
             ))}
@@ -346,7 +398,7 @@ const AirlineManagement = ({ activeSection }) => {
 
   const renderPendingAirlines = () => {
     const pendingAirlines = airlines?.filter(a => a.status === "PENDING") || []
-    const totalPending = pendingAirlines.length
+    const totalPending = paginatedAirlines?.totalElements || pendingAirlines.length
     const withOwner = pendingAirlines.filter((airline) => airline.owner?.fullName || airline.ownerId).length
     const completeRegistry = pendingAirlines.filter((airline) => airline.iataCode && airline.icaoCode).length
     const missingContact = pendingAirlines.filter((airline) => {
@@ -530,7 +582,7 @@ const AirlineManagement = ({ activeSection }) => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleReject(airline.id)}
+                            onClick={() => handleReject(airline)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                           >
                             <XCircle className="mr-1 h-3.5 w-3.5" />
@@ -751,10 +803,17 @@ const AirlineManagement = ({ activeSection }) => {
                         </div>
 
                         <div className="flex flex-wrap gap-2 xl:justify-end">
-                          <Button size="sm" onClick={() => handleApprove(airline.id)} className="bg-green-600 hover:bg-green-700">
-                            <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                            Reactivate
-                          </Button>
+                          {airline.status === "INACTIVE" ? (
+                            <Button size="sm" onClick={() => requestAction("reactivate", airline)} className="bg-green-600 hover:bg-green-700">
+                              <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                              Reactivate
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" disabled className="text-red-600 dark:text-red-400">
+                              <Ban className="mr-1 h-3.5 w-3.5" />
+                              Banned
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -1342,7 +1401,86 @@ const AirlineManagement = ({ activeSection }) => {
     )
   }
 
-  return <div className="min-w-0 max-w-full space-y-6">{renderContent()}</div>
+  const confirmCopy = {
+    reject: {
+      title: "Reject airline application?",
+      description: "This removes the pending airline profile and keeps the owner account available for follow-up.",
+      action: "Reject application",
+      className: "bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500",
+    },
+    suspend: {
+      title: "Suspend airline operations?",
+      description: "This marks the airline inactive. The owner account remains in place, but operational access is paused.",
+      action: "Suspend airline",
+      className: "bg-yellow-600 text-white hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-500",
+    },
+    ban: {
+      title: "Ban airline?",
+      description: "This blocks airline operations and should be used only for serious policy or security issues.",
+      action: "Ban airline",
+      className: "bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500",
+    },
+    reactivate: {
+      title: "Reactivate airline?",
+      description: "This returns an inactive airline to active operational status.",
+      action: "Reactivate airline",
+      className: "bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500",
+    },
+  }
+  const activeConfirm = confirmAction ? confirmCopy[confirmAction.type] : null
+
+  return (
+    <div className="min-w-0 max-w-full space-y-6">
+      {renderContent()}
+
+      <AlertDialog
+        open={Boolean(confirmAction)}
+        onOpenChange={(open) => {
+          if (!open && !actionLoading) setConfirmAction(null)
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{activeConfirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {activeConfirm?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {confirmAction?.airline && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Airline</span>
+                <span className="truncate font-medium text-foreground">
+                  {confirmAction.airline.name || `Airline #${confirmAction.airline.id}`}
+                </span>
+              </div>
+              <div className="mt-2 flex justify-between gap-4">
+                <span className="text-muted-foreground">Current status</span>
+                <span className="font-medium text-foreground">
+                  {confirmAction.airline.status || "N/A"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                runConfirmedAction()
+              }}
+              disabled={actionLoading}
+              className={activeConfirm?.className}
+            >
+              {actionLoading ? "Processing..." : activeConfirm?.action}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
 }
 
 

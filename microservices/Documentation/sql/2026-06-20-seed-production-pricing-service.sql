@@ -16,6 +16,56 @@ BEGIN;
 ALTER TABLE fares ADD COLUMN IF NOT EXISTS airline_id bigint;
 ALTER TABLE fares ADD COLUMN IF NOT EXISTS currency varchar(3) NOT NULL DEFAULT 'USD';
 
+CREATE TABLE IF NOT EXISTS coupons (
+    id bigserial PRIMARY KEY,
+    airline_id bigint NOT NULL,
+    code varchar(32) NOT NULL,
+    description varchar(500) NOT NULL,
+    discount_type varchar(20) NOT NULL,
+    discount_value double precision NOT NULL,
+    min_purchase_amount double precision,
+    max_discount_amount double precision,
+    valid_from timestamp with time zone NOT NULL,
+    valid_until timestamp with time zone NOT NULL,
+    usage_limit integer NOT NULL,
+    per_user_limit integer NOT NULL,
+    used_count integer NOT NULL DEFAULT 0,
+    status varchar(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    updated_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT uk_coupons_airline_code UNIQUE (airline_id, code),
+    CONSTRAINT chk_coupons_discount_type CHECK (discount_type IN ('PERCENTAGE', 'FIXED_AMOUNT')),
+    CONSTRAINT chk_coupons_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    CONSTRAINT chk_coupons_usage_limit CHECK (usage_limit >= 1),
+    CONSTRAINT chk_coupons_per_user_limit CHECK (per_user_limit >= 1)
+);
+
+CREATE TABLE IF NOT EXISTS coupon_cabin_classes (
+    coupon_id bigint NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+    cabin_class varchar(30) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS coupon_routes (
+    coupon_id bigint NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+    route_id bigint NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS coupon_redemptions (
+    id bigserial PRIMARY KEY,
+    coupon_id bigint NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+    airline_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    booking_id bigint NOT NULL,
+    code varchar(32) NOT NULL,
+    redeemed_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT uk_coupon_redemptions_booking UNIQUE (coupon_id, booking_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_coupons_airline_status ON coupons (airline_id, status);
+CREATE INDEX IF NOT EXISTS idx_coupons_validity ON coupons (valid_from, valid_until);
+CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_user
+    ON coupon_redemptions (coupon_id, user_id);
+
 CREATE TEMP TABLE seed_pricing_fares (
     flight_id bigint NOT NULL,
     cabin_class_id bigint NOT NULL,
@@ -206,5 +256,87 @@ JOIN fares fare ON fare.flight_id = seed.flight_id
     AND fare.cabin_class_id = seed.cabin_class_id
     AND fare.name = seed.fare_name
 WHERE NOT EXISTS (SELECT 1 FROM baggage_policies existing WHERE existing.fare_id = fare.id);
+
+CREATE TEMP TABLE seed_pricing_coupons (
+    airline_id bigint NOT NULL,
+    code varchar(32) NOT NULL,
+    description varchar(500) NOT NULL,
+    discount_type varchar(20) NOT NULL,
+    discount_value double precision NOT NULL,
+    min_purchase_amount double precision,
+    max_discount_amount double precision,
+    valid_from timestamp with time zone NOT NULL,
+    valid_until timestamp with time zone NOT NULL,
+    usage_limit integer NOT NULL,
+    per_user_limit integer NOT NULL,
+    status varchar(20) NOT NULL,
+    cabin_classes varchar(30)[],
+    route_ids bigint[],
+    PRIMARY KEY (airline_id, code)
+) ON COMMIT DROP;
+
+INSERT INTO seed_pricing_coupons VALUES
+    (current_setting('flighthub_seed.airline_vn', true)::bigint, 'VNWELCOME10', '10% launch discount for Vietnam Airlines economy bookings.', 'PERCENTAGE', 10, 40, 20, NOW() - INTERVAL '1 day', NOW() + INTERVAL '90 days', 500, 1, 'ACTIVE', ARRAY['ECONOMY'], ARRAY[]::bigint[]),
+    (current_setting('flighthub_seed.airline_vn', true)::bigint, 'VNFLEX25', 'USD 25 off premium bookings with flexible fares.', 'FIXED_AMOUNT', 25, 120, NULL, NOW() - INTERVAL '1 day', NOW() + INTERVAL '60 days', 250, 1, 'ACTIVE', ARRAY['PREMIUM_ECONOMY','BUSINESS'], ARRAY[]::bigint[]),
+    (current_setting('flighthub_seed.airline_vj', true)::bigint, 'VJLOWFARE', 'Vietjet low fare campaign for selected economy trips.', 'PERCENTAGE', 8, 30, 12, NOW() - INTERVAL '1 day', NOW() + INTERVAL '75 days', 700, 1, 'ACTIVE', ARRAY['ECONOMY'], ARRAY[]::bigint[]),
+    (current_setting('flighthub_seed.airline_ak', true)::bigint, 'AIRASIA15', 'AirAsia regional saver coupon.', 'PERCENTAGE', 15, 45, 18, NOW() - INTERVAL '1 day', NOW() + INTERVAL '45 days', 400, 1, 'ACTIVE', ARRAY['ECONOMY'], ARRAY[]::bigint[]),
+    (current_setting('flighthub_seed.airline_sq', true)::bigint, 'SQPREMIUM30', 'Singapore Airlines premium cabin promotion.', 'FIXED_AMOUNT', 30, 160, NULL, NOW() - INTERVAL '1 day', NOW() + INTERVAL '30 days', 120, 1, 'ACTIVE', ARRAY['BUSINESS'], ARRAY[]::bigint[]);
+
+UPDATE coupons existing
+SET
+    description = seed.description,
+    discount_type = seed.discount_type,
+    discount_value = seed.discount_value,
+    min_purchase_amount = seed.min_purchase_amount,
+    max_discount_amount = seed.max_discount_amount,
+    valid_from = seed.valid_from,
+    valid_until = seed.valid_until,
+    usage_limit = seed.usage_limit,
+    per_user_limit = seed.per_user_limit,
+    status = seed.status,
+    updated_at = NOW()
+FROM seed_pricing_coupons seed
+WHERE existing.airline_id = seed.airline_id
+  AND existing.code = seed.code;
+
+INSERT INTO coupons (
+    airline_id, code, description, discount_type, discount_value,
+    min_purchase_amount, max_discount_amount, valid_from, valid_until,
+    usage_limit, per_user_limit, used_count, status, created_at, updated_at
+)
+SELECT
+    seed.airline_id, seed.code, seed.description, seed.discount_type, seed.discount_value,
+    seed.min_purchase_amount, seed.max_discount_amount, seed.valid_from, seed.valid_until,
+    seed.usage_limit, seed.per_user_limit, 0, seed.status, NOW(), NOW()
+FROM seed_pricing_coupons seed
+WHERE NOT EXISTS (
+    SELECT 1 FROM coupons existing
+    WHERE existing.airline_id = seed.airline_id
+      AND existing.code = seed.code
+);
+
+DELETE FROM coupon_cabin_classes classes
+USING coupons coupon, seed_pricing_coupons seed
+WHERE classes.coupon_id = coupon.id
+  AND coupon.airline_id = seed.airline_id
+  AND coupon.code = seed.code;
+
+INSERT INTO coupon_cabin_classes (coupon_id, cabin_class)
+SELECT coupon.id, cabin_class
+FROM seed_pricing_coupons seed
+JOIN coupons coupon ON coupon.airline_id = seed.airline_id AND coupon.code = seed.code
+CROSS JOIN LATERAL unnest(seed.cabin_classes) AS cabin_class;
+
+DELETE FROM coupon_routes routes
+USING coupons coupon, seed_pricing_coupons seed
+WHERE routes.coupon_id = coupon.id
+  AND coupon.airline_id = seed.airline_id
+  AND coupon.code = seed.code;
+
+INSERT INTO coupon_routes (coupon_id, route_id)
+SELECT coupon.id, route_id
+FROM seed_pricing_coupons seed
+JOIN coupons coupon ON coupon.airline_id = seed.airline_id AND coupon.code = seed.code
+CROSS JOIN LATERAL unnest(seed.route_ids) AS route_id;
 
 COMMIT;

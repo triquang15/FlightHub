@@ -22,9 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteFareRule, getFareRulesByAirline } from "@/Redux/fareRules/fareRulesThunk";
 
-const currency = new Intl.NumberFormat("en-IN", {
+const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "INR",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
 
@@ -53,7 +53,10 @@ const FareRulesTable = () => {
     dispatch(getFareRulesByAirline());
   }, [dispatch]);
 
-  const rules = useMemo(() => (Array.isArray(fareRules) ? fareRules : []), [fareRules]);
+  const rules = useMemo(
+    () => (Array.isArray(fareRules) ? fareRules : fareRules?.content || []),
+    [fareRules],
+  );
   const filteredRules = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rules.filter((rule) => {
@@ -89,10 +92,12 @@ const FareRulesTable = () => {
         <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">Policy register</h2>
-            <p className="text-xs text-muted-foreground">One policy per fare. Changes affect future purchases.</p>
+            <p className="text-xs text-muted-foreground">
+              Showing {filteredRules.length} of {rules.length} fare policies. One active policy is allowed per fare.
+            </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative min-w-0 sm:w-64">
+            <div className="relative min-w-0 sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -133,21 +138,21 @@ const FareRulesTable = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[860px] text-sm">
+              <table className="w-full min-w-[980px] table-fixed text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Rule</th>
-                    <th className="px-4 py-3 font-medium">Refund</th>
-                    <th className="px-4 py-3 font-medium">Change</th>
-                    <th className="px-4 py-3 font-medium">Deadlines</th>
-                    <th className="sticky right-0 bg-muted/95 px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="w-[30%] px-4 py-3 font-medium">Rule</th>
+                    <th className="w-[18%] px-4 py-3 font-medium">Refund</th>
+                    <th className="w-[18%] px-4 py-3 font-medium">Change</th>
+                    <th className="w-[20%] px-4 py-3 font-medium">Deadlines</th>
+                    <th className="sticky right-0 w-[14%] border-l border-border bg-muted/95 px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredRules.map((rule) => (
                     <tr key={rule.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-foreground">{rule.ruleName}</p>
+                        <p className="truncate font-medium text-foreground">{rule.ruleName}</p>
                         <p className="mt-1 text-xs text-muted-foreground">Fare #{rule.fareId}</p>
                       </td>
                       <td className="px-4 py-3">
@@ -166,11 +171,11 @@ const FareRulesTable = () => {
                         <p>Refund: {rule.isRefundable ? `${rule.refundDeadlineDays ?? 0} days` : "N/A"}</p>
                         <p className="mt-1">Change: {rule.isChangeable ? `${rule.changeDeadlineHours ?? 0} hours` : "N/A"}</p>
                       </td>
-                      <td className="sticky right-0 bg-card px-4 py-3">
+                      <td className="sticky right-0 border-l border-border bg-card px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <IconAction label="View rule" icon={Eye} onClick={() => navigate(`/airline/fare-rules/${rule.id}`)} />
                           <IconAction label="Edit rule" icon={Pencil} onClick={() => navigate(`/airline/fare-rules/${rule.id}/edit`)} />
-                          <IconAction label="Delete rule" icon={Trash2} variant="ghost" onClick={() => setRuleToDelete(rule)} />
+                          <IconAction label="Delete rule" icon={Trash2} onClick={() => setRuleToDelete(rule)} />
                         </div>
                       </td>
                     </tr>

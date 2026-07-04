@@ -16,6 +16,7 @@ import com.triquang.message.PaymentCompletedEvent;
 import com.triquang.message.PaymentFailedEvent;
 import com.triquang.message.PaymentRefundedEvent;
 import com.triquang.model.Booking;
+import com.triquang.payload.request.CouponRedeemRequest;
 import com.triquang.payload.request.SeatConfirmRequest;
 import com.triquang.payload.request.SeatReleaseRequest;
 import com.triquang.payload.response.FareResponse;
@@ -73,6 +74,8 @@ public class PaymentEventListener {
 			ticketService.generateTicketsForBooking(booking);
 			booking.setTicketIssued(true);
 		}
+
+		redeemCoupon(booking);
 
 		booking.setStatus(BookingStatus.CONFIRMED);
 		booking.setPaymentId(event.getPaymentId());
@@ -204,6 +207,24 @@ public class PaymentEventListener {
 				.holdToken(booking.getSeatHoldToken())
 				.bookingReference(booking.getBookingReference())
 				.build());
+	}
+
+	private void redeemCoupon(Booking booking) {
+		if (booking == null || booking.getPromoCode() == null || booking.getPromoCode().isBlank()) {
+			return;
+		}
+
+		try {
+			pricingClient.redeemCoupon(CouponRedeemRequest.builder()
+					.airlineId(booking.getAirlineId())
+					.userId(booking.getUserId())
+					.bookingId(booking.getId())
+					.code(booking.getPromoCode())
+					.build());
+		} catch (Exception e) {
+			log.warn("Could not redeem coupon {} for booking {}: {}",
+					booking.getPromoCode(), booking.getBookingReference(), e.getMessage());
+		}
 	}
 
 	private void releaseSeats(Booking booking) {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards } from 'lucide-react';
+import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards, Loader2, X } from 'lucide-react';
 
 const formatCurrency = (amount = 0) => new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -60,6 +60,11 @@ const FareSummaryCard = ({
   travelProtection,
   paymentGateway,
   onPaymentGatewayChange,
+  promoCode = "",
+  appliedCoupon = null,
+  promoLoading = false,
+  onPromoCodeChange,
+  onApplyPromo,
   onProceedToPayment,
   isLoading = false,
   totalPassengers
@@ -91,7 +96,9 @@ const FareSummaryCard = ({
   );
   const subtotal = baseFare + taxes;
   const addOnsTotal = seatCharges + mealCharges + baggageCharges + travelProtectionCharge;
-  const grandTotal = subtotal + addOnsTotal;
+  const grossTotal = subtotal + addOnsTotal;
+  const discountAmount = Math.min(Number(appliedCoupon?.discountAmount || 0), grossTotal);
+  const grandTotal = Math.max(grossTotal - discountAmount, 0);
 
   // Calculate savings if any
   const savings = 0; // Can be calculated based on business logic
@@ -205,6 +212,15 @@ const FareSummaryCard = ({
                 </div>
               )}
 
+              {discountAmount > 0 && (
+                <div className="border-b border-slate-200 py-3 dark:border-white/10">
+                  <FareItem
+                    label={`Promo ${appliedCoupon?.code || promoCode}`}
+                    amount={-discountAmount}
+                  />
+                </div>
+              )}
+
               {/* Total */}
               <div className="pt-3">
                 <FareItem
@@ -220,16 +236,46 @@ const FareSummaryCard = ({
 
       {/* Promo Code Section */}
       <div className="px-6 pb-4">
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-400/20 dark:bg-amber-500/10">
-          <Tag className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-300" />
-          <input
-            type="text"
-            placeholder="Enter promo code"
-            className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-500"
-          />
-          <button className="text-sm font-medium text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200">
-            Apply
-          </button>
+        <div className={`rounded-lg border p-3 ${
+          appliedCoupon
+            ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-400/20 dark:bg-emerald-500/10'
+            : 'border-amber-200 bg-amber-50 dark:border-amber-400/20 dark:bg-amber-500/10'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Tag className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-300" />
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(event) => onPromoCodeChange?.(event.target.value.toUpperCase())}
+              placeholder="Enter promo code"
+              className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-500"
+            />
+            {appliedCoupon ? (
+              <button
+                type="button"
+                onClick={() => onPromoCodeChange?.("")}
+                className="rounded-md p-1 text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                aria-label="Remove promo code"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={promoLoading || !promoCode?.trim()}
+                onClick={() => onApplyPromo?.(promoCode)}
+                className="flex items-center gap-1 text-sm font-medium text-amber-700 transition-colors hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300 dark:hover:text-amber-200"
+              >
+                {promoLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Apply
+              </button>
+            )}
+          </div>
+          {appliedCoupon && (
+            <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-200">
+              {appliedCoupon.code} applied. You saved {formatCurrency(discountAmount)}.
+            </p>
+          )}
         </div>
       </div>
 

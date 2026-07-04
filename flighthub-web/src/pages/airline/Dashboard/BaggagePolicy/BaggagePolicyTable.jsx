@@ -1,43 +1,9 @@
-import React, { useState, useEffect } from "react";
-import {
-  Edit,
-  Trash2,
-  Eye,
-  MoreHorizontal,
-  Search,
-  Filter,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Luggage,
-  Briefcase,
-  Package,
-  Weight,
-  AlertTriangle,
-  Copy,
-  Power,
-  PowerOff,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useEffect, useMemo, useState } from "react";
+import { Briefcase, Eye, Luggage, Pencil, RefreshCw, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,295 +14,261 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
-
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/utils/formateCurrency";
-import {
-  deletePolicy,
-  getPolicyByAirline,
-} from "@/Redux/baggagePolicy/baggagePolicyThunk";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { deletePolicy, getPolicyByAirline } from "@/Redux/baggagePolicy/baggagePolicyThunk";
 import BaggagePolicyState from "./BaggagePolicyState";
+
+const toPolicies = (value) => (Array.isArray(value) ? value : value?.content || []);
+const formatKg = (value) => (Number(value) > 0 ? `${Number(value).toLocaleString("en-US")} kg` : "Not included");
+const formatPieces = (value) => `${Number(value || 0)} pc${Number(value || 0) === 1 ? "" : "s"}`;
+
+const IconAction = ({ label, icon: Icon, onClick }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button type="button" variant="ghost" size="icon" aria-label={label} onClick={onClick}>
+        <Icon className="size-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
 
 const BaggagePolicyTable = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { policies, loading, error } = useSelector(
-    (state) => state.baggagePolicy
-  );
-
-
- 
-  const [deletePolicyId, setDeletePolicyId] = useState(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
+  const { policies, loading, error } = useSelector((state) => state.baggagePolicy);
+  const currentAirline = useSelector((state) => state.airline?.currentAirline);
+  const [search, setSearch] = useState("");
+  const [benefit, setBenefit] = useState("all");
+  const [policyToDelete, setPolicyToDelete] = useState(null);
 
   useEffect(() => {
-    // Load baggage policies for the current airline
-    dispatch(getPolicyByAirline());
-  }, [dispatch]);
+    if (currentAirline?.id) dispatch(getPolicyByAirline(currentAirline.id));
+  }, [currentAirline?.id, dispatch]);
 
- 
+  const policyList = useMemo(() => toPolicies(policies), [policies]);
+  const filteredPolicies = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return policyList.filter((policy) => {
+      const matchesSearch =
+        !query ||
+        policy.name?.toLowerCase().includes(query) ||
+        policy.description?.toLowerCase().includes(query) ||
+        String(policy.fareId).includes(query);
+      const matchesBenefit =
+        benefit === "all" ||
+        (benefit === "priority" && policy.priorityBaggage) ||
+        (benefit === "extra" && policy.extraBaggageAllowance) ||
+        (benefit === "standard" && !policy.priorityBaggage && !policy.extraBaggageAllowance);
+      return matchesSearch && matchesBenefit;
+    });
+  }, [benefit, policyList, search]);
 
-  const handleDelete = async () => {
+  const confirmDelete = async () => {
+    if (!policyToDelete) return;
     try {
-      await dispatch(deletePolicy(deletePolicyId)).unwrap();
-    } catch (error) {
-      console.error("Failed to delete baggage policy:", error);
+      await dispatch(deletePolicy(policyToDelete.id)).unwrap();
+      toast.success("Baggage policy deleted", {
+        description: `${policyToDelete.name} was removed from fare #${policyToDelete.fareId}.`,
+      });
+      setPolicyToDelete(null);
+    } catch (deleteError) {
+      toast.error("Unable to delete baggage policy", { description: String(deleteError) });
     }
-    setShowDeleteDialog(false);
-    setDeletePolicyId(null);
   };
 
-
-
-  if (loading) {
+  if (loading && policyList.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-24 rounded-md" />)}
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex space-x-4">
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <Skeleton className="h-80 rounded-md" />
       </div>
     );
   }
 
-  if (error) {
+  if (!currentAirline?.id) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Error Loading Baggage Policies
-            </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => dispatch(getPolicyByAirline())}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <section className="flex min-h-64 flex-col items-center justify-center rounded-md border border-border bg-card p-6 text-center">
+        <Luggage className="mb-3 size-10 text-muted-foreground" />
+        <p className="font-medium text-foreground">Airline profile required</p>
+        <p className="mt-1 text-sm text-muted-foreground">Complete or reload your airline profile before managing baggage policies.</p>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-5">
+        <BaggagePolicyState policies={policyList} />
 
-      {/* Summary Stats */}
-      <BaggagePolicyState policies={policies}/>
-      
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {policies.length === 0 ? (
-            <div className="text-center py-12">
-              <Luggage className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No Baggage Policies Found
-              </h3>
-              <p className="text-gray-600">
-                {
-                   "No baggage policies have been created yet."}
+        <section className="overflow-hidden rounded-md border border-border bg-card">
+          <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Policy register</h2>
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredPolicies.length} of {policyList.length} baggage policies. One policy is attached to one fare.
               </p>
             </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-0 sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search policy or fare ID"
+                  className="pl-9"
+                />
+              </div>
+              <Select value={benefit} onValueChange={setBenefit}>
+                <SelectTrigger className="w-full sm:w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All benefits</SelectItem>
+                  <SelectItem value="priority">Priority baggage</SelectItem>
+                  <SelectItem value="extra">Extra allowance</SelectItem>
+                  <SelectItem value="standard">Standard only</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => dispatch(getPolicyByAirline(currentAirline.id))}>
+                <RefreshCw className="size-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {error ? (
+            <div className="flex min-h-52 flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-sm font-medium text-destructive">{error}</p>
+              <Button variant="outline" onClick={() => dispatch(getPolicyByAirline(currentAirline.id))}>
+                <RefreshCw className="size-4" /> Retry
+              </Button>
+            </div>
+          ) : filteredPolicies.length === 0 ? (
+            <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+              <Luggage className="mb-3 size-9 text-muted-foreground" />
+              <p className="font-medium text-foreground">No matching baggage policies</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create a policy or adjust the current filters.</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[250px]">Policy Name</TableHead>
-                  <TableHead>Cabin Baggage</TableHead>
-                  <TableHead>Checked Baggage</TableHead>
-                  <TableHead>Extra Charge</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {policies.map((policy) => (
-                  <TableRow key={policy.id} className="hover:bg-gray-50/50">
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-gray-900">
-                          {policy.name}
-                        </div>
-                        {policy.description && (
-                          <div className="text-sm text-gray-500 line-clamp-1">
-                            {policy.description}
+            <>
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[1040px] table-fixed text-sm">
+                  <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                    <tr>
+                      <th className="w-[28%] px-4 py-3 font-medium">Policy</th>
+                      <th className="w-[18%] px-4 py-3 font-medium">Cabin baggage</th>
+                      <th className="w-[18%] px-4 py-3 font-medium">Checked baggage</th>
+                      <th className="w-[18%] px-4 py-3 font-medium">Benefits</th>
+                      <th className="sticky right-0 w-[18%] border-l border-border bg-muted/95 px-4 py-3 text-right font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredPolicies.map((policy) => (
+                      <tr key={policy.id} className="hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <p className="truncate font-medium text-foreground">{policy.name}</p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            Fare #{policy.fareId} {policy.description ? `· ${policy.description}` : ""}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 font-medium text-foreground">
+                            <Briefcase className="size-4 text-primary" />
+                            {formatPieces(policy.cabinBaggagePieces)}
                           </div>
-                        )}
-                        
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-3 w-3 text-blue-600" />
-                          <span className="font-medium">
-                            {policy.cabinBaggageMaxWeight || 0} kg
-                          </span>
-                        </div>
-                        {policy.cabinBaggageMaxDimension && (
-                          <div className="text-gray-500 text-xs">
-                            Max: {policy.cabinBaggageMaxDimension} cm
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatKg(policy.cabinBaggageMaxWeight)}
+                            {policy.cabinBaggageMaxDimension ? ` · ${policy.cabinBaggageMaxDimension} cm` : ""}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 font-medium text-foreground">
+                            <Luggage className="size-4 text-primary" />
+                            {formatPieces(policy.checkInBaggagePieces)}
                           </div>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Luggage className="h-3 w-3 text-green-600" />
-                          <span className="font-medium">
-                            {policy.checkInBaggageMaxWeight || 0} kg
-                          </span>
-                        </div>
-                        <div className="text-gray-500 text-xs">
-                          {policy.freeCheckedBagsAllowance || 0} free bag(s)
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        {policy.extraBaggageChargePerKg ? (
-                          <div className="flex items-center gap-1">
-                            <Weight className="h-3 w-3 text-orange-600" />
-                            <span className="font-medium">
-                              {formatCurrency(policy.extraBaggageChargePerKg)}
-                              /kg
-                            </span>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatKg(policy.checkInBaggageMaxWeight)}
+                            {Number(policy.freeCheckedBagsAllowance) > 0 ? ` · ${policy.freeCheckedBagsAllowance} free` : ""}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant={policy.priorityBaggage ? "default" : "secondary"}>
+                              {policy.priorityBaggage ? "Priority" : "No priority"}
+                            </Badge>
+                            <Badge variant={policy.extraBaggageAllowance ? "outline" : "secondary"}>
+                              {policy.extraBaggageAllowance ? "Extra allowed" : "Standard"}
+                            </Badge>
                           </div>
-                        ) : (
-                          <span className="text-gray-500">Free</span>
-                        )}
+                        </td>
+                        <td className="sticky right-0 border-l border-border bg-card px-4 py-3">
+                          <div className="flex justify-end gap-1">
+                            <IconAction label="View policy" icon={Eye} onClick={() => navigate(`/airline/baggage-policies/${policy.id}`)} />
+                            <IconAction label="Edit policy" icon={Pencil} onClick={() => navigate(`/airline/baggage-policies/${policy.id}/edit`)} />
+                            <IconAction label="Delete policy" icon={Trash2} onClick={() => setPolicyToDelete(policy)} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="divide-y divide-border lg:hidden">
+                {filteredPolicies.map((policy) => (
+                  <article key={policy.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{policy.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Fare #{policy.fareId}</p>
                       </div>
-                    </TableCell>
-
-                    <TableCell>
-                      {policy.isActive ? (
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Inactive
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/airline/baggage-policies/${policy.id}`)
-                            }
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(
-                                `/airline/baggage-policies/${policy.id}/edit`
-                              )
-                            }
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Policy
-                          </DropdownMenuItem>
-                        
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600 focus:text-red-600"
-                            onClick={() => {
-                              setDeletePolicyId(policy.id);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Policy
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                      <div className="flex shrink-0 gap-1">
+                        <IconAction label="View policy" icon={Eye} onClick={() => navigate(`/airline/baggage-policies/${policy.id}`)} />
+                        <IconAction label="Edit policy" icon={Pencil} onClick={() => navigate(`/airline/baggage-policies/${policy.id}/edit`)} />
+                        <IconAction label="Delete policy" icon={Trash2} onClick={() => setPolicyToDelete(policy)} />
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <span className="flex items-center gap-1 text-muted-foreground"><Briefcase className="size-3" /> Cabin</span>
+                        <p className="mt-1 font-medium text-foreground">{formatPieces(policy.cabinBaggagePieces)} · {formatKg(policy.cabinBaggageMaxWeight)}</p>
+                      </div>
+                      <div className="rounded-md bg-muted/50 p-2">
+                        <span className="flex items-center gap-1 text-muted-foreground"><Luggage className="size-3" /> Checked</span>
+                        <p className="mt-1 font-medium text-foreground">{formatPieces(policy.checkInBaggagePieces)} · {formatKg(policy.checkInBaggageMaxWeight)}</p>
+                      </div>
+                    </div>
+                  </article>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </section>
 
-
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              baggage policy and remove it from all associated fares.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowDeleteDialog(false);
-                setDeletePolicyId(null);
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete Policy
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-   
-    </div>
+        <AlertDialog open={Boolean(policyToDelete)} onOpenChange={(open) => !open && setPolicyToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete baggage policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes {policyToDelete?.name} from fare #{policyToDelete?.fareId}. Future purchases will no longer show this baggage allowance.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep policy</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Delete policy</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 };
 

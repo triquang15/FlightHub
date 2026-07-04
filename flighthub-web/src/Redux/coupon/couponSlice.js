@@ -1,43 +1,89 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
+  checkCouponCode,
   createCoupon,
-  getCouponById,
-  getAllCoupons,
-  getActiveCoupons,
-  updateCoupon,
   deleteCoupon,
+  getActiveCoupons,
+  getAllCoupons,
+  getCouponById,
+  updateCoupon,
   validateCoupon,
-  checkCouponCode
 } from "./couponThunk.js";
 
+const emptyPage = {
+  content: [],
+  totalElements: 0,
+  totalPages: 0,
+  size: 25,
+  number: 0,
+  first: true,
+  last: true,
+  numberOfElements: 0,
+};
+
 const initialState = {
-  // Data
   coupons: [],
   coupon: null,
-  paginatedCoupons: {
-    content: [],
-    totalElements: 0,
-    totalPages: 0,
-    size: 10,
-    number: 0,
-    first: true,
-    last: false,
-    numberOfElements: 0
-  },
+  paginatedCoupons: emptyPage,
   activeCoupons: [],
-
-  // Validation
   validationResult: null,
-
-  // UI State
   loading: false,
   error: null,
-
-  // Specific loading states
   createLoading: false,
   updateLoading: false,
   deleteLoading: false,
   validateLoading: false,
+};
+
+const toCouponArray = (payload) => {
+  if (Array.isArray(payload)) return payload.filter(Boolean);
+  if (Array.isArray(payload?.content)) return payload.content.filter(Boolean);
+  if (Array.isArray(payload?.items)) return payload.items.filter(Boolean);
+  return [];
+};
+
+const normalizeCoupon = (coupon) => {
+  if (!coupon || typeof coupon !== "object") return null;
+  const usageLimit = coupon.usageLimit ?? coupon.maxRedemptions ?? null;
+  const usedCount = coupon.usedCount ?? coupon.redemptionCount ?? 0;
+  return {
+    ...coupon,
+    code: String(coupon.code || "").toUpperCase(),
+    status: coupon.status || "ACTIVE",
+    discountType: coupon.discountType || "PERCENTAGE",
+    discountValue: Number(coupon.discountValue ?? coupon.value ?? 0),
+    usageLimit,
+    usedCount,
+    remainingUsage:
+      usageLimit === null || usageLimit === undefined
+        ? null
+        : Math.max(Number(usageLimit) - Number(usedCount || 0), 0),
+    perUserLimit: coupon.perUserLimit ?? 1,
+    applicableCabinClasses: Array.isArray(coupon.applicableCabinClasses)
+      ? coupon.applicableCabinClasses
+      : [],
+    applicableRoutes: Array.isArray(coupon.applicableRoutes) ? coupon.applicableRoutes : [],
+  };
+};
+
+const toPage = (payload, fallback = emptyPage) => {
+  const content = toCouponArray(payload).map(normalizeCoupon).filter(Boolean);
+  return {
+    ...fallback,
+    ...(payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {}),
+    content,
+    totalElements: payload?.totalElements ?? content.length,
+    totalPages: payload?.totalPages ?? (content.length > 0 ? 1 : 0),
+    numberOfElements: payload?.numberOfElements ?? content.length,
+  };
+};
+
+const upsertCoupon = (list, coupon) => {
+  const items = toCouponArray(list).map(normalizeCoupon).filter(Boolean);
+  const index = items.findIndex((item) => item.id === coupon.id);
+  if (index === -1) return [coupon, ...items];
+  items[index] = coupon;
+  return items;
 };
 
 const couponSlice = createSlice({
@@ -47,20 +93,23 @@ const couponSlice = createSlice({
     clearCouponState: (state) => {
       state.coupons = [];
       state.coupon = null;
-      state.paginatedCoupons = initialState.paginatedCoupons;
+      state.paginatedCoupons = emptyPage;
       state.activeCoupons = [];
       state.validationResult = null;
       state.error = null;
     },
     clearCoupon: (state) => {
       state.coupon = null;
+      state.error = null;
     },
     clearValidationResult: (state) => {
       state.validationResult = null;
     },
+    clearCouponError: (state) => {
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
-    // ---------- CREATE ----------
     builder
       .addCase(createCoupon.pending, (state) => {
         state.loading = true;
@@ -70,67 +119,64 @@ const couponSlice = createSlice({
       .addCase(createCoupon.fulfilled, (state, action) => {
         state.loading = false;
         state.createLoading = false;
-        state.coupon = action.payload;
-        state.coupons.unshift(action.payload);
-        if (state.paginatedCoupons.content) {
-          state.paginatedCoupons.content.unshift(action.payload);
-          state.paginatedCoupons.totalElements += 1;
-        }
+        const coupon = normalizeCoupon(action.payload);
+        if (!coupon) return;
+        state.coupon = coupon;
+        state.coupons = upsertCoupon(state.coupons, coupon);
+        state.paginatedCoupons = {
+          ...state.paginatedCoupons,
+          content: upsertCoupon(state.paginatedCoupons.content, coupon),
+          totalElements: state.paginatedCoupons.totalElements + 1,
+        };
       })
       .addCase(createCoupon.rejected, (state, action) => {
         state.loading = false;
         state.createLoading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- GET BY ID ----------
-    builder
       .addCase(getCouponById.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getCouponById.fulfilled, (state, action) => {
         state.loading = false;
-        state.coupon = action.payload;
+        state.coupon = normalizeCoupon(action.payload);
       })
       .addCase(getCouponById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- GET ALL ----------
-    builder
       .addCase(getAllCoupons.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllCoupons.fulfilled, (state, action) => {
         state.loading = false;
-        state.coupons = action.payload.content || action.payload;
-        state.paginatedCoupons = action.payload;
+        state.paginatedCoupons = toPage(action.payload, state.paginatedCoupons);
+        state.coupons = state.paginatedCoupons.content;
       })
       .addCase(getAllCoupons.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+        state.paginatedCoupons = toPage([], state.paginatedCoupons);
+        state.coupons = [];
+      })
 
-    // ---------- GET ACTIVE ----------
-    builder
       .addCase(getActiveCoupons.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getActiveCoupons.fulfilled, (state, action) => {
         state.loading = false;
-        state.activeCoupons = action.payload;
+        state.activeCoupons = toCouponArray(action.payload).map(normalizeCoupon).filter(Boolean);
       })
       .addCase(getActiveCoupons.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- UPDATE ----------
-    builder
       .addCase(updateCoupon.pending, (state) => {
         state.loading = true;
         state.updateLoading = true;
@@ -139,42 +185,39 @@ const couponSlice = createSlice({
       .addCase(updateCoupon.fulfilled, (state, action) => {
         state.loading = false;
         state.updateLoading = false;
-        state.coupon = action.payload;
-        const index = state.coupons.findIndex(c => c.id === action.payload.id);
-        if (index !== -1) state.coupons[index] = action.payload;
-        const paginatedIndex = state.paginatedCoupons.content.findIndex(c => c.id === action.payload.id);
-        if (paginatedIndex !== -1) state.paginatedCoupons.content[paginatedIndex] = action.payload;
+        const coupon = normalizeCoupon(action.payload);
+        if (!coupon) return;
+        state.coupon = coupon;
+        state.coupons = upsertCoupon(state.coupons, coupon);
+        state.paginatedCoupons = {
+          ...state.paginatedCoupons,
+          content: upsertCoupon(state.paginatedCoupons.content, coupon),
+        };
       })
       .addCase(updateCoupon.rejected, (state, action) => {
         state.loading = false;
         state.updateLoading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- DELETE ----------
-    builder
       .addCase(deleteCoupon.pending, (state) => {
-        state.loading = true;
         state.deleteLoading = true;
         state.error = null;
       })
       .addCase(deleteCoupon.fulfilled, (state, action) => {
-        state.loading = false;
         state.deleteLoading = false;
-        state.coupons = state.coupons.filter(c => c.id !== action.payload);
-        state.paginatedCoupons.content = state.paginatedCoupons.content.filter(c => c.id !== action.payload);
-        if (state.paginatedCoupons.totalElements > 0) {
-          state.paginatedCoupons.totalElements -= 1;
-        }
+        state.coupons = toCouponArray(state.coupons).filter((coupon) => coupon.id !== action.payload);
+        state.paginatedCoupons.content = toCouponArray(state.paginatedCoupons.content).filter(
+          (coupon) => coupon.id !== action.payload,
+        );
+        state.paginatedCoupons.totalElements = Math.max(state.paginatedCoupons.totalElements - 1, 0);
+        if (state.coupon?.id === action.payload) state.coupon = null;
       })
       .addCase(deleteCoupon.rejected, (state, action) => {
-        state.loading = false;
         state.deleteLoading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- VALIDATE ----------
-    builder
       .addCase(validateCoupon.pending, (state) => {
         state.validateLoading = true;
         state.validationResult = null;
@@ -187,10 +230,8 @@ const couponSlice = createSlice({
       .addCase(validateCoupon.rejected, (state, action) => {
         state.validateLoading = false;
         state.error = action.payload;
-      });
+      })
 
-    // ---------- CHECK CODE ----------
-    builder
       .addCase(checkCouponCode.pending, (state) => {
         state.loading = true;
       })
@@ -201,21 +242,14 @@ const couponSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
-
-    // Global error matcher
-    builder.addMatcher(
-      (action) => action.type.startsWith("coupon/") && action.type.endsWith("/rejected"),
-      (state, action) => {
-        state.error = action.payload;
-      }
-    );
-  }
+  },
 });
 
 export const {
   clearCouponState,
   clearCoupon,
-  clearValidationResult
+  clearValidationResult,
+  clearCouponError,
 } = couponSlice.actions;
 
 export default couponSlice.reducer;

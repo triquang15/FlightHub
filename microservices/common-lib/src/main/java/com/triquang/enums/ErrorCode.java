@@ -115,6 +115,16 @@ public enum ErrorCode {
     BAGGAGE_POLICY_ALREADY_EXISTS("BAG_002", "Baggage policy already exists", HttpStatus.BAD_REQUEST),
 
     // =========================
+    // COUPON
+    // =========================
+    COUPON_NOT_FOUND("CPN_001", "Coupon not found", HttpStatus.NOT_FOUND),
+    COUPON_ALREADY_EXISTS("CPN_002", "Coupon code already exists", HttpStatus.CONFLICT),
+    COUPON_NOT_ACTIVE("CPN_003", "Coupon is not active", HttpStatus.BAD_REQUEST),
+    COUPON_EXPIRED("CPN_004", "Coupon is expired or not yet valid", HttpStatus.BAD_REQUEST),
+    COUPON_USAGE_LIMIT_REACHED("CPN_005", "Coupon usage limit reached", HttpStatus.CONFLICT),
+    COUPON_NOT_APPLICABLE("CPN_006", "Coupon is not applicable to this booking", HttpStatus.BAD_REQUEST),
+
+    // =========================
     // ANCILLARY
     // =========================
     ANCILLARY_NOT_FOUND("ANC_001", "Ancillary not found", HttpStatus.NOT_FOUND),

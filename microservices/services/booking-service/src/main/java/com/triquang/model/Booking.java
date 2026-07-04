@@ -125,6 +125,16 @@ public class Booking {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal subtotalAmount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(length = 32)
+    private String promoCode;
+
     private String currency;
     private String seatHoldToken;
     private Instant seatHoldExpiresAt;

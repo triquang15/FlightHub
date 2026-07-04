@@ -9,6 +9,22 @@ import {
   getFareRuleByFare,
 } from "./fareRulesThunk";
 
+const toFareRuleArray = (payload) => {
+  if (Array.isArray(payload)) return payload.filter(Boolean);
+  if (Array.isArray(payload?.content)) return payload.content.filter(Boolean);
+  if (Array.isArray(payload?.items)) return payload.items.filter(Boolean);
+  return [];
+};
+
+const normalizeFareRule = (rule) => {
+  if (!rule || typeof rule !== "object") return null;
+  return {
+    ...rule,
+    isRefundable: Boolean(rule.isRefundable),
+    isChangeable: Boolean(rule.isChangeable),
+  };
+};
+
 const fareRulesSlice = createSlice({
   name: "fareRules",
   initialState: {
@@ -35,8 +51,14 @@ const fareRulesSlice = createSlice({
       })
       .addCase(createFareRule.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules.unshift(action.payload);
-        state.currentFareRule = action.payload;
+        const created = normalizeFareRule(action.payload);
+        if (created) {
+          state.fareRules = [
+            created,
+            ...toFareRuleArray(state.fareRules).filter((rule) => rule.id !== created.id),
+          ];
+          state.currentFareRule = created;
+        }
       })
       .addCase(createFareRule.rejected, (state, action) => {
         state.loading = false;
@@ -50,9 +72,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getAllFareRules.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules = Array.isArray(action.payload)
-          ? action.payload
-          : action.payload?.content || [];
+        state.fareRules = toFareRuleArray(action.payload).map(normalizeFareRule).filter(Boolean);
       })
       .addCase(getAllFareRules.rejected, (state, action) => {
         state.loading = false;
@@ -66,7 +86,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getFareRuleById.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentFareRule = action.payload;
+        state.currentFareRule = normalizeFareRule(action.payload);
       })
       .addCase(getFareRuleById.rejected, (state, action) => {
         state.loading = false;
@@ -80,13 +100,17 @@ const fareRulesSlice = createSlice({
       })
       .addCase(updateFareRule.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.fareRules.findIndex(
-          (rule) => rule.id === action.payload.id
-        );
+        const updated = normalizeFareRule(action.payload);
+        if (!updated) return;
+        const rules = toFareRuleArray(state.fareRules);
+        const index = rules.findIndex((rule) => rule.id === updated.id);
         if (index !== -1) {
-          state.fareRules[index] = action.payload;
+          rules[index] = updated;
+          state.fareRules = rules;
+        } else {
+          state.fareRules = [updated, ...rules];
         }
-        state.currentFareRule = action.payload;
+        state.currentFareRule = updated;
       })
       .addCase(updateFareRule.rejected, (state, action) => {
         state.loading = false;
@@ -100,7 +124,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(deleteFareRule.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules = state.fareRules.filter(
+        state.fareRules = toFareRuleArray(state.fareRules).filter(
           (rule) => rule.id !== action.payload
         );
         if (state.currentFareRule?.id === action.payload) {
@@ -119,7 +143,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getFareRulesByAirline.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRules = Array.isArray(action.payload) ? action.payload : [];
+        state.fareRules = toFareRuleArray(action.payload).map(normalizeFareRule).filter(Boolean);
       })
       .addCase(getFareRulesByAirline.rejected, (state, action) => {
         state.loading = false;
@@ -132,7 +156,7 @@ const fareRulesSlice = createSlice({
       })
       .addCase(getFareRuleByFare.fulfilled, (state, action) => {
         state.loading = false;
-        state.fareRule = action.payload;
+        state.fareRule = normalizeFareRule(action.payload);
       })
       .addCase(getFareRuleByFare.rejected, (state, action) => {
         state.loading = false;

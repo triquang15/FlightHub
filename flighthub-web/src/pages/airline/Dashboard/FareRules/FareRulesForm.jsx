@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { getCabinClassesByAircraft } from "@/Redux/cabinClass/cabinClassThunk";
+import { clearFlightFares } from "@/Redux/fare/fareSlice";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
 import { clearCurrentFareRule, clearFareRulesError } from "@/Redux/fareRules/fareRulesSlice";
 import { createFareRule, getFareRuleById, updateFareRule } from "@/Redux/fareRules/fareRulesThunk";
@@ -27,6 +28,16 @@ const EMPTY_FORM = {
 };
 
 const toOptionalNumber = (value) => (value === "" ? null : Number(value));
+const toFeeNumber = (value) => (value === "" ? 0 : Number(value));
+const toArray = (value) => (Array.isArray(value) ? value : value?.content || []);
+const formatMoney = (value, currency = "USD") =>
+  Number.isFinite(Number(value))
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 2,
+      }).format(Number(value))
+    : "Price not set";
 
 const FieldError = ({ children }) => children ? <p className="text-xs text-destructive">{children}</p> : null;
 
@@ -45,6 +56,10 @@ const FareRulesForm = () => {
   const [selectedFlight, setSelectedFlight] = useState("");
   const [selectedCabin, setSelectedCabin] = useState("");
   const [errors, setErrors] = useState({});
+
+  const flightList = useMemo(() => toArray(flights), [flights]);
+  const cabinClassList = useMemo(() => toArray(cabinClasses), [cabinClasses]);
+  const fareList = useMemo(() => toArray(flightFares), [flightFares]);
 
   useEffect(() => {
     dispatch(clearFareRulesError());
@@ -75,8 +90,13 @@ const FareRulesForm = () => {
   }, [currentFareRule, editing, id]);
 
   const availableFares = useMemo(
-    () => (Array.isArray(flightFares) ? flightFares : []).filter((fare) => !fare.fareRulesId && !fare.fareRules),
-    [flightFares],
+    () => fareList.filter((fare) => !fare.fareRulesId && !fare.fareRules),
+    [fareList],
+  );
+
+  const selectedFare = useMemo(
+    () => fareList.find((fare) => String(fare.id) === String(form.fareId)),
+    [fareList, form.fareId],
   );
 
   const updateField = (name, value) => {
@@ -88,7 +108,8 @@ const FareRulesForm = () => {
     setSelectedFlight(flightId);
     setSelectedCabin("");
     updateField("fareId", "");
-    const flight = flights.find((item) => String(item.id) === flightId);
+    dispatch(clearFlightFares());
+    const flight = flightList.find((item) => String(item.id) === flightId);
     const aircraftId = flight?.aircraft?.id ?? flight?.aircraftId;
     if (aircraftId) dispatch(getCabinClassesByAircraft(aircraftId));
   };
@@ -131,10 +152,10 @@ const FareRulesForm = () => {
       ruleName: form.ruleName.trim(),
       fareId: Number(form.fareId),
       isRefundable: form.isRefundable,
-      cancellationFee: form.isRefundable ? toOptionalNumber(form.cancellationFee) : null,
+      cancellationFee: form.isRefundable ? toFeeNumber(form.cancellationFee) : null,
       refundDeadlineDays: form.isRefundable ? toOptionalNumber(form.refundDeadlineDays) : null,
       isChangeable: form.isChangeable,
-      changeFee: form.isChangeable ? toOptionalNumber(form.changeFee) : null,
+      changeFee: form.isChangeable ? toFeeNumber(form.changeFee) : null,
       changeDeadlineHours: form.isChangeable ? toOptionalNumber(form.changeDeadlineHours) : null,
     };
 
@@ -188,7 +209,7 @@ const FareRulesForm = () => {
               <Select value={selectedFlight} onValueChange={handleFlightChange}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select flight" /></SelectTrigger>
                 <SelectContent>
-                  {flights.map((flight) => (
+                  {flightList.map((flight) => (
                     <SelectItem key={flight.id} value={String(flight.id)}>
                       {flight.flightNumber} · {flight.departureAirport?.iataCode}–{flight.arrivalAirport?.iataCode}
                     </SelectItem>
@@ -202,7 +223,7 @@ const FareRulesForm = () => {
               <Select value={selectedCabin} onValueChange={handleCabinChange} disabled={!selectedFlight}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select cabin" /></SelectTrigger>
                 <SelectContent>
-                  {cabinClasses.map((cabin) => <SelectItem key={cabin.id} value={String(cabin.id)}>{cabin.name}</SelectItem>)}
+                  {cabinClassList.map((cabin) => <SelectItem key={cabin.id} value={String(cabin.id)}>{cabin.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FieldError>{errors.cabin}</FieldError>
@@ -214,7 +235,8 @@ const FareRulesForm = () => {
                 <SelectContent>
                   {availableFares.map((fare) => (
                     <SelectItem key={fare.id} value={String(fare.id)}>
-                      {fare.name} · {fare.rbdCode} · {Number(fare.currentPrice ?? fare.baseFare).toLocaleString()}
+                      {fare.name || fare.fareName || `Fare #${fare.id}`} · {fare.rbdCode || fare.bookingClass || "RBD"} ·{" "}
+                      {formatMoney(fare.currentPrice ?? fare.totalPrice ?? fare.baseFare, fare.currency || "USD")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -238,7 +260,9 @@ const FareRulesForm = () => {
           <div className="space-y-2">
             <Label>Assigned fare</Label>
             <div className="flex h-8 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-foreground">
-              {form.fareId ? `Fare #${form.fareId}` : "Not selected"}
+              {form.fareId
+                ? `${selectedFare?.name || selectedFare?.fareName || "Fare"} #${form.fareId}`
+                : "Not selected"}
             </div>
           </div>
         </div>

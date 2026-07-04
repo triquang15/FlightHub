@@ -38,6 +38,7 @@ import com.triquang.model.Passenger;
 import com.triquang.payload.PaymentDTO;
 import com.triquang.payload.request.BookingLegRequest;
 import com.triquang.payload.request.BookingRequest;
+import com.triquang.payload.request.CouponValidationRequest;
 import com.triquang.payload.request.PassengerRequest;
 import com.triquang.payload.request.PaymentInitiateRequest;
 import com.triquang.payload.request.SeatHoldRequest;
@@ -45,6 +46,7 @@ import com.triquang.payload.request.SeatReleaseRequest;
 import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.BookingResponse;
 import com.triquang.payload.response.BookingStatisticsResponse;
+import com.triquang.payload.response.CouponValidationResponse;
 import com.triquang.payload.response.FareResponse;
 import com.triquang.payload.response.FlightCabinAncillaryResponse;
 import com.triquang.payload.response.FlightInstanceResponse;
@@ -62,6 +64,7 @@ import com.triquang.service.TicketService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import feign.FeignException;
 
 @Service
 @RequiredArgsConstructor
@@ -186,9 +189,21 @@ public class BookingServiceImpl implements BookingService {
             throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
         }
 
-        BigDecimal totalPrice = fareTotal.add(seatPrice).add(ancillaryPrice).add(mealPrice)
+        BigDecimal subtotalPrice = fareTotal.add(seatPrice).add(ancillaryPrice).add(mealPrice)
                 .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal discountAmount;
+        try {
+            discountAmount = resolveCouponDiscount(request, booking, userId, primaryLeg, subtotalPrice);
+        } catch (BaseException e) {
+            cancelPendingBooking(booking, userId, false);
+            throw e;
+        }
+        BigDecimal totalPrice = subtotalPrice.subtract(discountAmount).max(BigDecimal.ZERO)
+                .setScale(2, RoundingMode.HALF_UP);
+        booking.setSubtotalAmount(subtotalPrice);
+        booking.setDiscountAmount(discountAmount);
         booking.setTotalAmount(totalPrice);
+        booking.setPromoCode(hasText(request.getPromoCode()) ? request.getPromoCode().trim().toUpperCase() : null);
         booking.setCurrency(currency);
         booking = bookingRepository.saveAndFlush(booking);
 
@@ -292,6 +307,53 @@ public class BookingServiceImpl implements BookingService {
             total = total.add(money(pricingIntegrationService.calculateFareTotal(leg.getFareId())));
         }
         return total.multiply(BigDecimal.valueOf(passengerCount));
+    }
+
+    private BigDecimal resolveCouponDiscount(
+            BookingRequest request,
+            Booking booking,
+            Long userId,
+            BookingLegRequest primaryLeg,
+            BigDecimal subtotalPrice
+    ) {
+        if (!hasText(request.getPromoCode())) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        String promoCode = request.getPromoCode().trim().toUpperCase();
+        try {
+            CouponValidationResponse validation = pricingClient.validateCoupon(CouponValidationRequest.builder()
+                    .code(promoCode)
+                    .airlineId(booking.getAirlineId())
+                    .userId(userId)
+                    .cabinClass(primaryLeg.getCabinClass())
+                    .bookingAmount(subtotalPrice.doubleValue())
+                    .build());
+
+            if (validation == null || !Boolean.TRUE.equals(validation.getValid())) {
+                throw new BaseException(ErrorCode.COUPON_NOT_APPLICABLE);
+            }
+
+            BigDecimal discount = BigDecimal.valueOf(validation.getDiscountAmount() == null ? 0 : validation.getDiscountAmount())
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (discount.compareTo(BigDecimal.ZERO) < 0 || discount.compareTo(subtotalPrice) > 0) {
+                throw new BaseException(ErrorCode.COUPON_NOT_APPLICABLE);
+            }
+            return discount;
+        } catch (BaseException e) {
+            throw e;
+        } catch (FeignException.NotFound e) {
+            throw new BaseException(ErrorCode.COUPON_NOT_FOUND);
+        } catch (FeignException.BadRequest | FeignException.Conflict e) {
+            throw new BaseException(ErrorCode.COUPON_NOT_APPLICABLE);
+        } catch (FeignException e) {
+            log.error("Coupon validation failed for booking {} promoCode={}", booking.getBookingReference(), promoCode, e);
+            throw new BaseException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private void cancelPendingBooking(Booking booking, Long userId, boolean cancelPayment) {
@@ -600,6 +662,7 @@ public class BookingServiceImpl implements BookingService {
                 && Objects.equals(booking.getSeatInstanceIds(), requestedSeatIds)
                 && Objects.equals(booking.getAncillaryIds(), request.getAncillaryIds())
                 && Objects.equals(booking.getMealIds(), request.getMealIds())
+                && Objects.equals(booking.getPromoCode(), hasText(request.getPromoCode()) ? request.getPromoCode().trim().toUpperCase() : null)
                 && booking.getPassengers().size() == request.getPassengers().size();
 
         if (!unchanged) {

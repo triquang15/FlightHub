@@ -11,7 +11,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
+import com.triquang.payload.request.CouponRedeemRequest;
+import com.triquang.payload.request.CouponValidationRequest;
 import com.triquang.payload.response.ApiResponse;
+import com.triquang.payload.response.CouponResponse;
+import com.triquang.payload.response.CouponValidationResponse;
 import com.triquang.payload.response.FareResponse;
 
 @FeignClient(name = "pricing-service", fallback = PricingClientFallback.class)
@@ -29,6 +33,20 @@ public interface PricingClient {
 
     default Map<Long, FareResponse> getFaresByIds(List<Long> ids) {
         return requireData(getFaresByIdsResponse(ids));
+    }
+
+    @PostMapping("/api/coupons/validate")
+    ApiResponse<CouponValidationResponse> validateCouponResponse(@RequestBody CouponValidationRequest request);
+
+    default CouponValidationResponse validateCoupon(CouponValidationRequest request) {
+        return requireData(validateCouponResponse(request));
+    }
+
+    @PostMapping("/api/coupons/internal/redeem")
+    ApiResponse<CouponResponse> redeemCouponResponse(@RequestBody CouponRedeemRequest request);
+
+    default CouponResponse redeemCoupon(CouponRedeemRequest request) {
+        return requireData(redeemCouponResponse(request));
     }
 
     private static <T> T requireData(ApiResponse<T> response) {

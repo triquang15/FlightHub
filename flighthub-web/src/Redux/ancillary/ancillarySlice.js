@@ -15,6 +15,15 @@ const initialState = {
   error: null
 };
 
+const toAncillaryArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
+const normalizeAncillary = (payload) => payload?.data ?? payload ?? null;
+
 const ancillarySlice = createSlice({
   name: "ancillary",
   initialState,
@@ -27,7 +36,7 @@ const ancillarySlice = createSlice({
     },
     groupAncillariesByCategory: (state) => {
       // Group ancillaries by category for checkout UI
-      state.ancillariesByCategory = state.ancillaries.reduce((acc, ancillary) => {
+      state.ancillariesByCategory = toAncillaryArray(state.ancillaries).reduce((acc, ancillary) => {
         const category = ancillary.category || 'OTHER';
         if (!acc[category]) {
           acc[category] = [];
@@ -46,8 +55,9 @@ const ancillarySlice = createSlice({
       })
       .addCase(createAncillary.fulfilled, (state, action) => {
         state.loading = false;
-        state.ancillary = action.payload;
-        state.ancillaries.unshift(action.payload);
+        const ancillary = normalizeAncillary(action.payload);
+        state.ancillary = ancillary;
+        if (ancillary) state.ancillaries.unshift(ancillary);
       })
       .addCase(createAncillary.rejected, (state, action) => {
         state.loading = false;
@@ -62,7 +72,7 @@ const ancillarySlice = createSlice({
       })
       .addCase(getAncillaryById.fulfilled, (state, action) => {
         state.loading = false;
-        state.ancillary = action.payload;
+        state.ancillary = normalizeAncillary(action.payload);
       })
       .addCase(getAncillaryById.rejected, (state, action) => {
         state.loading = false;
@@ -77,7 +87,7 @@ const ancillarySlice = createSlice({
       })
       .addCase(getAllAncillaries.fulfilled, (state, action) => {
         state.loading = false;
-        state.ancillaries = action.payload;
+        state.ancillaries = toAncillaryArray(action.payload);
       })
       .addCase(getAllAncillaries.rejected, (state, action) => {
         state.loading = false;
@@ -92,9 +102,10 @@ const ancillarySlice = createSlice({
       })
       .addCase(updateAncillary.fulfilled, (state, action) => {
         state.loading = false;
-        state.ancillary = action.payload;
-        const index = state.ancillaries.findIndex(a => a.id === action.payload.id);
-        if (index !== -1) state.ancillaries[index] = action.payload;
+        const ancillary = normalizeAncillary(action.payload);
+        state.ancillary = ancillary;
+        const index = state.ancillaries.findIndex(a => a.id === ancillary?.id);
+        if (index !== -1) state.ancillaries[index] = ancillary;
       })
       .addCase(updateAncillary.rejected, (state, action) => {
         state.loading = false;

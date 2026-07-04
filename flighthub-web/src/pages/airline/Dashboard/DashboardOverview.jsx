@@ -25,6 +25,7 @@ const DashboardOverview = () => {
     ["ACTIVE", "SCHEDULED", "PUBLISHED"].includes(normalizeStatus(flight.status))
   ).length
   const airlineStatus = normalizeStatus(currentAirline?.status)
+  const operationalReady = airlineStatus === "ACTIVE"
   const recentFlights = flights.slice(0, 5)
 
   const metrics = [
@@ -126,17 +127,23 @@ const DashboardOverview = () => {
               { label: "Manage fleet", path: "/airline/aircraft", icon: PlaneTakeoff },
               { label: "Manage schedules", path: "/airline/schedules", icon: CalendarDays },
               { label: "Review airline profile", path: "/airline/organization-profile", icon: Settings },
-            ].map(({ label, path, icon: Icon }) => (
+            ].map(({ label, path, icon: Icon }) => {
+              const requiresActive = path !== "/airline/organization-profile"
+              const disabled = requiresActive && !operationalReady
+
+              return (
               <Button
                 key={path}
                 variant="outline"
                 className="w-full justify-start"
+                disabled={disabled}
                 onClick={() => navigate(path)}
+                title={disabled ? "Available after the airline is active" : undefined}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {label}
               </Button>
-            ))}
+            )})}
           </CardContent>
         </Card>
       </div>

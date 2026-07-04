@@ -9,9 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { clearCurrentFareRule, clearFareRulesError } from "@/Redux/fareRules/fareRulesSlice";
 import { getFareRuleById } from "@/Redux/fareRules/fareRulesThunk";
 
-const currency = new Intl.NumberFormat("en-IN", {
+const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "INR",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
 
