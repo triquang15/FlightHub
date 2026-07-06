@@ -1,175 +1,57 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getBookingStatisticsForSuperAdmin,
+  Activity,
+  AlertCircle,
+  Banknote,
+  Building2,
+  CheckCircle2,
+  MapPin,
+  Plane,
+  RefreshCw,
+  Shield,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formateCurrency";
+import {
   getAirlinePerformanceForSuperAdmin,
+  getBookingStatisticsForSuperAdmin,
   getRoutePerformanceForSuperAdmin,
   getSuperAdminDashboardStats,
 } from "@/Redux/booking/bookingThunk";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Users,
-  Shield,
-  Clock,
-  DollarSign,
-  Plane,
-  Building2,
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  MapPin,
-  AlertCircle,
-  CheckCircle2,
-  Cpu,
-  Database,
-  Wifi,
-  ArrowUpRight,
-  ArrowDownRight,
-  Globe,
-} from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-/** Transform API monthlyData → chart-ready array */
-function toChartData(monthlyData = []) {
-  return monthlyData.map((d) => ({
-    month: MONTH_ABBR[parseInt(d.month.split("-")[1], 10) - 1],
-    revenue: parseFloat((d.revenue / 1_000_000).toFixed(2)),
-    bookings: d.bookingCount,
-  }));
-}
-
-const BAR_COLORS = ["#3B82F6", "#8B5CF6", "#F59E0B", "#10B981", "#EC4899", "#06B6D4", "#F97316"];
-const asNumber = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
-const formatNumber = (value) => {
-  const number = asNumber(value);
-  return number === null ? "N/A" : number.toLocaleString();
-};
-const formatCompact = (value) => {
-  const number = asNumber(value);
-  if (number === null) return "N/A";
-  return number >= 1000 ? `${(number / 1000).toFixed(1)}K` : number.toLocaleString();
-};
-const formatMoney = (value) => {
-  const number = asNumber(value);
-  return number === null ? "N/A" : `₹${(number / 1_000_000).toFixed(1)}M`;
-};
-const formatPercent = (value) => {
-  const number = asNumber(value);
-  return number === null ? "N/A" : `${number}%`;
+const monthLabel = (month = "") => {
+  const [year, value] = String(month).split("-");
+  if (!year || !value) return month || "—";
+  return new Date(Number(year), Number(value) - 1).toLocaleDateString("en-US", {
+    month: "short",
+  });
 };
 
-/** Transform AirlineStatistics[] → chart rows with relative booking-share % */
-function toAirlineChartData(airlines = []) {
-  const top = airlines.slice(0, 7);
-  const maxBookings = Math.max(...top.map((a) => a.totalBookings || 0), 1);
-  return top.map((a) => ({
-    name: a.airlineName?.length > 10 ? a.airlineName.substring(0, 10) + "…" : (a.airlineName || a.airlineCode || "—"),
-    fullName: a.airlineName || a.airlineCode,
-    bookings: a.totalBookings || 0,
-    revenue: parseFloat(((a.totalRevenue || 0) / 1_000_000).toFixed(2)),
-    avgRevenue: Math.round(a.averageRevenuePerBooking || 0),
-    share: Math.round(((a.totalBookings || 0) / maxBookings) * 100),
-  }));
-}
-
-/** Transform RouteStatistics[] → display rows */
-function toRouteDisplayData(routes = []) {
-  const top = routes.slice(0, 5);
-  const maxBookings = Math.max(...top.map((r) => r.totalBookings || 0), 1);
-  const avgRevPerBooking =
-    top.reduce((s, r) => s + (r.averageRevenuePerBooking || 0), 0) / (top.length || 1);
-  return top.map((r) => ({
-    route: `${r.departureAirportCode} → ${r.arrivalAirportCode}`,
-    bookings: r.totalBookings || 0,
-    revenue: Math.round(r.totalRevenue || 0),
-    avgRevenue: Math.round(r.averageRevenuePerBooking || 0),
-    share: Math.round(((r.totalBookings || 0) / maxBookings) * 100),
-    trend: (r.averageRevenuePerBooking || 0) >= avgRevPerBooking ? "up" : "down",
-  }));
-}
-
-const bookingClassData = [
-  { name: "Economy", value: 68, color: "#3B82F6" },
-  { name: "Business", value: 22, color: "#8B5CF6" },
-  { name: "First", value: 10, color: "#F59E0B" },
-];
-
-const activityFeed = [
-  { icon: Building2, color: "text-purple-500 bg-purple-50", label: "Air India registered new Boeing 787 aircraft", time: "12 min ago", type: "info" },
-  { icon: Shield, color: "text-red-500 bg-red-50", label: "Suspicious login attempt blocked on Agent portal", time: "38 min ago", type: "alert" },
-  { icon: CheckCircle2, color: "text-green-500 bg-green-50", label: "System backup completed successfully", time: "2h ago", type: "success" },
-  { icon: DollarSign, color: "text-orange-500 bg-orange-50", label: "Monthly commission settlement processed — ₹8.9L", time: "4h ago", type: "info" },
-  { icon: Plane, color: "text-blue-500 bg-blue-50", label: "IndiGo added 18 new routes for Q1 schedule", time: "6h ago", type: "info" },
-  { icon: AlertCircle, color: "text-yellow-500 bg-yellow-50", label: "API rate limit warning on Flight Search endpoint", time: "8h ago", type: "warning" },
-];
-
-const systemMetrics = [
-  { label: "CPU Usage", value: 42, icon: Cpu, color: "bg-blue-500", status: "normal" },
-  { label: "Memory", value: 61, icon: Database, color: "bg-purple-500", status: "normal" },
-  { label: "API Latency", value: 23, icon: Wifi, color: "bg-green-500", status: "good", display: "23ms avg" },
-  { label: "DB Connections", value: 78, icon: Database, color: "bg-orange-500", status: "warning" },
-];
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const StatCard = ({ title, value, subtitle, icon: Icon, gradient, trend }) => (
-  <div className={`${gradient} p-4 rounded-xl border`}>
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="text-sm font-medium mt-0.5">{title}</div>
-      </div>
-      <Icon className="h-8 w-8 opacity-80" />
-    </div>
-    <div className="flex items-center mt-2 gap-1">
-      {trend === "up" ? (
-        <TrendingUp className="h-3 w-3 text-green-600" />
-      ) : trend === "down" ? (
-        <TrendingDown className="h-3 w-3 text-red-500" />
-      ) : (
-        <CheckCircle2 className="h-3 w-3 text-green-600" />
-      )}
-      <span className="text-xs">{subtitle}</span>
-    </div>
-  </div>
-);
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background border border-border rounded-lg p-3 shadow-lg text-sm">
-        <p className="font-semibold mb-1">{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color }}>
-            {p.name}: {p.name === "revenue" ? `₹${p.value}M` : p.value.toLocaleString()}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+const numberValue = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-// ─── Main component ───────────────────────────────────────────────────────────
+const formatNumber = (value) => numberValue(value).toLocaleString();
+const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`;
 
 const PlatformOverview = ({ platformStats }) => {
   const dispatch = useDispatch();
@@ -182,464 +64,348 @@ const PlatformOverview = ({ platformStats }) => {
     superAdminRoutePerformanceLoading,
     superAdminDashboardStats,
     superAdminDashboardStatsLoading,
+    error,
   } = useSelector((store) => store.booking);
 
-  useEffect(() => {
+  const refresh = () => {
     dispatch(getBookingStatisticsForSuperAdmin());
     dispatch(getAirlinePerformanceForSuperAdmin());
     dispatch(getRoutePerformanceForSuperAdmin());
     dispatch(getSuperAdminDashboardStats());
+  };
+
+  useEffect(() => {
+    refresh();
   }, [dispatch]);
 
-  // Derived chart/display data
-  const airlineChartData = superAdminAirlinePerformance?.topAirlinesByBookings?.length
-    ? toAirlineChartData(superAdminAirlinePerformance.topAirlinesByBookings)
+  const monthlyData = useMemo(
+    () => (Array.isArray(superAdminStatistics?.monthlyData) ? superAdminStatistics.monthlyData : []),
+    [superAdminStatistics],
+  );
+  const revenueData = monthlyData.map((item) => ({
+    month: monthLabel(item.month),
+    bookings: numberValue(item.bookingCount),
+    revenue: numberValue(item.revenue),
+  }));
+  const topAirlines = Array.isArray(superAdminAirlinePerformance?.topAirlinesByBookings)
+    ? superAdminAirlinePerformance.topAirlinesByBookings
+    : [];
+  const topRoutes = Array.isArray(superAdminRoutePerformance?.topRoutesByBookings)
+    ? superAdminRoutePerformance.topRoutesByBookings
     : [];
 
-  const routeDisplayData = superAdminRoutePerformance?.topRoutesByBookings?.length
-    ? toRouteDisplayData(superAdminRoutePerformance.topRoutesByBookings)
-    : [];
+  const loading =
+    superAdminStatisticsLoading ||
+    superAdminAirlinePerformanceLoading ||
+    superAdminRoutePerformanceLoading ||
+    superAdminDashboardStatsLoading ||
+    Boolean(platformStats?.loading);
 
-  // Build chart data: use live API data when available, fall back to empty array
-  const revenueData = superAdminStatistics?.monthlyData?.length
-    ? toChartData(superAdminStatistics.monthlyData)
-    : [];
-
-  // Live KPI overrides from API
-  const todayBookings = superAdminStatistics?.totalBookingsToday ?? null;
-  const monthBookings = superAdminStatistics?.totalBookingsThisMonth ?? null;
-  const monthRevenue  = superAdminStatistics?.revenueThisMonth ?? null;
-
-  // Dashboard stats card values — prefer live booking API data, then live platform counts.
-  const ds = superAdminDashboardStats;
-  const stats = platformStats || {};
-  const dashboardLoading = superAdminDashboardStatsLoading || Boolean(stats.loading);
   const kpi = {
-    totalAirlines: asNumber(ds?.totalAirlines) ?? asNumber(stats.totalAirlines),
-    newAirlinesThisMonth: asNumber(ds?.newAirlinesThisMonth),
-    totalFlights: asNumber(ds?.totalFlights) ?? asNumber(stats.totalFlights),
-    liveFlightsToday: asNumber(ds?.liveFlightsToday) ?? asNumber(stats.activeFlights),
-    totalBookings: asNumber(ds?.totalBookings) ?? asNumber(stats.totalBookings),
-    weeklyBookingGrowthPercent: asNumber(ds?.weeklyBookingGrowthPercent),
-    totalRevenue: asNumber(ds?.totalRevenue) ?? asNumber(stats.systemRevenue),
-    monthlyRevenueGrowthPercent: asNumber(ds?.monthlyRevenueGrowthPercent),
-    systemUptime: asNumber(ds?.systemUptime) ?? asNumber(stats.systemUptime),
-    securityAlerts: asNumber(ds?.securityAlerts) ?? asNumber(stats.securityAlerts),
+    totalAirlines: platformStats?.totalAirlines,
+    activeAirlines: platformStats?.activeAirlines,
+    totalAirports: platformStats?.totalAirports,
+    totalCities: platformStats?.totalCities,
+    totalUsers: platformStats?.totalUsers,
+    totalBookings: superAdminDashboardStats?.totalBookings,
+    totalRevenue: superAdminDashboardStats?.totalRevenue,
+    weeklyBookingGrowthPercent: superAdminDashboardStats?.weeklyBookingGrowthPercent,
+    monthlyRevenueGrowthPercent: superAdminDashboardStats?.monthlyRevenueGrowthPercent,
+    systemUptime: superAdminDashboardStats?.systemUptime,
+    securityAlerts: superAdminDashboardStats?.securityAlerts ?? platformStats?.securityAlerts,
+    failedNotifications: platformStats?.failedNotifications,
   };
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="min-w-0 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Activity className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              Platform Overview
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Live platform KPIs from airline, network, booking, and notification services.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" onClick={refresh} disabled={loading}>
+          <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+          Refresh
+        </Button>
+      </div>
 
-      {/* ── Row 1: KPI Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard
-          title="Total Airlines"
-          value={dashboardLoading ? "…" : formatNumber(kpi.totalAirlines)}
+      {error && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          Some dashboard widgets could not refresh: {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Total Airlines"
+          value={loading ? "…" : formatNumber(kpi.totalAirlines)}
+          detail={`${formatNumber(kpi.activeAirlines)} active airlines`}
           icon={Building2}
-          gradient="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 text-purple-700"
-          trend="up"
-          subtitle={kpi.newAirlinesThisMonth === null ? "Live airline registry" : `+${kpi.newAirlinesThisMonth} this month`}
+          tone="violet"
         />
-        <StatCard
-          title="Active Flights"
-          value={dashboardLoading ? "…" : formatNumber(kpi.totalFlights)}
-          icon={Plane}
-          gradient="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 text-blue-700"
-          trend="up"
-          subtitle={kpi.liveFlightsToday === null ? "Awaiting flight ops data" : `${kpi.liveFlightsToday} live now`}
-        />
-        <StatCard
-          title="Total Bookings"
-          value={dashboardLoading ? "…" : formatCompact(kpi.totalBookings)}
+        <MetricCard
+          label="Confirmed Bookings"
+          value={loading ? "…" : formatNumber(kpi.totalBookings)}
+          detail={`${formatPercent(kpi.weeklyBookingGrowthPercent)} weekly change`}
           icon={Users}
-          gradient="bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-700"
-          trend="up"
-          subtitle={kpi.weeklyBookingGrowthPercent === null ? "Awaiting booking data" : `+${kpi.weeklyBookingGrowthPercent}% this week`}
+          tone="emerald"
         />
-        <StatCard
-          title="System Revenue"
-          value={dashboardLoading ? "…" : formatMoney(kpi.totalRevenue)}
-          icon={DollarSign}
-          gradient="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 text-orange-700"
-          trend="up"
-          subtitle={kpi.monthlyRevenueGrowthPercent === null ? "Awaiting revenue data" : `+${kpi.monthlyRevenueGrowthPercent}% vs last month`}
+        <MetricCard
+          label="Platform Revenue"
+          value={loading ? "…" : formatCurrency(kpi.totalRevenue)}
+          detail={`${formatPercent(kpi.monthlyRevenueGrowthPercent)} monthly change`}
+          icon={Banknote}
+          tone="amber"
         />
-        <StatCard
-          title="System Uptime"
-          value={dashboardLoading ? "…" : formatPercent(kpi.systemUptime)}
-          icon={Activity}
-          gradient="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 text-indigo-700"
-          trend="stable"
-          subtitle={kpi.systemUptime === null ? "No uptime endpoint connected" : "All systems operational"}
-        />
-        <StatCard
-          title="Security Alerts"
-          value={dashboardLoading ? "…" : formatNumber(kpi.securityAlerts)}
-          icon={Shield}
-          gradient="bg-gradient-to-br from-red-50 to-red-100 border-red-200 text-red-700"
-          trend="down"
-          subtitle="Requires attention"
+        <MetricCard
+          label="Network Data"
+          value={loading ? "…" : formatNumber(kpi.totalAirports)}
+          detail={`${formatNumber(kpi.totalCities)} cities connected`}
+          icon={MapPin}
+          tone="blue"
         />
       </div>
 
-      {/* ── Row 2: Revenue Trend + Booking Class Breakdown ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <HealthCard
+          label="System Uptime"
+          value={formatPercent(kpi.systemUptime)}
+          detail="Reported by platform dashboard stats"
+          icon={CheckCircle2}
+          tone="emerald"
+        />
+        <HealthCard
+          label="Security Alerts"
+          value={formatNumber(kpi.securityAlerts)}
+          detail="Current platform alert count"
+          icon={Shield}
+          tone="red"
+        />
+        <HealthCard
+          label="Failed Notifications"
+          value={formatNumber(kpi.failedNotifications)}
+          detail="Delivery failures from notification overview"
+          icon={AlertCircle}
+          tone="amber"
+        />
+      </div>
 
-        {/* Revenue & Bookings Area Chart — 2/3 width */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+          <CardHeader className="border-b border-border">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
-                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <TrendingUp className="h-4 w-4 text-primary" />
                 Revenue & Bookings Trend
               </CardTitle>
-              <div className="flex items-center gap-2">
-                {monthBookings !== null && (
-                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-200 bg-purple-50">
-                    {monthBookings.toLocaleString()} this month
-                  </Badge>
-                )}
-                {monthRevenue !== null && (
-                  <Badge variant="outline" className="text-xs text-green-600 border-green-200 bg-green-50">
-                    ₹{(monthRevenue / 1_000_000).toFixed(2)}M revenue
-                  </Badge>
-                )}
-              </div>
+              <Badge variant="outline">Last 12 months</Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Last 12 months platform performance
-              {todayBookings !== null && (
-                <span className="ml-2 text-blue-600 font-medium">
-                  · {todayBookings} bookings today
-                </span>
-              )}
-            </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {superAdminStatisticsLoading ? (
-              <div className="flex items-center justify-center h-[220px]">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                  <p className="text-xs text-muted-foreground">Loading chart data…</p>
-                </div>
-              </div>
+              <LoadingPanel label="Loading booking trend..." height="h-[300px]" />
             ) : revenueData.length === 0 ? (
-              <div className="flex items-center justify-center h-[220px]">
-                <p className="text-sm text-muted-foreground">No data available yet</p>
-              </div>
+              <EmptyPanel label="No confirmed booking trend data yet." height="h-[300px]" />
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="bookingsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="rev" orientation="left" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}M`} />
-                    <YAxis yAxisId="bk" orientation="right" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area yAxisId="rev" type="monotone" dataKey="revenue" name="revenue" stroke="#3B82F6" strokeWidth={2} fill="url(#revenueGrad)" />
-                    <Area yAxisId="bk" type="monotone" dataKey="bookings" name="bookings" stroke="#8B5CF6" strokeWidth={2} fill="url(#bookingsGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-                <div className="flex gap-4 mt-2 justify-end">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-3 h-0.5 bg-blue-500 inline-block rounded" />Revenue
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="w-3 h-0.5 bg-purple-500 inline-block rounded" />Bookings
-                  </div>
-                </div>
-              </>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={revenueData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="platformRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="revenue" tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value)} width={78} />
+                  <YAxis yAxisId="bookings" orientation="right" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      name === "revenue" ? formatCurrency(value) : formatNumber(value),
+                      name === "revenue" ? "Revenue" : "Bookings",
+                    ]}
+                  />
+                  <Area yAxisId="revenue" type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#platformRevenue)" strokeWidth={2} />
+                  <Area yAxisId="bookings" type="monotone" dataKey="bookings" stroke="#7c3aed" fill="transparent" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Booking Class Breakdown — 1/3 width */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="border-b border-border">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Globe className="h-4 w-4 text-purple-600" />
-              Booking Class Split
+              <Building2 className="h-4 w-4 text-violet-600" />
+              Top Airlines
             </CardTitle>
-            <p className="text-xs text-muted-foreground">Current month distribution</p>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie
-                  data={bookingClassData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {bookingClassData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => `${v}%`} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-2 mt-1">
-              {bookingClassData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: item.color }} />
-                    <span className="text-muted-foreground">{item.name}</span>
-                  </div>
-                  <span className="font-semibold">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Row 3: Airline Performance + Top Routes ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        {/* Airline Performance Bar Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="h-4 w-4 text-orange-600" />
-                Airline Performance
-              </CardTitle>
-              {superAdminAirlinePerformance && (
-                <Badge variant="outline" className="text-xs">
-                  {superAdminAirlinePerformance.topAirlinesByBookings?.length || 0} airlines
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Total bookings by airline — all time</p>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {superAdminAirlinePerformanceLoading ? (
-              <div className="flex items-center justify-center h-[280px]">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
-                  <p className="text-xs text-muted-foreground">Loading airline data…</p>
-                </div>
-              </div>
-            ) : airlineChartData.length === 0 ? (
-              <div className="flex items-center justify-center h-[280px]">
-                <p className="text-sm text-muted-foreground">No airline data available</p>
-              </div>
+              <LoadingPanel label="Loading airline performance..." height="h-[300px]" />
+            ) : topAirlines.length === 0 ? (
+              <EmptyPanel label="No airline performance data yet." height="h-[300px]" />
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart
-                    data={airlineChartData}
-                    layout="vertical"
-                    margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={70} />
-                    <Tooltip
-                      formatter={(v, name) =>
-                        name === "bookings" ? [v.toLocaleString(), "Bookings"] : [v, name]
-                      }
-                      labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
-                    />
-                    <Bar dataKey="bookings" name="Bookings" radius={[0, 4, 4, 0]}>
-                      {airlineChartData.map((_, i) => (
-                        <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                {/* Booking share bars */}
-                <div className="mt-3 space-y-1.5">
-                  {airlineChartData.map((a, i) => (
-                    <div key={a.name} className="flex items-center gap-2 text-xs">
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }}
-                      />
-                      <span className="w-[68px] text-muted-foreground truncate shrink-0" title={a.fullName}>{a.name}</span>
-                      <Progress value={a.share} className="h-1.5 flex-1" />
-                      <span className="w-10 text-right font-medium shrink-0">
-                        {a.bookings >= 1000 ? `${(a.bookings / 1000).toFixed(1)}K` : a.bookings}
-                      </span>
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground pt-1">Booking share relative to top airline</p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Routes */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MapPin className="h-4 w-4 text-green-600" />
-                Top Routes
-              </CardTitle>
-              {superAdminRoutePerformance && (
-                <Badge variant="outline" className="text-xs">
-                  by bookings
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Highest traffic routes — all time</p>
-          </CardHeader>
-          <CardContent>
-            {superAdminRoutePerformanceLoading ? (
-              <div className="flex items-center justify-center h-[280px]">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500" />
-                  <p className="text-xs text-muted-foreground">Loading route data…</p>
-                </div>
+              <div className="space-y-4">
+                {topAirlines.slice(0, 6).map((airline, index) => (
+                  <RankRow
+                    key={airline.airlineId || index}
+                    rank={index + 1}
+                    label={airline.airlineName || airline.airlineCode || `Airline #${airline.airlineId}`}
+                    value={`${formatNumber(airline.totalBookings)} bookings`}
+                    progress={progressValue(airline.totalBookings, topAirlines[0]?.totalBookings)}
+                  />
+                ))}
               </div>
-            ) : routeDisplayData.length === 0 ? (
-              <div className="flex items-center justify-center h-[280px]">
-                <p className="text-sm text-muted-foreground">No route data available</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  {routeDisplayData.map((r, i) => (
-                    <div key={r.route} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold">{r.route}</span>
-                          <div className="flex items-center gap-1.5">
-                            {r.trend === "up" ? (
-                              <ArrowUpRight className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <ArrowDownRight className="h-3 w-3 text-red-400" />
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {r.bookings.toLocaleString()} bookings
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs px-1.5 py-0 ${
-                                r.share >= 85
-                                  ? "border-green-200 bg-green-50 text-green-700"
-                                  : r.share >= 50
-                                  ? "border-yellow-200 bg-yellow-50 text-yellow-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-600"
-                              }`}
-                            >
-                              {r.share}%
-                            </Badge>
-                          </div>
-                        </div>
-                        <Progress value={r.share} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Avg ₹{r.avgRevenue.toLocaleString()} / booking
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-3 border-t border-border pt-2">
-                  Share relative to highest-traffic route · ↑ above-avg revenue · ↓ below-avg revenue
-                </p>
-              </>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Row 4: System Health + Activity Feed ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        {/* System Health */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Activity className="h-4 w-4 text-indigo-600" />
-                System Health
-              </CardTitle>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse inline-block" />
-                <span className="text-xs text-green-600 font-medium">All Operational</span>
-              </div>
-            </div>
+          <CardHeader className="border-b border-border">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Plane className="h-4 w-4 text-blue-600" />
+              Top Routes
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {systemMetrics.map((m) => (
-              <div key={m.label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <m.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{m.label}</span>
-                  </div>
-                  <span className={`text-sm font-bold ${m.status === "warning" ? "text-orange-600" : m.status === "good" ? "text-green-600" : "text-foreground"}`}>
-                    {m.display || `${m.value}%`}
-                  </span>
-                </div>
-                <Progress
-                  value={m.value}
-                  className={`h-2 ${m.status === "warning" ? "[&>div]:bg-orange-500" : m.status === "good" ? "[&>div]:bg-green-500" : ""}`}
-                />
+          <CardContent className="p-4">
+            {superAdminRoutePerformanceLoading ? (
+              <LoadingPanel label="Loading route performance..." height="h-[300px]" />
+            ) : topRoutes.length === 0 ? (
+              <EmptyPanel label="No route performance data yet." height="h-[300px]" />
+            ) : (
+              <div className="space-y-4">
+                {topRoutes.slice(0, 7).map((route, index) => (
+                  <RankRow
+                    key={route.flightId || index}
+                    rank={index + 1}
+                    label={route.routeName || `${route.departureAirportCode} → ${route.arrivalAirportCode}`}
+                    value={`${formatNumber(route.totalBookings)} bookings · ${formatCurrency(route.totalRevenue)}`}
+                    progress={progressValue(route.totalBookings, topRoutes[0]?.totalBookings)}
+                  />
+                ))}
               </div>
-            ))}
-            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
-              <div className="text-center">
-                <p className="text-lg font-bold text-green-600">99.97%</p>
-                <p className="text-xs text-muted-foreground">Uptime</p>
-              </div>
-              <div className="text-center border-x border-border">
-                <p className="text-lg font-bold text-blue-600">23ms</p>
-                <p className="text-xs text-muted-foreground">Avg Response</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-purple-600">1.2K</p>
-                <p className="text-xs text-muted-foreground">Req / min</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Activity Feed */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="border-b border-border">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="h-4 w-4 text-green-600" />
-              Recent Activity
+              <BarChartIcon className="h-4 w-4 text-emerald-600" />
+              Airline Revenue Mix
             </CardTitle>
-            <p className="text-xs text-muted-foreground">Platform-wide events feed</p>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {activityFeed.map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className={`p-1.5 rounded-lg shrink-0 ${item.color}`}>
-                    <item.icon className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{item.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <CardContent className="p-4">
+            {superAdminAirlinePerformanceLoading ? (
+              <LoadingPanel label="Loading revenue mix..." height="h-[300px]" />
+            ) : topAirlines.length === 0 ? (
+              <EmptyPanel label="No airline revenue mix yet." height="h-[300px]" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topAirlines.slice(0, 7)} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="airlineCode" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value)} width={78} />
+                  <Tooltip formatter={(value) => [formatCurrency(value), "Revenue"]} />
+                  <Bar dataKey="totalRevenue" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 };
+
+const toneClasses = {
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
+  red: "bg-red-500/10 text-red-600 dark:text-red-300",
+};
+
+const MetricCard = ({ label, value, detail, icon: Icon, tone }) => (
+  <Card className="overflow-hidden">
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 truncate text-2xl font-semibold text-foreground">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        </div>
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md", toneClasses[tone])}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const HealthCard = ({ label, value, detail, icon: Icon, tone }) => (
+  <Card className="overflow-hidden">
+    <CardContent className="flex items-center justify-between gap-4 p-4">
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+      </div>
+      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md", toneClasses[tone])}>
+        <Icon className="h-5 w-5" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const RankRow = ({ rank, label, value, progress }) => (
+  <div className="space-y-2">
+    <div className="flex items-center gap-3">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold">
+        {rank}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{value}</p>
+      </div>
+    </div>
+    <Progress value={progress} className="h-1.5" />
+  </div>
+);
+
+const LoadingPanel = ({ label, height }) => (
+  <div className={cn("flex items-center justify-center", height)}>
+    <div className="text-center">
+      <RefreshCw className="mx-auto mb-3 h-6 w-6 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  </div>
+);
+
+const EmptyPanel = ({ label, height }) => (
+  <div className={cn("flex items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground", height)}>
+    {label}
+  </div>
+);
+
+const progressValue = (value, max) => {
+  const current = numberValue(value);
+  const top = numberValue(max, 1);
+  return top <= 0 ? 0 : Math.round((current / top) * 100);
+};
+
+const BarChartIcon = TrendingUp;
 
 export default PlatformOverview;

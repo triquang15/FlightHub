@@ -9,6 +9,7 @@ import com.triquang.payload.response.AirlineDropdownItem;
 import com.triquang.payload.response.AirlineResponse;
 
 import java.util.List;
+import java.util.Map;
 
 public interface AirlineService {
 
@@ -16,6 +17,8 @@ public interface AirlineService {
 	AirlineResponse createAirline(AirlineRequest request, Long ownerId);
 
 	AirlineResponse getAirlineById(Long id);
+
+	Map<Long, AirlineResponse> getAirlinesByIds(List<Long> ids);
 
 	Page<AirlineResponse> getAllAirlines(Pageable pageable);
 

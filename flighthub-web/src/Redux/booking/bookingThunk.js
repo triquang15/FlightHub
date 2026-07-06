@@ -197,7 +197,7 @@ export const getBookingStatisticsForAirline = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/statistics/airline`);
       console.log("✅ getBookingStatisticsForAirline success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getBookingStatisticsForAirline error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch booking statistics");
@@ -242,7 +242,7 @@ export const getAirportPerformanceForSuperAdmin = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/airport-performance/super-admin`);
       console.log("✅ getAirportPerformanceForSuperAdmin success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getAirportPerformanceForSuperAdmin error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch airport performance");
@@ -257,7 +257,7 @@ export const getRoutePerformanceForSuperAdmin = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/route-performance/super-admin`);
       console.log("✅ getRoutePerformanceForSuperAdmin success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getRoutePerformanceForSuperAdmin error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch route performance");
@@ -272,7 +272,7 @@ export const getBookingStatisticsForSuperAdmin = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/statistics/super-admin`);
       console.log("✅ getBookingStatisticsForSuperAdmin success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getBookingStatisticsForSuperAdmin error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch platform statistics");
@@ -287,7 +287,7 @@ export const getAirlinePerformanceForSuperAdmin = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/airline-performance/super-admin`);
       console.log("✅ getAirlinePerformanceForSuperAdmin success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getAirlinePerformanceForSuperAdmin error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch airline performance");
@@ -302,7 +302,7 @@ export const getSuperAdminDashboardStats = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/dashboard-stats/super-admin`);
       console.log("✅ getSuperAdminDashboardStats success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getSuperAdminDashboardStats error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch dashboard stats");

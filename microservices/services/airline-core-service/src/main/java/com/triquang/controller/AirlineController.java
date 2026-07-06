@@ -1,6 +1,7 @@
 package com.triquang.controller;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for managing airlines.
@@ -76,6 +77,12 @@ public class AirlineController {
 	@Operation(summary = "Get airline reference by ID", description = "Returns read-only airline reference data for service-to-service and traveler display use cases.")
 	public ResponseEntity<ApiResponse<AirlineResponse>> getAirlineReferenceById(@PathVariable Long id) {
 		return ResponseUtil.ok(airlineService.getAirlineById(id));
+	}
+
+	@PostMapping("/references/batch")
+	@Operation(summary = "Get airline references by IDs", description = "Returns read-only airline reference data for service-to-service dashboard enrichment.")
+	public ResponseEntity<ApiResponse<Map<Long, AirlineResponse>>> getAirlineReferencesByIds(@RequestBody List<Long> ids) {
+		return ResponseUtil.ok(airlineService.getAirlinesByIds(ids));
 	}
 
 	// ---------- ADMIN GET BY ID ----------

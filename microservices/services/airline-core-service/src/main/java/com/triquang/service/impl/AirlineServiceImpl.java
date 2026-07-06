@@ -84,6 +84,23 @@ public class AirlineServiceImpl implements AirlineService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Map<Long, AirlineResponse> getAirlinesByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Airline> airlines = airlineRepository.findAllById(ids.stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList());
+        Map<Long, CityResponse> cityMap = preloadCities(airlines);
+
+        return airlines.stream()
+                .collect(Collectors.toMap(Airline::getId, airline -> mapWithCityCached(airline, cityMap)));
+    }
+
+    @Override
     public Page<AirlineResponse> getAllAirlines(Pageable pageable) {
 
         Page<Airline> page = airlineRepository.findAll(pageable);

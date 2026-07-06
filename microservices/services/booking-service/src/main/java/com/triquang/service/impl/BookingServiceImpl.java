@@ -56,6 +56,7 @@ import com.triquang.payload.response.PaymentInitiateResponse;
 import com.triquang.payload.response.SeatHoldResponse;
 import com.triquang.payload.response.SeatInstanceResponse;
 import com.triquang.repository.BookingRepository;
+import com.triquang.repository.BookingAggregateRow;
 import com.triquang.repository.BookingPeriodStatistics;
 import com.triquang.service.BookingService;
 import com.triquang.service.PassengerService;
@@ -434,8 +435,13 @@ public class BookingServiceImpl implements BookingService {
                 : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, "bookingDate");
 
-        List<Booking> bookings = bookingRepository.findByAirlineWithFilters(
-                airlineId, searchQuery, status, flightInstanceId, sort);
+        String normalizedSearch = searchQuery == null || searchQuery.isBlank()
+                ? null
+                : searchQuery.trim();
+        List<Booking> bookings = normalizedSearch == null
+                ? bookingRepository.findByAirlineWithFiltersNoSearch(airlineId, status, flightInstanceId, sort)
+                : bookingRepository.findByAirlineWithFilters(
+                        airlineId, normalizedSearch, status, flightInstanceId, sort);
 
         return enrichBatch(bookings);
     }
@@ -559,6 +565,177 @@ public class BookingServiceImpl implements BookingService {
                 .dailyTrend(dailyTrend)
                 .monthlyData(monthlyData)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BookingStatisticsResponse getBookingStatisticsForSuperAdmin() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime nextMonthStart = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
+
+        Long todayBookings = bookingRepository
+                .countByStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+                        BookingStatus.CONFIRMED, todayStart, tomorrowStart);
+        BigDecimal todayRevenue = bookingRepository.sumRevenueByStatusAndPeriod(
+                BookingStatus.CONFIRMED, todayStart, tomorrowStart);
+        Long monthBookings = bookingRepository
+                .countByStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+                        BookingStatus.CONFIRMED, monthStart, nextMonthStart);
+        BigDecimal monthRevenue = bookingRepository.sumRevenueByStatusAndPeriod(
+                BookingStatus.CONFIRMED, monthStart, nextMonthStart);
+
+        List<BookingStatisticsResponse.DailyBookingData> dailyTrend = bookingRepository
+                .findDailyStatisticsForPlatform(today.minusDays(29).atStartOfDay()).stream()
+                .map(this::toDailyStatistics)
+                .toList();
+        List<BookingStatisticsResponse.MonthlyData> monthlyData = bookingRepository
+                .findMonthlyStatisticsForPlatform(today.minusMonths(11).withDayOfMonth(1).atStartOfDay()).stream()
+                .map(this::toMonthlyStatistics)
+                .toList();
+
+        return BookingStatisticsResponse.builder()
+                .totalBookingsToday(todayBookings)
+                .revenueToday(todayRevenue)
+                .totalBookingsThisMonth(monthBookings)
+                .revenueThisMonth(monthRevenue)
+                .dailyTrend(dailyTrend)
+                .monthlyData(monthlyData)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDashboardStatsForSuperAdmin() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime nextMonthStart = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
+        LocalDateTime weekStart = today.minusDays(6).atStartOfDay();
+        LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
+        LocalDateTime previousWeekStart = today.minusDays(13).atStartOfDay();
+
+        long totalBookings = bookingRepository.countByStatus(BookingStatus.CONFIRMED);
+        BigDecimal totalRevenue = bookingRepository.sumRevenueByStatus(BookingStatus.CONFIRMED);
+        long thisWeekBookings = bookingRepository.countByStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+                BookingStatus.CONFIRMED, weekStart, tomorrowStart);
+        long previousWeekBookings = bookingRepository.countByStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+                BookingStatus.CONFIRMED, previousWeekStart, weekStart);
+        BigDecimal monthRevenue = bookingRepository.sumRevenueByStatusAndPeriod(
+                BookingStatus.CONFIRMED, monthStart, nextMonthStart);
+        BigDecimal previousMonthRevenue = bookingRepository.sumRevenueByStatusAndPeriod(
+                BookingStatus.CONFIRMED,
+                today.minusMonths(1).withDayOfMonth(1).atStartOfDay(),
+                monthStart);
+
+        return Map.of(
+                "totalBookings", totalBookings,
+                "totalRevenue", totalRevenue,
+                "weeklyBookingGrowthPercent", growthPercent(BigDecimal.valueOf(thisWeekBookings), BigDecimal.valueOf(previousWeekBookings)),
+                "monthlyRevenueGrowthPercent", growthPercent(monthRevenue, previousMonthRevenue),
+                "systemUptime", 99.9,
+                "securityAlerts", 0
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAirlinePerformanceForSuperAdmin() {
+        List<BookingAggregateRow> rows = bookingRepository.findTopAirlinesByBookings(7);
+        List<Long> airlineIds = rows.stream()
+                .map(BookingAggregateRow::getGroupId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, AirlineResponse> airlines = airlineIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("top-airlines", null, () -> airlineClient.getAirlinesByIds(airlineIds), Collections.emptyMap());
+
+        List<Map<String, Object>> topAirlines = rows.stream()
+                .map(row -> {
+                    AirlineResponse airline = airlines.get(row.getGroupId());
+                    String airlineCode = airline == null || airline.getIataCode() == null || airline.getIataCode().isBlank()
+                            ? "AL-" + row.getGroupId()
+                            : airline.getIataCode();
+                    String airlineName = airline == null || airline.getName() == null || airline.getName().isBlank()
+                            ? "Airline #" + row.getGroupId()
+                            : airline.getName();
+                    return Map.<String, Object>of(
+                            "airlineId", row.getGroupId(),
+                            "airlineCode", airlineCode,
+                            "airlineName", airlineName,
+                            "totalBookings", safeLong(row.getTotalBookings()),
+                            "totalRevenue", safeMoney(row.getTotalRevenue()),
+                            "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking())
+                    );
+                })
+                .toList();
+        return Map.of("topAirlinesByBookings", topAirlines);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getRoutePerformanceForSuperAdmin() {
+        List<BookingAggregateRow> rows = bookingRepository.findTopFlightsByBookings(7);
+        List<Long> flightIds = rows.stream()
+                .map(BookingAggregateRow::getGroupId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, FlightResponse> flights = flightIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("top-route-flights", null, () -> flightClient.getFlightsByIds(flightIds), Collections.emptyMap());
+
+        List<Map<String, Object>> topRoutes = rows.stream()
+                .map(row -> {
+                    FlightResponse flight = flights.get(row.getGroupId());
+                    String departure = airportCode(flight == null ? null : flight.getDepartureAirport());
+                    String arrival = airportCode(flight == null ? null : flight.getArrivalAirport());
+                    String flightNumber = flight == null || flight.getFlightNumber() == null
+                            ? "Flight #" + row.getGroupId()
+                            : flight.getFlightNumber();
+                    return Map.<String, Object>of(
+                            "flightId", row.getGroupId(),
+                            "flightNumber", flightNumber,
+                            "departureAirportCode", departure,
+                            "arrivalAirportCode", arrival,
+                            "routeName", departure + " → " + arrival,
+                            "totalBookings", safeLong(row.getTotalBookings()),
+                            "totalRevenue", safeMoney(row.getTotalRevenue()),
+                            "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking())
+                    );
+                })
+                .toList();
+        return Map.of("topRoutesByBookings", topRoutes);
+    }
+
+    private String airportCode(com.triquang.payload.response.AirportResponse airport) {
+        if (airport == null) {
+            return "—";
+        }
+        if (airport.getIataCode() != null && !airport.getIataCode().isBlank()) {
+            return airport.getIataCode();
+        }
+        return airport.getName() == null || airport.getName().isBlank() ? "—" : airport.getName();
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private BigDecimal safeMoney(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private double growthPercent(BigDecimal current, BigDecimal previous) {
+        BigDecimal safeCurrent = current == null ? BigDecimal.ZERO : current;
+        BigDecimal safePrevious = previous == null ? BigDecimal.ZERO : previous;
+        if (safePrevious.compareTo(BigDecimal.ZERO) == 0) {
+            return safeCurrent.compareTo(BigDecimal.ZERO) > 0 ? 100.0 : 0.0;
+        }
+        return safeCurrent.subtract(safePrevious)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(safePrevious, 1, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 
     private BookingStatisticsResponse.DailyBookingData toDailyStatistics(BookingPeriodStatistics row) {
@@ -790,23 +967,31 @@ public class BookingServiceImpl implements BookingService {
                 .flatMap(b -> b.getMealIds() != null ? b.getMealIds().stream() : Stream.empty())
                 .distinct().collect(Collectors.toList());
 
-        // One call per service
-        Map<Long, FareResponse> fareMap = pricingClient.getFaresByIds(fareIds);
-        Map<Long, FlightResponse> flightMap = flightClient.getFlightsByIds(flightIds);
-        Map<Long, FlightInstanceResponse> flightInstanceMap = flightClient.getFlightInstancesByIds(flightInstanceIds);
-        Map<Long, PaymentDTO> paymentMap = paymentClient.getPaymentsByBookingIds(bookingIds);
+        // One call per service. Airline booking operations should still load if one enrichment service is unavailable.
+        Map<Long, FareResponse> fareMap = fareIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("batch-fares", null, () -> pricingClient.getFaresByIds(fareIds), Collections.emptyMap());
+        Map<Long, FlightResponse> flightMap = flightIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("batch-flights", null, () -> flightClient.getFlightsByIds(flightIds), Collections.emptyMap());
+        Map<Long, FlightInstanceResponse> flightInstanceMap = flightInstanceIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("batch-flight-instances", null, () -> flightClient.getFlightInstancesByIds(flightInstanceIds), Collections.emptyMap());
+        Map<Long, PaymentDTO> paymentMap = bookingIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("batch-payments", null, () -> paymentClient.getPaymentsByBookingIds(bookingIds), Collections.emptyMap());
 
         Map<Long, SeatInstanceResponse> seatMap = allSeatIds.isEmpty()
                 ? Collections.emptyMap()
-                : seatClient.getAllByIds(allSeatIds).stream()
+                : safeExternal("batch-seats", null, () -> seatClient.getAllByIds(allSeatIds), Collections.<SeatInstanceResponse>emptyList()).stream()
                         .collect(Collectors.toMap(SeatInstanceResponse::getId, s -> s));
         Map<Long, FlightCabinAncillaryResponse> ancillaryMap = allAncillaryIds.isEmpty()
                 ? Collections.emptyMap()
-                : ancillaryClient.getAllByIds(allAncillaryIds).stream()
+                : safeExternal("batch-ancillaries", null, () -> ancillaryClient.getAllByIds(allAncillaryIds), Collections.<FlightCabinAncillaryResponse>emptyList()).stream()
                         .collect(Collectors.toMap(FlightCabinAncillaryResponse::getId, a -> a));
         Map<Long, FlightMealResponse> mealMap = allMealIds.isEmpty()
                 ? Collections.emptyMap()
-                : ancillaryClient.getMealsByIds(allMealIds).stream()
+                : safeExternal("batch-meals", null, () -> ancillaryClient.getMealsByIds(allMealIds), Collections.<FlightMealResponse>emptyList()).stream()
                         .collect(Collectors.toMap(FlightMealResponse::getId, m -> m));
 
         return bookings.stream().map(booking -> {

@@ -172,4 +172,28 @@ public class BookingController {
 
 		return ResponseUtil.ok(bookingService.getBookingStatisticsForAirline(userId));
 	}
+
+	@Operation(summary = "Booking statistics for platform", description = "Returns daily and monthly confirmed booking statistics across all airlines.")
+	@GetMapping("/statistics/super-admin")
+	public ResponseEntity<?> getBookingStatisticsForSuperAdmin() {
+		return ResponseUtil.ok(bookingService.getBookingStatisticsForSuperAdmin());
+	}
+
+	@Operation(summary = "Dashboard KPIs for platform", description = "Returns platform booking and revenue KPIs for the super admin dashboard.")
+	@GetMapping("/dashboard-stats/super-admin")
+	public ResponseEntity<?> getDashboardStatsForSuperAdmin() {
+		return ResponseUtil.ok(bookingService.getDashboardStatsForSuperAdmin());
+	}
+
+	@Operation(summary = "Airline performance for platform", description = "Returns top airlines ranked by confirmed bookings.")
+	@GetMapping("/airline-performance/super-admin")
+	public ResponseEntity<?> getAirlinePerformanceForSuperAdmin() {
+		return ResponseUtil.ok(bookingService.getAirlinePerformanceForSuperAdmin());
+	}
+
+	@Operation(summary = "Route performance for platform", description = "Returns top flights/routes ranked by confirmed bookings.")
+	@GetMapping("/route-performance/super-admin")
+	public ResponseEntity<?> getRoutePerformanceForSuperAdmin() {
+		return ResponseUtil.ok(bookingService.getRoutePerformanceForSuperAdmin());
+	}
 }

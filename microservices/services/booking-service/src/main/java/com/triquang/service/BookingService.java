@@ -1,6 +1,7 @@
 package com.triquang.service;
 
 import java.util.List;
+import java.util.Map;
 
 import com.triquang.enums.BookingStatus;
 import com.triquang.payload.request.BookingRequest;
@@ -32,4 +33,12 @@ public interface BookingService {
 	long countByFlightId(Long flightId);
 
 	BookingStatisticsResponse getBookingStatisticsForAirline(Long userId);
+
+	BookingStatisticsResponse getBookingStatisticsForSuperAdmin();
+
+	Map<String, Object> getDashboardStatsForSuperAdmin();
+
+	Map<String, Object> getAirlinePerformanceForSuperAdmin();
+
+	Map<String, Object> getRoutePerformanceForSuperAdmin();
 }

@@ -1,22 +1,22 @@
 import * as React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getBookingsByAirline } from "@/Redux/booking/bookingThunk";
+import { toast } from "sonner";
+import { cancelBooking, getBookingsByAirline } from "@/Redux/booking/bookingThunk";
+import { getAllFlightInstances } from "@/Redux/flightInstance/flightInstanceThunk";
 import {
-  getAllFlightInstances
-} from "@/Redux/flightInstance/flightInstanceThunk";
-import {
-  Search,
-  Users,
-  CreditCard,
+  AlertCircle,
+  Banknote,
+  CalendarClock,
+  CheckCircle,
   Download,
   Eye,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Plane,
   Loader2,
+  Plane,
+  RefreshCw,
+  Search,
   SortAsc,
+  Users,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,118 +40,153 @@ import {
 import { cn } from "@/lib/utils";
 import BookingDetails from "./BookingDetails";
 
+const formatCurrency = (amount = 0, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+
+const formatDate = (value) => {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value) => {
+  if (!value) return "—";
+  return new Date(value).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+const buildFilters = ({ searchQuery, statusFilter, flightInstanceId, sortDirection }) => ({
+  search: searchQuery || undefined,
+  status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
+  flightInstanceId: flightInstanceId !== "all" ? flightInstanceId : undefined,
+  sortDirection,
+});
+
+const statusTone = {
+  CONFIRMED: {
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+    icon: CheckCircle,
+  },
+  PENDING: {
+    className: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+    icon: AlertCircle,
+  },
+  CANCELLED: {
+    className: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+    icon: XCircle,
+  },
+  REFUNDED: {
+    className: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300",
+    icon: RefreshCw,
+  },
+};
+
+const paymentTone = {
+  SUCCESS: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+  PENDING: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+  FAILED: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+  REFUNDED: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300",
+};
+
 const BookingManagement = () => {
   const dispatch = useDispatch();
-  const {
-    bookings: apiBookings,
-    loading,
-    error,
-  } = useSelector((store) => store.booking);
-  
+  const { bookings: apiBookings, loading, error } = useSelector((store) => store.booking);
   const { paginatedFlightInstances, loading: flightInstancesLoading } = useSelector(
-      (store) => store.flightInstance,
-    );
+    (store) => store.flightInstance,
+  );
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [flightInstanceId, setFlightInstanceId] = React.useState("all");
   const [sortDirection, setSortDirection] = React.useState("DESC");
   const [selectedBooking, setSelectedBooking] = React.useState(null);
-  const [showBookingDetails, setShowBookingDetails] = React.useState(false);
+  const [cancellingId, setCancellingId] = React.useState(null);
 
+  const flightInstances = paginatedFlightInstances?.content || [];
+  const bookings = Array.isArray(apiBookings) ? apiBookings : [];
 
-  const flightInstances=paginatedFlightInstances?.content || []
+  const filters = React.useMemo(
+    () => buildFilters({ searchQuery, statusFilter, flightInstanceId, sortDirection }),
+    [flightInstanceId, searchQuery, sortDirection, statusFilter],
+  );
 
-  // Fetch flight instances for the dropdown once on mount
   React.useEffect(() => {
     dispatch(getAllFlightInstances());
   }, [dispatch]);
 
   React.useEffect(() => {
-    const filters = {
-      search: searchQuery || undefined,
-      status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
-      flightInstanceId:
-        flightInstanceId !== "all" ? flightInstanceId : undefined,
-      sortDirection,
-    };
     dispatch(getBookingsByAirline(filters));
-  }, [dispatch, searchQuery, statusFilter, flightInstanceId, sortDirection]);
+  }, [dispatch, filters]);
 
-  const bookings = apiBookings || [];
+  const bookingStats = React.useMemo(() => ({
+    total: bookings.length,
+    confirmed: bookings.filter((booking) => booking.status === "CONFIRMED").length,
+    pending: bookings.filter((booking) => booking.status === "PENDING").length,
+    cancelled: bookings.filter((booking) => booking.status === "CANCELLED").length,
+    totalRevenue: bookings.reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0),
+  }), [bookings]);
 
-  const formatTime = (dt) =>
-    new Date(dt).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-
-  const formatDate = (dt) =>
-    new Date(dt).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  const refreshBookings = () => dispatch(getBookingsByAirline(filters));
 
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      CONFIRMED: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      PENDING: { color: "bg-yellow-100 text-yellow-800", icon: AlertCircle },
-      CANCELLED: { color: "bg-red-100 text-red-800", icon: XCircle },
-      REFUNDED: { color: "bg-purple-100 text-purple-800", icon: RefreshCw },
-    };
-    const config =
-      statusConfig[status?.toUpperCase()] || statusConfig["CONFIRMED"];
-    const Icon = config.icon;
+    const key = String(status || "PENDING").toUpperCase();
+    const tone = statusTone[key] || statusTone.PENDING;
+    const Icon = tone.icon;
+
     return (
-      <Badge className={cn("flex items-center gap-1 w-fit", config.color)}>
-        <Icon className="h-3 w-3" />
-        {status}
+      <Badge variant="outline" className={cn("w-fit rounded-md", tone.className)}>
+        <Icon className="mr-1 h-3 w-3" />
+        {status || "PENDING"}
       </Badge>
     );
   };
 
   const getPaymentStatusBadge = (status) => {
-    const statusConfig = {
-      SUCCESS: { color: "bg-green-100 text-green-800" },
-      PENDING: { color: "bg-yellow-100 text-yellow-800" },
-      FAILED: { color: "bg-red-100 text-red-800" },
-      REFUNDED: { color: "bg-blue-100 text-blue-800" },
-    };
-    const config =
-      statusConfig[status?.toUpperCase()] || statusConfig["PENDING"];
-    return <Badge className={cn("w-fit", config.color)}>{status}</Badge>;
+    const key = String(status || "PENDING").toUpperCase();
+    return (
+      <Badge variant="outline" className={cn("w-fit rounded-md", paymentTone[key] || paymentTone.PENDING)}>
+        {status || "PENDING"}
+      </Badge>
+    );
   };
 
-  const handleViewBooking = (booking) => {
-    setSelectedBooking(booking);
-    setShowBookingDetails(true);
-  };
+  const handleCancelBooking = async (booking) => {
+    if (!booking?.id) return;
+    const confirmed = window.confirm(
+      `Cancel booking ${booking.bookingReference || `#${booking.id}`}? This is only allowed while the booking is pending.`,
+    );
+    if (!confirmed) return;
 
-  const handleCancelBooking = (bookingId) => {
-    if (window.confirm("Are you sure you want to cancel this booking?")) {
-      // TODO: Implement cancel booking API call
-      console.log("Cancel booking:", bookingId);
+    setCancellingId(booking.id);
+    try {
+      await dispatch(cancelBooking(booking.id)).unwrap();
+      toast.success("Booking cancelled", {
+        description: `${booking.bookingReference || "Booking"} was moved to cancelled.`,
+      });
+      refreshBookings();
+    } catch (cancelError) {
+      toast.error("Unable to cancel booking", { description: String(cancelError) });
+    } finally {
+      setCancellingId(null);
     }
-  };
-
-  const bookingStats = {
-    total: bookings.length,
-    confirmed: bookings.filter((b) => b.status === "CONFIRMED").length,
-    pending: bookings.filter((b) => b.status === "PENDING").length,
-    cancelled: bookings.filter((b) => b.status === "CANCELLED").length,
-    totalRevenue: bookings
-      .filter((b) => b.payment)
-      .reduce((sum, b) => sum + (b.totalAmount || 0), 0),
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[420px] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading bookings...</p>
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading customer bookings...</p>
         </div>
       </div>
     );
@@ -159,114 +194,66 @@ const BookingManagement = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => dispatch(getBookingsByAirline())}>
-            Retry
-          </Button>
+      <div className="flex min-h-[420px] items-center justify-center">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          <AlertCircle className="mx-auto mb-4 h-8 w-8" />
+          <p className="mb-4 text-sm font-medium">{error}</p>
+          <Button onClick={refreshBookings}>Retry</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Booking Management
-          </h2>
-          <p className="text-gray-600">
-            Manage passenger bookings and reservations
-          </p>
+    <div className="min-w-0 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Users className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              Customer Bookings
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Monitor passenger reservations, payment status, and upcoming departures.
+            </p>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => dispatch(getBookingsByAirline())}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button variant="outline" onClick={refreshBookings}>
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Bookings</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {bookingStats.total}
-                </p>
-              </div>
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Confirmed</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {bookingStats.confirmed}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {bookingStats.pending}
-                </p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Revenue</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  ₹{(bookingStats.totalRevenue / 100000).toFixed(1)}L
-                </p>
-              </div>
-              <CreditCard className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard label="Total Bookings" value={bookingStats.total} icon={Users} tone="blue" />
+        <StatCard label="Confirmed" value={bookingStats.confirmed} icon={CheckCircle} tone="emerald" />
+        <StatCard label="Pending" value={bookingStats.pending} icon={CalendarClock} tone="amber" />
+        <StatCard
+          label="Gross Value"
+          value={formatCurrency(bookingStats.totalRevenue, bookings[0]?.currency || "USD")}
+          icon={Banknote}
+          tone="violet"
+        />
       </div>
 
-      {/* Bookings Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Bookings</CardTitle>
+      <Card className="min-w-0 overflow-hidden">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-base">Bookings</CardTitle>
         </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:flex-wrap">
+            <div className="relative min-w-[240px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by PNR, passenger, email..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 className="pl-10"
               />
             </div>
 
-            {/* Status filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="All Status" />
@@ -279,31 +266,21 @@ const BookingManagement = () => {
               </SelectContent>
             </Select>
 
-            {/* Flight Instance filter */}
-            <Select
-              value={flightInstanceId}
-              onValueChange={setFlightInstanceId}
-            >
-              <SelectTrigger className="w-full sm:w-56">
-                <Plane className="h-3.5 w-3.5 mr-1 text-gray-500 shrink-0" />
+            <Select value={flightInstanceId} onValueChange={setFlightInstanceId}>
+              <SelectTrigger className="w-full sm:w-64">
+                <Plane className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <SelectValue placeholder="All Flights" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Flights</SelectItem>
                 {flightInstancesLoading ? (
-                  <SelectItem value="_loading" disabled>
-                    Loading...
-                  </SelectItem>
+                  <SelectItem value="_loading" disabled>Loading...</SelectItem>
                 ) : (
-                  flightInstances.map((fi) => (
-                    <SelectItem key={fi.id} value={String(fi.id)}>
-                      {fi.flightNumber+ ` ` ||
-                        fi.flight?.flightNumber  ||
-                        `#${fi.id} `}
-                        {fi.departureAirport?.city?.name} {` - `}
-                        {fi.arrivalAirport?.city?.name}
-                      {fi.departureDateTime
-                        ? ` · ${new Date(fi.departureDateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  flightInstances.map((instance) => (
+                    <SelectItem key={instance.id} value={String(instance.id)}>
+                      {instance.flightNumber || instance.flight?.flightNumber || `#${instance.id}`} · {instance.departureAirport?.city?.name || "Origin"} - {instance.arrivalAirport?.city?.name || "Destination"}
+                      {instance.departureDateTime
+                        ? ` · ${new Date(instance.departureDateTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                         : ""}
                     </SelectItem>
                   ))
@@ -311,10 +288,9 @@ const BookingManagement = () => {
               </SelectContent>
             </Select>
 
-            {/* Sort direction */}
             <Select value={sortDirection} onValueChange={setSortDirection}>
               <SelectTrigger className="w-full sm:w-36">
-                <SortAsc className="h-3.5 w-3.5 mr-1 text-gray-500 shrink-0" />
+                <SortAsc className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -323,155 +299,122 @@ const BookingManagement = () => {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
               Export
             </Button>
           </div>
 
-          {/* Table */}
           {bookings.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No bookings found
-              </h3>
-              <p className="text-gray-600">
-                Try adjusting your search criteria
+            <div className="py-14 text-center">
+              <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-semibold text-foreground">No bookings found</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Try adjusting your search or filter criteria.
               </p>
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
+            <div className="max-w-full overflow-x-auto">
+              <Table className="min-w-[1120px]">
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">Ref</TableHead>
-                    <TableHead className="font-semibold">Flight</TableHead>
-                    <TableHead className="font-semibold">Route</TableHead>
-                    <TableHead className="font-semibold">
-                      Passenger(s)
-                    </TableHead>
-                    <TableHead className="font-semibold">Departure</TableHead>
-                    <TableHead className="font-semibold">Amount</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Payment</TableHead>
-                    <TableHead className="font-semibold">Booked</TableHead>
-                    <TableHead className="font-semibold text-right">
-                      Actions
-                    </TableHead>
+                  <TableRow className="bg-muted/60 hover:bg-muted/60">
+                    <TableHead className="w-[150px]">Reference</TableHead>
+                    <TableHead className="w-[170px]">Flight</TableHead>
+                    <TableHead className="w-[160px]">Route</TableHead>
+                    <TableHead className="w-[210px]">Passenger</TableHead>
+                    <TableHead className="w-[160px]">Departure</TableHead>
+                    <TableHead className="w-[130px]">Amount</TableHead>
+                    <TableHead className="w-[130px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Payment</TableHead>
+                    <TableHead className="w-[130px]">Booked</TableHead>
+                    <TableHead className="w-[110px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {bookings.map((booking) => (
-                    <TableRow
-                      key={booking.id}
-                      className="hover:bg-blue-50/40 transition-colors"
-                    >
-                      {/* Ref */}
+                    <TableRow key={booking.id} className="hover:bg-muted/40">
                       <TableCell>
-                        <span className="font-semibold text-blue-700 text-sm">
+                        <span className="font-semibold text-primary">
                           {booking.bookingReference || "—"}
                         </span>
                       </TableCell>
-
-                      {/* Flight */}
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Plane className="h-4 w-4 text-gray-400 shrink-0" />
-                          <div>
-                            <div className="font-semibold text-sm text-gray-900">
-                              {booking.flightNumber || booking.flightName}
+                          <Plane className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-foreground">
+                              {booking.flightNumber || booking.flightName || "—"}
                             </div>
                             {booking.flightName && booking.flightNumber && (
-                              <div className="text-xs text-gray-500">
+                              <div className="truncate text-xs text-muted-foreground">
                                 {booking.flightName}
                               </div>
                             )}
                           </div>
                         </div>
                       </TableCell>
-
-                      {/* Route */}
                       <TableCell>
-                        <div className="text-sm font-semibold text-gray-900">
-                          {booking.departureAirport} → {booking.arrivalAirport}
+                        <div className="font-medium text-foreground">
+                          {booking.departureAirport || "—"} → {booking.arrivalAirport || "—"}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {booking.flightDuration}
+                        <div className="text-xs text-muted-foreground">
+                          {booking.flightDuration || "Direct"}
                         </div>
                       </TableCell>
-
-                      {/* Passengers */}
                       <TableCell>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="truncate font-medium text-foreground">
                           {booking.passengers?.[0]?.fullName || "—"}
                         </div>
                         {booking.totalPassengers > 1 && (
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground">
                             +{booking.totalPassengers - 1} more
                           </div>
                         )}
                       </TableCell>
-
-                      {/* Departure */}
                       <TableCell>
-                        <div className="text-sm font-semibold text-gray-900">
+                        <div className="font-medium text-foreground">
                           {formatTime(booking.departureTime)}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {formatDate(booking.departureTime)}
                         </div>
-                        {booking.isUpcoming && (
-                          <Badge className="bg-blue-100 text-blue-700 border-0 text-xs mt-1">
-                            Upcoming
-                          </Badge>
-                        )}
                       </TableCell>
-
-                      {/* Amount */}
                       <TableCell>
-                        <span className="font-bold text-sm text-gray-900">
-                          {booking.currency}{" "}
-                          {booking.totalAmount?.toLocaleString()}
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(booking.totalAmount, booking.currency)}
                         </span>
                       </TableCell>
-
-                      {/* Booking Status */}
                       <TableCell>{getStatusBadge(booking.status)}</TableCell>
-
-                      {/* Payment Status */}
+                      <TableCell>{getPaymentStatusBadge(booking.paymentStatus)}</TableCell>
                       <TableCell>
-                        {getPaymentStatusBadge(booking.paymentStatus)}
-                      </TableCell>
-
-                      {/* Booked */}
-                      <TableCell>
-                        <div className="text-xs text-gray-600">
+                        <span className="text-sm text-muted-foreground">
                           {formatDate(booking.bookingDate)}
-                        </div>
+                        </span>
                       </TableCell>
-
-                      {/* Actions */}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewBooking(booking)}
-                            className="hover:bg-blue-50 hover:text-blue-700"
+                            size="icon"
+                            onClick={() => setSelectedBooking(booking)}
                             title="View details"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {booking.status !== "CANCELLED" && (
+                          {booking.status === "PENDING" && (
                             <Button
                               variant="ghost"
-                              size="sm"
-                              onClick={() => handleCancelBooking(booking.id)}
-                              className="hover:bg-red-50 text-red-500 hover:text-red-700"
-                              title="Cancel booking"
+                              size="icon"
+                              disabled={cancellingId === booking.id}
+                              onClick={() => handleCancelBooking(booking)}
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-500/10"
+                              title="Cancel pending booking"
                             >
-                              <XCircle className="h-4 w-4" />
+                              {cancellingId === booking.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <XCircle className="h-4 w-4" />
+                              )}
                             </Button>
                           )}
                         </div>
@@ -485,11 +428,10 @@ const BookingManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Booking Details Modal */}
-      {showBookingDetails && selectedBooking && (
+      {selectedBooking && (
         <BookingDetails
           booking={selectedBooking}
-          onClose={() => setShowBookingDetails(false)}
+          onClose={() => setSelectedBooking(null)}
           getStatusBadge={getStatusBadge}
           getPaymentStatusBadge={getPaymentStatusBadge}
         />
@@ -497,5 +439,28 @@ const BookingManagement = () => {
     </div>
   );
 };
+
+const toneClasses = {
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
+};
+
+const StatCard = ({ label, value, icon: Icon, tone }) => (
+  <Card className="overflow-hidden">
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="truncate text-2xl font-semibold text-foreground">{value}</p>
+        </div>
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md", toneClasses[tone])}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export default BookingManagement;

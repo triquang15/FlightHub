@@ -37,6 +37,21 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
+    long countByStatus(BookingStatus status);
+
+    long countByStatusAndBookingDateGreaterThanEqualAndBookingDateLessThan(
+            BookingStatus status, LocalDateTime from, LocalDateTime to);
+
+    @Query("select coalesce(sum(b.totalAmount), 0.0) from Booking b where b.status = :status")
+    BigDecimal sumRevenueByStatus(@Param("status") BookingStatus status);
+
+    @Query("select coalesce(sum(b.totalAmount), 0.0) from Booking b "
+            + "where b.status = :status and b.bookingDate >= :from and b.bookingDate < :to")
+    BigDecimal sumRevenueByStatusAndPeriod(
+            @Param("status") BookingStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
     @Query(value = """
             SELECT TO_CHAR(booking_date, 'YYYY-MM-DD') AS period,
                    COUNT(*) AS bookingCount,
@@ -65,6 +80,58 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
     List<BookingPeriodStatistics> findMonthlyStatistics(
             @Param("airlineId") Long airlineId, @Param("from") LocalDateTime from);
 
+    @Query(value = """
+            SELECT TO_CHAR(booking_date, 'YYYY-MM-DD') AS period,
+                   COUNT(*) AS bookingCount,
+                   COALESCE(SUM(total_amount), 0) AS revenue
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND booking_date >= :from
+            GROUP BY TO_CHAR(booking_date, 'YYYY-MM-DD')
+            ORDER BY period
+            """, nativeQuery = true)
+    List<BookingPeriodStatistics> findDailyStatisticsForPlatform(@Param("from") LocalDateTime from);
+
+    @Query(value = """
+            SELECT TO_CHAR(booking_date, 'YYYY-MM') AS period,
+                   COUNT(*) AS bookingCount,
+                   COALESCE(SUM(total_amount), 0) AS revenue
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND booking_date >= :from
+            GROUP BY TO_CHAR(booking_date, 'YYYY-MM')
+            ORDER BY period
+            """, nativeQuery = true)
+    List<BookingPeriodStatistics> findMonthlyStatisticsForPlatform(@Param("from") LocalDateTime from);
+
+    @Query(value = """
+            SELECT airline_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id IS NOT NULL
+            GROUP BY airline_id
+            ORDER BY totalBookings DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopAirlinesByBookings(@Param("limit") int limit);
+
+    @Query(value = """
+            SELECT flight_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND flight_id IS NOT NULL
+            GROUP BY flight_id
+            ORDER BY totalBookings DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopFlightsByBookings(@Param("limit") int limit);
+
 
     @Query("SELECT b FROM Booking b " +
             "LEFT JOIN FETCH b.passengers " +
@@ -90,6 +157,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
     List<Booking> findByAirlineWithFilters(
             @Param("airlineId") Long airlineId,
             @Param("search") String search,
+            @Param("status") BookingStatus status,
+            @Param("flightInstanceId") Long flightInstanceId,
+            Sort sort);
+
+    @Query("SELECT DISTINCT b FROM Booking b " +
+            "LEFT JOIN FETCH b.passengers " +
+            "WHERE b.airlineId = :airlineId " +
+            "AND (:status IS NULL OR b.status = :status) " +
+            "AND (:flightInstanceId IS NULL OR b.flightInstanceId = :flightInstanceId)")
+    List<Booking> findByAirlineWithFiltersNoSearch(
+            @Param("airlineId") Long airlineId,
             @Param("status") BookingStatus status,
             @Param("flightInstanceId") Long flightInstanceId,
             Sort sort);

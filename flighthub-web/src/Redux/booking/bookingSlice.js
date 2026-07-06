@@ -154,7 +154,7 @@ const bookingSlice = createSlice({
     // ---------- GET BY AIRLINE ----------
     builder.addCase(getBookingsByAirline.pending, (state) => {
       console.log("⏳ getBookingsByAirline pending");
-      state.routePerformanceLoading = true;
+      state.loading = true;
       state.error = null;
     });
     builder.addCase(getBookingsByAirline.fulfilled, (state, action) => {
@@ -226,7 +226,7 @@ const bookingSlice = createSlice({
     builder
       .addCase(getBookingStatisticsForAirline.pending, (state) => {
         console.log("⏳ getBookingStatisticsForAirline pending");
-        state.routePerformanceLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(getBookingStatisticsForAirline.fulfilled, (state, action) => {
@@ -240,6 +240,7 @@ const bookingSlice = createSlice({
           action.payload
         );
         state.loading = false;
+        state.error = action.payload;
       });
 
     // ---------- GET ROUTE PERFORMANCE FOR AIRLINE ----------
@@ -259,33 +260,28 @@ const bookingSlice = createSlice({
           "❌ getRoutePerformanceForAirline rejected:",
           action.payload
         );
-        // ---------- GET AIRPORT PERFORMANCE FOR AIRLINE ----------
-        builder
-          .addCase(getAirportPerformanceForAirline.pending, (state) => {
-            console.log("⏳ getAirportPerformanceForAirline pending");
-            state.airportPerformanceLoading = true;
-            state.error = null;
-          })
-          .addCase(
-            getAirportPerformanceForAirline.fulfilled,
-            (state, action) => {
-              console.log("✅ getAirportPerformanceForAirline fulfilled");
-              state.airportPerformanceLoading = false;
-              state.airportPerformance = action.payload;
-            }
-          )
-          .addCase(
-            getAirportPerformanceForAirline.rejected,
-            (state, action) => {
-              console.log(
-                "❌ getAirportPerformanceForAirline rejected:",
-                action.payload
-              );
-              state.airportPerformanceLoading = false;
-              state.error = action.payload;
-            }
-          );
         state.routePerformanceLoading = false;
+        state.error = action.payload;
+      });
+
+    // ---------- GET AIRPORT PERFORMANCE FOR AIRLINE ----------
+    builder
+      .addCase(getAirportPerformanceForAirline.pending, (state) => {
+        console.log("⏳ getAirportPerformanceForAirline pending");
+        state.airportPerformanceLoading = true;
+        state.error = null;
+      })
+      .addCase(getAirportPerformanceForAirline.fulfilled, (state, action) => {
+        console.log("✅ getAirportPerformanceForAirline fulfilled");
+        state.airportPerformanceLoading = false;
+        state.airportPerformance = action.payload;
+      })
+      .addCase(getAirportPerformanceForAirline.rejected, (state, action) => {
+        console.log(
+          "❌ getAirportPerformanceForAirline rejected:",
+          action.payload
+        );
+        state.airportPerformanceLoading = false;
         state.error = action.payload;
       });
 
