@@ -9,7 +9,6 @@ import {
   MapPin,
   Plane,
   RefreshCw,
-  Shield,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -111,8 +110,7 @@ const PlatformOverview = ({ platformStats }) => {
     totalRevenue: superAdminDashboardStats?.totalRevenue,
     weeklyBookingGrowthPercent: superAdminDashboardStats?.weeklyBookingGrowthPercent,
     monthlyRevenueGrowthPercent: superAdminDashboardStats?.monthlyRevenueGrowthPercent,
-    systemUptime: superAdminDashboardStats?.systemUptime,
-    securityAlerts: superAdminDashboardStats?.securityAlerts ?? platformStats?.securityAlerts,
+    pendingApprovals: platformStats?.pendingApprovals,
     failedNotifications: platformStats?.failedNotifications,
   };
 
@@ -177,18 +175,18 @@ const PlatformOverview = ({ platformStats }) => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <HealthCard
-          label="System Uptime"
-          value={formatPercent(kpi.systemUptime)}
-          detail="Reported by platform dashboard stats"
+          label="Approval Queue"
+          value={formatNumber(kpi.pendingApprovals)}
+          detail="Airlines waiting for system-admin review"
           icon={CheckCircle2}
           tone="emerald"
         />
         <HealthCard
-          label="Security Alerts"
-          value={formatNumber(kpi.securityAlerts)}
-          detail="Current platform alert count"
-          icon={Shield}
-          tone="red"
+          label="Monitoring"
+          value="External"
+          detail="Connect Grafana or Prometheus for uptime, logs, and traces"
+          icon={Activity}
+          tone="blue"
         />
         <HealthCard
           label="Failed Notifications"

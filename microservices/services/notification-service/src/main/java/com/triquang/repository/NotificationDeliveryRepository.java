@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.EntityGraph;
 
 import com.triquang.enums.DeliveryStatus;
+import com.triquang.enums.DeliveryChannel;
 import com.triquang.model.NotificationDelivery;
 
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long>, JpaSpecificationExecutor<NotificationDelivery> {
@@ -20,4 +21,6 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
     Page<NotificationDelivery> findByStatus(DeliveryStatus status, Pageable pageable);
 
     long countByStatus(DeliveryStatus status);
+
+    long countByChannel(DeliveryChannel channel);
 }

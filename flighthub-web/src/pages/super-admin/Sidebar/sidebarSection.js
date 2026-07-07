@@ -11,18 +11,13 @@ import {
   Globe,
   Mail,
   Activity,
-  Zap,
   LayoutDashboard,
   Route,
   UserCog,
   UserRound,
   Gauge,
-  MailCheck,
   Search,
-  ClipboardList,
-  Settings,
   ServerCog,
-  Siren,
   PlugZap,
 } from "lucide-react";
 
@@ -119,12 +114,6 @@ export const sidebarSections = [
         path: "/super-admin/users",
       },
       {
-        id: "security-audit",
-        label: "Security Audit",
-        icon: ClipboardList,
-        path: "/super-admin/security/audit",
-      },
-      {
         id: "account-profile",
         label: "My Account",
         icon: UserRound,
@@ -174,13 +163,6 @@ export const sidebarSections = [
         path: "/super-admin/notifications",
       },
       {
-        id: "notifications-deliveries",
-        label: "Delivery Logs",
-        icon: MailCheck,
-        countKey: "totalNotificationDeliveries",
-        path: "/super-admin/notifications/deliveries",
-      },
-      {
         id: "notifications-failed",
         label: "Failed Deliveries",
         icon: AlertTriangle,
@@ -193,37 +175,19 @@ export const sidebarSections = [
         icon: Mail,
         path: "/super-admin/notifications/templates",
       },
-      {
-        id: "notifications-channels",
-        label: "Channel Health",
-        icon: Zap,
-        path: "/super-admin/notifications/channels",
-      },
     ],
   },
   {
     id: "operations",
-    title: "Platform Controls",
+    title: "Monitoring & Integrations",
     icon: ServerCog,
     color: "from-slate-500 to-slate-700",
     items: [
       {
-        id: "operations-health",
-        label: "Service Health",
+        id: "operations-observability",
+        label: "Observability",
         icon: Activity,
-        path: "/super-admin/operations/health",
-      },
-      {
-        id: "operations-incidents",
-        label: "Incidents",
-        icon: Siren,
-        path: "/super-admin/operations/incidents",
-      },
-      {
-        id: "configuration-settings",
-        label: "Settings",
-        icon: Settings,
-        path: "/super-admin/configuration/settings",
+        path: "/super-admin/operations/observability",
       },
       {
         id: "configuration-integrations",

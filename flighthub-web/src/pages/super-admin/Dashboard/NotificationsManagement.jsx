@@ -16,20 +16,9 @@ import {
   Server,
   ShieldCheck,
   Smartphone,
-  Trash2,
   XCircle,
   Zap,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -268,6 +257,52 @@ const NotificationStatsCards = ({ overview }) => {
   );
 };
 
+const formatMapEntries = (value = {}) =>
+  Object.entries(value || {}).map(([key, count]) => ({
+    key,
+    label: typeLabel[key] || key.replaceAll("_", " ").toLowerCase(),
+    count: Number(count) || 0,
+  }));
+
+const BreakdownCard = ({ title, description, entries, emptyLabel }) => {
+  const total = entries.reduce((sum, item) => sum + item.count, 0);
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="mb-4">
+          <p className="font-medium text-gray-900 dark:text-gray-100">{title}</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
+        </div>
+
+        {entries.length === 0 || total === 0 ? (
+          <p className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
+            {emptyLabel}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {entries.map((item) => {
+              const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
+
+              return (
+                <div key={item.key} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate capitalize text-gray-700 dark:text-gray-300">{item.label}</span>
+                    <span className="shrink-0 font-semibold text-gray-900 dark:text-gray-100">{item.count}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${percent}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const NotificationToolbar = ({
   searchQuery,
   onSearchChange,
@@ -497,6 +532,27 @@ const Overview = ({ overview, loading, error }) => {
 
       <NotificationStatsCards overview={overview} />
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <BreakdownCard
+          title="Delivery Status"
+          description="Current delivery state from notification_deliveries."
+          entries={formatMapEntries(overview?.deliveriesByStatus)}
+          emptyLabel="No delivery status data yet."
+        />
+        <BreakdownCard
+          title="Delivery Channels"
+          description="Email/SMS delivery volume currently tracked."
+          entries={formatMapEntries(overview?.deliveriesByChannel)}
+          emptyLabel="No channel delivery data yet."
+        />
+        <BreakdownCard
+          title="Event Types"
+          description="Business notification events recorded by type."
+          entries={formatMapEntries(overview?.eventsByType)}
+          emptyLabel="No notification event data yet."
+        />
+      </div>
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -519,7 +575,7 @@ const Overview = ({ overview, loading, error }) => {
   );
 };
 
-const DeliveryTable = ({ rows, loading, error, onDelete, deletingId }) => {
+const DeliveryTable = ({ rows, loading, error, mode = "readonly", onRetry, retryingId }) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
@@ -575,9 +631,11 @@ const DeliveryTable = ({ rows, loading, error, onDelete, deletingId }) => {
             <TableHead className={`${tableHeadClassName} w-44 text-right`}>
               Updated
             </TableHead>
-            <TableHead className={`${tableHeadClassName} w-24 text-right`}>
+            {mode === "retry" && (
+            <TableHead className={`${tableHeadClassName} w-28 text-right`}>
               Actions
             </TableHead>
+            )}
           </TableRow>
         </TableHeader>
 
@@ -635,19 +693,13 @@ const DeliveryTable = ({ rows, loading, error, onDelete, deletingId }) => {
               </div>
             </TableCell>
             <TableCell className="w-44 px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">{formatDateTime(row.updatedAt)}</TableCell>
-            <TableCell className="w-24 px-4 py-3 text-right">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(row)}
-                disabled={deletingId === row.id}
-                title="Delete delivery log"
-                aria-label={`Delete delivery log ${row.deliveryKey || row.id}`}
-                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-300"
-              >
-                <Trash2 className={`h-4 w-4 ${deletingId === row.id ? "animate-pulse" : ""}`} />
-              </Button>
-            </TableCell>
+            {mode === "retry" && (
+              <TableCell className="w-28 px-4 py-3 text-right">
+                <Button size="sm" onClick={() => onRetry(row.id)} disabled={retryingId === row.id}>
+                  {retryingId === row.id ? "Retrying" : "Retry"}
+                </Button>
+              </TableCell>
+            )}
           </TableRow>
           );
         })}
@@ -666,8 +718,6 @@ const Deliveries = ({
   itemsPerPage,
   onPageChange,
   onItemsPerPageChange,
-  onDelete,
-  deletingId,
 }) => (
   <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
@@ -680,8 +730,6 @@ const Deliveries = ({
           rows={deliveries}
           loading={loading}
           error={error}
-          onDelete={onDelete}
-          deletingId={deletingId}
         />
         <div className="px-6">
           <NotificationPagination
@@ -709,8 +757,6 @@ const FailedRetry = ({
   itemsPerPage,
   onPageChange,
   onItemsPerPageChange,
-  onDelete,
-  deletingId,
 }) => (
   <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
@@ -724,8 +770,9 @@ const FailedRetry = ({
           rows={failedDeliveries}
           loading={loading}
           error={error}
-          onDelete={onDelete}
-          deletingId={deletingId}
+          mode="retry"
+          onRetry={onRetry}
+          retryingId={retryingId}
         />
         <div className="px-6">
           <NotificationPagination
@@ -737,23 +784,6 @@ const FailedRetry = ({
             onItemsPerPageChange={onItemsPerPageChange}
           />
         </div>
-        {!loading && !error && failedDeliveries.length > 0 && (
-          <div className="border-t px-4 py-3 dark:border-gray-700">
-            <div className="space-y-3">
-              {failedDeliveries.map((row) => (
-                <div key={row.id} className="flex flex-col justify-between gap-3 rounded-lg bg-red-50 p-3 dark:bg-red-950/30 md:flex-row md:items-center">
-                  <div className="text-sm text-red-800 dark:text-red-300">
-                    <p className="font-medium">{row.eventKey}</p>
-                    {row.lastError && <p className="mt-1 text-xs">{row.lastError}</p>}
-                  </div>
-                  <Button size="sm" onClick={() => onRetry(row.id)} disabled={retryingId === row.id}>
-                    {retryingId === row.id ? "Retrying..." : "Retry"}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
 
@@ -842,8 +872,6 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryingId, setRetryingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({});
   const [showFilters, setShowFilters] = useState(false);
@@ -911,42 +939,20 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
   const handleRetry = useCallback(async (deliveryId) => {
     setRetryingId(deliveryId);
     setError("");
+    toast.loading("Retrying notification delivery...", { id: "notification-retry" });
 
     try {
       await api.post(`/api/notifications/deliveries/${deliveryId}/retry`);
+      toast.success("Notification delivery retried successfully", { id: "notification-retry" });
       await loadNotificationData();
     } catch (err) {
-      setError(err.response?.data?.message || "Unable to retry notification delivery.");
+      const message = err.response?.data?.message || "Unable to retry notification delivery.";
+      setError(message);
+      toast.error(message, { id: "notification-retry" });
     } finally {
       setRetryingId(null);
     }
   }, [loadNotificationData]);
-
-  const handleDeleteDelivery = useCallback(async () => {
-    if (!deleteTarget) return;
-
-    setDeletingId(deleteTarget.id);
-    setError("");
-    toast.loading("Deleting notification delivery...", { id: "delete-notification-delivery" });
-
-    try {
-      await api.delete(`/api/notifications/deliveries/${deleteTarget.id}`);
-      setDeleteTarget(null);
-      toast.success("Notification delivery deleted successfully", {
-        id: "delete-notification-delivery",
-      });
-      await loadNotificationData();
-    } catch (err) {
-      const message = err.response?.data?.message || "Unable to delete notification delivery.";
-
-      setError(message);
-      toast.error(message, {
-        id: "delete-notification-delivery",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  }, [deleteTarget, loadNotificationData]);
 
   const handleReload = useCallback(async () => {
     const startedAt = Date.now();
@@ -996,8 +1002,6 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={handleItemsPerPageChange}
-        onDelete={setDeleteTarget}
-        deletingId={deletingId}
       />
     ),
     "notifications-failed": (
@@ -1012,8 +1016,6 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={handleItemsPerPageChange}
-        onDelete={setDeleteTarget}
-        deletingId={deletingId}
       />
     ),
     "notifications-templates": <Templates />,
@@ -1030,7 +1032,6 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
     itemsPerPage,
     loading,
     overview,
-    deletingId,
     retryingId,
   ]);
 
@@ -1065,59 +1066,6 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
       )}
 
       {sectionContent[activeSection] || sectionContent["notifications-system"]}
-
-      <AlertDialog
-        open={Boolean(deleteTarget)}
-        onOpenChange={(open) => {
-          if (!open && !deletingId) {
-            setDeleteTarget(null);
-          }
-        }}
-      >
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 dark:text-red-300">
-              Delete notification delivery?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes only the delivery log for{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {deleteTarget?.eventKey || deleteTarget?.deliveryKey || "this notification"}
-              </span>
-              . The source notification event is kept for audit history.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {deleteTarget && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/60">
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-500 dark:text-gray-400">Recipient</span>
-                <span className="truncate font-medium text-gray-900 dark:text-gray-100">{deleteTarget.recipient}</span>
-              </div>
-              <div className="mt-2 flex justify-between gap-4">
-                <span className="text-gray-500 dark:text-gray-400">Status</span>
-                <StatusBadge status={deleteTarget.status} />
-              </div>
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={Boolean(deletingId)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                handleDeleteDelivery();
-              }}
-              disabled={Boolean(deletingId)}
-              className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500"
-            >
-              {deletingId ? "Deleting..." : "Delete delivery"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

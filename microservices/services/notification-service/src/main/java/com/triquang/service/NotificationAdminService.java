@@ -46,15 +46,27 @@ public class NotificationAdminService {
 
     @Transactional(readOnly = true)
     public NotificationOverviewResponse overview() {
-        Map<DeliveryStatus, Long> counts = new EnumMap<>(DeliveryStatus.class);
+        Map<DeliveryStatus, Long> deliveriesByStatus = new EnumMap<>(DeliveryStatus.class);
         for (DeliveryStatus status : DeliveryStatus.values()) {
-            counts.put(status, deliveryRepository.countByStatus(status));
+            deliveriesByStatus.put(status, deliveryRepository.countByStatus(status));
+        }
+
+        Map<DeliveryChannel, Long> deliveriesByChannel = new EnumMap<>(DeliveryChannel.class);
+        for (DeliveryChannel channel : DeliveryChannel.values()) {
+            deliveriesByChannel.put(channel, deliveryRepository.countByChannel(channel));
+        }
+
+        Map<NotificationType, Long> eventsByType = new EnumMap<>(NotificationType.class);
+        for (NotificationType type : NotificationType.values()) {
+            eventsByType.put(type, eventRepository.countByType(type));
         }
 
         return new NotificationOverviewResponse(
                 eventRepository.count(),
                 deliveryRepository.count(),
-                counts
+                deliveriesByStatus,
+                deliveriesByChannel,
+                eventsByType
         );
     }
 

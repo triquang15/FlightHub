@@ -61,9 +61,15 @@ const moduleConfig = {
   },
   health: {
     title: "Service Health",
-    description: "Monitor the availability and dependencies of FlightHub platform services.",
+    description: "Monitor the availability and dependencies of FlightHub platform services through the observability stack.",
     entities: ["Service", "Environment", "Health", "Latency", "Dependencies"],
-    workflows: ["Review status", "Inspect dependency", "Acknowledge alert", "Open incident"],
+    workflows: ["Open Grafana dashboard", "Inspect Prometheus metrics", "Review Alertmanager alerts", "Create incident"],
+  },
+  observability: {
+    title: "Observability",
+    description: "Connect platform logs, metrics, traces, and alerts through Grafana, Prometheus, Loki, and Alertmanager.",
+    entities: ["Prometheus metrics", "Grafana dashboards", "Loki logs", "Alertmanager rules", "Service traces"],
+    workflows: ["Open Grafana", "Review service health", "Inspect failed requests", "Acknowledge alert"],
   },
   incidents: {
     title: "Incident Management",

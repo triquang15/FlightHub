@@ -83,7 +83,8 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/notifications/failed" element={<NotificationsManagement activeSection="notifications-failed" />} />
       <Route path="/notifications/templates" element={<NotificationsManagement activeSection="notifications-templates" />} />
       <Route path="/notifications/channels" element={<NotificationsManagement activeSection="notifications-channels" />} />
-      <Route path="/operations/health" element={<PlatformModulePlaceholder module="health" />} />
+      <Route path="/operations/observability" element={<PlatformModulePlaceholder module="observability" />} />
+      <Route path="/operations/health" element={<PlatformModulePlaceholder module="observability" />} />
       <Route path="/operations/incidents" element={<PlatformModulePlaceholder module="incidents" />} />
       <Route path="/configuration/settings" element={<PlatformModulePlaceholder module="settings" />} />
       <Route path="/configuration/integrations" element={<PlatformModulePlaceholder module="integrations" />} />
