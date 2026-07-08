@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Loader2, MapPin, Plane, Save } from
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import AirportSelect from "@/components/common/AirportSelect";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,39 +241,28 @@ const FlightForm = () => {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Departure airport</Label>
-                  <Select
+                  <AirportSelect
+                    airports={airports}
                     value={form.departureAirportId}
                     onValueChange={(value) => setField("departureAirportId", value)}
                     disabled={airportsLoading || airports.length === 0}
-                  >
-                    <SelectTrigger className="w-full" aria-invalid={Boolean(errors.departureAirportId)}>
-                      <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select departure airport"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {airports.map((airport) => <SelectItem key={airport.id} value={String(airport.id)}>{airport.iataCode} · {airport.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                    placeholder={airportsLoading ? "Loading airports..." : "Select departure airport"}
+                    invalid={Boolean(errors.departureAirportId)}
+                  />
                   <FieldError message={errors.departureAirportId} />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Arrival airport</Label>
-                  <Select
+                  <AirportSelect
+                    airports={airports}
                     value={form.arrivalAirportId}
                     onValueChange={(value) => setField("arrivalAirportId", value)}
                     disabled={airportsLoading || airports.length === 0}
-                  >
-                    <SelectTrigger className="w-full" aria-invalid={Boolean(errors.arrivalAirportId)}>
-                      <SelectValue placeholder={airportsLoading ? "Loading airports..." : "Select arrival airport"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {airports.map((airport) => (
-                        <SelectItem key={airport.id} value={String(airport.id)} disabled={String(airport.id) === form.departureAirportId}>
-                          {airport.iataCode} · {airport.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    excludeAirportId={form.departureAirportId}
+                    placeholder={airportsLoading ? "Loading airports..." : "Select arrival airport"}
+                    invalid={Boolean(errors.arrivalAirportId)}
+                  />
                   <FieldError message={errors.arrivalAirportId} />
                 </div>
               </div>

@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
 
+import AirportSelect from "@/components/common/AirportSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -361,50 +362,36 @@ const FlightInstanceTable = () => {
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Departure
               </p>
-              <Select
+              <AirportSelect
+                airports={airportOptions}
                 value={departureAirportFilter}
                 onValueChange={(value) => {
                   setDepartureAirportFilter(value);
                   setCurrentPage(1);
                 }}
-              >
-                <SelectTrigger className="h-10 min-w-0">
-                  <SelectValue placeholder="Departure airport" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All departures</SelectItem>
-                  {airportOptions.map((airport) => (
-                    <SelectItem key={airport.id} value={String(airport.id)}>
-                      {airportLabel(airport)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                includeAll
+                allLabel="All departures"
+                placeholder="Departure airport"
+                triggerClassName="h-10"
+              />
             </div>
 
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Arrival
               </p>
-              <Select
+              <AirportSelect
+                airports={airportOptions}
                 value={arrivalAirportFilter}
                 onValueChange={(value) => {
                   setArrivalAirportFilter(value);
                   setCurrentPage(1);
                 }}
-              >
-                <SelectTrigger className="h-10 min-w-0">
-                  <SelectValue placeholder="Arrival airport" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All arrivals</SelectItem>
-                  {airportOptions.map((airport) => (
-                    <SelectItem key={airport.id} value={String(airport.id)}>
-                      {airportLabel(airport)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                includeAll
+                allLabel="All arrivals"
+                placeholder="Arrival airport"
+                triggerClassName="h-10"
+              />
             </div>
 
             <div className="space-y-2">

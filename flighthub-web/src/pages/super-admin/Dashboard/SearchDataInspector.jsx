@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import api from "@/utils/api";
 import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
+import AirportSelect from "@/components/common/AirportSelect";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const cabinOptions = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"];
+const terminalStatuses = new Set(["CANCELLED", "COMPLETED", "DIVERTED", "ARRIVED", "DEPARTED"]);
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : "");
 
@@ -51,13 +53,6 @@ const formatMoney = (amount, currency = "USD") => {
     currency,
     maximumFractionDigits: 0,
   }).format(value);
-};
-
-const airportLabel = (airport) => {
-  if (!airport) return "Unknown airport";
-  const code = airport.iataCode ? `${airport.iataCode} · ` : "";
-  const city = airport.city?.name ? `, ${airport.city.name}` : "";
-  return `${code}${airport.name || "Airport"}${city}`;
 };
 
 const shortAirport = (airport, fallback) => airport?.iataCode || fallback || "N/A";
@@ -81,6 +76,24 @@ const numberValue = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const isFutureDeparture = (value) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > Date.now();
+};
+
+const isTodayOrFutureDate = (value) => {
+  if (!value) return false;
+  return String(value).slice(0, 10) >= new Date().toISOString().slice(0, 10);
+};
+
+const isSearchCandidate = (instance) =>
+  isFutureDeparture(instance.departureDateTime) &&
+  !terminalStatuses.has(instance.status) &&
+  numberValue(instance.availableSeats) > 0 &&
+  getAirportId(instance.departureAirport) &&
+  getAirportId(instance.arrivalAirport);
+
 const buildTravelerUrl = ({ departureAirportId, arrivalAirportId, departureDate, passengers, cabinClass }) => {
   const params = new URLSearchParams({
     from: String(departureAirportId || ""),
@@ -93,6 +106,26 @@ const buildTravelerUrl = ({ departureAirportId, arrivalAirportId, departureDate,
 
   return `/search?${params.toString()}`;
 };
+
+const buildSearchParams = (filters) => ({
+  departureAirportId: filters.departureAirportId,
+  arrivalAirportId: filters.arrivalAirportId,
+  departureDate: filters.departureDate,
+  passengers: filters.passengers,
+  cabinClass: filters.cabinClass,
+  page: 0,
+  size: 50,
+  sortBy: "departure",
+  sortOrder: "asc",
+});
+
+const getValidationKey = (filters) => [
+  filters.departureAirportId,
+  filters.arrivalAirportId,
+  filters.departureDate,
+  filters.passengers,
+  filters.cabinClass,
+].join("|");
 
 const HealthBadge = ({ ok, children }) => (
   <Badge
@@ -134,6 +167,11 @@ const SearchDataInspector = () => {
   const [searchError, setSearchError] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchMeta, setSearchMeta] = useState({ totalElements: 0 });
+  const [validationState, setValidationState] = useState({
+    status: "idle",
+    message: "Select a sample or enter a route, then validate before copying.",
+    key: "",
+  });
   const [filters, setFilters] = useState({
     departureAirportId: "",
     arrivalAirportId: "",
@@ -179,16 +217,10 @@ const SearchDataInspector = () => {
     loadReferenceData();
   }, [loadReferenceData]);
 
-  const airportById = useMemo(() => {
-    const airportMap = new Map();
-    airports.forEach((airport) => airportMap.set(String(airport.id), airport));
-    return airportMap;
-  }, [airports]);
-
   const routeSamples = useMemo(() => {
     const routeMap = new Map();
 
-    inventory.forEach((instance) => {
+    inventory.filter(isSearchCandidate).forEach((instance) => {
       const key = routeKeyOf(instance);
       if (!key) return;
 
@@ -232,9 +264,21 @@ const SearchDataInspector = () => {
 
   const selectedTravelerPath = useMemo(() => buildTravelerUrl(filters), [filters]);
   const canRunSearch = filters.departureAirportId && filters.arrivalAirportId && filters.departureDate;
+  const currentValidationKey = useMemo(() => getValidationKey(filters), [filters]);
+  const canCopyValidatedUrl =
+    validationState.status === "success" && validationState.key === currentValidationKey;
+
+  const updateFilters = (updater) => {
+    setFilters((current) => (typeof updater === "function" ? updater(current) : updater));
+    setValidationState({
+      status: "idle",
+      message: "Search criteria changed. Validate again before using this URL.",
+      key: "",
+    });
+  };
 
   const applySample = (sample) => {
-    setFilters({
+    updateFilters({
       departureAirportId: String(sample.departureAirportId),
       arrivalAirportId: String(sample.arrivalAirportId),
       departureDate: sample.departureDate,
@@ -244,16 +288,49 @@ const SearchDataInspector = () => {
     setSearchError("");
   };
 
+  const executeSearch = async ({ showToast = false } = {}) => {
+    const response = await api.get("/api/flights/search", {
+      params: buildSearchParams(filters),
+    });
+    const payload = unwrapApiData(response) || {};
+    const content = Array.isArray(payload.content) ? payload.content : [];
+    const totalElements = payload.totalElements || content.length;
+
+    setSearchResults(content);
+    setSearchMeta({ totalElements });
+
+    if (content.length === 0) {
+      const message = "No bookable flights found for this route/date/cabin. Check fare, cabin, and seat inventory.";
+      setValidationState({ status: "empty", message, key: currentValidationKey });
+      if (showToast) toast.warning(message);
+      return content;
+    }
+
+    const pricedCount = content.filter((flight) => Number.isFinite(Number(getFareAmount(flight)))).length;
+    const bookableCount = content.filter((flight) => numberValue(flight.availableSeats) >= Number(filters.passengers || 1)).length;
+    const message = `${content.length} result${content.length === 1 ? "" : "s"} found · ${pricedCount} fare-ready · ${bookableCount} seat-ready`;
+    setValidationState({ status: "success", message, key: currentValidationKey });
+    if (showToast) toast.success(message);
+    return content;
+  };
+
   const copyTravelerUrl = async () => {
     if (!canRunSearch) {
       toast.warning("Select a route and date before copying the traveler URL.");
       return;
     }
+    if (!isTodayOrFutureDate(filters.departureDate)) {
+      toast.warning("Choose today or a future departure date before copying a booking test URL.");
+      return;
+    }
 
-    const origin = window.location.origin || "http://localhost:5173";
-    const url = `${origin}${selectedTravelerPath}`;
+    if (!canCopyValidatedUrl) {
+      toast.warning("Validate this search successfully before copying the traveler URL.");
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(`${window.location.origin || "http://localhost:5173"}${selectedTravelerPath}`);
       toast.success("Traveler search URL copied");
     } catch {
       toast.error("Unable to copy URL from this browser context");
@@ -270,27 +347,14 @@ const SearchDataInspector = () => {
     setSearchError("");
 
     try {
-      const response = await api.get("/api/flights/search", {
-        params: {
-          departureAirportId: filters.departureAirportId,
-          arrivalAirportId: filters.arrivalAirportId,
-          departureDate: filters.departureDate,
-          passengers: filters.passengers,
-          cabinClass: filters.cabinClass,
-          page: 0,
-          size: 50,
-          sortBy: "departure",
-          sortOrder: "asc",
-        },
-      });
-      const payload = unwrapApiData(response) || {};
-      const content = Array.isArray(payload.content) ? payload.content : [];
-      setSearchResults(content);
-      setSearchMeta({ totalElements: payload.totalElements || content.length });
+      await executeSearch({ showToast: true });
     } catch (error) {
+      const message = getApiErrorMessage(error, "Unable to run flight search");
       setSearchResults([]);
       setSearchMeta({ totalElements: 0 });
-      setSearchError(getApiErrorMessage(error, "Unable to run flight search"));
+      setSearchError(message);
+      setValidationState({ status: "error", message, key: currentValidationKey });
+      toast.error(message);
     } finally {
       setSearching(false);
     }
@@ -337,7 +401,7 @@ const SearchDataInspector = () => {
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Search Data Inspector</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Read-only operational view for finding route/date/cabin data that can drive traveler booking tests.
+            Read-only operational view for finding future route/date/cabin data that can drive traveler booking tests.
           </p>
         </div>
         <Button variant="outline" onClick={loadReferenceData} disabled={loadingInventory}>
@@ -349,7 +413,7 @@ const SearchDataInspector = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard icon={Plane} label="Flight instances" value={inventoryStats.total} detail="Loaded from flight-ops" />
         <MetricCard icon={CheckCircle2} label="Live operations" value={inventoryStats.live} detail="Operational inventory" />
-        <MetricCard icon={Route} label="Route/date samples" value={routeSamples.length} detail="Ready for quick testing" />
+        <MetricCard icon={Route} label="Future samples" value={routeSamples.length} detail="Candidate route/date pairs" />
         <MetricCard icon={XCircle} label="Cancelled" value={inventoryStats.cancelled} detail="Excluded from booking tests" />
       </div>
 
@@ -372,40 +436,22 @@ const SearchDataInspector = () => {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">From</label>
-                <Select
+                <AirportSelect
+                  airports={airports}
                   value={filters.departureAirportId}
-                  onValueChange={(value) => setFilters((current) => ({ ...current, departureAirportId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select origin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {airports.map((airport) => (
-                      <SelectItem key={airport.id} value={String(airport.id)}>
-                        {airportLabel(airport)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={(value) => updateFilters((current) => ({ ...current, departureAirportId: value }))}
+                  placeholder="Select origin"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">To</label>
-                <Select
+                <AirportSelect
+                  airports={airports}
                   value={filters.arrivalAirportId}
-                  onValueChange={(value) => setFilters((current) => ({ ...current, arrivalAirportId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {airports.map((airport) => (
-                      <SelectItem key={airport.id} value={String(airport.id)}>
-                        {airportLabel(airport)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={(value) => updateFilters((current) => ({ ...current, arrivalAirportId: value }))}
+                  placeholder="Select destination"
+                />
               </div>
 
               <div className="space-y-2">
@@ -413,7 +459,7 @@ const SearchDataInspector = () => {
                 <Input
                   type="date"
                   value={filters.departureDate}
-                  onChange={(event) => setFilters((current) => ({ ...current, departureDate: event.target.value }))}
+                  onChange={(event) => updateFilters((current) => ({ ...current, departureDate: event.target.value }))}
                 />
               </div>
 
@@ -421,7 +467,7 @@ const SearchDataInspector = () => {
                 <label className="text-sm font-medium">Cabin</label>
                 <Select
                   value={filters.cabinClass}
-                  onValueChange={(value) => setFilters((current) => ({ ...current, cabinClass: value }))}
+                  onValueChange={(value) => updateFilters((current) => ({ ...current, cabinClass: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -443,7 +489,7 @@ const SearchDataInspector = () => {
                   min="1"
                   max="9"
                   value={filters.passengers}
-                  onChange={(event) => setFilters((current) => ({ ...current, passengers: Number(event.target.value) || 1 }))}
+                  onChange={(event) => updateFilters((current) => ({ ...current, passengers: Number(event.target.value) || 1 }))}
                 />
               </div>
             </div>
@@ -451,6 +497,34 @@ const SearchDataInspector = () => {
             <div className="rounded-md border bg-muted/30 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Traveler URL</p>
               <p className="mt-1 break-all text-sm text-foreground">{selectedTravelerPath}</p>
+            </div>
+
+            <div
+              className={cn(
+                "flex items-start gap-3 rounded-md border p-3 text-sm",
+                validationState.status === "success" && "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200",
+                validationState.status === "empty" && "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
+                validationState.status === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
+                validationState.status === "idle" && "bg-muted/30 text-muted-foreground",
+              )}
+            >
+              {validationState.status === "success" ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              ) : (
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              <div>
+                <p className="font-medium">
+                  {validationState.status === "success"
+                    ? "Search validated"
+                    : validationState.status === "empty"
+                      ? "No bookable result"
+                      : validationState.status === "error"
+                        ? "Validation failed"
+                        : "Validation required"}
+                </p>
+                <p className="mt-1">{validationState.message}</p>
+              </div>
             </div>
 
             {searchError && (
@@ -462,9 +536,9 @@ const SearchDataInspector = () => {
             <div className="grid gap-3 sm:grid-cols-2">
               <Button onClick={runSearch} disabled={searching || !canRunSearch}>
                 <Search className="mr-2 h-4 w-4" />
-                {searching ? "Searching..." : "Validate search"}
+                {searching ? "Validating..." : "Validate search"}
               </Button>
-              <Button variant="outline" onClick={copyTravelerUrl} disabled={!canRunSearch}>
+              <Button variant="outline" onClick={copyTravelerUrl} disabled={searching || !canCopyValidatedUrl}>
                 <Clipboard className="mr-2 h-4 w-4" />
                 Copy traveler URL
               </Button>
@@ -484,7 +558,9 @@ const SearchDataInspector = () => {
               <p className="py-8 text-center text-sm text-muted-foreground">Loading inventory...</p>
             )}
             {!loadingInventory && routeSamples.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">No route/date samples found.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No future route/date samples found. Seed or create future flight instances first.
+              </p>
             )}
             {routeSamples.map((sample) => (
               <button

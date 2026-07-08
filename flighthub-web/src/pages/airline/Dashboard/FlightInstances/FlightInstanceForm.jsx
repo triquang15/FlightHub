@@ -15,6 +15,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AirportSelect from "@/components/common/AirportSelect";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -717,41 +718,14 @@ const FlightInstanceForm = () => {
                           <Label htmlFor="departureAirportId">
                             Departure Airport *
                           </Label>
-                          <Select
+                          <AirportSelect
+                            airports={airportOptions}
                             value={String(values.departureAirportId)}
                             disabled
-                          >
-                            <SelectTrigger
-                              className={cn(
-                                "mt-1 w-full",
-                                errors.departureAirportId &&
-                                  touched.departureAirportId &&
-                                  "border-red-500"
-                              )}
-                            >
-                              <SelectValue placeholder="Select departure" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {airportOptions.map((airport) => (
-                                <SelectItem
-                                  key={airport.id}
-                                  value={String(airport.id)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">
-                                      {airport.iataCode || airport.code}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      -
-                                    </span>
-                                    <span className="text-sm">
-                                      {airport.name || airport.city?.name || "Airport"}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Select departure"
+                            invalid={Boolean(errors.departureAirportId && touched.departureAirportId)}
+                            triggerClassName="mt-1"
+                          />
                           <ErrorMessage
                             name="departureAirportId"
                             component="div"
@@ -763,41 +737,14 @@ const FlightInstanceForm = () => {
                           <Label htmlFor="arrivalAirportId">
                             Arrival Airport *
                           </Label>
-                          <Select
+                          <AirportSelect
+                            airports={airportOptions}
                             value={String(values.arrivalAirportId)}
                             disabled
-                          >
-                            <SelectTrigger
-                              className={cn(
-                                "mt-1 w-full",
-                                errors.arrivalAirportId &&
-                                  touched.arrivalAirportId &&
-                                  "border-red-500"
-                              )}
-                            >
-                              <SelectValue placeholder="Select arrival" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {airportOptions.map((airport) => (
-                                <SelectItem
-                                  key={airport.id}
-                                  value={String(airport.id)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">
-                                      {airport.iataCode || airport.code}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      -
-                                    </span>
-                                    <span className="text-sm">
-                                      {airport.name || airport.city?.name || "Airport"}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Select arrival"
+                            invalid={Boolean(errors.arrivalAirportId && touched.arrivalAirportId)}
+                            triggerClassName="mt-1"
+                          />
                           <ErrorMessage
                             name="arrivalAirportId"
                             component="div"

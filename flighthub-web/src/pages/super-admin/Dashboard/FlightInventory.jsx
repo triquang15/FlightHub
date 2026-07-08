@@ -50,6 +50,7 @@ const statusClass = {
 };
 
 const statusOptions = ["SCHEDULED", "BOARDING", "DEPARTED", "ARRIVED", "CANCELLED"];
+const terminalStatuses = new Set(["CANCELLED", "COMPLETED", "DIVERTED", "ARRIVED", "DEPARTED"]);
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : "");
 
@@ -72,6 +73,49 @@ const numberValue = (value) => {
 
 const getAvailableSeats = (instance) => numberValue(instance.availableSeats ?? instance.totalAvailableSeats);
 const getTotalSeats = (instance) => numberValue(instance.totalSeats);
+const isFutureDeparture = (value) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > Date.now();
+};
+
+const getSearchBlockers = (instance) => {
+  const blockers = [];
+
+  if (!isFutureDeparture(instance.departureDateTime)) {
+    blockers.push("departure is in the past");
+  }
+  if (terminalStatuses.has(instance.status)) {
+    blockers.push(`status is ${instance.status}`);
+  }
+  if (getAvailableSeats(instance) < 1) {
+    blockers.push("no available seats");
+  }
+  if (!getAirportId(instance.departureAirport) || !getAirportId(instance.arrivalAirport)) {
+    blockers.push("airport reference is missing");
+  }
+
+  return blockers;
+};
+
+const buildSearchParamsForInstance = (instance) => {
+  const from = getAirportId(instance.departureAirport);
+  const to = getAirportId(instance.arrivalAirport);
+  const depart = formatDate(instance.departureDateTime);
+  if (!from || !to || !depart) return null;
+
+  return {
+    departureAirportId: from,
+    arrivalAirportId: to,
+    departureDate: depart,
+    passengers: 1,
+    cabinClass: "ECONOMY",
+    page: 0,
+    size: 10,
+    sortBy: "departure",
+    sortOrder: "asc",
+  };
+};
 
 const buildTravelerSearchPath = (instance) => {
   const from = getAirportId(instance.departureAirport);
@@ -122,6 +166,7 @@ const FlightInventory = () => {
   const [stats, setStats] = useState({ total: 0, live: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [validatingInstanceId, setValidatingInstanceId] = useState(null);
   const [filters, setFilters] = useState({
     query: "",
     status: "all",
@@ -221,17 +266,36 @@ const FlightInventory = () => {
   };
 
   const copyTravelerUrl = async (instance) => {
+    const blockers = getSearchBlockers(instance);
+    if (blockers.length > 0) {
+      toast.warning(`Cannot copy booking test URL: ${blockers.join(", ")}.`);
+      return;
+    }
+
     const path = buildTravelerSearchPath(instance);
+    const searchParams = buildSearchParamsForInstance(instance);
     if (!path) {
       toast.warning("This flight instance is missing route or departure date data.");
       return;
     }
 
     try {
+      setValidatingInstanceId(instance.id);
+      const response = await api.get("/api/flights/search", { params: searchParams });
+      const payload = unwrapApiData(response) || {};
+      const content = Array.isArray(payload.content) ? payload.content : [];
+
+      if (content.length === 0) {
+        toast.error("Traveler search has no bookable results for this route/date. Check fare, cabin, and seat inventory first.");
+        return;
+      }
+
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
       toast.success("Traveler search URL copied");
-    } catch {
-      toast.error("Unable to copy URL from this browser context");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to validate or copy this traveler URL"));
+    } finally {
+      setValidatingInstanceId(null);
     }
   };
 
@@ -366,6 +430,8 @@ const FlightInventory = () => {
                     const totalSeats = getTotalSeats(instance);
                     const travelerPath = buildTravelerSearchPath(instance);
                     const missingReference = !instance.airlineName || !instance.aircraftCode || !instance.departureAirport || !instance.arrivalAirport;
+                    const searchBlockers = getSearchBlockers(instance);
+                    const canTestSearch = searchBlockers.length === 0;
 
                     return (
                       <TableRow key={instance.id}>
@@ -424,6 +490,11 @@ const FlightInventory = () => {
                                 Missing ref
                               </Badge>
                             )}
+                            {!canTestSearch && (
+                              <Badge variant="outline" className="rounded-md border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-300">
+                                Not searchable
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
 
@@ -433,11 +504,11 @@ const FlightInventory = () => {
                               variant="outline"
                               size="icon"
                               onClick={() => copyTravelerUrl(instance)}
-                              disabled={!travelerPath}
-                              title="Copy traveler search URL"
+                              disabled={!travelerPath || validatingInstanceId === instance.id}
+                              title={canTestSearch ? "Validate and copy traveler search URL" : searchBlockers.join(", ")}
                               aria-label="Copy traveler search URL"
                             >
-                              <Clipboard className="h-4 w-4" />
+                              <Clipboard className={cn("h-4 w-4", validatingInstanceId === instance.id && "animate-pulse")} />
                             </Button>
                             <Button
                               variant="outline"
