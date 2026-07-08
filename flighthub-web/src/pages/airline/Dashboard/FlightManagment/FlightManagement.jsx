@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ArrowRight,
+  CalendarPlus,
+  CheckCircle2,
   Edit,
   Eye,
-  MapPin,
   Plane,
   Plus,
   Search,
@@ -49,6 +50,22 @@ const aircraftLabel = (aircraft) => (
   [aircraft?.code, aircraft?.manufacturer, aircraft?.model].filter(Boolean).join(" · ") || "Not assigned"
 );
 
+const getScheduleReadiness = (flight) => {
+  const blockers = [];
+  const departureId = flight?.departureAirport?.id;
+  const arrivalId = flight?.arrivalAirport?.id;
+
+  if (flight?.status === "CANCELLED") blockers.push("Cancelled definition");
+  if (!flight?.aircraft?.id) blockers.push("Missing aircraft");
+  if (!departureId || !arrivalId) blockers.push("Missing route airports");
+  if (departureId && arrivalId && String(departureId) === String(arrivalId)) blockers.push("Route airports must differ");
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+  };
+};
+
 const StatusBadge = ({ status }) => (
   <Badge variant="outline" className={cn("gap-2", statusClass[status] || "")}>
     <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -85,6 +102,8 @@ const FlightManagement = () => {
   const scheduledCount = flights.filter((flight) => flight.status === "SCHEDULED").length;
   const cancelledCount = flights.filter((flight) => flight.status === "CANCELLED").length;
   const aircraftAssignedCount = flights.filter((flight) => flight.aircraft?.id).length;
+  const scheduleReadyCount = flights.filter((flight) => getScheduleReadiness(flight).ready).length;
+  const needsAttentionCount = Math.max(flights.length - scheduleReadyCount, 0);
 
   const cancelFlight = async () => {
     if (!flightToCancel) return;
@@ -99,6 +118,7 @@ const FlightManagement = () => {
 
   const renderActions = (flight, mobile = false) => {
     const cancelled = flight.status === "CANCELLED";
+    const readiness = getScheduleReadiness(flight);
     const buttonClass = mobile ? "h-9 w-9" : "h-8 w-8";
 
     return (
@@ -132,6 +152,21 @@ const FlightManagement = () => {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={mobile ? "outline" : "ghost"}
+                size="icon"
+                aria-label="Create schedule"
+                onClick={() => navigate(`/airline/schedules/new?flightId=${flight.id}`)}
+                disabled={!readiness.ready}
+                className={buttonClass}
+              >
+                <CalendarPlus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{readiness.ready ? "Create schedule" : readiness.blockers[0]}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -178,8 +213,8 @@ const FlightManagement = () => {
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           { label: "Definitions", value: flights.length, icon: Plane },
-          { label: "Scheduled", value: scheduledCount, icon: Plane },
-          { label: "Aircraft assigned", value: aircraftAssignedCount, icon: MapPin },
+          { label: "Ready for scheduling", value: scheduleReadyCount, icon: CheckCircle2 },
+          { label: "Needs attention", value: needsAttentionCount, icon: AlertCircle },
         ].map(({ label, value, icon: Icon }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-3 p-4">
@@ -253,73 +288,110 @@ const FlightManagement = () => {
                     <TableHead className="min-w-48">Route</TableHead>
                     <TableHead className="min-w-56">Aircraft</TableHead>
                     <TableHead className="min-w-36">Status</TableHead>
+                    <TableHead className="min-w-52">Schedule readiness</TableHead>
                     <TableHead className="sticky right-0 z-10 w-32 bg-muted/40 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleFlights.map((flight) => (
-                    <TableRow key={flight.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <div className="font-semibold">{flight.flightNumber || `Flight ${flight.id}`}</div>
-                        <div className="text-xs text-muted-foreground">ID #{flight.id}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 font-medium">
-                          {airportLabel(flight.departureAirport)}
-                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                          {airportLabel(flight.arrivalAirport)}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {airportCity(flight.departureAirport)} to {airportCity(flight.arrivalAirport)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="truncate font-medium">{aircraftLabel(flight.aircraft)}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {flight.aircraft?.seatingCapacity || flight.aircraft?.totalSeats || 0} seats
-                        </div>
-                      </TableCell>
-                      <TableCell><StatusBadge status={flight.status} /></TableCell>
-                      <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-10px_0_12px_-12px_rgba(15,23,42,0.45)]">
-                        {renderActions(flight)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {visibleFlights.map((flight) => {
+                    const readiness = getScheduleReadiness(flight);
+
+                    return (
+                      <TableRow key={flight.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div className="font-semibold">{flight.flightNumber || `Flight ${flight.id}`}</div>
+                          <div className="text-xs text-muted-foreground">ID #{flight.id}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 font-medium">
+                            {airportLabel(flight.departureAirport)}
+                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            {airportLabel(flight.arrivalAirport)}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {airportCity(flight.departureAirport)} to {airportCity(flight.arrivalAirport)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="truncate font-medium">{aircraftLabel(flight.aircraft)}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {flight.aircraft?.seatingCapacity || flight.aircraft?.totalSeats || 0} seats
+                          </div>
+                        </TableCell>
+                        <TableCell><StatusBadge status={flight.status} /></TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "gap-2",
+                              readiness.ready
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+                            )}
+                          >
+                            {readiness.ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                            {readiness.ready ? "Ready" : "Needs attention"}
+                          </Badge>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {readiness.ready ? "Can create operating schedule" : readiness.blockers.join(", ")}
+                          </p>
+                        </TableCell>
+                        <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-10px_0_12px_-12px_rgba(15,23,42,0.45)]">
+                          {renderActions(flight)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           </div>
 
           <div className="space-y-3 lg:hidden">
-            {visibleFlights.map((flight) => (
-              <Card key={flight.id}>
-                <CardContent className="space-y-4 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-base font-semibold">{flight.flightNumber || `Flight ${flight.id}`}</div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {airportLabel(flight.departureAirport)} to {airportLabel(flight.arrivalAirport)}
+            {visibleFlights.map((flight) => {
+                const readiness = getScheduleReadiness(flight);
+
+                return (
+                  <Card key={flight.id}>
+                    <CardContent className="space-y-4 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-base font-semibold">{flight.flightNumber || `Flight ${flight.id}`}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {airportLabel(flight.departureAirport)} to {airportLabel(flight.arrivalAirport)}
+                          </div>
+                        </div>
+                        <StatusBadge status={flight.status} />
                       </div>
-                    </div>
-                    <StatusBadge status={flight.status} />
-                  </div>
-                  <div className="grid gap-3 text-sm sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Route cities</p>
-                      <p className="mt-1 font-medium">{airportCity(flight.departureAirport)} to {airportCity(flight.arrivalAirport)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Aircraft</p>
-                      <p className="mt-1 font-medium">{aircraftLabel(flight.aircraft)}</p>
-                    </div>
-                  </div>
-                  {renderActions(flight, true)}
-                </CardContent>
-              </Card>
-            ))}
+                      <div className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Route cities</p>
+                          <p className="mt-1 font-medium">{airportCity(flight.departureAirport)} to {airportCity(flight.arrivalAirport)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Aircraft</p>
+                          <p className="mt-1 font-medium">{aircraftLabel(flight.aircraft)}</p>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "rounded-md border p-3 text-sm",
+                        readiness.ready
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                          : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200",
+                      )}>
+                        <p className="font-medium">{readiness.ready ? "Ready for scheduling" : "Needs attention"}</p>
+                        <p className="mt-1 text-xs">{readiness.ready ? "Create an operating pattern from this definition." : readiness.blockers.join(", ")}</p>
+                      </div>
+                      {renderActions(flight, true)}
+                    </CardContent>
+                  </Card>
+                );
+              })}
           </div>
 
-          <p className="text-xs text-muted-foreground">Showing {visibleFlights.length} of {flights.length} flight definitions. {cancelledCount} cancelled.</p>
+          <p className="text-xs text-muted-foreground">
+            Showing {visibleFlights.length} of {flights.length} flight definitions. {scheduledCount} scheduled, {aircraftAssignedCount} with aircraft, {cancelledCount} cancelled.
+          </p>
         </>
       )}
 

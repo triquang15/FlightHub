@@ -4,9 +4,11 @@ import {
   AlertTriangle,
   ArrowUpDown,
   Calendar,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Clipboard,
   Edit,
   Eye,
   Loader2,
@@ -20,6 +22,7 @@ import { format } from "date-fns";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
 
+import api from "@/utils/api";
 import AirportSelect from "@/components/common/AirportSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -159,6 +162,66 @@ const loadFactorColor = (loadFactor) =>
       ? "bg-amber-500"
       : "bg-emerald-500";
 
+const terminalStatuses = new Set(["CANCELLED", "COMPLETED", "DIVERTED", "ARRIVED", "DEPARTED"]);
+
+const getAirportId = (airport) => airport?.id || airport?.airportId;
+
+const formatSearchDate = (value) => (value ? String(value).slice(0, 10) : "");
+
+const isFutureDeparture = (value) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > Date.now();
+};
+
+const getSearchBlockers = (instance) => {
+  const blockers = [];
+
+  if (!isFutureDeparture(instance.departureDateTime)) blockers.push("departure is not in the future");
+  if (terminalStatuses.has(instance.status)) blockers.push(`status is ${instance.status}`);
+  if (getAvailableSeats(instance) < 1) blockers.push("no available seats");
+  if (!getAirportId(instance.departureAirport) || !getAirportId(instance.arrivalAirport)) {
+    blockers.push("airport reference is missing");
+  }
+
+  return blockers;
+};
+
+const buildTravelerSearchPath = (instance) => {
+  const from = getAirportId(instance.departureAirport);
+  const to = getAirportId(instance.arrivalAirport);
+  const depart = formatSearchDate(instance.departureDateTime);
+  if (!from || !to || !depart) return "";
+
+  const params = new URLSearchParams({
+    from: String(from),
+    to: String(to),
+    depart,
+    passengers: "1",
+    cabinClass: "ECONOMY",
+    trip: "oneway",
+  });
+
+  return `/search?${params.toString()}`;
+};
+
+const buildSearchParams = (instance) => ({
+  departureAirportId: getAirportId(instance.departureAirport),
+  arrivalAirportId: getAirportId(instance.arrivalAirport),
+  departureDate: formatSearchDate(instance.departureDateTime),
+  passengers: 1,
+  cabinClass: "ECONOMY",
+  page: 0,
+  size: 10,
+  sortBy: "departure",
+  sortOrder: "asc",
+});
+
+const getReadinessTone = (blockers) =>
+  blockers.length === 0
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+    : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300";
+
 const FlightInstanceTable = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -170,6 +233,7 @@ const FlightInstanceTable = () => {
   const [sortField, setSortField] = useState("departureDateTime");
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [validatingInstanceId, setValidatingInstanceId] = useState(null);
 
   const itemsPerPage = 10;
   const {
@@ -228,6 +292,16 @@ const FlightInstanceTable = () => {
   const totalElements = pageData.totalElements;
   const airportOptions = asArray(airports);
   const flightOptions = asArray(flights);
+  const readinessSummary = useMemo(() => {
+    const candidates = instances.filter((instance) => getSearchBlockers(instance).length === 0).length;
+    const availableSeats = instances.reduce((total, instance) => total + getAvailableSeats(instance), 0);
+
+    return {
+      candidates,
+      attention: Math.max(instances.length - candidates, 0),
+      availableSeats,
+    };
+  }, [instances]);
 
   const hasActiveFilters =
     dateFilter ||
@@ -268,6 +342,43 @@ const FlightInstanceTable = () => {
       toast.success(`${instance.flightNumber || "Instance"} moved to ${status}`);
     } catch (transitionError) {
       toast.error(transitionError || "Unable to update lifecycle status");
+    }
+  };
+
+  const handleCopyTravelerUrl = async (instance) => {
+    const blockers = getSearchBlockers(instance);
+    if (blockers.length > 0) {
+      toast.warning(`Cannot copy booking test URL: ${blockers.join(", ")}.`);
+      return;
+    }
+
+    const travelerPath = buildTravelerSearchPath(instance);
+    if (!travelerPath) {
+      toast.warning("This instance is missing route or departure date data.");
+      return;
+    }
+
+    try {
+      setValidatingInstanceId(instance.id);
+      const response = await api.get("/api/flights/search", { params: buildSearchParams(instance) });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const content = Array.isArray(payload.content) ? payload.content : [];
+
+      if (content.length === 0) {
+        toast.error("Traveler search has no bookable result. Check fare, cabin, and seat inventory before sharing.");
+        return;
+      }
+
+      await navigator.clipboard.writeText(`${window.location.origin}${travelerPath}`);
+      toast.success("Traveler search URL copied");
+    } catch (copyError) {
+      toast.error(
+        copyError?.response?.data?.message ||
+          copyError?.response?.data?.error ||
+          "Unable to validate or copy traveler URL",
+      );
+    } finally {
+      setValidatingInstanceId(null);
     }
   };
 
@@ -443,6 +554,22 @@ const FlightInstanceTable = () => {
             {loading ? "Refreshing..." : `${pageStart}-${pageEnd} of ${totalElements}`}
           </Badge>
         </CardHeader>
+        {instances.length > 0 && (
+          <div className="grid gap-3 border-b p-4 sm:grid-cols-3 sm:p-6">
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Booking candidates</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">{readinessSummary.candidates}</p>
+            </div>
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Needs attention</p>
+              <p className="mt-1 text-2xl font-semibold text-amber-600 dark:text-amber-300">{readinessSummary.attention}</p>
+            </div>
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Available seats</p>
+              <p className="mt-1 text-2xl font-semibold">{readinessSummary.availableSeats}</p>
+            </div>
+          </div>
+        )}
         <CardContent className="p-0">
           {error && (
             <div className="m-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:m-6">
@@ -452,7 +579,7 @@ const FlightInstanceTable = () => {
           )}
 
           <div className="hidden max-w-full overflow-x-auto rounded-b-lg md:block">
-            <Table className="min-w-[1180px]">
+            <Table className="min-w-[1320px]">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead
@@ -501,6 +628,7 @@ const FlightInstanceTable = () => {
                     </div>
                   </TableHead>
                   <TableHead className="w-[210px]">Status</TableHead>
+                  <TableHead className="w-[190px]">Booking Readiness</TableHead>
                   <TableHead className="sticky right-0 z-20 w-[128px] bg-muted/50 text-right shadow-[-12px_0_16px_-18px_hsl(var(--foreground))]">
                     Actions
                   </TableHead>
@@ -509,7 +637,7 @@ const FlightInstanceTable = () => {
               <TableBody>
                 {loading && instances.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center">
+                    <TableCell colSpan={8} className="py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading flight instances...
@@ -518,7 +646,7 @@ const FlightInstanceTable = () => {
                   </TableRow>
                 ) : instances.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center">
+                    <TableCell colSpan={8} className="py-12 text-center">
                       <div className="mx-auto max-w-md space-y-2">
                         <Plane className="mx-auto h-10 w-10 text-muted-foreground" />
                         <p className="font-medium">No flight instances found</p>
@@ -534,6 +662,8 @@ const FlightInstanceTable = () => {
                     const booked = getBookedSeats(instance);
                     const loadFactor = getLoadFactor(instance);
                     const status = statusConfig[instance.status] || statusConfig.SCHEDULED;
+                    const searchBlockers = getSearchBlockers(instance);
+                    const readyForSearch = searchBlockers.length === 0;
                     const canDelete =
                       instance.status === "SCHEDULED" && available === instance.totalSeats;
 
@@ -612,9 +742,43 @@ const FlightInstanceTable = () => {
                             />
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <Badge variant="outline" className={cn("rounded-md gap-1.5", getReadinessTone(searchBlockers))}>
+                              {readyForSearch ? (
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              ) : (
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                              )}
+                              {readyForSearch ? "Candidate" : "Needs attention"}
+                            </Badge>
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {readyForSearch
+                                ? "Future, active, and has available seats."
+                                : searchBlockers.join(", ")}
+                            </p>
+                          </div>
+                        </TableCell>
                         <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-12px_0_16px_-18px_hsl(var(--foreground))]">
                           <TooltipProvider delayDuration={120}>
                             <div className="flex items-center justify-end gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Copy traveler search URL"
+                                    onClick={() => handleCopyTravelerUrl(instance)}
+                                    disabled={validatingInstanceId === instance.id}
+                                    className="h-8 w-8"
+                                  >
+                                    <Clipboard className={cn("h-4 w-4", validatingInstanceId === instance.id && "animate-pulse")} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {readyForSearch ? "Validate & copy search URL" : searchBlockers.join(", ")}
+                                </TooltipContent>
+                              </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -712,6 +876,8 @@ const FlightInstanceTable = () => {
                 const booked = getBookedSeats(instance);
                 const loadFactor = getLoadFactor(instance);
                 const status = statusConfig[instance.status] || statusConfig.SCHEDULED;
+                const searchBlockers = getSearchBlockers(instance);
+                const readyForSearch = searchBlockers.length === 0;
                 const canDelete =
                   instance.status === "SCHEDULED" && available === instance.totalSeats;
 
@@ -796,8 +962,46 @@ const FlightInstanceTable = () => {
                       }
                     />
 
+                    <div className={cn(
+                      "rounded-md border p-3 text-sm",
+                      readyForSearch
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                        : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200",
+                    )}>
+                      <div className="flex items-center gap-2 font-medium">
+                        {readyForSearch ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4" />
+                        )}
+                        {readyForSearch ? "Booking candidate" : "Needs attention"}
+                      </div>
+                      <p className="mt-1 text-xs">
+                        {readyForSearch
+                          ? "Future, active, and has available seats."
+                          : searchBlockers.join(", ")}
+                      </p>
+                    </div>
+
                     <TooltipProvider delayDuration={120}>
                       <div className="flex justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              aria-label="Copy traveler search URL"
+                              onClick={() => handleCopyTravelerUrl(instance)}
+                              disabled={validatingInstanceId === instance.id}
+                              className="h-9 w-9"
+                            >
+                              <Clipboard className={cn("h-4 w-4", validatingInstanceId === instance.id && "animate-pulse")} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {readyForSearch ? "Validate & copy search URL" : searchBlockers.join(", ")}
+                          </TooltipContent>
+                        </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button

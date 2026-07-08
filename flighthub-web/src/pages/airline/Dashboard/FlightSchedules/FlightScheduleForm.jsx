@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CalendarDays, Clock, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +47,13 @@ const localToday = () => {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 };
 
+const getWeeklyFrequency = (form) =>
+  form.isActive
+    ? form.recurrenceType === "DAILY"
+      ? 7
+      : form.operatingDays.length
+    : 0;
+
 const validate = (form, editing) => {
   const errors = {};
   const today = localToday();
@@ -69,7 +76,9 @@ const FlightScheduleForm = () => {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
+  const requestedFlightId = searchParams.get("flightId");
 
   const { flights: flightPayload = [], loading: flightsLoading } = useSelector((state) => state.flight);
   const { currentFlightSchedule, loading: scheduleLoading } = useSelector((state) => state.flightSchedule);
@@ -80,17 +89,35 @@ const FlightScheduleForm = () => {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [hydratedScheduleId, setHydratedScheduleId] = useState(null);
+  const [prefilledFlightId, setPrefilledFlightId] = useState(null);
 
   useEffect(() => {
     dispatch(getFlightsByAirline());
     if (editing) dispatch(getFlightScheduleById(id));
   }, [dispatch, editing, id]);
 
-  if (editing && scheduleMatchesRoute && hydratedScheduleId !== currentFlightSchedule.id) {
+  useEffect(() => {
+    if (!editing || !scheduleMatchesRoute || hydratedScheduleId === currentFlightSchedule?.id) return;
+
     setHydratedScheduleId(currentFlightSchedule.id);
     setForm(toForm(currentFlightSchedule));
     setErrors({});
-  }
+  }, [currentFlightSchedule, editing, hydratedScheduleId, scheduleMatchesRoute]);
+
+  useEffect(() => {
+    if (editing || !requestedFlightId || prefilledFlightId === requestedFlightId) return;
+    const requestedFlight = flights.find((flight) => String(flight.id) === String(requestedFlightId));
+    if (!requestedFlight || requestedFlight.status === "CANCELLED") return;
+
+    setPrefilledFlightId(requestedFlightId);
+    setForm((current) => current.flightId ? current : { ...current, flightId: String(requestedFlight.id) });
+    setErrors((current) => {
+      if (!current.flightId) return current;
+      const next = { ...current };
+      delete next.flightId;
+      return next;
+    });
+  }, [editing, flights, prefilledFlightId, requestedFlightId]);
 
   const selectedFlight = flights.find((flight) => String(flight.id) === form.flightId);
   const activeFlight = editing && scheduleMatchesRoute && !selectedFlight
@@ -175,6 +202,8 @@ const FlightScheduleForm = () => {
 
   const localClockSuggestsOvernight = form.departureTime && form.arrivalTime && form.arrivalTime <= form.departureTime;
   const selectedDays = form.recurrenceType === "DAILY" ? ALL_OPERATING_DAYS : form.operatingDays;
+  const weeklyFrequency = getWeeklyFrequency(form);
+  const periodExpired = form.endDate && form.endDate < localToday();
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
@@ -319,6 +348,22 @@ const FlightScheduleForm = () => {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {selectedDays.map((day) => <Badge key={day} variant="outline">{daysOfWeek.find((item) => item.id === day)?.short}</Badge>)}
+              </div>
+              <div className={`rounded-md border p-3 text-sm ${periodExpired || weeklyFrequency === 0 ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"}`}>
+                <p className="font-medium">
+                  {periodExpired
+                    ? "Schedule period has ended"
+                    : weeklyFrequency === 0
+                      ? "No future generation"
+                      : `${weeklyFrequency} departure${weeklyFrequency === 1 ? "" : "s"} per week`}
+                </p>
+                <p className="mt-1 text-xs">
+                  {periodExpired
+                    ? "Extend the end date if this schedule should continue generating instances."
+                    : weeklyFrequency === 0
+                      ? "Activate the schedule and select operating days before saving."
+                      : "Saving this schedule will synchronize future flight instances for matching operating days."}
+                </p>
               </div>
             </CardContent>
           </Card>

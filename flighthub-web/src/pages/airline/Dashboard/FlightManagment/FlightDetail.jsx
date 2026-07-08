@@ -6,6 +6,8 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  CalendarPlus,
+  CheckCircle2,
   Coffee,
   DollarSign,
   Edit,
@@ -51,6 +53,22 @@ const formatDateTime = (value) => {
 
 const airportCode = (airport) => airport?.iataCode || "---";
 const airportCity = (airport) => airport?.city?.name || airport?.name || "Airport unavailable";
+
+const getScheduleReadiness = (flight) => {
+  const blockers = [];
+  const departureId = flight?.departureAirport?.id;
+  const arrivalId = flight?.arrivalAirport?.id;
+
+  if (flight?.status === "CANCELLED") blockers.push("Cancelled definition");
+  if (!flight?.aircraft?.id) blockers.push("Missing aircraft assignment");
+  if (!departureId || !arrivalId) blockers.push("Missing route airports");
+  if (departureId && arrivalId && String(departureId) === String(arrivalId)) blockers.push("Departure and arrival must differ");
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+  };
+};
 
 const DefinitionItem = ({ label, value }) => (
   <div>
@@ -151,6 +169,7 @@ const FlightDetail = () => {
 
   const cancelled = flight.status === "CANCELLED";
   const aircraftSeats = flight.aircraft?.seatingCapacity || flight.aircraft?.totalSeats || 0;
+  const scheduleReadiness = getScheduleReadiness(flight);
 
   return (
     <div className="space-y-5">
@@ -226,15 +245,35 @@ const FlightDetail = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Operational next steps</CardTitle>
+            <CardTitle>Schedule readiness</CardTitle>
             <CardDescription>Flight definitions do not represent a specific travel date.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/airline/schedules")}>
-              <CalendarDays /> Manage schedules <ArrowRight className="ml-auto" />
+          <CardContent className="space-y-4">
+            <div className={`rounded-md border p-4 ${scheduleReadiness.ready ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200" : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"}`}>
+              <div className="flex items-start gap-3">
+                {scheduleReadiness.ready ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+                <div>
+                  <p className="text-sm font-semibold">{scheduleReadiness.ready ? "Ready for scheduling" : "Needs attention before scheduling"}</p>
+                  <p className="mt-1 text-xs">
+                    {scheduleReadiness.ready
+                      ? "This route and aircraft pairing can be used to generate recurring schedules."
+                      : scheduleReadiness.blockers.join(", ")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button
+              className="w-full justify-start"
+              disabled={!scheduleReadiness.ready}
+              onClick={() => navigate(`/airline/schedules/new?flightId=${id}`)}
+            >
+              <CalendarPlus /> Create schedule <ArrowRight className="ml-auto" />
             </Button>
             <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/airline/instances")}>
               <Settings /> Manage flight instances <ArrowRight className="ml-auto" />
+            </Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/airline/schedules")}>
+              <CalendarDays /> Manage schedules <ArrowRight className="ml-auto" />
             </Button>
             {flight.aircraft?.id ? (
               <Button variant="outline" className="w-full justify-start" onClick={() => navigate(`/airline/aircraft/${flight.aircraft.id}`)}>

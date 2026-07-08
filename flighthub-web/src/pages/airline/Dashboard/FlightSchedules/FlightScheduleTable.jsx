@@ -92,6 +92,38 @@ const getDuration = (departureTime, arrivalTime) => {
   return `${hours}h ${minutes}m`;
 };
 
+const todayIso = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+};
+
+const getWeeklyDepartures = (schedule) => {
+  if (!schedule.isActive) return 0;
+  if (schedule.recurrenceType === "DAILY") return 7;
+  return schedule.operatingDays?.length || 0;
+};
+
+const getGenerationBlockers = (schedule) => {
+  const blockers = [];
+  const today = todayIso();
+
+  if (!schedule.isActive) blockers.push("inactive");
+  if (schedule.endDate && schedule.endDate < today) blockers.push("effective period ended");
+  if (!schedule.startDate) blockers.push("missing start date");
+  if (!schedule.endDate) blockers.push("missing end date");
+  if (!schedule.departureTime || !schedule.arrivalTime) blockers.push("missing local times");
+  if (!schedule.departureAirport || !schedule.arrivalAirport) blockers.push("missing route reference");
+  if (getWeeklyDepartures(schedule) < 1) blockers.push("no operating days");
+
+  return blockers;
+};
+
+const readinessClass = (blockers) =>
+  blockers.length === 0
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+    : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300";
+
 const recurrenceBadgeClass = {
   DAILY: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300",
   WEEKLY: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300",
@@ -162,11 +194,8 @@ const FlightScheduleTable = () => {
 
   const schedules = useMemo(() => asArray(flightSchedules), [flightSchedules]);
   const activeCount = schedules.filter((schedule) => schedule.isActive).length;
-  const weeklyDepartures = schedules.reduce((sum, schedule) => {
-    if (!schedule.isActive) return sum;
-    if (schedule.recurrenceType === "DAILY") return sum + 7;
-    return sum + (schedule.operatingDays?.length || 0);
-  }, 0);
+  const generatingCount = schedules.filter((schedule) => getGenerationBlockers(schedule).length === 0).length;
+  const weeklyDepartures = schedules.reduce((sum, schedule) => sum + getWeeklyDepartures(schedule), 0);
 
   const handleDeactivate = async (scheduleId) => {
     try {
@@ -277,7 +306,7 @@ const FlightScheduleTable = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <MetricCard icon={Plane} label="Total schedules" value={schedules.length} />
         <MetricCard
           icon={CheckCircle}
@@ -285,6 +314,13 @@ const FlightScheduleTable = () => {
           value={activeCount}
           helper={`${schedules.length - activeCount} inactive`}
           iconClassName="bg-emerald-500/10 text-emerald-600"
+        />
+        <MetricCard
+          icon={Calendar}
+          label="Generating"
+          value={generatingCount}
+          helper="Ready to create future instances"
+          iconClassName="bg-violet-500/10 text-violet-600"
         />
         <MetricCard
           icon={Clock}
@@ -316,7 +352,7 @@ const FlightScheduleTable = () => {
           )}
 
           <div className="hidden max-w-full overflow-x-auto rounded-b-lg md:block">
-            <Table className="min-w-[980px]">
+            <Table className="min-w-[1140px]">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="w-[170px]">Flight</TableHead>
@@ -324,6 +360,7 @@ const FlightScheduleTable = () => {
                   <TableHead className="w-[190px]">Timing</TableHead>
                   <TableHead className="w-[180px]">Recurrence</TableHead>
                   <TableHead className="w-[130px]">Status</TableHead>
+                  <TableHead className="w-[170px]">Generation</TableHead>
                   <TableHead className="sticky right-0 z-20 w-[128px] bg-muted/50 text-right shadow-[-12px_0_16px_-18px_hsl(var(--foreground))]">
                     Actions
                   </TableHead>
@@ -332,7 +369,7 @@ const FlightScheduleTable = () => {
               <TableBody>
                 {loading && !schedules.length ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center">
+                    <TableCell colSpan={7} className="py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading schedules...
@@ -341,7 +378,7 @@ const FlightScheduleTable = () => {
                   </TableRow>
                 ) : !schedules.length ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center">
+                    <TableCell colSpan={7} className="py-12 text-center">
                       <div className="mx-auto max-w-md space-y-2">
                         <Calendar className="mx-auto h-10 w-10 text-muted-foreground" />
                         <p className="font-medium">No flight schedules found</p>
@@ -352,66 +389,85 @@ const FlightScheduleTable = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  schedules.map((schedule) => (
-                    <TableRow key={schedule.id} className="align-top hover:bg-muted/40">
-                      <TableCell>
-                        <div className="flex items-center gap-2 font-semibold">
-                          <Plane className="h-4 w-4 text-primary" />
-                          {schedule.flightNumber || `Schedule #${schedule.id}`}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Flight ID #{schedule.flightId || "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                          <div className="min-w-0">
-                            <div className="font-medium">
-                              {airportCode(schedule.departureAirport)} →{" "}
-                              {airportCode(schedule.arrivalAirport)}
-                            </div>
-                            <div className="truncate text-xs text-muted-foreground">
-                              {airportName(schedule.departureAirport)} →{" "}
-                              {airportName(schedule.arrivalAirport)}
+                  schedules.map((schedule) => {
+                    const blockers = getGenerationBlockers(schedule);
+                    const ready = blockers.length === 0;
+
+                    return (
+                      <TableRow key={schedule.id} className="align-top hover:bg-muted/40">
+                        <TableCell>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <Plane className="h-4 w-4 text-primary" />
+                            {schedule.flightNumber || `Schedule #${schedule.id}`}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Flight ID #{schedule.flightId || "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <div className="font-medium">
+                                {airportCode(schedule.departureAirport)} →{" "}
+                                {airportCode(schedule.arrivalAirport)}
+                              </div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {airportName(schedule.departureAirport)} →{" "}
+                                {airportName(schedule.arrivalAirport)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="text-sm font-medium">
-                              {formatTime(schedule.departureTime)} - {formatTime(schedule.arrivalTime)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {getDuration(schedule.departureTime, schedule.arrivalTime)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="text-sm font-medium">
+                                {formatTime(schedule.departureTime)} - {formatTime(schedule.arrivalTime)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {getDuration(schedule.departureTime, schedule.arrivalTime)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <RecurrenceBadge
-                            type={schedule.recurrenceType}
-                            operatingDays={schedule.operatingDays}
-                          />
-                          {schedule.recurrenceType === "WEEKLY" && schedule.operatingDays?.length ? (
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <RecurrenceBadge
+                              type={schedule.recurrenceType}
+                              operatingDays={schedule.operatingDays}
+                            />
                             <div className="text-xs text-muted-foreground">
-                              {getOperatingDayShorts(schedule.operatingDays)}
+                              {getWeeklyDepartures(schedule)} departures/week
                             </div>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge isActive={schedule.isActive} />
-                      </TableCell>
-                      <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-12px_0_16px_-18px_hsl(var(--foreground))]">
-                        {renderActions(schedule)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            {schedule.recurrenceType === "WEEKLY" && schedule.operatingDays?.length ? (
+                              <div className="text-xs text-muted-foreground">
+                                {getOperatingDayShorts(schedule.operatingDays)}
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge isActive={schedule.isActive} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Badge variant="outline" className={cn("gap-1.5 rounded-md", readinessClass(blockers))}>
+                              {ready ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                              {ready ? "Ready" : "Blocked"}
+                            </Badge>
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {ready ? "Can generate future instances." : blockers.join(", ")}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-12px_0_16px_-18px_hsl(var(--foreground))]">
+                          {renderActions(schedule)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -432,7 +488,11 @@ const FlightScheduleTable = () => {
                 </p>
               </div>
             ) : (
-              schedules.map((schedule) => (
+              schedules.map((schedule) => {
+                const blockers = getGenerationBlockers(schedule);
+                const ready = blockers.length === 0;
+
+                return (
                 <div key={schedule.id} className="space-y-4 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -492,9 +552,25 @@ const FlightScheduleTable = () => {
                     </div>
                   </div>
 
+                  <div className={cn(
+                    "rounded-md border p-3 text-sm",
+                    ready
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                      : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200",
+                  )}>
+                    <div className="flex items-center gap-2 font-medium">
+                      {ready ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                      {ready ? "Ready to generate" : "Generation blocked"}
+                    </div>
+                    <p className="mt-1 text-xs">
+                      {ready ? "This schedule can create future flight instances." : blockers.join(", ")}
+                    </p>
+                  </div>
+
                   {renderActions(schedule, true)}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </CardContent>

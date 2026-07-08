@@ -15,7 +15,6 @@ import {
   Plane,
   RotateCcw,
   Timer,
-  Users,
   XCircle,
 } from "lucide-react";
 
@@ -122,6 +121,38 @@ const getDuration = (departureTime, arrivalTime) => {
   return `${hours}h ${minutes}m`;
 };
 
+const todayIso = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+};
+
+const isFutureDateTime = (value) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > Date.now();
+};
+
+const getWeeklyFrequency = (schedule, operatingDays) => {
+  if (!schedule?.isActive) return 0;
+  return schedule.recurrenceType === "DAILY" ? 7 : operatingDays.length || 0;
+};
+
+const getGenerationBlockers = (schedule, operatingDays) => {
+  const blockers = [];
+  const today = todayIso();
+
+  if (!schedule?.isActive) blockers.push("inactive");
+  if (schedule?.endDate && schedule.endDate < today) blockers.push("effective period ended");
+  if (!schedule?.startDate) blockers.push("missing start date");
+  if (!schedule?.endDate) blockers.push("missing end date");
+  if (!schedule?.departureTime || !schedule?.arrivalTime) blockers.push("missing local times");
+  if (!schedule?.departureAirport || !schedule?.arrivalAirport) blockers.push("missing route reference");
+  if (getWeeklyFrequency(schedule, operatingDays) < 1) blockers.push("no operating days");
+
+  return blockers;
+};
+
 const getBookedSeats = (instance) =>
   Math.max(0, (instance?.totalSeats || 0) - (instance?.availableSeats ?? instance?.totalAvailableSeats ?? 0));
 
@@ -130,6 +161,9 @@ const getOccupancyPercentage = (instance) => {
   if (!totalSeats) return 0;
   return Math.round((getBookedSeats(instance) / totalSeats) * 100);
 };
+
+const getAvailableSeats = (instance) =>
+  instance?.availableSeats ?? instance?.totalAvailableSeats ?? 0;
 
 const MetricCard = ({ icon: Icon, label, value, helper, iconClassName }) => (
   <Card className="border-border/70 shadow-sm">
@@ -185,11 +219,16 @@ const FlightScheduleDetail = () => {
     recurrenceConfig[schedule?.recurrenceType] || recurrenceConfig.CUSTOM;
   const duration = getDuration(schedule?.departureTime, schedule?.arrivalTime);
 
+  const generationBlockers = getGenerationBlockers(schedule, operatingDays);
+  const generationReady = generationBlockers.length === 0;
   const activeInstances = instances.filter((item) =>
     ["SCHEDULED", "BOARDING", "DEPARTED"].includes(item.status),
   ).length;
-  const weeklyFrequency =
-    schedule?.recurrenceType === "DAILY" ? 7 : operatingDays.length || 0;
+  const futureInstances = instances.filter((item) => isFutureDateTime(item.departureDateTime)).length;
+  const attentionInstances = instances.filter(
+    (item) => ["CANCELLED", "DIVERTED"].includes(item.status) || getAvailableSeats(item) < 1,
+  ).length;
+  const weeklyFrequency = getWeeklyFrequency(schedule, operatingDays);
   const estimatedMonthlyFlights = weeklyFrequency ? Math.round(weeklyFrequency * 4.35) : 0;
 
   if (loading && !schedule) {
@@ -366,19 +405,57 @@ const FlightScheduleDetail = () => {
         />
         <MetricCard
           icon={Plane}
-          label="Known instances"
-          value={instances.length}
-          helper={`${activeInstances} active`}
+          label="Future instances"
+          value={futureInstances}
+          helper={`${instances.length} known · ${activeInstances} active`}
           iconClassName="bg-violet-500/10 text-violet-600"
         />
         <MetricCard
-          icon={Users}
-          label="Seats per instance"
-          value={schedule.totalSeats || "TBD"}
-          helper={schedule.availableSeats ? `${schedule.availableSeats} available` : "From aircraft inventory"}
+          icon={generationReady ? CheckCircle : AlertTriangle}
+          label="Generation readiness"
+          value={generationReady ? "Ready" : "Blocked"}
+          helper={generationReady ? "Can generate future instances" : generationBlockers.join(", ")}
           iconClassName="bg-emerald-500/10 text-emerald-600"
         />
       </div>
+
+      <Card className={cn(
+        "border-border/70 shadow-sm",
+        generationReady
+          ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+          : "border-amber-200 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10",
+      )}>
+        <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
+              generationReady
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+            )}>
+              {generationReady ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className="font-semibold">
+                {generationReady ? "Schedule can generate future operations" : "Schedule needs attention before generation"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {generationReady
+                  ? `${weeklyFrequency} departure${weeklyFrequency === 1 ? "" : "s"} per week across the effective period.`
+                  : generationBlockers.join(", ")}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate(`/airline/schedules/${id}/edit`)}>
+              Fix schedule
+            </Button>
+            <Button onClick={() => navigate("/airline/instances")}>
+              Review instances
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 sm:w-fit">
@@ -486,6 +563,19 @@ const FlightScheduleDetail = () => {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Generated dated operations linked to this recurring schedule.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="outline" className="rounded-md">
+                    {futureInstances} future
+                  </Badge>
+                  <Badge variant="outline" className={cn(
+                    "rounded-md",
+                    attentionInstances > 0
+                      ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+                  )}>
+                    {attentionInstances} need attention
+                  </Badge>
+                </div>
               </div>
               <Button onClick={() => navigate("/airline/instances/new")} className="gap-2">
                 <CalendarDays className="h-4 w-4" />
@@ -494,7 +584,7 @@ const FlightScheduleDetail = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <Table className="min-w-[860px]">
+                <Table className="min-w-[980px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
                       <TableHead>Instance</TableHead>
@@ -502,6 +592,7 @@ const FlightScheduleDetail = () => {
                       <TableHead>Arrival</TableHead>
                       <TableHead>Load</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Readiness</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -511,6 +602,10 @@ const FlightScheduleDetail = () => {
                         const occupancy = getOccupancyPercentage(instance);
                         const statusClass =
                           instanceStatusConfig[instance.status] || instanceStatusConfig.SCHEDULED;
+                        const instanceReady =
+                          isFutureDateTime(instance.departureDateTime) &&
+                          !["CANCELLED", "DIVERTED", "ARRIVED", "DEPARTED"].includes(instance.status) &&
+                          getAvailableSeats(instance) > 0;
 
                         return (
                           <TableRow key={instance.id} className="align-top hover:bg-muted/40">
@@ -556,6 +651,20 @@ const FlightScheduleDetail = () => {
                                 {instance.status || "SCHEDULED"}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "rounded-md gap-1.5",
+                                  instanceReady
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                    : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+                                )}
+                              >
+                                {instanceReady ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                                {instanceReady ? "Candidate" : "Attention"}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
                                 <Button
@@ -583,7 +692,7 @@ const FlightScheduleDetail = () => {
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-12 text-center">
+                        <TableCell colSpan={7} className="py-12 text-center">
                           <div className="mx-auto max-w-md space-y-2">
                             <CalendarDays className="mx-auto h-10 w-10 text-muted-foreground" />
                             <p className="font-medium">No instances linked to this schedule</p>
