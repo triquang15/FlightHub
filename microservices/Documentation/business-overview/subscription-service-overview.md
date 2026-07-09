@@ -6,6 +6,10 @@
 billing, entitlement, controller, persistence, event, or reconciliation implementation.
 It is therefore not exposed by API Gateway and must not be treated as production-ready.
 
+Super Admin may show a placeholder or future roadmap entry for subscriptions,
+but customer, airline-owner, and payment flows must not depend on this service
+until the contract below is implemented.
+
 ## Required contract before implementation
 
 1. Define plan ownership, benefits, billing interval, trial and currency rules.
@@ -21,3 +25,7 @@ It is therefore not exposed by API Gateway and must not be treated as production
 The service may remain in local Compose for future development, but it is intentionally
 absent from Gateway routes and the supported backend API surface. Do not add a create
 subscription endpoint until the billing contract above exists.
+
+Current Payment Service checkout is booking-specific. Reusing booking payment
+records for recurring subscriptions would mix two different lifecycles and should
+be avoided.

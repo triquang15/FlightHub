@@ -49,6 +49,8 @@ const numberValue = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
 const formatNumber = (value) => numberValue(value).toLocaleString();
 const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`;
 
@@ -86,12 +88,8 @@ const PlatformOverview = ({ platformStats }) => {
     bookings: numberValue(item.bookingCount),
     revenue: numberValue(item.revenue),
   }));
-  const topAirlines = Array.isArray(superAdminAirlinePerformance?.topAirlinesByBookings)
-    ? superAdminAirlinePerformance.topAirlinesByBookings
-    : [];
-  const topRoutes = Array.isArray(superAdminRoutePerformance?.topRoutesByBookings)
-    ? superAdminRoutePerformance.topRoutesByBookings
-    : [];
+  const topAirlines = asArray(superAdminAirlinePerformance?.topAirlinesByBookings);
+  const topRoutes = asArray(superAdminRoutePerformance?.topRoutesByBookings);
 
   const loading =
     superAdminStatisticsLoading ||

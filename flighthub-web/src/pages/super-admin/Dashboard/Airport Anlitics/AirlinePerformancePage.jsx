@@ -32,6 +32,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const asArray = (value) => Array.isArray(value) ? value : [];
+
+const EmptyAnalyticsState = ({ title, description }) => (
+  <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+    <Activity className="h-10 w-10 text-muted-foreground" />
+    <p className="mt-3 font-medium text-foreground">{title}</p>
+    <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p>
+  </div>
+);
+
 const AirlinePerformancePage = () => {
   const dispatch = useDispatch();
   const { superAdminAirlinePerformance, superAdminAirlinePerformanceLoading } = useSelector((store) => store.booking);
@@ -63,6 +73,37 @@ const AirlinePerformancePage = () => {
     );
   }
 
+  const topAirlinesByBookings = asArray(superAdminAirlinePerformance?.topAirlinesByBookings);
+  const topAirlinesByRevenue = asArray(superAdminAirlinePerformance?.topAirlinesByRevenue);
+  const topAirlinesByAverageRevenue = asArray(superAdminAirlinePerformance?.topAirlinesByAverageRevenue);
+  const topAirlinesByFlightCount = asArray(superAdminAirlinePerformance?.topAirlinesByFlightCount);
+  const hasAnalyticsData = [
+    topAirlinesByBookings,
+    topAirlinesByRevenue,
+    topAirlinesByAverageRevenue,
+    topAirlinesByFlightCount,
+  ].some((items) => items.length > 0);
+
+  if (!hasAnalyticsData) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Airline Performance Analytics</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Airline analytics will appear after completed bookings are available.
+          </p>
+        </div>
+        <EmptyAnalyticsState
+          title="No airline performance yet"
+          description="Completed bookings and issued flight activity are required before FlightHub can rank airlines by bookings, revenue, or flight count."
+        />
+      </div>
+    );
+  }
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -78,21 +119,21 @@ const AirlinePerformancePage = () => {
 
   // Calculate summary statistics
   const totalAirlines = new Set([
-    ...superAdminAirlinePerformance.topAirlinesByBookings.map(a => a.airlineId),
-    ...superAdminAirlinePerformance.topAirlinesByRevenue.map(a => a.airlineId)
+    ...topAirlinesByBookings.map(a => a.airlineId),
+    ...topAirlinesByRevenue.map(a => a.airlineId)
   ]).size;
 
-  const totalBookings = superAdminAirlinePerformance.topAirlinesByBookings.reduce(
+  const totalBookings = topAirlinesByBookings.reduce(
     (sum, airline) => sum + (airline.totalBookings || 0),
     0
   );
 
-  const totalRevenue = superAdminAirlinePerformance.topAirlinesByRevenue.reduce(
+  const totalRevenue = topAirlinesByRevenue.reduce(
     (sum, airline) => sum + (airline.totalRevenue || 0),
     0
   );
 
-  const totalFlights = superAdminAirlinePerformance.topAirlinesByBookings.reduce(
+  const totalFlights = topAirlinesByBookings.reduce(
     (sum, airline) => sum + (airline.totalFlights || 0),
     0
   );
@@ -313,7 +354,7 @@ const AirlinePerformancePage = () => {
               </CardHeader>
               <CardContent>
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByBookings,
+                  topAirlinesByBookings,
                   'totalBookings',
                   '#3b82f6',
                   'Bookings'
@@ -331,7 +372,7 @@ const AirlinePerformancePage = () => {
               </CardHeader>
               <CardContent>
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByRevenue,
+                  topAirlinesByRevenue,
                   'totalRevenue',
                   '#10b981',
                   'Revenue'
@@ -351,7 +392,7 @@ const AirlinePerformancePage = () => {
               </CardHeader>
               <CardContent>
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByAverageRevenue,
+                  topAirlinesByAverageRevenue,
                   'averageRevenuePerBooking',
                   '#8b5cf6',
                   'Avg Revenue'
@@ -369,7 +410,7 @@ const AirlinePerformancePage = () => {
               </CardHeader>
               <CardContent>
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByFlightCount,
+                  topAirlinesByFlightCount,
                   'totalFlights',
                   '#f59e0b',
                   'Flights'
@@ -394,7 +435,7 @@ const AirlinePerformancePage = () => {
             <CardContent>
               <div className="mb-6">
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByBookings,
+                  topAirlinesByBookings,
                   'totalBookings',
                   '#3b82f6',
                   'Bookings'
@@ -404,7 +445,7 @@ const AirlinePerformancePage = () => {
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {superAdminAirlinePerformance.topAirlinesByBookings.slice(0, 10).map((airline, index) => (
+            {topAirlinesByBookings.slice(0, 10).map((airline, index) => (
               <AirlineCard key={airline.airlineId} airline={airline} rank={index + 1} type="bookings" />
             ))}
           </div>
@@ -425,7 +466,7 @@ const AirlinePerformancePage = () => {
             <CardContent>
               <div className="mb-6">
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByRevenue,
+                  topAirlinesByRevenue,
                   'totalRevenue',
                   '#10b981',
                   'Revenue'
@@ -435,7 +476,7 @@ const AirlinePerformancePage = () => {
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {superAdminAirlinePerformance.topAirlinesByRevenue.slice(0, 10).map((airline, index) => (
+            {topAirlinesByRevenue.slice(0, 10).map((airline, index) => (
               <AirlineCard key={airline.airlineId} airline={airline} rank={index + 1} type="revenue" />
             ))}
           </div>
@@ -456,7 +497,7 @@ const AirlinePerformancePage = () => {
             <CardContent>
               <div className="mb-6">
                 {renderBarChart(
-                  superAdminAirlinePerformance.topAirlinesByAverageRevenue,
+                  topAirlinesByAverageRevenue,
                   'averageRevenuePerBooking',
                   '#8b5cf6',
                   'Avg Revenue'
@@ -466,7 +507,7 @@ const AirlinePerformancePage = () => {
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {superAdminAirlinePerformance.topAirlinesByAverageRevenue.slice(0, 10).map((airline, index) => (
+            {topAirlinesByAverageRevenue.slice(0, 10).map((airline, index) => (
               <AirlineCard key={airline.airlineId} airline={airline} rank={index + 1} type="avgRevenue" />
             ))}
           </div>

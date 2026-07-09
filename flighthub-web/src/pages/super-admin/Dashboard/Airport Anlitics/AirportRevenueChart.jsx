@@ -26,13 +26,22 @@ import {
   YAxis,
 } from "recharts";
 
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
+const EmptyChartState = ({ label }) => (
+  <div className="flex h-[450px] items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+    {label}
+  </div>
+);
+
 const AirportRevenueChart = () => {
   const { superAdminAirportPerformance } = useSelector(
     (store) => store.booking
   );
 
-  const revenueChartData =
-    superAdminAirportPerformance.topAirportsByRevenue.map((airport) => ({
+  const revenueChartData = asArray(
+    superAdminAirportPerformance?.topAirportsByRevenue
+  ).map((airport) => ({
       airport: airport.airportCode,
       bookings: airport.totalBookings,
       revenue: airport.totalRevenue,
@@ -58,48 +67,51 @@ const AirportRevenueChart = () => {
         <CardDescription>Revenue generated per airport</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[450px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={revenueChartData}
-              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="airport"
-             
-                textAnchor="end"
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name) => [
-                      name === "revenue"
-                        ? formatCurrency(value)
-                        : formatNumber(value),
-                      name === "revenue" ? "Revenue" : "Bookings",
-                    ]}
-                  />
-                }
-              />
-              <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-                {revenueChartData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+        {revenueChartData.length === 0 ? (
+          <EmptyChartState label="No airport revenue data yet." />
+        ) : (
+          <ChartContainer config={chartConfig} className="h-[450px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={revenueChartData}
+                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="airport"
+                  textAnchor="end"
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value, name) => [
+                        name === "revenue"
+                          ? formatCurrency(value)
+                          : formatNumber(value),
+                        name === "revenue" ? "Revenue" : "Bookings",
+                      ]}
+                    />
+                  }
+                />
+                <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
+                  {revenueChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

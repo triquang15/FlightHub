@@ -4,6 +4,17 @@ This document describes the manual test workflow for the FlightHub user-service,
 
 The goal is to validate the user module first, then use the same baseline to continue improving the rest of the platform.
 
+## Production boundary summary
+
+- User Service owns users, credentials, sessions, refresh tokens, password reset,
+  login audit, and known-device detection.
+- API Gateway owns external JWT validation, Redis-backed access-token blacklist,
+  route-level authorization, and rate limiting.
+- Notification Service owns email/SMS delivery records, templates, Kafka
+  consumers, idempotency, retry/DLQ visibility, and operator notification audit.
+- Frontend owns token storage choice (`sessionStorage` vs `localStorage`) and
+  must preserve `deviceId` across logout to avoid false suspicious-login alerts.
+
 ## Scope
 
 This workflow covers:
@@ -18,6 +29,8 @@ This workflow covers:
 - Logout and token revocation
 - Known-device tracking for suspicious login detection
 - Notification idempotency during Kafka retry
+- Notification DLQ capture for failed delivery processing
+- Admin notification overview for failed and pending deliveries
 - Frontend forgot/reset password integration
 - Troubleshooting checklist
 
@@ -520,6 +533,9 @@ Expected result:
 - Gateway calls user-service `/api/auth/logout` through Feign.
 - User-service revokes the refresh token for the device.
 - Gateway blacklists the access token in Redis.
+- Gateway logout remains the browser-facing logout endpoint. Frontend should not
+  call user-service logout directly because it would bypass gateway token
+  blacklist behavior.
 - Protected API calls with the old access token fail.
 - Refresh calls with the old refresh token fail.
 - Frontend removes auth tokens from both `localStorage` and `sessionStorage`.
@@ -562,6 +578,10 @@ Important cases:
 - Duplicate password reset event should not send duplicate reset emails.
 - Duplicate suspicious login event should not send duplicate alert emails.
 - Booking confirmed email and SMS are idempotent per channel.
+- Failed notification processing is routed to the configured DLQ listener instead
+  of being lost silently.
+- The admin notification overview should expose failed delivery counts so the
+  Super Admin dashboard can display operational risk without parsing service logs.
 
 Suggested verification:
 
@@ -587,6 +607,9 @@ Expected result:
 
 - Gateway eventually returns `429 Too Many Requests`.
 - User-service brute force protection also blocks repeated failed login attempts.
+- Redis rate-limit keys should use a stable subject such as IP, route, and
+  authenticated user when available. Gateway limits are defense in depth and do
+  not replace user-service credential abuse checks.
 
 ## Frontend Verification
 
@@ -688,6 +711,8 @@ This workflow is passing when:
 - Logout revokes refresh token and blacklists access token.
 - Duplicate notification events do not send duplicate emails/SMS.
 - Auth endpoints are rate limited.
+- Gateway logout revokes refresh tokens and blacklists access tokens.
+- Notification DLQ and failed-delivery counts are visible for operations.
 
 ## Suggested Next Improvements
 

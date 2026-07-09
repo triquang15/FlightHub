@@ -73,7 +73,13 @@ const CityManagement = () => {
       totalCities: total || cities.length,
       totalCountries: new Set(cities.map(c => c.countryCode)).size,
       totalTimezones: new Set(cities.map(c => c.timeZone)).size,
-      issues: 0
+      issues: cities.filter((city) => (
+        !city.name ||
+        !city.cityCode ||
+        !city.countryCode ||
+        !city.countryName ||
+        !city.timeZone
+      )).length
     };
   };
 

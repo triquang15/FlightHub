@@ -7,6 +7,8 @@
 - **Fare**: a named sellable price product for one Flight and Cabin Class.
 - **FareRules**: refund and change conditions attached to one Fare.
 - **BaggagePolicy**: cabin and checked baggage allowances attached to one Fare.
+- **Coupon**: an airline-owned promotional discount that can be validated during
+  booking review and redeemed after successful payment.
 
 It does not own Flights, Cabin Classes, Airlines, bookings, payments, or seat
 inventory. Those records are referenced by cross-service IDs.
@@ -17,6 +19,8 @@ Flight (Flight Ops) 1 ---- * Fare * ---- 1 Cabin Class (Seat)
                               +---- 0..1 Fare Rules
                               |
                               +---- 0..1 Baggage Policy
+
+Airline 1 ---- * Coupon ---- * CouponRedemption
 ```
 
 ## Access model
@@ -41,6 +45,11 @@ gateway, but their service methods do not yet perform the same owner-level resou
 validation as Fare and Fare Rules. Do not treat direct service-port access as an
 authorization boundary.
 
+Coupon create/list/update/delete operations are owner-scoped. Coupon validation is
+customer-facing and requires the Booking flow to supply the target `airlineId`,
+booking amount, cabin class, and route/flight scope. Coupon redemption is an
+internal Booking operation after payment confirmation.
+
 ## Fare business rules
 
 - `name`, `rbdCode`, `flightId`, `cabinClassId`, and positive `baseFare` are required.
@@ -56,9 +65,11 @@ authorization boundary.
 - Lowest-fare search returns at most one Fare per Flight for the requested Cabin
   Class ID. Missing map keys mean no sellable Fare exists for that flight/cabin.
 
-The model currently stores numeric amounts without a currency column. Existing
-admin UI and demo data interpret them as INR. Multi-currency support requires an
-explicit ISO 4217 currency code before production use across markets.
+The current platform standardizes demo commercial amounts to USD. Fare requests
+and responses include an ISO 4217 `currency` field, and Booking validates that
+all selected leg fares match the configured booking currency before initiating
+payment. Demo data and frontend totals should be treated as USD unless a future
+multi-currency rollout explicitly changes the service contract.
 
 Before deploying owner-scoped Fare APIs over an existing database, run:
 
@@ -94,6 +105,25 @@ the mutable current Fare Rule for historical tickets is not sufficient.
 - Cabin and checked baggage weights, dimensions, pieces, and free allowances must
   be zero or positive.
 - Priority and extra-allowance flags default to false.
+
+## Coupon business rules
+
+- Coupon code is normalized to uppercase and unique per Airline.
+- Code must contain 3-32 characters using uppercase letters, numbers, hyphens,
+  or underscores.
+- Discount type is either fixed amount or percentage.
+- Percentage discounts cannot exceed 100%.
+- `validUntil` must be after `validFrom` and cannot be in the past on create.
+- `usageLimit` and `perUserLimit` must be at least 1, and per-user limit cannot
+  exceed total usage limit.
+- Optional minimum purchase amount and maximum discount amount must be
+  non-negative.
+- Optional scope can restrict a coupon to cabin classes and route IDs.
+- Validation calculates the discount but does not increment usage.
+- Redemption locks the coupon row, increments usage, and writes an idempotent
+  redemption row by booking ID.
+- Booking should redeem the coupon only after payment succeeds. Failed or
+  abandoned checkouts must not consume a coupon.
 
 ## Service dependencies
 
@@ -149,12 +179,28 @@ Recommended local startup order:
 | `PUT` | `/api/baggage-policies/{id}` | Update a policy |
 | `DELETE` | `/api/baggage-policies/{id}` | Delete a policy |
 
+### Coupons
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/coupons` | Create an owned coupon |
+| `GET` | `/api/coupons` | List owned coupons with filters |
+| `GET` | `/api/coupons/active` | List currently active owned coupons |
+| `GET` | `/api/coupons/{id}` | Read an owned coupon |
+| `PUT` | `/api/coupons/{id}` | Update an owned coupon |
+| `DELETE` | `/api/coupons/{id}` | Delete an owned coupon |
+| `POST` | `/api/coupons/validate` | Validate a coupon for checkout |
+| `GET` | `/api/coupons/check/{code}` | Check duplicate code for the owner |
+| `POST` | `/api/coupons/internal/redeem` | Redeem after successful payment |
+
 ## Seed and verification
 
 The production-style seed runner resolves Flight IDs from Flight Ops and Cabin
-Class IDs from Seat before writing Pricing data. It creates multiple Fare tiers
-with one Fare Rule and one Baggage Policy per Fare. The SQL is safe to re-run by
-the Fare natural key `(flightId, cabinClassId, name)`.
+Class IDs from Seat before writing Pricing data. It creates multiple USD Fare
+tiers with one Fare Rule and one Baggage Policy per Fare. It also seeds airline
+coupon examples for checkout validation. The SQL is safe to re-run by the Fare
+natural key `(flightId, cabinClassId, name)` and coupon natural key
+`(airlineId, code)`.
 
 ```bash
 bash microservices/scripts/init-production-demo-data.sh

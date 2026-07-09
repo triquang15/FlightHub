@@ -25,6 +25,7 @@ The service supports these platform capabilities:
 
 - Airline onboarding and profile management.
 - System administrator airline approval, suspension, and banning.
+- Owner onboarding for pre-created airline-owner accounts.
 - Airline-owner fleet registration and maintenance.
 - Flight operations aircraft assignment.
 - Seat inventory initialization from aircraft capacity and cabin layout.
@@ -66,7 +67,7 @@ Airline 1 ---- * Aircraft
 
 An authenticated user with `ROLE_AIRLINE_OWNER` can:
 
-- Create an airline profile.
+- Create an airline onboarding profile for themselves.
 - Read airlines that they own.
 - Update or delete airlines that they own.
 - Create aircraft under an airline that they own.
@@ -239,13 +240,19 @@ Airline statuses:
 
 ```text
 ACTIVE
+PENDING
 INACTIVE
 BANNED
 ```
 
-New airline profiles are always created with `INACTIVE` status. The status sent
+New airline profiles are always created with `PENDING` status. The status sent
 in `AirlineRequest` does not activate a new airline. A System Administrator must
-approve the airline.
+approve the airline before it becomes `ACTIVE` and available in customer-facing
+or owner operational dropdowns.
+
+`INACTIVE` is used for suspended/non-operational airlines after admin action.
+`BANNED` is terminal for airlines that should not be reactivated through normal
+approval.
 
 ### Airline Normalization and Validation
 
@@ -258,11 +265,15 @@ Current business rules:
 - Name, alias, alliance, and support fields are trimmed.
 - `ownerId` is created from the authenticated Gateway identity.
 - `ownerId` cannot be updated after airline creation.
+- One owner can onboard an airline only through their authenticated owner
+  identity. Public onboarding should not create arbitrary owner accounts.
 - Airline owners can update or delete only their own airlines.
 - Update requests do not change airline status.
 - Status changes are handled by System Administrator actions.
 
 The database enforces unique IATA and ICAO codes.
+The UI should pre-check duplicate IATA/ICAO codes and show field-level errors;
+the backend remains the final authority and rejects duplicate normalized codes.
 
 ### Headquarters City Enrichment
 
@@ -752,7 +763,7 @@ curl http://localhost:8080/docs/airline-core-service/v3/api-docs
 - Airline Swagger group lists all `/api/airlines/**` endpoints.
 - Aircraft Swagger group lists all `/api/aircrafts/**` endpoints.
 - Swagger hides internal identity headers.
-- New airlines are created with `INACTIVE` status.
+- New airlines are created with `PENDING` status.
 - Only System Administrators can approve, suspend, or ban airlines.
 - Airline owners can modify only their own airlines.
 - Airline owners can modify only aircraft belonging to their airlines.
@@ -789,12 +800,11 @@ git diff --check
   should always use the API Gateway.
 - Airline search currently accepts Spring Data property names directly for
   `sortBy`; a safe sort allowlist should be added.
-- Airline create/update currently relies on database constraints for duplicate
-  IATA and ICAO handling.
+- Airline create/update should surface duplicate IATA and ICAO as user-facing
+  validation errors instead of generic system errors.
 - Aircraft list currently returns all owned aircraft without pagination.
 - Aircraft create does not currently evict the `aircrafts` cache.
 - Airport response enrichment is not yet implemented for Aircraft.
 - Location Service failures are logged and tolerated, so airline country fields
   may be absent.
 - Automated context tests require a dedicated test datasource or test profile.
-

@@ -1,4 +1,4 @@
-import { Plane, MapPin, Clock, Navigation } from 'lucide-react';
+import { Plane, MapPin, Clock, Navigation, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const StatCard = ({ icon: Icon, value, label, color, bgColor }) => (
@@ -46,11 +46,18 @@ const AirportStatsCards = ({ statistics }) => {
       label: 'Coordinates',
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
+    },
+    {
+      icon: AlertTriangle,
+      value: statistics?.issues || 0,
+      label: 'Needs Review',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
       {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}

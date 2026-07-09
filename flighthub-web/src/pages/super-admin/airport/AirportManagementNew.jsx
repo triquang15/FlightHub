@@ -50,13 +50,23 @@ const AirportManagementNew = () => {
 
   const getStatistics = () => {
     if (!Array.isArray(airports)) {
-      return { totalAirports: 0, totalCities: 0, totalTimezones: 0 };
+      return { totalAirports: 0, totalCities: 0, totalTimezones: 0, airportsWithCoordinates: 0, issues: 0 };
     }
+    const issues = airports.filter((airport) => (
+      !airport.iataCode ||
+      !airport.name ||
+      !airport.city?.id ||
+      !airport.timeZone ||
+      !airport.geoCode?.latitude ||
+      !airport.geoCode?.longitude
+    )).length;
+
     return {
       totalAirports: total || airports.length,
       totalCities: new Set(airports.map(a => a.city?.name).filter(Boolean)).size,
       totalTimezones: new Set(airports.map(a => a.timeZone).filter(Boolean)).size,
-      airportsWithCoordinates: airports.filter(a => a.geoCode?.latitude && a.geoCode?.longitude).length
+      airportsWithCoordinates: airports.filter(a => a.geoCode?.latitude && a.geoCode?.longitude).length,
+      issues
     };
   };
 

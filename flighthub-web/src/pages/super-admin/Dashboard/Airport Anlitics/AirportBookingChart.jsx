@@ -26,12 +26,21 @@ import {
 } from "recharts";
 import { COLORS } from "../chartColor";
 
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
+const EmptyChartState = ({ label }) => (
+  <div className="flex h-[450px] items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+    {label}
+  </div>
+);
+
 const AirportBookingChart = () => {
   const { superAdminAirportPerformance } =
     useSelector((store) => store.booking);
 
-  const bookingsChartData =
-    superAdminAirportPerformance.topAirportsByBookings.map((airport) => ({
+  const bookingsChartData = asArray(
+    superAdminAirportPerformance?.topAirportsByBookings
+  ).map((airport) => ({
       airport: airport.airportCode,
       bookings: airport.totalBookings,
       revenue: airport.totalRevenue,
@@ -53,45 +62,44 @@ const AirportBookingChart = () => {
         <CardDescription>Number of bookings per airport</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[450px] w-full">
-          <ResponsiveContainer width="100%">
-            <BarChart
-              data={bookingsChartData}
-              margin={{ top: 20, right: 20, bottom: 0, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="airport"
-                
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis tickLine={false} axisLine={false} />
-              <ChartTooltip
-              cursor={false}
-                content={
-                  <ChartTooltipContent
-                  indicator="line"
-                    formatter={(value, name) => [
-                      name === "bookings"
-                        ? formatNumber(value)
-                        : formatCurrency(value),
-                      name === "bookings" ? "Bookings" : "Revenue",
-                    ]}
-                  />
-                }
-              />
-              <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
-                {bookingsChartData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+        {bookingsChartData.length === 0 ? (
+          <EmptyChartState label="No airport booking data yet." />
+        ) : (
+          <ChartContainer config={chartConfig} className="h-[450px] w-full">
+            <ResponsiveContainer width="100%">
+              <BarChart
+                data={bookingsChartData}
+                margin={{ top: 20, right: 20, bottom: 0, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="airport" axisLine={false} tickLine={false} />
+                <YAxis tickLine={false} axisLine={false} />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      formatter={(value, name) => [
+                        name === "bookings"
+                          ? formatNumber(value)
+                          : formatCurrency(value),
+                        name === "bookings" ? "Bookings" : "Revenue",
+                      ]}
+                    />
+                  }
+                />
+                <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
+                  {bookingsChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

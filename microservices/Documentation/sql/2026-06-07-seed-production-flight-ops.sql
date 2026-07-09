@@ -152,7 +152,7 @@ SET
     departure_time = seed.departure_time,
     arrival_time = seed.arrival_time,
     start_date = CURRENT_DATE,
-    end_date = CURRENT_DATE + 60,
+    end_date = CURRENT_DATE + 120,
     recurrence_type = 'WEEKLY',
     is_active = true
 FROM flights f
@@ -178,7 +178,7 @@ SELECT
     seed.departure_time,
     seed.arrival_time,
     CURRENT_DATE,
-    CURRENT_DATE + 60,
+    CURRENT_DATE + 120,
     'WEEKLY',
     true,
     0
@@ -220,7 +220,7 @@ WITH generated_instances AS (
     FROM flights f
     JOIN seed_flight_schedules seed ON seed.flight_number = f.flight_number
     JOIN flight_schedules fs ON fs.flight_id = f.id
-    JOIN LATERAL generate_series(CURRENT_DATE + 1, CURRENT_DATE + 30, INTERVAL '1 day') day_value ON true
+    JOIN LATERAL generate_series(CURRENT_DATE + 1, CURRENT_DATE + 90, INTERVAL '1 day') day_value ON true
     JOIN LATERAL (
         VALUES
             (current_setting('flighthub_seed.aircraft_vn_a359', true)::bigint, 305),

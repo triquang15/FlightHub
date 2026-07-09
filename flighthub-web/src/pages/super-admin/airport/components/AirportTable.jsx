@@ -3,6 +3,8 @@ import {
   ChevronUp,
   Clock,
   Edit,
+  AlertTriangle,
+  CheckCircle,
   MapPin,
   MoreVertical,
   Plane,
@@ -25,6 +27,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+
+const getAirportReadiness = (airport) => {
+  const blockers = [];
+
+  if (!airport?.iataCode) blockers.push('Missing IATA');
+  if (!airport?.name) blockers.push('Missing name');
+  if (!airport?.city?.id) blockers.push('Missing city');
+  if (!airport?.timeZone) blockers.push('Missing timezone');
+  if (!airport?.geoCode?.latitude || !airport?.geoCode?.longitude) blockers.push('Missing coordinates');
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+  };
+};
 
 const SortableHeader = ({ field, sortField, sortDirection, onSort, children, className = "" }) => (
   <TableHead
@@ -75,7 +92,7 @@ const AirportTable = ({
 
   return (
     <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
-      <Table className="w-[1400px] min-w-[1400px] table-fixed text-sm">
+      <Table className="w-[1560px] min-w-[1560px] table-fixed text-sm">
         <TableHeader className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
           <TableRow>
             
@@ -115,17 +132,23 @@ const AirportTable = ({
             <TableHead className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
               Coordinates
             </TableHead>
-            <TableHead className="w-24 px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+            <TableHead className="w-44 px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+              Search Ready
+            </TableHead>
+            <TableHead className="sticky right-0 z-10 w-24 bg-gray-50 px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               Actions
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody className="divide-y dark:divide-gray-700">
-          {airports.map((airport) => (
-            <TableRow
-              key={airport.id}
-              className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
+          {airports.map((airport) => {
+            const readiness = getAirportReadiness(airport);
+
+            return (
+              <TableRow
+                key={airport.id}
+                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
              
               <TableCell className="w-32 px-4 py-3">
                 <Badge className="font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
@@ -177,7 +200,23 @@ const AirportTable = ({
                   <span className="text-gray-400">—</span>
                 )}
               </TableCell>
-              <TableCell className="w-24 px-4 py-3 text-right">
+              <TableCell className="w-44 px-4 py-3">
+                <Badge
+                  variant="outline"
+                  className={
+                    readiness.ready
+                      ? 'gap-1 border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : 'gap-1 border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300'
+                  }
+                >
+                  {readiness.ready ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                  {readiness.ready ? 'Ready' : 'Review'}
+                </Badge>
+                <p className="mt-1 truncate text-xs text-gray-400">
+                  {readiness.ready ? 'Search enabled' : readiness.blockers.join(', ')}
+                </p>
+              </TableCell>
+              <TableCell className="sticky right-0 z-10 w-24 bg-white px-4 py-3 text-right shadow-[-10px_0_12px_-12px_rgba(15,23,42,0.45)] dark:bg-gray-900">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
@@ -200,7 +239,8 @@ const AirportTable = ({
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>

@@ -50,6 +50,16 @@ import { formatNumber } from "@/utils/formateNumber";
 import { COLORS } from "./chartColor";
 import AirportRevenueChart from "./Airport Anlitics/AirportRevenueChart";
 
+const asArray = (value) => Array.isArray(value) ? value : [];
+
+const EmptyAnalyticsState = ({ title, description }) => (
+  <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+    <Activity className="h-10 w-10 text-muted-foreground" />
+    <p className="mt-3 font-medium text-foreground">{title}</p>
+    <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p>
+  </div>
+);
+
 const AirportPerformancePage = () => {
   const dispatch = useDispatch();
   const { superAdminAirportPerformance, superAdminAirportPerformanceLoading } =
@@ -86,33 +96,60 @@ const AirportPerformancePage = () => {
     );
   }
 
- 
+  const topAirportsByBookings = asArray(superAdminAirportPerformance?.topAirportsByBookings);
+  const topAirportsByRevenue = asArray(superAdminAirportPerformance?.topAirportsByRevenue);
+  const topDepartureAirports = asArray(superAdminAirportPerformance?.topDepartureAirports);
+  const topArrivalAirports = asArray(superAdminAirportPerformance?.topArrivalAirports);
+  const hasAnalyticsData = [
+    topAirportsByBookings,
+    topAirportsByRevenue,
+    topDepartureAirports,
+    topArrivalAirports,
+  ].some((items) => items.length > 0);
 
-  
+  if (!hasAnalyticsData) {
+    return (
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+            <MapPin className="h-8 w-8" />
+            Airport Performance Analysis
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Airport analytics will appear after completed bookings are available.
+          </p>
+        </div>
+        <EmptyAnalyticsState
+          title="No airport performance yet"
+          description="Completed bookings are required before FlightHub can rank airports by bookings, revenue, departure volume, or arrival volume."
+        />
+      </div>
+    );
+  }
 
   // Calculate summary statistics
   const totalAirports = new Set([
-    ...superAdminAirportPerformance.topAirportsByBookings.map(
+    ...topAirportsByBookings.map(
       (a) => a.airportCode
     ),
-    ...superAdminAirportPerformance.topAirportsByRevenue.map(
+    ...topAirportsByRevenue.map(
       (a) => a.airportCode
     ),
   ]).size;
 
   const totalBookings =
-    superAdminAirportPerformance.topAirportsByBookings.reduce(
+    topAirportsByBookings.reduce(
       (sum, airport) => sum + (airport.totalBookings || 0),
       0
     );
 
-  const totalRevenue = superAdminAirportPerformance.topAirportsByRevenue.reduce(
+  const totalRevenue = topAirportsByRevenue.reduce(
     (sum, airport) => sum + (airport.totalRevenue || 0),
     0
   );
 
   const totalFlights =
-    superAdminAirportPerformance.topAirportsByBookings.reduce(
+    topAirportsByBookings.reduce(
       (sum, airport) => sum + (airport.totalFlights || 0),
       0
     );
@@ -333,10 +370,8 @@ const AirportPerformancePage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {superAdminAirportPerformance.topAirportsByBookings &&
-                superAdminAirportPerformance.topAirportsByBookings.length >
-                  0 ? (
-                  superAdminAirportPerformance.topAirportsByBookings.map(
+                {topAirportsByBookings.length > 0 ? (
+                  topAirportsByBookings.map(
                     (airport, index) => (
                       <AirportCard
                         key={`bookings-${index}`}
@@ -369,9 +404,8 @@ const AirportPerformancePage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {superAdminAirportPerformance.topAirportsByRevenue &&
-                superAdminAirportPerformance.topAirportsByRevenue.length > 0 ? (
-                  superAdminAirportPerformance.topAirportsByRevenue.map(
+                {topAirportsByRevenue.length > 0 ? (
+                  topAirportsByRevenue.map(
                     (airport, index) => (
                       <AirportCard
                         key={`revenue-${index}`}
@@ -404,10 +438,8 @@ const AirportPerformancePage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {superAdminAirportPerformance.topDepartureAirports &&
-                  superAdminAirportPerformance.topDepartureAirports.length >
-                    0 ? (
-                    superAdminAirportPerformance.topDepartureAirports
+                  {topDepartureAirports.length > 0 ? (
+                    topDepartureAirports
                       .slice(0, 5)
                       .map((airport, index) => (
                         <AirportCard
@@ -436,9 +468,8 @@ const AirportPerformancePage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {superAdminAirportPerformance.topArrivalAirports &&
-                  superAdminAirportPerformance.topArrivalAirports.length > 0 ? (
-                    superAdminAirportPerformance.topArrivalAirports
+                  {topArrivalAirports.length > 0 ? (
+                    topArrivalAirports
                       .slice(0, 5)
                       .map((airport, index) => (
                         <AirportCard

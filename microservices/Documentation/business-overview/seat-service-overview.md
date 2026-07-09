@@ -18,7 +18,7 @@ Core capabilities:
 - Manage cabin classes for aircraft.
 - Manage seat maps and generated physical seat templates.
 - Generate seat inventory for each flight instance.
-- Hold selected seats during checkout.
+- Hold one or more selected seats during checkout.
 - Release expired or abandoned holds.
 - Confirm booked seats after booking/payment succeeds.
 - Expose availability by `flightInstanceId`.
@@ -73,6 +73,18 @@ Hold duration defaults to 10 minutes and is capped by API validation.
 
 Expired holds are released when availability, count, or hold operations are
 performed for the same flight instance.
+
+Production booking behavior:
+
+- Customers may book multiple seats in one checkout when passenger count is
+  greater than one.
+- Each selected seat must belong to the requested flight instance.
+- A seat already `HELD` by another valid token or already `BOOKED` must not be
+  shown as selectable by the UI and must be rejected by the hold endpoint.
+- A checkout may continue without seat selection only when the business product
+  allows automatic seat assignment. In that case Booking must not send seat IDs.
+- Once payment confirms a booking, selected seats become `BOOKED` and are no
+  longer returned as available for later customers.
 
 ## API Contract
 
@@ -137,6 +149,10 @@ Release returns the seats to `AVAILABLE` unless they are already `BOOKED`.
 `BookingConfirmedEvent`. That event path is trusted and remains compatible with
 current booking flows that do not yet call hold first.
 
+For multi-leg itineraries, the current public seat selection UI should only send
+seat IDs for the leg whose `flightInstanceId` owns those seats. Booking validates
+the seat scope before creating the payment intent.
+
 ## Swagger / OpenAPI
 
 Seat Service is published through the API Gateway Swagger UI:
@@ -187,6 +203,15 @@ Seat state changes lock selected `SeatInstance` rows with pessimistic write
 locks. This protects against two customers holding or confirming the same seat
 at the same time.
 
+Production concurrency expectations:
+
+- Two browser sessions selecting the same seat should result in one successful
+  hold and one business error.
+- Releasing an already booked seat must not make it available again.
+- Repeating a hold with the same valid token should not create duplicate seat
+  state.
+- Expired holds are cleaned up before new availability and hold checks.
+
 The database also has natural uniqueness for:
 
 - `(flight_instance_id, cabin_class_id)` on `flight_instance_cabins`
@@ -232,6 +257,9 @@ The production-style demo seed creates:
 - seat map zones with row ranges and partial final rows
 - generated physical seats for each map
 - hold lifecycle columns and natural uniqueness constraints if missing
+- booking-ready seat instances for the generated Flight Ops schedule window
+- inventory for the added one-way and round-trip demo routes used by customer
+  search and super admin analytics
 
 Seed file:
 
@@ -250,6 +278,13 @@ Run through:
 ```bash
 microservices/scripts/init-production-demo-data.sh
 ```
+
+Expected local demo characteristics after a full reset and seed:
+
+- Seat maps exist for all aircraft/cabin classes used by seeded flights.
+- Upcoming flight instances have corresponding seat inventory.
+- Customer search results can open seat selection for seeded routes.
+- Already booked seats remain unavailable after successful checkout.
 
 ## Production Checklist
 

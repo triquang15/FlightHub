@@ -106,6 +106,12 @@ bash microservices/scripts/run-local-service.sh notification-service
 
 Run one command per terminal.
 
+Flyway is integrated but intentionally disabled by default for local development
+until each service has a full baseline schema migration. Keep the default
+`FLYWAY_ENABLED=false` for the normal local stack. See
+`microservices/Documentation/guide/flyway-migration-guide.md` before enabling
+Flyway with `FLYWAY_ENABLED=true`.
+
 `subscription-service` is currently an implementation scaffold and is not part
 of the supported API surface. Start it only while developing the billing and
 entitlement contract described in
@@ -173,6 +179,9 @@ bash microservices/scripts/init-production-demo-data.sh
 The seed command is safe to run repeatedly.
 After `down -v`, run the Spring services once before seeding; otherwise the
 seed script will fail because Hibernate has not recreated tables yet.
+
+Do not put demo seed SQL into Flyway migrations. Flyway is reserved for durable
+schema changes; demo data stays in `init-production-demo-data.sh`.
 
 Booking-ready demo searches after seeding:
 

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
-import { Clock, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Select,
@@ -62,6 +62,21 @@ const cityValidationSchema = Yup.object().shape({
   // 🔥 FIX: dùng timezone thật
   timeZone: Yup.string().required("Timezone is required"),
 });
+
+const getCityFormReadiness = (values) => {
+  const blockers = [];
+
+  if (!values.name) blockers.push("City name is required");
+  if (!values.cityCode) blockers.push("City code is required");
+  if (!values.countryName) blockers.push("Country name is required");
+  if (!values.countryCode) blockers.push("Country code is required");
+  if (!values.timeZone) blockers.push("Timezone is required");
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+  };
+};
 
 // ================= COMPONENT =================
 const CityFormModal = ({
@@ -167,7 +182,10 @@ const CityFormModal = ({
               setFieldValue,
               setFieldError,
               values,
-            }) => (
+            }) => {
+              const searchReadiness = getCityFormReadiness(values);
+
+              return (
               <Form className="space-y-4">
                 {/* General Error */}
                 {errors.general && (
@@ -356,6 +374,30 @@ const CityFormModal = ({
                   )}
                 </div>
 
+                <div className={
+                  searchReadiness.ready
+                    ? "rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100"
+                    : "rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-100"
+                }>
+                  <div className="flex items-start gap-2">
+                    {searchReadiness.ready ? (
+                      <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-medium">
+                        {searchReadiness.ready ? "City is search-ready" : "City needs review"}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        {searchReadiness.ready
+                          ? "Airport records can safely use this city for traveler search and route display."
+                          : searchReadiness.blockers.join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <DialogFooter className="gap-2">
                   <Button
                     type="button"
@@ -373,7 +415,8 @@ const CityFormModal = ({
                   </Button>
                 </DialogFooter>
               </Form>
-            )}
+              );
+            }}
           </Formik>
         </ScrollArea>
       </DialogContent>

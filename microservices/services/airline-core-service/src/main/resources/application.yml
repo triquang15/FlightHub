@@ -12,6 +12,16 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: 0
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}

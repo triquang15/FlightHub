@@ -37,10 +37,25 @@ Airline 1 -- * Ancillary 1 -- * Flight Cabin Ancillary * -- 1 Flight/Cabin
 - Meal code uniqueness is scoped to an Airline, not the whole platform.
 - When advance booking is required, `advanceBookingHours` must be positive;
   otherwise it is cleared.
+- Missing optional products such as meals, baggage upgrades, or travel
+  protection should be treated as an empty catalog in the booking UI, not as a
+  checkout blocker.
+- Required fare-included products should be modeled as included assignments with
+  price `0`, so Booking can display them without double charging.
 
 The current Booking contract sends selected assignment IDs without quantities.
 Consequently, price calculation charges one unit per selected ID. Quantity-aware
 shopping requires a future request model containing assignment ID and quantity.
+
+Booking review integration:
+
+- `BAGGAGE`, `MEAL`, and `TRAVEL_PROTECTION` lookups are optional enhancements.
+- A `404` or empty response for a flight/cabin assignment means that no product
+  is configured for that specific sellable context.
+- Frontend components must normalize paginated/enveloped API responses into
+  arrays before rendering.
+- Booking should validate selected ancillary IDs at purchase time to prevent
+  stale or unavailable selections from being charged.
 
 ## Service dependencies
 
@@ -72,7 +87,9 @@ bash microservices/scripts/init-production-demo-data.sh
 The workflow resolves Airline, Flight, Aircraft, and Cabin Class IDs from their
 own databases before seeding Ancillary. Set `SEED_ANCILLARY=false` on the
 Docker-network runner when Ancillary data should be skipped. The Ancillary seed
-is idempotent by catalog and assignment business keys.
+is idempotent by catalog and assignment business keys. The full demo seed covers
+the main customer search routes with baggage, meal, and travel-protection
+examples where configured.
 
 Verify the resulting data:
 

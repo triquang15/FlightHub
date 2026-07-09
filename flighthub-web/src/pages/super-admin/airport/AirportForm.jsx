@@ -11,6 +11,8 @@ import {
   TrendingUp,
   Clock,
   Hash,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,21 @@ const SIZE_CATEGORIES = [
   { value: "SMALL_HUB", label: "Small Hub" },
   { value: "NON_HUB", label: "Non-Hub" },
 ];
+
+const getAirportFormReadiness = (values) => {
+  const blockers = [];
+
+  if (!values.iataCode) blockers.push("IATA code is required");
+  if (!values.name) blockers.push("Airport name is required");
+  if (!values.cityId) blockers.push("City is required");
+  if (!values.timeZone) blockers.push("Timezone is required");
+  if (!values.latitude || !values.longitude) blockers.push("Coordinates are recommended for search quality");
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+  };
+};
 
 const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
   const navigate = useNavigate();
@@ -237,7 +254,10 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
             onSubmit={handleSubmit}
             enableReinitialize
           >
-            {({ isSubmitting, values, setFieldValue }) => (
+            {({ isSubmitting, values, setFieldValue }) => {
+              const searchReadiness = getAirportFormReadiness(values);
+
+              return (
               <Form className="space-y-8">
                 {/* Basic Information */}
                 <Card className="border-l-4 border-l-blue-500">
@@ -561,6 +581,28 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                   </CardContent>
                 </Card>
 
+                <Card className={searchReadiness.ready ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/20" : "border-orange-200 bg-orange-50/70 dark:border-orange-900/60 dark:bg-orange-950/20"}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      {searchReadiness.ready ? (
+                        <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                      ) : (
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600 dark:text-orange-300" />
+                      )}
+                      <div>
+                        <p className={searchReadiness.ready ? "font-semibold text-emerald-800 dark:text-emerald-100" : "font-semibold text-orange-800 dark:text-orange-100"}>
+                          {searchReadiness.ready ? "Airport is search-ready" : "Airport needs review for search readiness"}
+                        </p>
+                        <p className={searchReadiness.ready ? "mt-1 text-sm text-emerald-700 dark:text-emerald-200" : "mt-1 text-sm text-orange-700 dark:text-orange-200"}>
+                          {searchReadiness.ready
+                            ? "This airport has route, timezone and coordinate data needed by traveler search and booking flows."
+                            : searchReadiness.blockers.join(", ")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Form Actions */}
                 <div className="sticky bottom-0 bg-white dark:bg-slate-950 border-t border-gray-200 dark:border-gray-700 p-6 z-10 shadow-lg">
                   <div className="flex items-center justify-between">
@@ -595,7 +637,8 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                   </div>
                 </div>
               </Form>
-            )}
+              );
+            }}
           </Formik>
         </div>
       </div>

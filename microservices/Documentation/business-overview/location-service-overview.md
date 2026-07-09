@@ -18,6 +18,8 @@ The service supports these core business capabilities:
 - Booking and ticketing: provides consistent airport/city names in booking summaries, tickets, invoices, and notifications.
 - Pricing and route planning: supports future route, fare, market, and region-based pricing logic.
 - Reporting: enables country, region, city, and airport-level traffic or operational reporting.
+- Super Admin data readiness: helps operators identify whether airports have the
+  metadata needed for search, schedule generation, and analytics.
 
 The business contract is intentionally split into two levels:
 
@@ -48,6 +50,23 @@ Because of this, city and airport data should be treated as reference data, not 
 - Redis caching for frequently read location data
 - Swagger/OpenAPI documentation for City and Airport APIs
 - Production-style seed SQL for cities and airports
+- Super Admin city/airport management screens with production-style table
+  overflow handling, readiness stats, and validation feedback
+
+## Search data readiness
+
+Airport and city data are considered search-ready when they include:
+
+- normalized city and airport codes
+- active city-to-airport relationship
+- country code and country name
+- IANA timezone
+- airport latitude and longitude where available
+- airport IATA code, display name, and linked city
+
+Flight search uses airport IDs in the final query, but the user-facing form must
+display readable airport/city labels. Long airport names should render in
+stacked label layouts instead of overlapping inside select controls.
 
 ## Required Services
 
@@ -217,6 +236,15 @@ Seed behavior:
 - Airport seed maps `city_id` by `city_code`, so it does not depend on auto-generated IDs.
 - Both scripts reset their table sequence after insert/update.
 
+For end-to-end booking/search/analytics demos, prefer running:
+
+```bash
+microservices/scripts/init-production-demo-data.sh
+```
+
+That wrapper applies location data first, then resolves those codes when seeding
+airlines, aircraft, flights, fares, seats, bookings, and analytics fixtures.
+
 ## Quick Smoke Test
 
 Use gateway Swagger or curl.
@@ -281,6 +309,8 @@ Asia/Ho_Chi_Minh
 - `GET /api/airports` returns seeded airport rows.
 - Invalid `sortBy` falls back safely instead of causing a server error.
 - Write APIs require a valid `ROLE_SYSTEM_ADMIN` token through the gateway.
+- Super Admin airport/city tables support horizontal overflow when administrative
+  columns exceed the viewport width.
 
 ## Build Verification
 

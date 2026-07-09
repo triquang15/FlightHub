@@ -10,6 +10,21 @@
 
 It does not own airline/aircraft/airport details, cabin inventory, fares, bookings, or payments. Cross-service IDs are validated but not duplicated as writable business data.
 
+## Current production-demo readiness
+
+The current local production-demo dataset is designed for end-to-end customer
+search, booking review, seat hold, payment, booking history, ticket, and super
+admin analytics tests.
+
+- 38 reusable Flight definitions are seeded across 9 active airlines.
+- 29 commercial route pairs are covered, including Vietnam domestic routes,
+  ASEAN routes, and long-haul demo routes.
+- Schedules generate a rolling 90-day future instance window.
+- The seed is idempotent and can be re-run after `docker compose ... down -v`.
+- Search supports one-way, round-trip, and multi-city frontend flows. Flight Ops
+  returns sellable dated instances; Booking owns the final itinerary/payment
+  record.
+
 ## Access model
 
 All writes must enter through API Gateway. The gateway removes spoofed identity headers and injects trusted `X-User-Id`, `X-User-Roles`, and `X-Trace-Id`.
@@ -77,6 +92,8 @@ An instance with sold/held seats (`availableSeats < totalSeats`) cannot be delet
 
 - Booking reads immutable route/timing snapshots from FlightInstance.
 - Booking/Seat must lock their own inventory during purchase. Flight Ops lifecycle changes do not replace booking transaction guarantees.
+- Multi-leg booking uses FlightInstance IDs from each selected leg. Flight Ops
+  does not create a separate itinerary aggregate.
 
 ## Search behavior
 
@@ -84,13 +101,32 @@ Database filters cover route, date, active lifecycle, airline, aggregate seats, 
 
 Price/cabin filters happen after the Flight Ops page query, so `totalElements` can be an upper bound. For exact cross-service pagination at high scale, project Flight Ops, Seat, and Pricing events into a dedicated search index.
 
+Frontend query compatibility:
+
+- Canonical query params are `from`, `to`, `depart`, `return`, `passengers`,
+  `cabinClass`, and `trip`.
+- Legacy params such as `departureAirportId`, `arrivalAirportId`,
+  `departureDate`, and `tripType` are normalized by the frontend utility layer.
+- Round-trip search performs two one-way searches and pairs the selected fares
+  before sending a multi-leg booking request.
+- Multi-city search uses ordered one-way segments. The backend supports up to 5
+  booking legs in one Booking request.
+
 ## Seed and verification
 
 Run production demo seed through `scripts/init-production-demo-data.sh`, then run:
 
 The demo dataset provides 38 flight definitions across 9 airlines and 29 route
-pairs. Schedules generate a rolling 30-day set of future instances and the seed
+pairs. Schedules generate a rolling 90-day set of future instances and the seed
 is safe to re-run without duplicating flights, schedules, or instances.
+
+Useful search examples after seeding:
+
+```text
+/search?from=1&to=2&depart=2026-07-10&passengers=1&cabinClass=ECONOMY&trip=oneway
+/search?from=1&to=2&depart=2026-07-10&return=2026-07-13&passengers=1&cabinClass=ECONOMY&trip=round
+/search?from=1&to=7&depart=2026-07-10&return=2026-07-12&passengers=1&cabinClass=ECONOMY&trip=round
+```
 
 ```bash
 psql "$FLIGHT_OPS_DATABASE_URL" -v ON_ERROR_STOP=1 \
