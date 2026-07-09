@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MICROSERVICES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.dev.yml}"
 SQL_DIR="$MICROSERVICES_DIR/Documentation/sql"
 
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
@@ -698,12 +698,21 @@ fare_tg551_classic="$(lookup_fare_id "$flight_tg551" "Economy Classic")"
 fare_tg550_classic="$(lookup_fare_id "$flight_tg550" "Economy Classic")"
 fare_cx764_essential="$(lookup_fare_id "$flight_cx764" "Economy Essential")"
 fare_cx765_essential="$(lookup_fare_id "$flight_cx765" "Economy Essential")"
+fare_ek393_saver="$(lookup_fare_id "$flight_ek393" "Economy Saver")"
+fare_ek392_saver="$(lookup_fare_id "$flight_ek392" "Economy Saver")"
+fare_qr971_classic="$(lookup_fare_id "$flight_qr971" "Economy Classic")"
+fare_qr970_classic="$(lookup_fare_id "$flight_qr970" "Economy Classic")"
+fare_jl752_standard="$(lookup_fare_id "$flight_jl752" "Economy Standard")"
+fare_jl751_standard="$(lookup_fare_id "$flight_jl751" "Economy Standard")"
+fare_jl753_standard="$(lookup_fare_id "$flight_jl753" "Economy Standard")"
 
 for required in fare_vn210_lite fare_vn210_flex fare_vn210_business fare_vn211_standard \
   fare_vn218_saver fare_vn136_basic fare_vn135_basic fare_vj122_saver fare_vj122_skyboss \
   fare_vj123_plus fare_vj803_asia fare_vj804_asia fare_ak520_low fare_ak521_low \
   fare_sq185_value fare_sq185_business fare_sq186_value fare_tg551_classic fare_tg550_classic \
-  fare_cx764_essential fare_cx765_essential; do
+  fare_cx764_essential fare_cx765_essential fare_ek393_saver fare_ek392_saver \
+  fare_qr971_classic fare_qr970_classic fare_jl752_standard fare_jl751_standard \
+  fare_jl753_standard; do
   require_value "$required" "${!required}"
 done
 
@@ -736,6 +745,9 @@ run_sql_file_with_settings \
   airline_sq="$airline_sq" \
   airline_tg="$airline_tg" \
   airline_cx="$airline_cx" \
+  airline_ek="$airline_ek" \
+  airline_qr="$airline_qr" \
+  airline_jl="$airline_jl" \
   flight_vn210="$flight_vn210" \
   flight_vn211="$flight_vn211" \
   flight_vn218="$flight_vn218" \
@@ -753,6 +765,13 @@ run_sql_file_with_settings \
   flight_tg550="$flight_tg550" \
   flight_cx764="$flight_cx764" \
   flight_cx765="$flight_cx765" \
+  flight_ek393="$flight_ek393" \
+  flight_ek392="$flight_ek392" \
+  flight_qr971="$flight_qr971" \
+  flight_qr970="$flight_qr970" \
+  flight_jl752="$flight_jl752" \
+  flight_jl751="$flight_jl751" \
+  flight_jl753="$flight_jl753" \
   flight_instances_vn210="$flight_instances_vn210" \
   flight_instances_vn211="$flight_instances_vn211" \
   flight_instances_vn218="$flight_instances_vn218" \
@@ -770,6 +789,13 @@ run_sql_file_with_settings \
   flight_instances_tg550="$flight_instances_tg550" \
   flight_instances_cx764="$flight_instances_cx764" \
   flight_instances_cx765="$flight_instances_cx765" \
+  flight_instances_ek393="$flight_instances_ek393" \
+  flight_instances_ek392="$flight_instances_ek392" \
+  flight_instances_qr971="$flight_instances_qr971" \
+  flight_instances_qr970="$flight_instances_qr970" \
+  flight_instances_jl752="$flight_instances_jl752" \
+  flight_instances_jl751="$flight_instances_jl751" \
+  flight_instances_jl753="$flight_instances_jl753" \
   fare_vn210_lite="$fare_vn210_lite" \
   fare_vn210_flex="$fare_vn210_flex" \
   fare_vn210_business="$fare_vn210_business" \
@@ -790,7 +816,14 @@ run_sql_file_with_settings \
   fare_tg551_classic="$fare_tg551_classic" \
   fare_tg550_classic="$fare_tg550_classic" \
   fare_cx764_essential="$fare_cx764_essential" \
-  fare_cx765_essential="$fare_cx765_essential"
+  fare_cx765_essential="$fare_cx765_essential" \
+  fare_ek393_saver="$fare_ek393_saver" \
+  fare_ek392_saver="$fare_ek392_saver" \
+  fare_qr971_classic="$fare_qr971_classic" \
+  fare_qr970_classic="$fare_qr970_classic" \
+  fare_jl752_standard="$fare_jl752_standard" \
+  fare_jl751_standard="$fare_jl751_standard" \
+  fare_jl753_standard="$fare_jl753_standard"
 
 run_sql_file paymentdb airline_payment_db "$PAYMENT_MIGRATION_SQL"
 

@@ -11,4 +11,6 @@ public interface BookingAggregateRow {
     BigDecimal getTotalRevenue();
 
     BigDecimal getAverageRevenuePerBooking();
+
+    Long getTotalFlights();
 }

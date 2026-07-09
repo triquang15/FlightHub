@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MICROSERVICES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$MICROSERVICES_DIR/.." && pwd)"
 ENV_FILE="${FLIGHTHUB_ENV_FILE:-$REPO_ROOT/.env.local}"
-COMPOSE_FILE="$MICROSERVICES_DIR/docker-compose/docker-compose.yml"
+DEV_COMPOSE_FILE="${FLIGHTHUB_DEV_COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.dev.yml}"
+PROD_COMPOSE_FILE="${FLIGHTHUB_PROD_COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.prod.yml}"
 
 INFRA_SERVICES=(
   userdb airlinecoredb flightopsdb locationdb seatdb pricingdb ancillarydb
@@ -14,7 +15,11 @@ INFRA_SERVICES=(
 )
 
 compose() {
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+  docker compose --env-file "$ENV_FILE" -f "$DEV_COMPOSE_FILE" "$@"
+}
+
+compose_prod() {
+  docker compose --env-file "$ENV_FILE" -f "$PROD_COMPOSE_FILE" "$@"
 }
 
 case "${1:-}" in
@@ -28,13 +33,13 @@ case "${1:-}" in
     compose ps "${INFRA_SERVICES[@]}"
     ;;
   stack-up)
-    compose up -d
+    compose_prod up -d
     ;;
   stack-stop)
-    compose stop
+    compose_prod stop
     ;;
   stack-status)
-    compose ps
+    compose_prod ps
     ;;
   logs)
     shift

@@ -677,7 +677,7 @@ Seed behavior:
 Start required Docker infrastructure:
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml up -d \
+docker compose -f microservices/docker-compose/docker-compose.dev.yml up -d \
   airlinecoredb locationdb userdb redis kafka
 ```
 

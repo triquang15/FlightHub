@@ -108,7 +108,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
             SELECT airline_id AS groupId,
                    COUNT(*) AS totalBookings,
                    COALESCE(SUM(total_amount), 0) AS totalRevenue,
-                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_id) AS totalFlights
             FROM bookings
             WHERE status = 'CONFIRMED'
               AND airline_id IS NOT NULL
@@ -119,10 +120,56 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
     List<BookingAggregateRow> findTopAirlinesByBookings(@Param("limit") int limit);
 
     @Query(value = """
+            SELECT airline_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_id) AS totalFlights
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id IS NOT NULL
+            GROUP BY airline_id
+            ORDER BY totalRevenue DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopAirlinesByRevenue(@Param("limit") int limit);
+
+    @Query(value = """
+            SELECT airline_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_id) AS totalFlights
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id IS NOT NULL
+            GROUP BY airline_id
+            ORDER BY averageRevenuePerBooking DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopAirlinesByAverageRevenue(@Param("limit") int limit);
+
+    @Query(value = """
+            SELECT airline_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_id) AS totalFlights
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id IS NOT NULL
+            GROUP BY airline_id
+            ORDER BY totalFlights DESC, totalBookings DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopAirlinesByFlightCount(@Param("limit") int limit);
+
+    @Query(value = """
             SELECT flight_id AS groupId,
                    COUNT(*) AS totalBookings,
                    COALESCE(SUM(total_amount), 0) AS totalRevenue,
-                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_instance_id) AS totalFlights
             FROM bookings
             WHERE status = 'CONFIRMED'
               AND flight_id IS NOT NULL

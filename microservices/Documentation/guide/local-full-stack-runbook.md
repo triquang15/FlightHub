@@ -8,6 +8,15 @@ Run commands from the repository root:
 cd /Users/triquang/Project/FlightHub
 ```
 
+Compose files:
+
+- `microservices/docker-compose/docker-compose.dev.yml`: local databases, Redis,
+  Kafka, Kafka UI, and seed tools for Maven-based development.
+- `microservices/docker-compose/docker-compose.prod.yml`: full backend stack
+  using published Docker Hub images.
+- `microservices/docker-compose/docker-compose.yml`: compatibility alias for
+  the dev compose file.
+
 ## 1. Prerequisites
 
 Required tools:
@@ -292,24 +301,24 @@ Expected result: HTTP `200`.
 ### Seed Data
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml exec -T userdb \
+docker compose -f microservices/docker-compose/docker-compose.dev.yml exec -T userdb \
   psql -U postgres -d airline_user -c 'SELECT COUNT(*) FROM users;'
 ```
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml exec -T locationdb \
+docker compose -f microservices/docker-compose/docker-compose.dev.yml exec -T locationdb \
   psql -U postgres -d airline_location_db \
   -c 'SELECT (SELECT COUNT(*) FROM cities) AS cities, (SELECT COUNT(*) FROM airports) AS airports;'
 ```
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml exec -T airlinecoredb \
+docker compose -f microservices/docker-compose/docker-compose.dev.yml exec -T airlinecoredb \
   psql -U postgres -d airline_core_db \
   -c 'SELECT (SELECT COUNT(*) FROM airlines) AS airlines, (SELECT COUNT(*) FROM aircrafts) AS aircrafts;'
 ```
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml exec -T flightopsdb \
+docker compose -f microservices/docker-compose/docker-compose.dev.yml exec -T flightopsdb \
   psql -U postgres -d airline_flight_db \
   -c 'SELECT (SELECT COUNT(*) FROM flights) AS flights, (SELECT COUNT(*) FROM flight_schedules) AS schedules, (SELECT COUNT(*) FROM flight_instances) AS instances;'
 ```
@@ -327,7 +336,7 @@ bash microservices/scripts/local-infra.sh down
 Delete containers and database volumes only when a clean reset is required:
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml down -v
+docker compose -f microservices/docker-compose/docker-compose.dev.yml down -v
 ```
 
 Warning: `down -v` deletes all local database data. Start services to recreate
@@ -335,7 +344,15 @@ schemas and rerun the seed command afterward.
 
 ## 6. Docker-Only Backend
 
-Use published backend images instead of Maven services:
+Use published backend images instead of Maven services. The script uses
+`microservices/docker-compose/docker-compose.prod.yml` for this mode.
+
+Set image tags in `.env.local` or your shell when needed:
+
+```text
+FLIGHTHUB_IMAGE_TAG=<tag>
+FLIGHTHUB_PLATFORM_IMAGE_TAG=<tag>
+```
 
 ```bash
 bash microservices/scripts/local-infra.sh stack-up
@@ -384,9 +401,9 @@ bash microservices/scripts/init-production-demo-data.sh
 ### Inspect Infrastructure Logs
 
 ```bash
-docker compose -f microservices/docker-compose/docker-compose.yml logs -f redis
-docker compose -f microservices/docker-compose/docker-compose.yml logs -f kafka
-docker compose -f microservices/docker-compose/docker-compose.yml logs -f userdb
+docker compose -f microservices/docker-compose/docker-compose.dev.yml logs -f redis
+docker compose -f microservices/docker-compose/docker-compose.dev.yml logs -f kafka
+docker compose -f microservices/docker-compose/docker-compose.dev.yml logs -f userdb
 ```
 
 ## 8. Ready Checklist

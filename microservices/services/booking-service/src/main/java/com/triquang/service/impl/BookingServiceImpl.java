@@ -4,8 +4,10 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ import com.triquang.payload.request.PaymentInitiateRequest;
 import com.triquang.payload.request.SeatHoldRequest;
 import com.triquang.payload.request.SeatReleaseRequest;
 import com.triquang.payload.response.AirlineResponse;
+import com.triquang.payload.response.AirportResponse;
 import com.triquang.payload.response.BookingResponse;
 import com.triquang.payload.response.BookingStatisticsResponse;
 import com.triquang.payload.response.CouponValidationResponse;
@@ -642,16 +645,39 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getAirlinePerformanceForSuperAdmin() {
-        List<BookingAggregateRow> rows = bookingRepository.findTopAirlinesByBookings(7);
-        List<Long> airlineIds = rows.stream()
+        int limit = 10;
+        List<BookingAggregateRow> topAirlinesByBookings = bookingRepository.findTopAirlinesByBookings(limit);
+        List<BookingAggregateRow> topAirlinesByRevenue = bookingRepository.findTopAirlinesByRevenue(limit);
+        List<BookingAggregateRow> topAirlinesByAverageRevenue = bookingRepository.findTopAirlinesByAverageRevenue(limit);
+        List<BookingAggregateRow> topAirlinesByFlightCount = bookingRepository.findTopAirlinesByFlightCount(limit);
+
+        List<Long> airlineIds = Stream.of(
+                        topAirlinesByBookings,
+                        topAirlinesByRevenue,
+                        topAirlinesByAverageRevenue,
+                        topAirlinesByFlightCount
+                )
+                .flatMap(Collection::stream)
                 .map(BookingAggregateRow::getGroupId)
                 .filter(Objects::nonNull)
+                .distinct()
                 .toList();
         Map<Long, AirlineResponse> airlines = airlineIds.isEmpty()
                 ? Collections.emptyMap()
                 : safeExternal("top-airlines", null, () -> airlineClient.getAirlinesByIds(airlineIds), Collections.emptyMap());
 
-        List<Map<String, Object>> topAirlines = rows.stream()
+        return Map.of(
+                "topAirlinesByBookings", toAirlinePerformanceRows(topAirlinesByBookings, airlines),
+                "topAirlinesByRevenue", toAirlinePerformanceRows(topAirlinesByRevenue, airlines),
+                "topAirlinesByAverageRevenue", toAirlinePerformanceRows(topAirlinesByAverageRevenue, airlines),
+                "topAirlinesByFlightCount", toAirlinePerformanceRows(topAirlinesByFlightCount, airlines)
+        );
+    }
+
+    private List<Map<String, Object>> toAirlinePerformanceRows(
+            List<BookingAggregateRow> rows,
+            Map<Long, AirlineResponse> airlines) {
+        return rows.stream()
                 .map(row -> {
                     AirlineResponse airline = airlines.get(row.getGroupId());
                     String airlineCode = airline == null || airline.getIataCode() == null || airline.getIataCode().isBlank()
@@ -660,17 +686,21 @@ public class BookingServiceImpl implements BookingService {
                     String airlineName = airline == null || airline.getName() == null || airline.getName().isBlank()
                             ? "Airline #" + row.getGroupId()
                             : airline.getName();
+                    String status = airline == null || airline.getStatus() == null
+                            ? "ACTIVE"
+                            : airline.getStatus().name();
                     return Map.<String, Object>of(
                             "airlineId", row.getGroupId(),
                             "airlineCode", airlineCode,
                             "airlineName", airlineName,
+                            "status", status,
                             "totalBookings", safeLong(row.getTotalBookings()),
                             "totalRevenue", safeMoney(row.getTotalRevenue()),
-                            "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking())
+                            "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking()),
+                            "totalFlights", safeLong(row.getTotalFlights())
                     );
                 })
                 .toList();
-        return Map.of("topAirlinesByBookings", topAirlines);
     }
 
     @Override
@@ -708,7 +738,91 @@ public class BookingServiceImpl implements BookingService {
         return Map.of("topRoutesByBookings", topRoutes);
     }
 
-    private String airportCode(com.triquang.payload.response.AirportResponse airport) {
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAirportPerformanceForSuperAdmin() {
+        List<BookingAggregateRow> flightRows = bookingRepository.findTopFlightsByBookings(500);
+        List<Long> flightIds = flightRows.stream()
+                .map(BookingAggregateRow::getGroupId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, FlightResponse> flights = flightIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("airport-performance-flights", null, () -> flightClient.getFlightsByIds(flightIds), Collections.emptyMap());
+
+        Map<Long, AirportPerformanceAccumulator> combined = new HashMap<>();
+        Map<Long, AirportPerformanceAccumulator> departures = new HashMap<>();
+        Map<Long, AirportPerformanceAccumulator> arrivals = new HashMap<>();
+
+        for (BookingAggregateRow row : flightRows) {
+            FlightResponse flight = flights.get(row.getGroupId());
+            if (flight == null) {
+                continue;
+            }
+            addAirportPerformance(combined, flight.getDepartureAirport(), row, true, false);
+            addAirportPerformance(combined, flight.getArrivalAirport(), row, false, true);
+            addAirportPerformance(departures, flight.getDepartureAirport(), row, true, false);
+            addAirportPerformance(arrivals, flight.getArrivalAirport(), row, false, true);
+        }
+
+        List<Map<String, Object>> topAirportsByBookings = airportRows(combined, "bookings", 10);
+        List<Map<String, Object>> topAirportsByRevenue = airportRows(combined, "revenue", 10);
+        List<Map<String, Object>> topDepartureAirports = airportRows(departures, "bookings", 10);
+        List<Map<String, Object>> topArrivalAirports = airportRows(arrivals, "bookings", 10);
+
+        BigDecimal totalRevenue = combined.values().stream()
+                .map(AirportPerformanceAccumulator::revenue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        long totalBookings = combined.values().stream()
+                .mapToLong(AirportPerformanceAccumulator::bookings)
+                .sum();
+        long totalFlights = combined.values().stream()
+                .mapToLong(AirportPerformanceAccumulator::flights)
+                .sum();
+
+        return Map.of(
+                "totalAirports", combined.size(),
+                "totalBookings", totalBookings,
+                "totalRevenue", totalRevenue,
+                "totalFlights", totalFlights,
+                "topAirportsByBookings", topAirportsByBookings,
+                "topAirportsByRevenue", topAirportsByRevenue,
+                "topDepartureAirports", topDepartureAirports,
+                "topArrivalAirports", topArrivalAirports
+        );
+    }
+
+    private void addAirportPerformance(
+            Map<Long, AirportPerformanceAccumulator> target,
+            AirportResponse airport,
+            BookingAggregateRow row,
+            boolean departure,
+            boolean arrival) {
+        if (airport == null || airport.getId() == null) {
+            return;
+        }
+        target.computeIfAbsent(airport.getId(), id -> new AirportPerformanceAccumulator(airport))
+                .add(row, departure, arrival);
+    }
+
+    private List<Map<String, Object>> airportRows(
+            Map<Long, AirportPerformanceAccumulator> airports,
+            String ranking,
+            int limit) {
+        Comparator<AirportPerformanceAccumulator> comparator = "revenue".equals(ranking)
+                ? Comparator.comparing(AirportPerformanceAccumulator::revenue)
+                : Comparator.comparingLong(AirportPerformanceAccumulator::bookings);
+
+        return airports.values().stream()
+                .sorted(comparator.reversed().thenComparing(AirportPerformanceAccumulator::code))
+                .limit(limit)
+                .map(AirportPerformanceAccumulator::toRow)
+                .toList();
+    }
+
+    private String airportCode(AirportResponse airport) {
         if (airport == null) {
             return "—";
         }
@@ -716,6 +830,98 @@ public class BookingServiceImpl implements BookingService {
             return airport.getIataCode();
         }
         return airport.getName() == null || airport.getName().isBlank() ? "—" : airport.getName();
+    }
+
+    private static class AirportPerformanceAccumulator {
+        private final Long airportId;
+        private final String code;
+        private final String name;
+        private final String city;
+        private final String country;
+        private long bookings;
+        private long flights;
+        private long departureBookings;
+        private long arrivalBookings;
+        private BigDecimal revenue = BigDecimal.ZERO;
+
+        AirportPerformanceAccumulator(AirportResponse airport) {
+            this.airportId = airport.getId();
+            this.code = hasTextValue(airport.getIataCode()) ? airport.getIataCode() : "APT-" + airport.getId();
+            this.name = hasTextValue(airport.getName()) ? airport.getName() : this.code;
+            this.city = airport.getCity() != null && hasTextValue(airport.getCity().getName())
+                    ? airport.getCity().getName()
+                    : "Unknown city";
+            this.country = airport.getCity() != null && hasTextValue(airport.getCity().getCountryName())
+                    ? airport.getCity().getCountryName()
+                    : "Unknown country";
+        }
+
+        void add(BookingAggregateRow row, boolean departure, boolean arrival) {
+            long rowBookings = row.getTotalBookings() == null ? 0L : row.getTotalBookings();
+            long rowFlights = row.getTotalFlights() == null ? 0L : row.getTotalFlights();
+            BigDecimal rowRevenue = row.getTotalRevenue() == null ? BigDecimal.ZERO : row.getTotalRevenue();
+            this.bookings += rowBookings;
+            this.flights += rowFlights;
+            this.revenue = this.revenue.add(rowRevenue);
+            if (departure) {
+                this.departureBookings += rowBookings;
+            }
+            if (arrival) {
+                this.arrivalBookings += rowBookings;
+            }
+        }
+
+        Long airportId() {
+            return airportId;
+        }
+
+        String code() {
+            return code;
+        }
+
+        long bookings() {
+            return bookings;
+        }
+
+        long flights() {
+            return flights;
+        }
+
+        BigDecimal revenue() {
+            return revenue;
+        }
+
+        Map<String, Object> toRow() {
+            String performanceType;
+            if (departureBookings > 0 && arrivalBookings > 0) {
+                performanceType = "both";
+            } else if (departureBookings > 0) {
+                performanceType = "departure";
+            } else {
+                performanceType = "arrival";
+            }
+            BigDecimal averageRevenue = bookings == 0
+                    ? BigDecimal.ZERO
+                    : revenue.divide(BigDecimal.valueOf(bookings), 2, RoundingMode.HALF_UP);
+            return Map.ofEntries(
+                    Map.entry("airportId", airportId()),
+                    Map.entry("airportCode", code),
+                    Map.entry("airportName", name),
+                    Map.entry("city", city),
+                    Map.entry("country", country),
+                    Map.entry("performanceType", performanceType),
+                    Map.entry("totalBookings", bookings),
+                    Map.entry("totalRevenue", revenue.setScale(2, RoundingMode.HALF_UP)),
+                    Map.entry("averageRevenuePerBooking", averageRevenue),
+                    Map.entry("totalFlights", flights),
+                    Map.entry("departureBookings", departureBookings),
+                    Map.entry("arrivalBookings", arrivalBookings)
+            );
+        }
+
+        private static boolean hasTextValue(String value) {
+            return value != null && !value.isBlank();
+        }
     }
 
     private long safeLong(Long value) {
