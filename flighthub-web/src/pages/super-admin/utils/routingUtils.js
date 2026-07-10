@@ -84,6 +84,7 @@ export const ROUTE_MAP = {
   // Notifications
   "notifications-system": "/super-admin/notifications",
   "notifications-deliveries": "/super-admin/notifications/deliveries",
+  "notifications-events": "/super-admin/notifications/events",
   "notifications-failed": "/super-admin/notifications/failed",
   "notifications-templates": "/super-admin/notifications/templates",
   "notifications-channels": "/super-admin/notifications/channels",
@@ -168,6 +169,7 @@ export const SECTION_TITLES = {
   // Notifications
   "notifications-system": "Notification Operations",
   "notifications-deliveries": "Delivery Logs",
+  "notifications-events": "Notification Events",
   "notifications-failed": "Failed & Retry Queue",
   "notifications-templates": "Notification Templates",
   "notifications-channels": "Channel Health",
@@ -251,6 +253,7 @@ export const SECTION_DESCRIPTIONS = {
   // Notifications
   "notifications-system": "Monitor notification events, deliveries, channels, and backend readiness",
   "notifications-deliveries": "Review tracked notification_events and notification_deliveries records",
+  "notifications-events": "Inspect source business events recorded by notification-service",
   "notifications-failed": "Investigate failed deliveries, retries, and DLQ-bound events",
   "notifications-templates": "Review transactional email templates used by notification-service",
   "notifications-channels": "Monitor email, SMS, Kafka, Redis, and idempotency health",
@@ -361,6 +364,7 @@ export const getActiveSectionFromPath = (pathname, urlParams = null) => {
     },
     "/notifications": () => {
       if (path.includes("/notifications/deliveries")) return "notifications-deliveries";
+      if (path.includes("/notifications/events")) return "notifications-events";
       if (path.includes("/notifications/failed")) return "notifications-failed";
       if (path.includes("/notifications/templates")) return "notifications-templates";
       if (path.includes("/notifications/channels")) return "notifications-channels";

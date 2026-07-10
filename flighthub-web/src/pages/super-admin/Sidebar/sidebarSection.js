@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bell,
   Clock,
+  Database,
   XCircle,
   AlertTriangle,
   Globe,
@@ -17,7 +18,9 @@ import {
   UserRound,
   Gauge,
   Search,
+  Send,
   ServerCog,
+  Smartphone,
   PlugZap,
 } from "lucide-react";
 
@@ -163,6 +166,20 @@ export const sidebarSections = [
         path: "/super-admin/notifications",
       },
       {
+        id: "notifications-deliveries",
+        label: "Delivery Logs",
+        icon: Send,
+        countKey: "totalNotificationDeliveries",
+        path: "/super-admin/notifications/deliveries",
+      },
+      {
+        id: "notifications-events",
+        label: "Events",
+        icon: Database,
+        countKey: "totalNotificationEvents",
+        path: "/super-admin/notifications/events",
+      },
+      {
         id: "notifications-failed",
         label: "Failed Deliveries",
         icon: AlertTriangle,
@@ -174,6 +191,12 @@ export const sidebarSections = [
         label: "Templates",
         icon: Mail,
         path: "/super-admin/notifications/templates",
+      },
+      {
+        id: "notifications-channels",
+        label: "Channel Health",
+        icon: Smartphone,
+        path: "/super-admin/notifications/channels",
       },
     ],
   },

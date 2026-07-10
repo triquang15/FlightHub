@@ -80,6 +80,7 @@ const SuperAdminRoutes = ({ platformStats }) => {
       {/* Notifications */}
       <Route path="/notifications" element={<NotificationsManagement activeSection="notifications-system" />} />
       <Route path="/notifications/deliveries" element={<NotificationsManagement activeSection="notifications-deliveries" />} />
+      <Route path="/notifications/events" element={<NotificationsManagement activeSection="notifications-events" />} />
       <Route path="/notifications/failed" element={<NotificationsManagement activeSection="notifications-failed" />} />
       <Route path="/notifications/templates" element={<NotificationsManagement activeSection="notifications-templates" />} />
       <Route path="/notifications/channels" element={<NotificationsManagement activeSection="notifications-channels" />} />

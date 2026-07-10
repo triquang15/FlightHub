@@ -1,5 +1,7 @@
 package com.triquang.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -14,6 +16,8 @@ import com.triquang.model.NotificationDelivery;
 
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long>, JpaSpecificationExecutor<NotificationDelivery> {
     Optional<NotificationDelivery> findByDeliveryKey(String deliveryKey);
+
+    List<NotificationDelivery> findByEventIdIn(Collection<Long> eventIds);
 
     @EntityGraph(attributePaths = "event")
     Optional<NotificationDelivery> findWithEventById(Long id);

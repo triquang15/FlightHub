@@ -14,6 +14,7 @@ const WorkspaceHeader = ({
   icon: Icon,
   iconClassName,
   onOpenNavigation,
+  actions,
 }) => (
   <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
     <div className="flex min-h-20 items-center gap-3 px-4 py-3 sm:px-6">
@@ -51,6 +52,7 @@ const WorkspaceHeader = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {actions}
         <SessionCountdownControl showLabel={false} className="h-9 px-2.5 sm:hidden" />
         <SessionCountdownControl className="hidden h-9 sm:inline-flex" />
         <ThemeToggle className="h-9 w-9" />

@@ -1,8 +1,13 @@
 package com.triquang.service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -14,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triquang.dto.NotificationDeliveryResponse;
 import com.triquang.dto.NotificationEventResponse;
+import com.triquang.dto.NotificationEventResponse.DeliverySummary;
 import com.triquang.dto.NotificationOverviewResponse;
 import com.triquang.dto.NotificationRetryResponse;
 import com.triquang.enums.DeliveryChannel;
@@ -94,8 +100,15 @@ public class NotificationAdminService {
             String search,
             Pageable pageable
     ) {
-        return eventRepository.findAll(eventSpec(type, search), pageable)
-                .map(NotificationEventResponse::from);
+        Page<NotificationEvent> page = eventRepository.findAll(eventSpec(type, search), pageable);
+        Map<Long, DeliverySummary> summaries = deliverySummaries(page.getContent().stream()
+                .map(NotificationEvent::getId)
+                .filter(Objects::nonNull)
+                .toList());
+        return page.map(event -> NotificationEventResponse.from(
+                event,
+                summaries.getOrDefault(event.getId(), DeliverySummary.empty())
+        ));
     }
 
     public NotificationRetryResponse retryDelivery(Long deliveryId) {
@@ -104,6 +117,20 @@ public class NotificationAdminService {
 
         if (delivery.getStatus() == DeliveryStatus.SENT) {
             return new NotificationRetryResponse(deliveryId, delivery.getStatus().name(), "Delivery already sent");
+        }
+        if (delivery.getStatus() == DeliveryStatus.PROCESSING) {
+            return new NotificationRetryResponse(
+                    deliveryId,
+                    delivery.getStatus().name(),
+                    "Delivery is already being processed; refresh and retry after it settles"
+            );
+        }
+        if (delivery.getStatus() == DeliveryStatus.SKIPPED_DUPLICATE) {
+            return new NotificationRetryResponse(
+                    deliveryId,
+                    delivery.getStatus().name(),
+                    "Duplicate delivery was skipped by idempotency; no retry is required"
+            );
         }
 
         markProcessing(delivery);
@@ -182,6 +209,63 @@ public class NotificationAdminService {
 
             return predicates;
         };
+    }
+
+    private Map<Long, DeliverySummary> deliverySummaries(Collection<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<NotificationDelivery> deliveries = deliveryRepository.findByEventIdIn(eventIds);
+        Map<Long, DeliverySummaryBuilder> grouped = new HashMap<>();
+        for (NotificationDelivery delivery : deliveries) {
+            Long eventId = delivery.getEvent().getId();
+            grouped.computeIfAbsent(eventId, id -> new DeliverySummaryBuilder()).add(delivery);
+        }
+
+        return grouped.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().build()));
+    }
+
+    private static class DeliverySummaryBuilder {
+        private long totalDeliveries;
+        private long sentDeliveries;
+        private long failedDeliveries;
+        private long pendingDeliveries;
+        private long processingDeliveries;
+        private long skippedDuplicateDeliveries;
+        private long totalAttempts;
+        private LocalDateTime lastDeliveryAt;
+
+        void add(NotificationDelivery delivery) {
+            totalDeliveries += 1;
+            totalAttempts += delivery.getAttempts();
+            if (delivery.getUpdatedAt() != null
+                    && (lastDeliveryAt == null || delivery.getUpdatedAt().isAfter(lastDeliveryAt))) {
+                lastDeliveryAt = delivery.getUpdatedAt();
+            }
+
+            switch (delivery.getStatus()) {
+                case SENT -> sentDeliveries += 1;
+                case FAILED -> failedDeliveries += 1;
+                case PENDING -> pendingDeliveries += 1;
+                case PROCESSING -> processingDeliveries += 1;
+                case SKIPPED_DUPLICATE -> skippedDuplicateDeliveries += 1;
+            }
+        }
+
+        DeliverySummary build() {
+            return new DeliverySummary(
+                    totalDeliveries,
+                    sentDeliveries,
+                    failedDeliveries,
+                    pendingDeliveries,
+                    processingDeliveries,
+                    skippedDuplicateDeliveries,
+                    totalAttempts,
+                    lastDeliveryAt
+            );
+        }
     }
 
     private void resend(NotificationDelivery delivery) throws Exception {

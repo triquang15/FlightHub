@@ -9,6 +9,7 @@ import {
   ChevronsRight,
   Clock,
   Database,
+  FileText,
   Filter,
   Mail,
   RefreshCw,
@@ -356,7 +357,7 @@ const NotificationToolbar = ({
   </div>
 );
 
-const NotificationFilters = ({ isVisible, filters, onFiltersChange, onReset }) => {
+const NotificationFilters = ({ isVisible, filters, onFiltersChange, onReset, mode = "deliveries" }) => {
   if (!isVisible) return null;
 
   const handleChange = (key, value) => {
@@ -370,34 +371,41 @@ const NotificationFilters = ({ isVisible, filters, onFiltersChange, onReset }) =
     <Card className="min-w-0 max-w-full overflow-hidden">
       <CardContent className="p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Status</label>
-            <select
-              value={filters.status || "all"}
-              onChange={(event) => handleChange("status", event.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="all">All statuses</option>
-              <option value="SENT">Sent</option>
-              <option value="FAILED">Failed</option>
-              <option value="PENDING">Pending</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="SKIPPED_DUPLICATE">Skipped duplicate</option>
-            </select>
-          </div>
+          {mode === "deliveries" && (
+            <>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Status</label>
+                <select
+                  value={filters.status || "all"}
+                  onChange={(event) => handleChange("status", event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="SENT">Sent</option>
+                  <option value="FAILED">Failed</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="PROCESSING">Processing</option>
+                  <option value="SKIPPED_DUPLICATE">Skipped duplicate</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Channel</label>
-            <select
-              value={filters.channel || "all"}
-              onChange={(event) => handleChange("channel", event.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="all">All channels</option>
-              <option value="EMAIL">Email</option>
-              <option value="SMS">SMS</option>
-            </select>
-          </div>
+            </>
+          )}
+
+          {mode !== "events" && (
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Channel</label>
+              <select
+                value={filters.channel || "all"}
+                onChange={(event) => handleChange("channel", event.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="all">All channels</option>
+                <option value="EMAIL">Email</option>
+                <option value="SMS">SMS</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Type</label>
@@ -429,6 +437,7 @@ const NotificationPagination = ({
   totalPages = 1,
   totalItems = 0,
   itemsPerPage = 10,
+  itemLabel = "records",
   onPageChange,
   onItemsPerPageChange,
 }) => {
@@ -463,7 +472,7 @@ const NotificationPagination = ({
     <div className="flex flex-col items-center justify-between gap-4 py-4 sm:flex-row">
       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
         <span>
-          Showing {startItem} to {endItem} of {total} deliveries
+          Showing {startItem} to {endItem} of {total} {itemLabel}
         </span>
 
         <div className="flex items-center gap-2">
@@ -607,7 +616,7 @@ const DeliveryTable = ({ rows, loading, error, mode = "readonly", onRetry, retry
 
   return (
     <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
-      <Table className="w-[1530px] min-w-[1530px] table-fixed text-sm">
+      <Table className="w-[1780px] min-w-[1780px] table-fixed text-sm">
         <TableHeader className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
           <TableRow>
             <TableHead className={`${tableHeadClassName} w-[360px]`}>
@@ -622,12 +631,20 @@ const DeliveryTable = ({ rows, loading, error, mode = "readonly", onRetry, retry
             <TableHead className={`${tableHeadClassName} w-72`}>
               Recipient
             </TableHead>
+            <TableHead className={`${tableHeadClassName} w-72`}>
+              Subject
+            </TableHead>
             <TableHead className={`${tableHeadClassName} w-28 text-center`}>
               Attempts
             </TableHead>
             <TableHead className={`${tableHeadClassName} w-40`}>
               Status
             </TableHead>
+            {mode === "retry" && (
+              <TableHead className={`${tableHeadClassName} w-72`}>
+                Last Error
+              </TableHead>
+            )}
             <TableHead className={`${tableHeadClassName} w-44 text-right`}>
               Updated
             </TableHead>
@@ -681,6 +698,9 @@ const DeliveryTable = ({ rows, loading, error, mode = "readonly", onRetry, retry
             <TableCell className="w-72 px-4 py-3 text-gray-600 dark:text-gray-300">
               <span className="block truncate">{row.recipient}</span>
             </TableCell>
+            <TableCell className="w-72 px-4 py-3 text-gray-600 dark:text-gray-300">
+              <span className="block truncate">{row.subject || "N/A"}</span>
+            </TableCell>
             <TableCell className="w-28 px-4 py-3 text-center">
               <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                 {row.attempts}
@@ -692,6 +712,13 @@ const DeliveryTable = ({ rows, loading, error, mode = "readonly", onRetry, retry
                 <StatusBadge status={row.status} />
               </div>
             </TableCell>
+            {mode === "retry" && (
+              <TableCell className="w-72 px-4 py-3 text-xs text-red-600 dark:text-red-300">
+                <span className="block truncate" title={row.lastError || ""}>
+                  {row.lastError || "No error message captured"}
+                </span>
+              </TableCell>
+            )}
             <TableCell className="w-44 px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">{formatDateTime(row.updatedAt)}</TableCell>
             {mode === "retry" && (
               <TableCell className="w-28 px-4 py-3 text-right">
@@ -737,6 +764,143 @@ const Deliveries = ({
             totalPages={pageInfo.totalPages}
             totalItems={pageInfo.totalItems}
             itemsPerPage={itemsPerPage}
+            onPageChange={onPageChange}
+            onItemsPerPageChange={onItemsPerPageChange}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const EventsTable = ({ rows, loading, error }) => {
+  if (loading || error || !rows.length) {
+    return <InlineState loading={loading} error={error} empty={!loading && !error && !rows.length} />;
+  }
+
+  return (
+    <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
+      <Table className="w-[1480px] min-w-[1480px] table-fixed text-sm">
+        <TableHeader className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+          <TableRow>
+            <TableHead className={`${tableHeadClassName} w-[360px]`}>Event</TableHead>
+            <TableHead className={`${tableHeadClassName} w-52`}>Type</TableHead>
+            <TableHead className={`${tableHeadClassName} w-60`}>Business Key</TableHead>
+            <TableHead className={`${tableHeadClassName} w-72`}>Delivery Outcome</TableHead>
+            <TableHead className={`${tableHeadClassName} w-28 text-center`}>Attempts</TableHead>
+            <TableHead className={`${tableHeadClassName} w-52`}>Source</TableHead>
+            <TableHead className={`${tableHeadClassName} w-44 text-right`}>Last Delivery</TableHead>
+            <TableHead className={`${tableHeadClassName} w-44 text-right`}>Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody className="divide-y dark:divide-gray-700">
+          {rows.map((row, index) => (
+            <TableRow
+              key={row.id}
+              className="border-l-4 border-l-transparent transition hover:border-l-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30"
+            >
+              <TableCell className="w-[360px] px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">#{index + 1}</span>
+                      <p className="truncate font-medium text-gray-900 dark:text-gray-100">{row.eventKey}</p>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-gray-400 dark:text-gray-500">
+                      Event ID {row.id}
+                    </p>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="w-52 px-4 py-3">
+                <Badge className="rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                  {typeLabel[row.type] || row.type}
+                </Badge>
+              </TableCell>
+              <TableCell className="w-60 px-4 py-3">
+                <span className="block truncate text-gray-600 dark:text-gray-300">
+                  {row.businessKey || "N/A"}
+                </span>
+              </TableCell>
+              <TableCell className="w-72 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <OutcomeBadge status="SENT" label="Sent" count={row.sentDeliveries} />
+                  <OutcomeBadge status="FAILED" label="Failed" count={row.failedDeliveries} />
+                  <OutcomeBadge status="PENDING" label="Pending" count={row.pendingDeliveries} />
+                  {Number(row.processingDeliveries || 0) > 0 && (
+                    <OutcomeBadge status="PROCESSING" label="Processing" count={row.processingDeliveries} />
+                  )}
+                  {Number(row.skippedDuplicateDeliveries || 0) > 0 && (
+                    <OutcomeBadge status="SKIPPED_DUPLICATE" label="Skipped" count={row.skippedDuplicateDeliveries} />
+                  )}
+                  {Number(row.totalDeliveries || 0) === 0 && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">No deliveries</span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="w-28 px-4 py-3 text-center">
+                <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {Number(row.totalAttempts || 0)}
+                </span>
+              </TableCell>
+              <TableCell className="w-52 px-4 py-3">
+                <span className="block truncate text-gray-600 dark:text-gray-300">
+                  {row.sourceService || "notification-service"}
+                </span>
+              </TableCell>
+              <TableCell className="w-44 px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">
+                {formatDateTime(row.lastDeliveryAt)}
+              </TableCell>
+              <TableCell className="w-44 px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">
+                {formatDateTime(row.createdAt)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+const OutcomeBadge = ({ status, label, count }) => {
+  const safeCount = Number(count || 0);
+  if (safeCount <= 0) return null;
+
+  return (
+    <Badge className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusClassName[status] || statusClassName.SKIPPED_DUPLICATE}`}>
+      {label} {safeCount}
+    </Badge>
+  );
+};
+
+const Events = ({
+  events,
+  loading,
+  error,
+  pageInfo,
+  currentPage,
+  itemsPerPage,
+  onPageChange,
+  onItemsPerPageChange,
+}) => (
+  <div className="min-w-0 max-w-full space-y-6">
+    <SectionHeader
+      title="Notification events"
+      description="Business events captured before channel delivery attempts are created."
+    />
+    <Card className="min-w-0 max-w-full overflow-hidden">
+      <CardContent className="p-0">
+        <EventsTable rows={events} loading={loading} error={error} />
+        <div className="px-6">
+          <NotificationPagination
+            currentPage={currentPage}
+            totalPages={pageInfo.totalPages}
+            totalItems={pageInfo.totalItems}
+            itemsPerPage={itemsPerPage}
+            itemLabel="events"
             onPageChange={onPageChange}
             onItemsPerPageChange={onItemsPerPageChange}
           />
@@ -803,7 +967,7 @@ const FailedRetry = ({
   </div>
 );
 
-const Templates = () => (
+const Templates = ({ overview }) => (
   <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Transactional templates"
@@ -821,6 +985,12 @@ const Templates = () => (
             <p className="mt-4 font-medium text-gray-900 dark:text-gray-100">{template.name}</p>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{template.type}</p>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{template.channel}</p>
+            <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/60">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Events tracked</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {Number(overview?.eventsByType?.[template.type] ?? 0).toLocaleString("en-US")}
+              </p>
+            </div>
             <p className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
               {template.file}
             </p>
@@ -831,7 +1001,7 @@ const Templates = () => (
   </div>
 );
 
-const ChannelHealth = () => (
+const ChannelHealth = ({ overview }) => (
   <div className="min-w-0 max-w-full space-y-6">
     <SectionHeader
       title="Channel health"
@@ -841,6 +1011,11 @@ const ChannelHealth = () => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {channelHealth.map((channel) => {
         const Icon = channel.icon;
+        const deliveryCount = channel.name.includes("Email")
+          ? overview?.deliveriesByChannel?.EMAIL
+          : channel.name.includes("SMS")
+            ? overview?.deliveriesByChannel?.SMS
+            : null;
 
         return (
           <Card key={channel.name}>
@@ -855,6 +1030,14 @@ const ChannelHealth = () => (
                 <StatusBadge status={channel.status} />
               </div>
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{channel.detail}</p>
+              {deliveryCount !== null && deliveryCount !== undefined && (
+                <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/60">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Tracked deliveries</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {Number(deliveryCount || 0).toLocaleString("en-US")}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -865,8 +1048,10 @@ const ChannelHealth = () => (
 
 const NotificationsManagement = ({ activeSection = "notifications-system" }) => {
   const [overview, setOverview] = useState(null);
+  const [events, setEvents] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [failedDeliveries, setFailedDeliveries] = useState([]);
+  const [eventPageInfo, setEventPageInfo] = useState({ totalPages: 1, totalItems: 0 });
   const [deliveryPageInfo, setDeliveryPageInfo] = useState({ totalPages: 1, totalItems: 0 });
   const [failedPageInfo, setFailedPageInfo] = useState({ totalPages: 1, totalItems: 0 });
   const [loading, setLoading] = useState(true);
@@ -879,7 +1064,13 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
   const [reloadSpinning, setReloadSpinning] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const showDataToolbar = activeSection === "notifications-deliveries" || activeSection === "notifications-failed";
+  const showDataToolbar = activeSection === "notifications-deliveries"
+    || activeSection === "notifications-events"
+    || activeSection === "notifications-failed";
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSection]);
 
   const loadNotificationData = useCallback(async () => {
     setLoading(true);
@@ -895,23 +1086,37 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         type: filters.type || undefined,
       };
 
+      const eventParams = {
+        page: currentPage - 1,
+        size: itemsPerPage,
+        search: searchQuery || undefined,
+        type: filters.type || undefined,
+      };
+
       const failedParams = {
         ...params,
         status: "FAILED",
       };
 
-      const [overviewRes, deliveriesRes, failedRes] = await Promise.all([
+      const [overviewRes, deliveriesRes, eventsRes, failedRes] = await Promise.all([
         api.get("/api/notifications/overview"),
         api.get("/api/notifications/deliveries", { params }),
+        api.get("/api/notifications/events", { params: eventParams }),
         api.get("/api/notifications/deliveries", { params: failedParams }),
       ]);
 
       const deliveryPage = deliveriesRes.data.data;
+      const eventPage = eventsRes.data.data;
       const failedPage = failedRes.data.data;
 
       setOverview(overviewRes.data.data);
       setDeliveries(deliveryPage?.content || []);
+      setEvents(eventPage?.content || []);
       setFailedDeliveries(failedPage?.content || []);
+      setEventPageInfo({
+        totalPages: eventPage?.totalPages || 1,
+        totalItems: eventPage?.totalElements || 0,
+      });
       setDeliveryPageInfo({
         totalPages: deliveryPage?.totalPages || 1,
         totalItems: deliveryPage?.totalElements || 0,
@@ -1004,6 +1209,18 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         onItemsPerPageChange={handleItemsPerPageChange}
       />
     ),
+    "notifications-events": (
+      <Events
+        events={events}
+        loading={loading}
+        error={error}
+        pageInfo={eventPageInfo}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
+    ),
     "notifications-failed": (
       <FailedRetry
         failedDeliveries={failedDeliveries}
@@ -1018,13 +1235,15 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         onItemsPerPageChange={handleItemsPerPageChange}
       />
     ),
-    "notifications-templates": <Templates />,
-    "notifications-channels": <ChannelHealth />,
+    "notifications-templates": <Templates overview={overview} />,
+    "notifications-channels": <ChannelHealth overview={overview} />,
   }), [
     currentPage,
     deliveries,
     deliveryPageInfo,
     error,
+    eventPageInfo,
+    events,
     failedDeliveries,
     failedPageInfo,
     handleItemsPerPageChange,
@@ -1061,6 +1280,13 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
             filters={filters}
             onFiltersChange={handleFilterChange}
             onReset={resetFilters}
+            mode={
+              activeSection === "notifications-events"
+                ? "events"
+                : activeSection === "notifications-failed"
+                  ? "failed"
+                  : "deliveries"
+            }
           />
         </>
       )}

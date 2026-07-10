@@ -25,6 +25,7 @@ SUPER_ADMIN_ANALYTICS_SEED_SQL="$SQL_DIR/2026-07-08-seed-super-admin-analytics.s
 PAYMENT_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-payment-idempotency.sql"
 ANCILLARY_MIGRATION_SQL="$SQL_DIR/2026-06-20-migrate-ancillary-commercial-integrity.sql"
 ANCILLARY_SEED_SQL="$SQL_DIR/2026-06-20-seed-production-ancillary-service.sql"
+NOTIFICATION_SEED_SQL="$SQL_DIR/2026-07-10-seed-notification-operations.sql"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required to run this seed script." >&2
@@ -39,9 +40,9 @@ for file in "$USER_SEED_SQL" "$CITY_SEED_SQL" "$AIRPORT_SEED_SQL" "$AIRLINE_CORE
   fi
 done
 
-for file in "$BOOKING_MIGRATION_SQL" "$SUPER_ADMIN_ANALYTICS_SEED_SQL" "$PAYMENT_MIGRATION_SQL" "$ANCILLARY_MIGRATION_SQL" "$ANCILLARY_SEED_SQL"; do
+for file in "$BOOKING_MIGRATION_SQL" "$SUPER_ADMIN_ANALYTICS_SEED_SQL" "$PAYMENT_MIGRATION_SQL" "$ANCILLARY_MIGRATION_SQL" "$ANCILLARY_SEED_SQL" "$NOTIFICATION_SEED_SQL"; do
   if [[ ! -f "$file" ]]; then
-    echo "Required Ancillary SQL file not found: $file" >&2
+    echo "Required demo SQL file not found: $file" >&2
     exit 1
   fi
 done
@@ -128,6 +129,8 @@ require_service_schemas() {
   require_table ancillarydb airline_ancillary_db ancillaries
   require_table bookingdb airline_booking_db bookings
   require_table paymentdb airline_payment_db payments
+  require_table notificationdb airline_notification_db notification_events
+  require_table notificationdb airline_notification_db notification_deliveries
 }
 
 lookup_user_id() {
@@ -845,6 +848,8 @@ run_sql_file_with_settings \
   cabin_vj_a321_pre="$cabin_vj_a321_pre" \
   cabin_sq_a359_eco="$cabin_sq_a359_eco" \
   cabin_sq_a359_bus="$cabin_sq_a359_bus"
+
+run_sql_file notificationdb airline_notification_db "$NOTIFICATION_SEED_SQL"
 
 echo
 echo "Seed complete."
