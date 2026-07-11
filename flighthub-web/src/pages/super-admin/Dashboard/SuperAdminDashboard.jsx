@@ -51,6 +51,24 @@ const getPageTotal = (response) => {
   const payload = getPayload(response);
   return payload?.totalElements ?? 0;
 };
+const HEADER_NOTIFICATION_READ_KEY = "flighthub.superAdmin.headerNotificationsRead";
+
+const readNotificationSnapshot = () => {
+  try {
+    return JSON.parse(localStorage.getItem(HEADER_NOTIFICATION_READ_KEY) || "{}");
+  } catch (error) {
+    console.warn("Failed to read notification badge state:", error);
+    return {};
+  }
+};
+
+const saveNotificationSnapshot = (snapshot) => {
+  try {
+    localStorage.setItem(HEADER_NOTIFICATION_READ_KEY, JSON.stringify(snapshot));
+  } catch (error) {
+    console.warn("Failed to save notification badge state:", error);
+  }
+};
 
 const SuperAdminDashboard = () => {
   const location = useLocation();
@@ -221,12 +239,46 @@ const HeaderNotificationCenter = ({ stats, onNavigate, onRefresh }) => {
   const deliveryCount = Number(stats?.totalNotificationDeliveries ?? 0);
   const hasFailures = failedCount > 0;
   const hasEvents = eventCount > 0 || deliveryCount > 0;
-  const badgeValue = hasFailures ? failedCount : eventCount;
-  const badgeLabel = badgeValue > 99 ? "99+" : String(badgeValue);
   const loading = stats?.loading;
+  const currentSnapshot = React.useMemo(() => ({
+    events: eventCount,
+    deliveries: deliveryCount,
+    failed: failedCount,
+  }), [deliveryCount, eventCount, failedCount]);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [readSnapshot, setReadSnapshot] = React.useState(readNotificationSnapshot);
+
+  const hasUnreadActivity = !loading && hasEvents && (
+    currentSnapshot.events !== Number(readSnapshot.events ?? -1) ||
+    currentSnapshot.deliveries !== Number(readSnapshot.deliveries ?? -1) ||
+    currentSnapshot.failed !== Number(readSnapshot.failed ?? -1)
+  );
+  const newEvents = Math.max(0, eventCount - Number(readSnapshot.events ?? 0));
+  const newFailures = failedCount !== Number(readSnapshot.failed ?? 0) ? failedCount : 0;
+  const badgeValue = newFailures > 0 ? newFailures : newEvents || eventCount;
+  const badgeLabel = badgeValue > 99 ? "99+" : String(badgeValue);
+
+  const markNotificationsRead = React.useCallback(() => {
+    if (loading) return;
+    setReadSnapshot(currentSnapshot);
+    saveNotificationSnapshot(currentSnapshot);
+  }, [currentSnapshot, loading]);
+
+  const handleOpenChange = React.useCallback((open) => {
+    setIsOpen(open);
+    if (open) {
+      markNotificationsRead();
+    }
+  }, [markNotificationsRead]);
+
+  const navigateAndMarkRead = React.useCallback((sectionId) => {
+    markNotificationsRead();
+    onNavigate(sectionId);
+    setIsOpen(false);
+  }, [markNotificationsRead, onNavigate]);
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -239,7 +291,7 @@ const HeaderNotificationCenter = ({ stats, onNavigate, onRefresh }) => {
           )}
         >
           <Bell className="h-4 w-4" />
-          {(hasFailures || hasEvents) && !loading && (
+          {hasUnreadActivity && (
             <span
               className={cn(
                 "absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-white shadow-sm",
@@ -346,7 +398,7 @@ const HeaderNotificationCenter = ({ stats, onNavigate, onRefresh }) => {
               type="button"
               variant={hasFailures ? "destructive" : "outline"}
               className="flex-1"
-              onClick={() => onNavigate("notifications-failed")}
+              onClick={() => navigateAndMarkRead("notifications-failed")}
             >
               Failed queue
             </Button>
@@ -354,7 +406,7 @@ const HeaderNotificationCenter = ({ stats, onNavigate, onRefresh }) => {
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => onNavigate("notifications-system")}
+              onClick={() => navigateAndMarkRead("notifications-system")}
             >
               View center
             </Button>

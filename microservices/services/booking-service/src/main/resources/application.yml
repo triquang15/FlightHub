@@ -120,7 +120,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, circuitbreakers, circuitbreakerevents
+        include: health, info, prometheus, metrics, circuitbreakers, circuitbreakerevents
   endpoint:
     health:
       show-details: always

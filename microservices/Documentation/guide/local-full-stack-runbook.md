@@ -59,6 +59,40 @@ bash microservices/scripts/local-infra.sh status
 
 Wait until PostgreSQL databases, Redis, and Kafka report `healthy`.
 
+### Start Observability Stack Optional
+
+Use this only when you want Grafana, Prometheus, Loki, Elasticsearch, Kibana,
+Alertmanager, and Kafka/Redis exporters for local debugging. It is intentionally
+separated from the daily infra command because Elasticsearch and Grafana add
+extra memory usage.
+
+```bash
+bash microservices/scripts/local-infra.sh observability-up
+bash microservices/scripts/local-infra.sh observability-status
+```
+
+Local URLs:
+
+```text
+Grafana:       http://localhost:3001
+Prometheus:    http://localhost:9090
+Loki:          http://localhost:3100
+Elasticsearch: http://localhost:9200
+Kibana:        http://localhost:5601
+Alertmanager:  http://localhost:9093
+```
+
+Grafana default login:
+
+```text
+admin / admin
+```
+
+Prometheus scrapes Spring services through `/actuator/prometheus`. Restart any
+service after pulling observability changes so the new Prometheus registry and
+actuator exposure are active. Targets for services that are not currently
+running will show as `down` in Prometheus until those services are started.
+
 ### Start Platform Services
 
 Run each command in a separate terminal, in this order:
@@ -240,6 +274,7 @@ Check API Gateway:
 
 ```bash
 curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/prometheus
 ```
 
 Expected top-level result:

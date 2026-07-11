@@ -14,6 +14,10 @@ INFRA_SERVICES=(
   bookingdb paymentdb subscriptiondb notificationdb redis kafka kafka-ui
 )
 
+OBSERVABILITY_SERVICES=(
+  redis-exporter kafka-exporter prometheus grafana loki promtail elasticsearch kibana alertmanager
+)
+
 compose() {
   docker compose --env-file "$ENV_FILE" -f "$DEV_COMPOSE_FILE" "$@"
 }
@@ -31,6 +35,15 @@ case "${1:-}" in
     ;;
   status|ps)
     compose ps "${INFRA_SERVICES[@]}"
+    ;;
+  observability-up)
+    compose --profile observability up -d "${OBSERVABILITY_SERVICES[@]}"
+    ;;
+  observability-down)
+    compose --profile observability stop "${OBSERVABILITY_SERVICES[@]}"
+    ;;
+  observability-status)
+    compose --profile observability ps "${OBSERVABILITY_SERVICES[@]}"
     ;;
   stack-up)
     compose_prod up -d
@@ -50,7 +63,7 @@ case "${1:-}" in
     fi
     ;;
   *)
-    echo "Usage: bash microservices/scripts/local-infra.sh {up|down|status|logs [service]|stack-up|stack-stop|stack-status}" >&2
+    echo "Usage: bash microservices/scripts/local-infra.sh {up|down|status|logs [service]|observability-up|observability-down|observability-status|stack-up|stack-stop|stack-status}" >&2
     exit 1
     ;;
 esac

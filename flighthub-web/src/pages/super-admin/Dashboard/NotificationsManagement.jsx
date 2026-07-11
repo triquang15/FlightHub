@@ -1098,33 +1098,52 @@ const NotificationsManagement = ({ activeSection = "notifications-system" }) => 
         status: "FAILED",
       };
 
-      const [overviewRes, deliveriesRes, eventsRes, failedRes] = await Promise.all([
+      const [overviewRes, deliveriesRes, eventsRes, failedRes] = await Promise.allSettled([
         api.get("/api/notifications/overview"),
         api.get("/api/notifications/deliveries", { params }),
         api.get("/api/notifications/events", { params: eventParams }),
         api.get("/api/notifications/deliveries", { params: failedParams }),
       ]);
 
-      const deliveryPage = deliveriesRes.data.data;
-      const eventPage = eventsRes.data.data;
-      const failedPage = failedRes.data.data;
+      const errors = [];
+      const getSettledData = (result, label) => {
+        if (result.status === "fulfilled") return result.value.data.data;
+        errors.push(label);
+        console.warn(
+          `Unable to load ${label}:`,
+          result.reason?.response?.data?.message || result.reason?.message
+        );
+        return null;
+      };
 
-      setOverview(overviewRes.data.data);
-      setDeliveries(deliveryPage?.content || []);
-      setEvents(eventPage?.content || []);
-      setFailedDeliveries(failedPage?.content || []);
-      setEventPageInfo({
-        totalPages: eventPage?.totalPages || 1,
-        totalItems: eventPage?.totalElements || 0,
-      });
-      setDeliveryPageInfo({
-        totalPages: deliveryPage?.totalPages || 1,
-        totalItems: deliveryPage?.totalElements || 0,
-      });
-      setFailedPageInfo({
-        totalPages: failedPage?.totalPages || 1,
-        totalItems: failedPage?.totalElements || 0,
-      });
+      const overviewData = getSettledData(overviewRes, "overview");
+      const deliveryPage = getSettledData(deliveriesRes, "deliveries");
+      const eventPage = getSettledData(eventsRes, "events");
+      const failedPage = getSettledData(failedRes, "failed deliveries");
+
+      if (overviewData) setOverview(overviewData);
+      if (deliveryPage) {
+        setDeliveries(deliveryPage?.content || []);
+        setDeliveryPageInfo({
+          totalPages: deliveryPage?.totalPages || 1,
+          totalItems: deliveryPage?.totalElements || 0,
+        });
+      }
+      if (eventPage) {
+        setEvents(eventPage?.content || []);
+        setEventPageInfo({
+          totalPages: eventPage?.totalPages || 1,
+          totalItems: eventPage?.totalElements || 0,
+        });
+      }
+      if (failedPage) {
+        setFailedDeliveries(failedPage?.content || []);
+        setFailedPageInfo({
+          totalPages: failedPage?.totalPages || 1,
+          totalItems: failedPage?.totalElements || 0,
+        });
+      }
+      setError(errors.length > 0 ? `Unable to load ${errors.join(", ")}.` : "");
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       setError(err.response?.data?.message || "Unable to load notification data.");

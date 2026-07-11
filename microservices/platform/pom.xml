@@ -23,4 +23,11 @@
         <module>config-server</module>
         <module>api-gateway</module>
     </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+    </dependencies>
 </project>

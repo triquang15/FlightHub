@@ -376,7 +376,7 @@ export const getActiveSectionFromPath = (pathname, urlParams = null) => {
     "/finance/settlements": () => "finance-settlements",
     "/finance/disputes": () => "finance-disputes",
     "/operations/observability": () => "operations-observability",
-    "/operations/health": () => "operations-observability",
+    "/operations/health": () => "operations-service-health",
     "/operations/incidents": () => "operations-incidents",
     "/configuration/settings": () => "configuration-settings",
     "/configuration/integrations": () => "configuration-integrations",

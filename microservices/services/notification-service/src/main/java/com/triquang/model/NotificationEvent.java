@@ -11,7 +11,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -51,7 +50,6 @@ public class NotificationEvent {
     @Column(name = "source_service", nullable = false, length = 80)
     private String sourceService;
 
-    @Lob
     @Column(name = "payload_json", columnDefinition = "TEXT")
     private String payloadJson;
 

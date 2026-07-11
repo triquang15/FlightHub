@@ -1,0 +1,91 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: flighthub-host-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:8080
+        labels:
+          service: api-gateway
+          tier: platform
+      - targets:
+          - host.docker.internal:8888
+        labels:
+          service: config-server
+          tier: platform
+      - targets:
+          - host.docker.internal:8081
+        labels:
+          service: airline-core-service
+          tier: service
+      - targets:
+          - host.docker.internal:8082
+        labels:
+          service: user-service
+          tier: service
+      - targets:
+          - host.docker.internal:8083
+        labels:
+          service: booking-service
+          tier: service
+      - targets:
+          - host.docker.internal:8084
+        labels:
+          service: location-service
+          tier: service
+      - targets:
+          - host.docker.internal:8085
+        labels:
+          service: flight-ops-service
+          tier: service
+      - targets:
+          - host.docker.internal:8086
+        labels:
+          service: pricing-service
+          tier: service
+      - targets:
+          - host.docker.internal:8087
+        labels:
+          service: ancillary-service
+          tier: service
+      - targets:
+          - host.docker.internal:8088
+        labels:
+          service: seat-service
+          tier: service
+      - targets:
+          - host.docker.internal:8089
+        labels:
+          service: payment-service
+          tier: service
+      - targets:
+          - host.docker.internal:8090
+        labels:
+          service: subscription-service
+          tier: service
+      - targets:
+          - host.docker.internal:8091
+        labels:
+          service: notification-service
+          tier: service
+
+  - job_name: flighthub-container-infra
+    static_configs:
+      - targets:
+          - kafka-exporter:9308
+        labels:
+          service: kafka
+          tier: infrastructure
+      - targets:
+          - redis-exporter:9121
+        labels:
+          service: redis
+          tier: infrastructure

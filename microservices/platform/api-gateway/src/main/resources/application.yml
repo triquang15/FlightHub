@@ -134,7 +134,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, circuitbreakers, circuitbreakerevents, metrics
+        include: health, info, prometheus, metrics, circuitbreakers, circuitbreakerevents
 
   endpoint:
     health:

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Activity,
@@ -54,8 +54,30 @@ const asArray = (value) => (Array.isArray(value) ? value : []);
 const formatNumber = (value) => numberValue(value).toLocaleString();
 const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`;
 
+const retryDelay = (delayMs = 450) =>
+  new Promise((resolve) => window.setTimeout(resolve, delayMs));
+
+const runDashboardRequest = async (dispatch, thunk, label) => {
+  const firstAttempt = await dispatch(thunk());
+  if (!thunk.rejected.match(firstAttempt)) return null;
+
+  await retryDelay();
+  const secondAttempt = await dispatch(thunk());
+  if (!thunk.rejected.match(secondAttempt)) return null;
+
+  return {
+    label,
+    message:
+      secondAttempt.payload ||
+      secondAttempt.error?.message ||
+      firstAttempt.payload ||
+      "Internal server error",
+  };
+};
+
 const PlatformOverview = ({ platformStats }) => {
   const dispatch = useDispatch();
+  const [dashboardError, setDashboardError] = useState(null);
   const {
     superAdminStatistics,
     superAdminStatisticsLoading,
@@ -65,19 +87,29 @@ const PlatformOverview = ({ platformStats }) => {
     superAdminRoutePerformanceLoading,
     superAdminDashboardStats,
     superAdminDashboardStatsLoading,
-    error,
   } = useSelector((store) => store.booking);
 
-  const refresh = () => {
-    dispatch(getBookingStatisticsForSuperAdmin());
-    dispatch(getAirlinePerformanceForSuperAdmin());
-    dispatch(getRoutePerformanceForSuperAdmin());
-    dispatch(getSuperAdminDashboardStats());
-  };
+  const refresh = useCallback(async () => {
+    setDashboardError(null);
+    const failures = (
+      await Promise.all([
+        runDashboardRequest(dispatch, getBookingStatisticsForSuperAdmin, "Booking trend"),
+        runDashboardRequest(dispatch, getAirlinePerformanceForSuperAdmin, "Airline performance"),
+        runDashboardRequest(dispatch, getRoutePerformanceForSuperAdmin, "Route performance"),
+        runDashboardRequest(dispatch, getSuperAdminDashboardStats, "Dashboard KPIs"),
+      ])
+    ).filter(Boolean);
+
+    if (failures.length > 0) {
+      const failedLabels = failures.map((failure) => failure.label).join(", ");
+      const primaryMessage = failures[0]?.message || "Internal server error";
+      setDashboardError(`${failedLabels}: ${primaryMessage}`);
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     refresh();
-  }, [dispatch]);
+  }, [refresh]);
 
   const monthlyData = useMemo(
     () => (Array.isArray(superAdminStatistics?.monthlyData) ? superAdminStatistics.monthlyData : []),
@@ -134,9 +166,9 @@ const PlatformOverview = ({ platformStats }) => {
         </Button>
       </div>
 
-      {error && (
+      {dashboardError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-          Some dashboard widgets could not refresh: {error}
+          Some dashboard widgets could not refresh: {dashboardError}
         </div>
       )}
 

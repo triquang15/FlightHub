@@ -213,6 +213,12 @@ export const sidebarSections = [
         path: "/super-admin/operations/observability",
       },
       {
+        id: "operations-service-health",
+        label: "Service Health",
+        icon: Gauge,
+        path: "/super-admin/operations/health",
+      },
+      {
         id: "configuration-integrations",
         label: "Integrations",
         icon: PlugZap,

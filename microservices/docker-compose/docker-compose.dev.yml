@@ -216,6 +216,170 @@ services:
       - triquang15
 
   # ===========================================================================
+  # OBSERVABILITY STACK (optional)
+  # ===========================================================================
+  # Run with:
+  #   docker compose --profile observability -f microservices/docker-compose/docker-compose.dev.yml up -d
+  # Spring services normally run on the host via Maven, so Prometheus scrapes
+  # host.docker.internal:<service-port>/actuator/prometheus.
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    profiles: ["observability"]
+    container_name: gds-redis-exporter
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    networks:
+      - triquang15
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles: ["observability"]
+    container_name: gds-kafka-exporter
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - --kafka.server=kafka:9092
+      - --web.listen-address=:9308
+    networks:
+      - triquang15
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    profiles: ["observability"]
+    container_name: gds-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis-exporter
+      - kafka-exporter
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+    networks:
+      - triquang15
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["observability"]
+    container_name: gds-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+      - elasticsearch
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: dark
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_HOST_PORT:-3001}:3000"
+    networks:
+      - triquang15
+
+  loki:
+    image: grafana/loki:3.3.2
+    profiles: ["observability"]
+    container_name: gds-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ../observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "${LOKI_HOST_PORT:-3100}:3100"
+    networks:
+      - triquang15
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    profiles: ["observability"]
+    container_name: gds-promtail
+    restart: unless-stopped
+    depends_on:
+      - loki
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ../observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - triquang15
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    profiles: ["observability"]
+    container_name: gds-elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - ../observability/elasticsearch/flighthub-logs-template.json:/usr/share/elasticsearch/config/flighthub-logs-template.json:ro
+    ports:
+      - "${ELASTICSEARCH_HOST_PORT:-9200}:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    networks:
+      - triquang15
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    profiles: ["observability"]
+    container_name: gds-kibana
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      XPACK_SECURITY_ENABLED: "false"
+    ports:
+      - "${KIBANA_HOST_PORT:-5601}:5601"
+    networks:
+      - triquang15
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    profiles: ["observability"]
+    container_name: gds-alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ../observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "${ALERTMANAGER_HOST_PORT:-9093}:9093"
+    networks:
+      - triquang15
+
+  # ===========================================================================
   # ONE-SHOT DATA SEEDING
   # ===========================================================================
 
@@ -286,3 +450,10 @@ services:
 networks:
   triquang15:
     driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  elasticsearch-data:
+  alertmanager-data:

@@ -8,6 +8,7 @@ import SearchDataInspector from '../Dashboard/SearchDataInspector';
 
 import UserManagement from '../Dashboard/UserManagement';
 import NotificationsManagement from '../Dashboard/NotificationsManagement';
+import ObservabilityPage from '../Dashboard/ObservabilityPage';
 import AirportPerformancePage from "../Dashboard/AirportPerformancePage";
 import RoutePerformancePage from "../Dashboard/RoutePerformancePage";
 import AirlinePerformancePage from "../Dashboard/Airport Anlitics/AirlinePerformancePage";
@@ -84,8 +85,8 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/notifications/failed" element={<NotificationsManagement activeSection="notifications-failed" />} />
       <Route path="/notifications/templates" element={<NotificationsManagement activeSection="notifications-templates" />} />
       <Route path="/notifications/channels" element={<NotificationsManagement activeSection="notifications-channels" />} />
-      <Route path="/operations/observability" element={<PlatformModulePlaceholder module="observability" />} />
-      <Route path="/operations/health" element={<PlatformModulePlaceholder module="observability" />} />
+      <Route path="/operations/observability" element={<ObservabilityPage />} />
+      <Route path="/operations/health" element={<ObservabilityPage />} />
       <Route path="/operations/incidents" element={<PlatformModulePlaceholder module="incidents" />} />
       <Route path="/configuration/settings" element={<PlatformModulePlaceholder module="settings" />} />
       <Route path="/configuration/integrations" element={<PlatformModulePlaceholder module="integrations" />} />
