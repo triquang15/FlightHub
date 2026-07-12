@@ -1,5 +1,5 @@
 import { Link, Navigate, Routes, Route } from "react-router-dom";
-import { AlertTriangle, Building2, LockKeyhole, RefreshCw } from "lucide-react";
+import { AlertTriangle, Building2, LockKeyhole } from "lucide-react";
 import DashboardOverview from "../Dashboard/DashboardOverview";
 import FlightForm from "../Dashboard/FlightManagment/FlightForm";
 import AnalyticsDashboard from "../Dashboard/AnalyticsDashboard";
@@ -60,6 +60,7 @@ import { useSelector } from "react-redux";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageSkeleton } from "@/components/common/LoadingSystem";
 
 const statusCopy = {
   PENDING: {
@@ -96,14 +97,7 @@ const AirlineStatusGuard = ({ children }) => {
   const copy = statusCopy[status] || statusCopy.UNKNOWN;
 
   if (loading && !currentAirline) {
-    return (
-      <Card className="mx-auto max-w-3xl">
-        <CardContent className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          Checking airline workspace access...
-        </CardContent>
-      </Card>
-    );
+    return <PageSkeleton className="mx-auto max-w-6xl" />;
   }
 
   if (isActive) return children;

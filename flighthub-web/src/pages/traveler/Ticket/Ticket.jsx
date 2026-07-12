@@ -19,6 +19,7 @@ import { toast } from "sonner"
 import { getBookingById } from "@/Redux/booking/bookingThunk"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { PageLoader } from "@/components/common/LoadingSystem"
 import { cn } from "@/lib/utils"
 import { generateTicketPDF } from "./TicketPDF"
 
@@ -132,11 +133,12 @@ const Ticket = () => {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
-          <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">Preparing your e-ticket...</p>
-        </div>
+      <main className="min-h-screen bg-slate-50 px-4 dark:bg-slate-950">
+        <PageLoader
+          message="Preparing your e-ticket..."
+          detail="Loading passenger, flight, seat, and payment confirmation details."
+          className="min-h-screen"
+        />
       </main>
     )
   }

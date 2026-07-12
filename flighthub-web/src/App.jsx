@@ -4,13 +4,14 @@ import {
   Routes,
   Route,
   useNavigate,
+  useLocation,
   Navigate,
 } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider.jsx";
 import { GlobalThemeControl } from "./components/global-theme-control.jsx";
 import { Toaster } from "./components/ui/sonner.jsx";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import LandingPage from "./pages/Landing/LandingPage.jsx";
 import Header from "./pages/traveler/Home/Header.jsx";
@@ -44,6 +45,7 @@ import AuthRequired from "./components/auth/AuthRequired.jsx";
 import GuestOnly from "./components/auth/GuestOnly.jsx";
 import SessionExpiryWarning from "./components/auth/SessionExpiryWarning.jsx";
 import { getRoleHome } from "./utils/roleRedirect.js";
+import { RouteProgress } from "./components/common/LoadingSystem.jsx";
 
 // ============================
 // ROLE REDIRECT
@@ -118,6 +120,19 @@ function AuthAccessEventHandler() {
   return null;
 }
 
+function RouteChangeProgress() {
+  const location = useLocation();
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    setActive(true);
+    const timer = window.setTimeout(() => setActive(false), 520);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, location.search]);
+
+  return <RouteProgress active={active} />;
+}
+
 // ============================
 // APP
 // ============================
@@ -128,6 +143,7 @@ function App() {
         <div className="min-h-screen bg-background transition-colors">
           <SessionExpiredHandler />
           <AuthAccessEventHandler />
+          <RouteChangeProgress />
           <SessionExpiryWarning />
           <Toaster />
           <GlobalThemeControl />

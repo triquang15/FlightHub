@@ -3,11 +3,11 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
-  CheckCircle2,
   Clock,
   ExternalLink,
   FileSearch,
   Gauge,
+  KeyRound,
   LineChart,
   RefreshCw,
   Route,
@@ -22,76 +22,112 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+const grafanaUrl = import.meta.env.VITE_GRAFANA_URL || "http://localhost:3001";
+const prometheusUrl = import.meta.env.VITE_PROMETHEUS_URL || "http://localhost:9090";
+const lokiUrl = import.meta.env.VITE_LOKI_URL || "http://localhost:3100";
+const alertmanagerUrl = import.meta.env.VITE_ALERTMANAGER_URL || "http://localhost:9093";
+const elasticsearchUrl = import.meta.env.VITE_ELASTICSEARCH_URL || "http://localhost:9200";
+const kibanaUrl = import.meta.env.VITE_KIBANA_URL || "http://localhost:5601";
+
+const buildGrafanaExploreUrl = (datasourceUid, expr) => {
+  const panes = {
+    A: {
+      datasource: datasourceUid,
+      queries: [{ refId: "A", datasource: { uid: datasourceUid }, expr }],
+      range: { from: "now-1h", to: "now" },
+    },
+  };
+
+  return `${grafanaUrl}/explore?orgId=1&schemaVersion=1&panes=${encodeURIComponent(JSON.stringify(panes))}`;
+};
+
 const toolLinks = [
   {
     id: "grafana",
-    label: "Grafana",
-    description: "Dashboards for service health, latency, JVM, and business KPIs.",
-    url: import.meta.env.VITE_GRAFANA_URL || "http://localhost:3001",
+    label: "Grafana Overview",
+    description: "FlightHub dashboard with service scrape health, throughput, and latency panels.",
+    url: `${grafanaUrl}/d/flighthub-overview/flighthub-overview?orgId=1&refresh=30s`,
     icon: BarChart3,
     status: import.meta.env.VITE_GRAFANA_URL ? "Configured" : "Local default",
   },
   {
     id: "prometheus",
-    label: "Prometheus",
-    description: "Metrics source for actuator, gateway, and service-level probes.",
-    url: import.meta.env.VITE_PROMETHEUS_URL || "http://localhost:9090",
+    label: "Prometheus Targets",
+    description: "Scrape status for gateway, registry, config server, and business services.",
+    url: `${prometheusUrl}/targets?search=flighthub-host-services`,
     icon: LineChart,
     status: import.meta.env.VITE_PROMETHEUS_URL ? "Configured" : "Local default",
   },
   {
     id: "loki",
-    label: "Loki",
-    description: "Central log search for trace IDs, failed requests, and service errors.",
-    url: import.meta.env.VITE_LOKI_URL || "http://localhost:3100",
+    label: "Loki Logs",
+    description: "Open Grafana Explore against the Loki data source for traceId and service log searches.",
+    url: buildGrafanaExploreUrl("Loki", '{service=~".+"}'),
     icon: FileSearch,
-    status: import.meta.env.VITE_LOKI_URL ? "Configured" : "Local default",
+    status: import.meta.env.VITE_LOKI_URL || import.meta.env.VITE_GRAFANA_URL ? "Configured" : "Local default",
   },
   {
     id: "alertmanager",
-    label: "Alertmanager",
+    label: "Alertmanager Alerts",
     description: "Alert routing and acknowledgement for platform incidents.",
-    url: import.meta.env.VITE_ALERTMANAGER_URL || "http://localhost:9093",
+    url: `${alertmanagerUrl}/#/alerts`,
     icon: ShieldAlert,
     status: import.meta.env.VITE_ALERTMANAGER_URL ? "Configured" : "Local default",
   },
   {
     id: "elasticsearch",
-    label: "Elasticsearch",
-    description: "Search backend for structured operational logs and trace-indexed documents.",
-    url: import.meta.env.VITE_ELASTICSEARCH_URL || "http://localhost:9200",
+    label: "Elasticsearch Health",
+    description: "Cluster health endpoint for structured operational log storage.",
+    url: `${elasticsearchUrl}/_cluster/health?pretty`,
     icon: FileSearch,
     status: import.meta.env.VITE_ELASTICSEARCH_URL ? "Configured" : "Local default",
   },
   {
     id: "kibana",
-    label: "Kibana",
+    label: "Kibana Discover",
     description: "Explore Elasticsearch indices and build ad-hoc operational log searches.",
-    url: import.meta.env.VITE_KIBANA_URL || "http://localhost:5601",
+    url: `${kibanaUrl}/app/discover`,
     icon: BarChart3,
     status: import.meta.env.VITE_KIBANA_URL ? "Configured" : "Local default",
   },
+  {
+    id: "loki-api",
+    label: "Loki API",
+    description: "Raw Loki API endpoint for version/build checks and low-level diagnostics.",
+    url: `${lokiUrl}/loki/api/v1/status/buildinfo`,
+    icon: Gauge,
+    status: import.meta.env.VITE_LOKI_URL ? "Configured" : "Local default",
+  },
 ];
 
-const serviceChecklist = [
-  { name: "API Gateway", endpoint: "http://localhost:8080/actuator/health", critical: true },
-  { name: "Eureka Registry", endpoint: "http://localhost:8761", critical: true },
-  { name: "Config Server", endpoint: "http://localhost:8888/actuator/health", critical: true },
-  { name: "Notification Service", endpoint: "http://localhost:8091/actuator/health", critical: false },
-  { name: "Booking Service", endpoint: "http://localhost:8083/actuator/health", critical: false },
-  { name: "Flight Ops Service", endpoint: "http://localhost:8085/actuator/health", critical: false },
+const credentialPolicy = [
+  {
+    label: "Grafana admin",
+    keys: ["GRAFANA_ADMIN_USER", "GRAFANA_ADMIN_PASSWORD"],
+    detail: "Stored in .env.local or deployment secrets. The UI never renders the password value.",
+  },
+  {
+    label: "Frontend shortcuts",
+    keys: ["VITE_GRAFANA_URL", "VITE_PROMETHEUS_URL", "VITE_LOKI_URL", "VITE_ELASTICSEARCH_URL", "VITE_KIBANA_URL"],
+    detail: "Optional links used by the admin console to open external tools.",
+  },
+  {
+    label: "Alert routing",
+    keys: ["ALERTMANAGER_HOST_PORT", "VITE_ALERTMANAGER_URL"],
+    detail: "Local defaults are safe for development; production routing belongs in secret/config management.",
+  },
 ];
 
 const workflows = [
   {
     title: "Investigate failed request",
     icon: FileSearch,
-    steps: ["Copy traceId from UI/API logs", "Search traceId in Loki", "Open matching service log", "Check gateway status and downstream response"],
+    steps: ["Copy traceId from UI/API logs", "Open Loki Logs in Grafana Explore", "Search the traceId", "Check gateway status and downstream response"],
   },
   {
     title: "Check service availability",
     icon: ServerCog,
-    steps: ["Open Eureka", "Confirm service registration", "Call actuator health", "Restart local service if missing"],
+    steps: ["Open Prometheus Targets", "Confirm service scrape is UP", "Call actuator health if a target is down", "Restart local service if missing"],
   },
   {
     title: "Review latency spike",
@@ -101,10 +137,12 @@ const workflows = [
 ];
 
 const commands = [
+  "microservices/scripts/local-infra.sh observability-up",
+  "microservices/scripts/local-infra.sh observability-status",
   "microservices/scripts/local-infra.sh status",
-  "curl http://localhost:8080/actuator/health",
-  "curl http://localhost:8761/eureka/apps",
-  "microservices/scripts/run-local-service.sh notification-service",
+  "curl http://localhost:9090/api/v1/targets?state=active",
+  "curl http://localhost:3100/loki/api/v1/status/buildinfo",
+  "curl http://localhost:9200/_cluster/health?pretty",
 ];
 
 const getHealthStatus = (payload) => payload?.data?.status || payload?.status || "UNKNOWN";
@@ -195,10 +233,10 @@ const ObservabilityPage = () => {
             </Badge>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Observability
+            Observability Tool Hub
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Monitor service health, trace failed requests, and jump into Grafana, Prometheus, Loki, or Alertmanager when the stack is configured.
+            Open the monitoring stack, review data sources, and keep access policy clear. Use Service Health for runtime status checks.
           </p>
         </div>
 
@@ -239,23 +277,25 @@ const ObservabilityPage = () => {
         <Card>
           <CardHeader className="border-b border-border">
             <CardTitle className="flex items-center gap-2 text-base">
-              <ServerCog className="h-4 w-4 text-blue-600" />
-              Local service checklist
+              <KeyRound className="h-4 w-4 text-blue-600" />
+              Access and credential policy
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 p-4">
-            {serviceChecklist.map((service) => (
-              <div key={service.name} className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5">
-                <div className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
-                  service.critical ? "bg-red-500/10 text-red-600 dark:text-red-300" : "bg-muted text-muted-foreground"
-                )}>
-                  {service.critical ? <ShieldAlert className="h-4 w-4" /> : <ServerCog className="h-4 w-4" />}
+          <CardContent className="space-y-3 p-4">
+            {credentialPolicy.map((item) => (
+              <div key={item.label} className="rounded-md border border-border p-3">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">{service.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{service.endpoint}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.keys.map((key) => (
+                    <code key={key} className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+                      {key}
+                    </code>
+                  ))}
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">{item.detail}</p>
               </div>
             ))}
           </CardContent>

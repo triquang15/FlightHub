@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   BookOpen,
   ChevronDown,
+  Compass,
   LogOut,
   Menu,
   Plane,
@@ -49,6 +50,12 @@ const Header = () => {
       icon: Search,
       current: ["/traveler", "/search"].includes(location.pathname),
     },
+    {
+      name: "Explore",
+      href: "/traveler#destinations",
+      icon: Compass,
+      current: location.pathname === "/traveler" && location.hash === "#destinations",
+    },
     ...(isAuthenticated
       ? [{
           name: "My bookings",
@@ -71,25 +78,25 @@ const Header = () => {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/88 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="FlightHub home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/20">
               <Plane className="h-5 w-5" />
             </span>
             <span className="text-lg font-bold tracking-tight">FlightHub</span>
           </Link>
 
-          <nav className="hidden h-full items-center gap-1 md:flex" aria-label="Traveler navigation">
+          <nav className="hidden items-center gap-1 rounded-full border border-border/70 bg-muted/40 p-1 md:flex" aria-label="Traveler navigation">
             {navigationLinks.map(({ name, href, icon: Icon, current }) => (
               <Link
                 key={name}
                 to={href}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "relative flex h-full items-center gap-2 px-4 text-sm font-medium text-muted-foreground transition hover:text-foreground",
-                  current && "text-foreground after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
+                  "flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold text-muted-foreground transition hover:bg-background hover:text-foreground",
+                  current && "bg-background text-foreground shadow-sm",
                 )}
               >
                 <Icon className={cn("h-4 w-4", current && "text-primary")} />

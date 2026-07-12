@@ -282,8 +282,8 @@ services:
       - loki
       - elasticsearch
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-flighthub_admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-flighthub_admin_local}
       GF_USERS_DEFAULT_THEME: dark
       GF_AUTH_ANONYMOUS_ENABLED: "false"
     volumes:

@@ -202,9 +202,9 @@ export const sidebarSections = [
   },
   {
     id: "operations",
-    title: "Monitoring & Integrations",
+    title: "Operations",
     icon: ServerCog,
-    color: "from-slate-500 to-slate-700",
+    color: "from-cyan-500 to-blue-700",
     items: [
       {
         id: "operations-observability",
@@ -218,6 +218,14 @@ export const sidebarSections = [
         icon: Gauge,
         path: "/super-admin/operations/health",
       },
+    ],
+  },
+  {
+    id: "platform-controls",
+    title: "Platform Controls",
+    icon: PlugZap,
+    color: "from-slate-500 to-slate-700",
+    items: [
       {
         id: "configuration-integrations",
         label: "Integrations",

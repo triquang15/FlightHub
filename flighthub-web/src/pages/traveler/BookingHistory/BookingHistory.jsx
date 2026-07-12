@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import TravellerBookingCard from "./TravellerBookingCard"
+import { BookingCardSkeleton } from "@/components/common/LoadingSystem"
 
 const tabs = [
   { id: "all", label: "All bookings" },
@@ -171,7 +172,9 @@ const BookingHistory = () => {
         <div className="mt-6">
           {loading ? (
             <div className="grid gap-4">
-              {[...Array(3)].map((_, index) => <div key={index} className="h-56 animate-pulse rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />)}
+              {Array.from({ length: 3 }).map((_, index) => (
+                <BookingCardSkeleton key={index} />
+              ))}
             </div>
           ) : error ? (
             <div className="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center dark:border-slate-800 dark:bg-slate-900">

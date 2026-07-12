@@ -82,11 +82,17 @@ Kibana:        http://localhost:5601
 Alertmanager:  http://localhost:9093
 ```
 
-Grafana default login:
+Grafana local login is controlled by environment variables:
 
 ```text
-admin / admin
+GRAFANA_ADMIN_USER=flighthub_admin
+GRAFANA_ADMIN_PASSWORD=flighthub_admin_local
 ```
+
+Set these values in `.env.local` before first startup when you want a custom
+local password. If `grafana-data` already exists, Grafana keeps the existing
+admin account; recreate that volume or change the password inside Grafana to
+rotate credentials.
 
 Prometheus scrapes Spring services through `/actuator/prometheus`. Restart any
 service after pulling observability changes so the new Prometheus registry and

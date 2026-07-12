@@ -8,6 +8,7 @@ import { getUserProfile } from "@/Redux/user/userThunks";
 import { refreshAccessToken } from "@/utils/api";
 import { clearAuthTokens, getRefreshToken, hasValidAccessToken } from "@/utils/authStorage";
 import { getRoleHome } from "@/utils/roleRedirect";
+import { PageLoader } from "@/components/common/LoadingSystem";
 
 const AuthRequired = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();
@@ -52,9 +53,11 @@ const AuthRequired = ({ children, allowedRoles }) => {
 
   if (!hasValidSession && (checkingSession || canRestoreSession)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-sm font-medium text-muted-foreground">
-        Restoring your session...
-      </div>
+      <PageLoader
+        message="Restoring your session..."
+        detail="Checking your secure workspace access before continuing."
+        className="min-h-screen bg-background"
+      />
     );
   }
 

@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import api from "@/utils/api";
 import { toast } from "sonner";
+import { TableSkeleton } from "@/components/common/LoadingSystem";
 
 const SYSTEM_ADMIN_ROLE = "ROLE_SYSTEM_ADMIN";
 const ROLE_OPTIONS = [
@@ -731,10 +732,7 @@ const UserManagement = () => {
       </div>
 
       {usersLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-          <RefreshCw className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
-          <p className="text-sm">Loading users…</p>
-        </div>
+        <TableSkeleton rows={7} columns={8} className="border-0 shadow-none" />
       ) : usersError ? (
         <div className="flex flex-col items-center justify-center py-20 text-red-400">
           <p className="font-medium">Failed to load users</p>
