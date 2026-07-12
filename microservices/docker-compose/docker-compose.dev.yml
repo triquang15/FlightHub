@@ -216,6 +216,38 @@ services:
       - triquang15
 
   # ===========================================================================
+  # FRONTEND DEV SERVER (optional)
+  # ===========================================================================
+  # Run with:
+  #   docker compose --profile frontend -f microservices/docker-compose/docker-compose.dev.yml up -d flighthub-web
+  # Vite reads flighthub-web/.env.local from the mounted source directory.
+
+  flighthub-web:
+    image: node:25-alpine
+    profiles: ["frontend"]
+    container_name: flighthub-web
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          npm ci
+        fi
+        npm run dev -- --host 0.0.0.0
+    volumes:
+      - ../../flighthub-web:/app
+      - flighthub-web-node-modules:/app/node_modules
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:5173"
+    networks:
+      - triquang15
+
+  # ===========================================================================
   # OBSERVABILITY STACK (optional)
   # ===========================================================================
   # Run with:
@@ -452,6 +484,7 @@ networks:
     driver: bridge
 
 volumes:
+  flighthub-web-node-modules:
   prometheus-data:
   grafana-data:
   loki-data:

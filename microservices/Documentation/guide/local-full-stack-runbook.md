@@ -168,6 +168,8 @@ entitlement contract described in
 
 ### Start Frontend
 
+Option A: run Vite directly on the host.
+
 Install dependencies on the first run or after `package.json` changes:
 
 ```bash
@@ -179,6 +181,31 @@ Start Vite:
 ```bash
 (cd flighthub-web && npm run dev -- --host 0.0.0.0)
 ```
+
+Option B: run the Vite dev server through Docker Compose DEV.
+
+```bash
+bash microservices/scripts/local-infra.sh frontend-up
+bash microservices/scripts/local-infra.sh frontend-status
+```
+
+Follow frontend logs:
+
+```bash
+bash microservices/scripts/local-infra.sh logs flighthub-web
+```
+
+Stop only the frontend container:
+
+```bash
+bash microservices/scripts/local-infra.sh frontend-down
+```
+
+The Docker frontend service mounts `flighthub-web` into a Node container, keeps
+`node_modules` in a named Docker volume, and serves Vite on
+`http://localhost:${FRONTEND_HOST_PORT:-5173}`. Vite still reads
+`flighthub-web/.env.local`, so Google/Apple login variables do not need to be
+duplicated in Docker Compose.
 
 Google sign-in is optional. To enable it locally, create an OAuth 2.0 Web
 Client in Google Cloud Console with `http://localhost:5173` as an authorized

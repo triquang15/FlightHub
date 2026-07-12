@@ -104,6 +104,7 @@ const ModernFlightCard = ({
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isPricingModalOpen, setIsPricingModalOpen] = React.useState(false);
+  const isGrid = viewMode === "grid";
 
   const fare = flight?.fare;
   const currency = fare?.currency || "USD";
@@ -123,16 +124,16 @@ const ModernFlightCard = ({
     <Card
       className={cn(
         "overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/35 hover:shadow-md",
-        viewMode === "grid" && "h-full",
+        isGrid && "h-full",
         className,
       )}
     >
       <CardContent className="p-0">
-        <div className="grid gap-0 lg:grid-cols-[1fr_250px]">
-          <div className="min-w-0 p-5">
+        <div className={cn(isGrid ? "flex h-full flex-col" : "grid gap-0 lg:grid-cols-[1fr_250px]")}>
+          <div className={cn("min-w-0", isGrid ? "flex-1 p-4" : "p-5")}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar className="h-11 w-11 rounded-lg border">
+                <Avatar className={cn("rounded-lg border", isGrid ? "h-10 w-10" : "h-11 w-11")}>
                   <AvatarImage src={flight?.airlineLogo || flight?.airlineLogoUrl} alt="" />
                   <AvatarFallback className="rounded-lg bg-primary/10 text-sm font-bold text-primary">
                     {getInitials(flight?.airlineName)}
@@ -140,7 +141,9 @@ const ModernFlightCard = ({
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-base font-semibold">{flight?.airlineName || "Airline"}</h3>
+                    <h3 className="max-w-full truncate text-base font-semibold" title={flight?.airlineName || "Airline"}>
+                      {flight?.airlineName || "Airline"}
+                    </h3>
                     <Badge variant="outline" className="rounded-md font-mono text-[11px]">
                       {flight?.flightNumber || "Flight"}
                     </Badge>
@@ -159,19 +162,31 @@ const ModernFlightCard = ({
               </button>
             </div>
 
-            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+            <div
+              className={cn(
+                "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center",
+                isGrid ? "mt-5 gap-3" : "mt-6 gap-4",
+              )}
+            >
               <div className="min-w-0">
-                <p className="text-3xl font-semibold tabular-nums">{formatTime(flight?.departureDateTime)}</p>
+                <p className={cn("font-semibold tabular-nums", isGrid ? "text-2xl" : "text-3xl")}>
+                  {formatTime(flight?.departureDateTime)}
+                </p>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="rounded-md bg-primary/10 px-2 py-1 text-sm font-bold text-primary">
                     {getAirportCode(flight?.departureAirport)}
                   </span>
-                  <span className="truncate text-sm font-medium">{getAirportName(flight?.departureAirport)}</span>
+                  <span
+                    className={cn("truncate text-sm font-medium", isGrid && "sr-only")}
+                    title={getAirportName(flight?.departureAirport)}
+                  >
+                    {getAirportName(flight?.departureAirport)}
+                  </span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">{formatDate(flight?.departureDateTime)}</p>
               </div>
 
-              <div className="flex min-w-28 flex-col items-center">
+              <div className={cn("flex flex-col items-center", isGrid ? "min-w-20" : "min-w-28")}>
                 <p className="mb-2 text-xs font-semibold text-muted-foreground">{flight?.formattedDuration || "Duration TBA"}</p>
                 <div className="flex w-full items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-primary" />
@@ -184,9 +199,16 @@ const ModernFlightCard = ({
               </div>
 
               <div className="min-w-0 text-right">
-                <p className="text-3xl font-semibold tabular-nums">{formatTime(flight?.arrivalDateTime)}</p>
+                <p className={cn("font-semibold tabular-nums", isGrid ? "text-2xl" : "text-3xl")}>
+                  {formatTime(flight?.arrivalDateTime)}
+                </p>
                 <div className="mt-2 flex items-center justify-end gap-2">
-                  <span className="truncate text-sm font-medium">{getAirportName(flight?.arrivalAirport)}</span>
+                  <span
+                    className={cn("truncate text-sm font-medium", isGrid && "sr-only")}
+                    title={getAirportName(flight?.arrivalAirport)}
+                  >
+                    {getAirportName(flight?.arrivalAirport)}
+                  </span>
                   <span className="rounded-md bg-primary/10 px-2 py-1 text-sm font-bold text-primary">
                     {getAirportCode(flight?.arrivalAirport)}
                   </span>
@@ -195,7 +217,7 @@ const ModernFlightCard = ({
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className={cn("mt-5 flex flex-wrap gap-2", isGrid && "[&>div]:px-2.5 [&>div]:py-1.5 [&>div]:text-xs")}>
               <FlightMeta icon={Clock} label="Status" value={flight?.status || "Scheduled"} />
               <FlightMeta icon={Users} label="Seats" value={flight?.availableSeats ?? "-"} />
               <FlightMeta icon={Calendar} label="Gate" value={flight?.gate || "TBA"} />
@@ -233,7 +255,12 @@ const ModernFlightCard = ({
             </Button>
           </div>
 
-          <div className="flex flex-col justify-between border-t bg-muted/30 p-5 lg:border-l lg:border-t-0">
+          <div
+            className={cn(
+              "flex flex-col justify-between border-t bg-muted/30",
+              isGrid ? "p-4" : "p-5 lg:border-l lg:border-t-0",
+            )}
+          >
             <div>
               {fare?.fareLabel && (
                 <Badge className="mb-3 rounded-md bg-emerald-600 text-white">{fare.fareLabel}</Badge>
@@ -242,8 +269,12 @@ const ModernFlightCard = ({
                 <p className="mb-2 text-sm font-semibold text-rose-600">{flight.availableSeats} seats left</p>
               )}
               <p className="text-sm text-muted-foreground">From</p>
-              <p className="mt-1 text-3xl font-bold text-primary">{formatMoney(totalFare, currency)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">per traveler, taxes included when available</p>
+              <p className={cn("mt-1 font-bold text-primary", isGrid ? "text-2xl" : "text-3xl")}>
+                {formatMoney(totalFare, currency)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                per traveler, taxes included when available
+              </p>
             </div>
 
             <div className="mt-5 grid gap-2">

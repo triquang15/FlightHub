@@ -18,6 +18,10 @@ OBSERVABILITY_SERVICES=(
   redis-exporter kafka-exporter prometheus grafana loki promtail elasticsearch kibana alertmanager
 )
 
+FRONTEND_SERVICES=(
+  flighthub-web
+)
+
 compose() {
   docker compose --env-file "$ENV_FILE" -f "$DEV_COMPOSE_FILE" "$@"
 }
@@ -45,6 +49,15 @@ case "${1:-}" in
   observability-status)
     compose --profile observability ps "${OBSERVABILITY_SERVICES[@]}"
     ;;
+  frontend-up)
+    compose --profile frontend up -d "${FRONTEND_SERVICES[@]}"
+    ;;
+  frontend-down)
+    compose --profile frontend stop "${FRONTEND_SERVICES[@]}"
+    ;;
+  frontend-status)
+    compose --profile frontend ps "${FRONTEND_SERVICES[@]}"
+    ;;
   stack-up)
     compose_prod up -d
     ;;
@@ -63,7 +76,7 @@ case "${1:-}" in
     fi
     ;;
   *)
-    echo "Usage: bash microservices/scripts/local-infra.sh {up|down|status|logs [service]|observability-up|observability-down|observability-status|stack-up|stack-stop|stack-status}" >&2
+    echo "Usage: bash microservices/scripts/local-infra.sh {up|down|status|logs [service]|frontend-up|frontend-down|frontend-status|observability-up|observability-down|observability-status|stack-up|stack-stop|stack-status}" >&2
     exit 1
     ;;
 esac

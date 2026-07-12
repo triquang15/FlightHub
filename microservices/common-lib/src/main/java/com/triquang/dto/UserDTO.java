@@ -1,7 +1,9 @@
 package com.triquang.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+import com.triquang.enums.AuthProvider;
 import com.triquang.enums.UserRole;
 
 import lombok.*;
@@ -24,6 +26,12 @@ public class UserDTO {
     private UserRole role;
 
     private LocalDateTime lastLogin;
+
+    private List<AuthProvider> loginProviders;
+
+    private AuthProvider lastLoginProvider;
+
+    private LocalDateTime lastProviderLoginAt;
 
     // ===== STATUS =====
     private boolean verified;

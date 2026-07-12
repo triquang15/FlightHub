@@ -25,6 +25,7 @@ import {
   UserCheck,
   CalendarDays,
   SlidersHorizontal,
+  KeyRound,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -97,6 +98,37 @@ function getAccountState(user) {
   };
 }
 
+function getLoginProviderMeta(provider) {
+  switch (provider) {
+    case "GOOGLE":
+      return {
+        label: "Google",
+        color: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+      };
+    case "APPLE":
+      return {
+        label: "Apple",
+        color: "bg-gray-950 text-white dark:bg-white dark:text-gray-950",
+      };
+    case "PASSWORD":
+      return {
+        label: "Password",
+        color: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+      };
+    default:
+      return {
+        label: provider || "Unknown",
+        color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+      };
+  }
+}
+
+function getLoginProviders(user) {
+  return Array.isArray(user?.loginProviders) && user.loginProviders.length > 0
+    ? user.loginProviders
+    : ["PASSWORD"];
+}
+
 function formatDate(dateStr, fallback = "Never") {
   if (!dateStr) return fallback;
   try {
@@ -110,6 +142,48 @@ function formatDate(dateStr, fallback = "Never") {
   } catch {
     return "—";
   }
+}
+
+function formatCompactDate(dateStr, fallback = "Never") {
+  if (!dateStr) {
+    return { date: fallback, time: "", full: fallback };
+  }
+
+  try {
+    const value = new Date(dateStr);
+    return {
+      date: value.toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      time: value.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      full: formatDate(dateStr),
+    };
+  } catch {
+    return { date: "—", time: "", full: "—" };
+  }
+}
+
+function getProviderLoginLabel(provider, dateStr) {
+  const providerLabel = getLoginProviderMeta(provider).label;
+  return `Last via ${providerLabel} · ${formatDate(dateStr)}`;
+}
+
+function getCompactProviderLoginLabel(provider, dateStr) {
+  const providerLabel = getLoginProviderMeta(provider).label;
+  const compact = formatCompactDate(dateStr);
+  return `${providerLabel} · ${compact.date}`;
+}
+
+function titleOrUndefined(value) {
+  if (value === null || value === undefined || value === "—") {
+    return undefined;
+  }
+  return String(value);
 }
 
 const MIN_RELOAD_SPINNER_MS = 500;
@@ -293,6 +367,7 @@ const UserManagement = () => {
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState("all");
   const [sortField, setSortField] = useState("fullName");
   const [sortDir, setSortDir] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -430,6 +505,10 @@ const UserManagement = () => {
       list = list.filter((u) => u.role === roleFilter);
     }
 
+    if (providerFilter !== "all") {
+      list = list.filter((u) => getLoginProviders(u).includes(providerFilter));
+    }
+
     list.sort((a, b) => {
       let av = a[sortField] ?? "";
       let bv = b[sortField] ?? "";
@@ -446,7 +525,7 @@ const UserManagement = () => {
     });
 
     return list;
-  }, [safeUsers, search, roleFilter, sortField, sortDir]);
+  }, [safeUsers, search, roleFilter, providerFilter, sortField, sortDir]);
 
   /* stats derived from real data */
   const stats = useMemo(() => {
@@ -454,11 +533,12 @@ const UserManagement = () => {
     const activeUsers = filtered.filter((u) => u.active !== false).length;
     const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
     const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
-    return { visible: visibleUsers, active: activeUsers, airlineOwners, superAdmins };
+    const socialLinked = safeUsers.filter((u) => getLoginProviders(u).some((provider) => provider === "GOOGLE" || provider === "APPLE")).length;
+    return { visible: visibleUsers, active: activeUsers, airlineOwners, superAdmins, socialLinked };
   }, [filtered, safeUsers]);
 
   const uniqueRoles = useMemo(() => ROLE_OPTIONS, []);
-  const hasFilters = search.trim() || roleFilter !== "all";
+  const hasFilters = search.trim() || roleFilter !== "all" || providerFilter !== "all";
 
   return (
     <div className="min-w-0 max-w-full space-y-6">
@@ -630,11 +710,12 @@ const UserManagement = () => {
       )}
 
       {/* stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard icon={Users} label="Results shown" value={stats.visible} detail={`${total || 0} total matching records`} color="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" />
         <StatCard icon={UserCheck} label="Active visible" value={stats.active} detail="Accounts not disabled" color="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" />
         <StatCard icon={Plane} label="Airline owners" value={stats.airlineOwners} detail="Current page count" color="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" />
         <StatCard icon={Shield} label="Protected admins" value={stats.superAdmins} detail="Deletion disabled" color="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" />
+        <StatCard icon={KeyRound} label="Social linked" value={stats.socialLinked} detail="Google or Apple connected" color="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" />
       </div>
 
       {/* filters */}
@@ -650,6 +731,7 @@ const UserManagement = () => {
             onClick={() => {
               setSearch("");
               setRoleFilter("all");
+              setProviderFilter("all");
               setCurrentPage(1);
             }}
             className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
@@ -658,7 +740,7 @@ const UserManagement = () => {
           </button>
         )}
       </div>
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(280px,1fr)_180px_190px]">
 
       {/* search */}
       <div className="relative min-w-0 flex-1">
@@ -686,7 +768,7 @@ const UserManagement = () => {
       </div>
 
       {/* role filter */}
-      <div className="relative min-w-[180px] shrink-0">
+      <div className="relative min-w-0">
         <select
           value={roleFilter}
           onChange={(e) => {
@@ -716,6 +798,34 @@ const UserManagement = () => {
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
       </div>
 
+      {/* login provider filter */}
+      <div className="relative min-w-0">
+        <select
+          value={providerFilter}
+          onChange={(e) => {
+            setProviderFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="
+            w-full px-3 py-2 text-sm rounded-lg
+            bg-gray-50 dark:bg-gray-800
+            border border-gray-200 dark:border-gray-600
+            text-gray-900 dark:text-gray-100
+            focus:outline-none focus:ring-2 focus:ring-indigo-500
+            focus:border-transparent
+            transition
+            appearance-none
+          "
+        >
+          <option value="all">All Login Methods</option>
+          <option value="PASSWORD">Password</option>
+          <option value="GOOGLE">Google</option>
+          <option value="APPLE">Apple</option>
+        </select>
+
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+      </div>
+
       </div>
     </div>
 
@@ -732,7 +842,7 @@ const UserManagement = () => {
       </div>
 
       {usersLoading ? (
-        <TableSkeleton rows={7} columns={8} className="border-0 shadow-none" />
+        <TableSkeleton rows={7} columns={9} className="border-0 shadow-none" />
       ) : usersError ? (
         <div className="flex flex-col items-center justify-center py-20 text-red-400">
           <p className="font-medium">Failed to load users</p>
@@ -746,7 +856,7 @@ const UserManagement = () => {
         </div>
       ) : (
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-b-lg [scrollbar-color:theme(colors.gray.300)_transparent] [scrollbar-width:thin] dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
-          <table className="w-[1600px] min-w-[1600px] table-fixed text-sm">
+          <table className="w-[1720px] min-w-[1720px] table-fixed text-sm">
 
             {/* header */}
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -781,6 +891,10 @@ const UserManagement = () => {
                   Status
                 </th>
 
+                <th className="w-48 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Login
+                </th>
+
                 <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Phone
                 </th>
@@ -791,7 +905,7 @@ const UserManagement = () => {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  className="w-44"
+                  className="w-36"
                 />
 
                 <SortHeader
@@ -800,7 +914,7 @@ const UserManagement = () => {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  className="w-44"
+                  className="w-36"
                 />
 
                 <th className="w-24 bg-gray-50 px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-wider">
@@ -816,6 +930,13 @@ const UserManagement = () => {
                 const accountState = getAccountState(user);
                 const protectedUser = isSystemAdmin(user);
                 const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
+                const loginProviders = getLoginProviders(user);
+                const lastProvider = user.lastLoginProvider || loginProviders[0];
+                const providerLoginAt = user.lastProviderLoginAt || user.lastLogin;
+                const providerLoginLabel = getProviderLoginLabel(lastProvider, providerLoginAt);
+                const compactProviderLoginLabel = getCompactProviderLoginLabel(lastProvider, providerLoginAt);
+                const lastLogin = formatCompactDate(user.lastLogin);
+                const created = formatCompactDate(user.createdAt, "—");
 
                 return (
                   <tr
@@ -847,12 +968,15 @@ const UserManagement = () => {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-gray-900 dark:text-gray-100">
+                          <p
+                            className="truncate font-medium text-gray-900 dark:text-gray-100"
+                            title={titleOrUndefined(user.fullName)}
+                          >
                             {user.fullName || "—"}
                           </p>
 
                           {user.username && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                            <p className="truncate text-xs text-gray-400 dark:text-gray-500" title={user.username}>
                               @{user.username}
                             </p>
                           )}
@@ -864,8 +988,8 @@ const UserManagement = () => {
                     <td className="w-80 px-4 py-3">
                       <span className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-300">
                         <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="truncate">
-                        {user.email || "—"}
+                        <span className="truncate" title={titleOrUndefined(user.email)}>
+                          {user.email || "—"}
                         </span>
                       </span>
                     </td>
@@ -889,29 +1013,77 @@ const UserManagement = () => {
                       </span>
                     </td>
 
+                    {/* login providers */}
+                    <td className="w-48 px-4 py-3">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {loginProviders.map((provider) => {
+                            const meta = getLoginProviderMeta(provider);
+                            return (
+                              <span
+                                key={provider}
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.color}`}
+                              >
+                                {meta.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <p
+                          className="flex min-w-0 items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400"
+                          title={providerLoginLabel}
+                        >
+                          <KeyRound className="h-3 w-3 shrink-0" />
+                          <span className="truncate">
+                            {compactProviderLoginLabel}
+                          </span>
+                        </p>
+                      </div>
+                    </td>
+
                     {/* phone */}
                     <td className="w-40 px-4 py-3">
                       <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
                         <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="truncate">
-                        {user.phone || "—"}
+                        <span className="truncate" title={titleOrUndefined(user.phone)}>
+                          {user.phone || "—"}
                         </span>
                       </span>
                     </td>
 
                     {/* last login */}
-                    <td className="w-44 px-4 py-3">
-                      <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-xs">
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        {formatDate(user.lastLogin)}
+                    <td className="w-36 px-4 py-3">
+                      <span
+                        className="flex min-w-0 items-start gap-1 text-gray-500 dark:text-gray-400 text-xs"
+                        title={titleOrUndefined(lastLogin.full)}
+                      >
+                        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="min-w-0">
+                          <span className="block truncate">{lastLogin.date}</span>
+                          {lastLogin.time && (
+                            <span className="block truncate text-[11px] text-gray-400 dark:text-gray-500">
+                              {lastLogin.time}
+                            </span>
+                          )}
+                        </span>
                       </span>
                     </td>
 
                     {/* created */}
-                    <td className="w-44 px-4 py-3">
-                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        {formatDate(user.createdAt, "—")}
+                    <td className="w-36 px-4 py-3">
+                      <span
+                        className="flex min-w-0 items-start gap-1 text-xs text-gray-500 dark:text-gray-400"
+                        title={titleOrUndefined(created.full)}
+                      >
+                        <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="min-w-0">
+                          <span className="block truncate">{created.date}</span>
+                          {created.time && (
+                            <span className="block truncate text-[11px] text-gray-400 dark:text-gray-500">
+                              {created.time}
+                            </span>
+                          )}
+                        </span>
                       </span>
                     </td>
 

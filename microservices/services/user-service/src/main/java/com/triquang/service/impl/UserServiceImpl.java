@@ -1,8 +1,11 @@
 package com.triquang.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +22,7 @@ import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.mapper.UserMapper;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.model.User;
+import com.triquang.model.UserIdentity;
 import com.triquang.payload.SessionDTO;
 import com.triquang.payload.request.AdminCreateUserRequest;
 import com.triquang.payload.request.ChangePasswordRequest;
@@ -29,6 +33,7 @@ import com.triquang.repository.SessionRepository;
 import com.triquang.repository.UserRepository;
 import com.triquang.repository.UserPreferencesRepository;
 import com.triquang.repository.KnownDeviceRepository;
+import com.triquang.repository.UserIdentityRepository;
 import com.triquang.service.UserService;
 import com.triquang.utils.TokenHashUtil;
 
@@ -48,6 +53,7 @@ public class UserServiceImpl implements UserService {
     private final SessionRepository sessionRepo;
     private final KnownDeviceRepository knownDeviceRepo;
     private final UserPreferencesRepository userPreferencesRepository;
+    private final UserIdentityRepository userIdentityRepository;
     private final TokenHashUtil tokenHashUtil;
     private final SecurityEventProducer securityEventProducer;
 
@@ -58,7 +64,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        return UserMapper.toDTO(user);
+        return enrichLoginInfo(UserMapper.toDTO(user), userIdentityRepository.findByUserId(user.getId()));
     }
 
     // ================= UPDATE PROFILE =================
@@ -78,7 +84,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        return UserMapper.toDTO(user);
+        return enrichLoginInfo(UserMapper.toDTO(user), userIdentityRepository.findByUserId(user.getId()));
     }
 
     // ================= CHANGE PASSWORD =================
@@ -180,7 +186,20 @@ public class UserServiceImpl implements UserService {
             ));
         }
 
-        return userRepository.findAll(spec, pageable).map(UserMapper::toDTO);
+        Page<User> users = userRepository.findAll(spec, pageable);
+        List<Long> userIds = users.getContent().stream()
+                .map(User::getId)
+                .toList();
+
+        Map<Long, List<UserIdentity>> identitiesByUserId = userIds.isEmpty()
+                ? Map.of()
+                : userIdentityRepository.findByUserIdIn(userIds).stream()
+                        .collect(Collectors.groupingBy(identity -> identity.getUser().getId()));
+
+        return users.map(user -> enrichLoginInfo(
+                UserMapper.toDTO(user),
+                identitiesByUserId.getOrDefault(user.getId(), List.of())
+        ));
     }
 
     @Override
@@ -205,7 +224,16 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         log.info("Admin created user userId={} email={} role={}", saved.getId(), saved.getEmail(), saved.getRole());
 
-        return UserMapper.toDTO(saved);
+        userIdentityRepository.save(UserIdentity.builder()
+                .user(saved)
+                .provider(com.triquang.enums.AuthProvider.PASSWORD)
+                .providerUserId(email)
+                .providerEmail(email)
+                .displayName(saved.getFullName())
+                .lastLoginAt(null)
+                .build());
+
+        return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
     }
 
     // ================= DELETE USER =================
@@ -274,5 +302,28 @@ public class UserServiceImpl implements UserService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private UserDTO enrichLoginInfo(UserDTO dto, List<UserIdentity> identities) {
+        if (dto == null) {
+            return null;
+        }
+
+        List<UserIdentity> safeIdentities = identities == null ? List.of() : identities;
+
+        dto.setLoginProviders(safeIdentities.stream()
+                .map(UserIdentity::getProvider)
+                .distinct()
+                .toList());
+
+        safeIdentities.stream()
+                .filter(identity -> identity.getLastLoginAt() != null)
+                .max(Comparator.comparing(UserIdentity::getLastLoginAt))
+                .ifPresent(identity -> {
+                    dto.setLastLoginProvider(identity.getProvider());
+                    dto.setLastProviderLoginAt(identity.getLastLoginAt());
+                });
+
+        return dto;
     }
 }
