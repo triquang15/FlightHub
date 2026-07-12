@@ -66,6 +66,11 @@ app:
     password: ${ADMIN_PASSWORD:Admin@123}
   internal:
     secret: ${INTERNAL_SERVICE_SECRET:QW5xY0ZJY2dLNWV1TzZ2aDJlYk1aZzV1d3pHb3V3M2l4YkFTR0NhN2s0Q0E4VQ==}
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+    apple:
+      client-id: ${APPLE_CLIENT_ID:}
 
 # ================= OPENAPI / SWAGGER =================
 springdoc:

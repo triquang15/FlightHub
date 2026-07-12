@@ -1,5 +1,7 @@
 package com.triquang.controller;
 
+import com.triquang.payload.request.AppleLoginRequest;
+import com.triquang.payload.request.GoogleLoginRequest;
 import com.triquang.payload.request.LoginRequest;
 import com.triquang.payload.request.RefreshTokenRequest;
 import com.triquang.payload.request.SignupRequest;
@@ -81,6 +83,59 @@ public class AuthController {
         return ResponseUtil.ok(authService.login(
                 req.getEmail(),
                 req.getPassword(),
+                deviceId,
+                ip,
+                agent
+        ));
+    }
+
+    // ================= GOOGLE LOGIN =================
+    @PostMapping("/google")
+    @Operation(summary = "Login with Google", description = "Verifies a Google Identity Services ID token, creates a customer account when needed, and issues a FlightHub token pair.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Google login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid Google login payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid Google token")
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest req,
+            @Parameter(description = "Stable client device identifier used for refresh-token binding.")
+            @RequestHeader(value = "X-Device-Id") String deviceId,
+            HttpServletRequest request
+    ) {
+
+        String ip = RequestUtil.getClientIp(request);
+        String agent = RequestUtil.getUserAgent(request);
+
+        return ResponseUtil.ok(authService.loginWithGoogle(
+                req.getIdToken(),
+                deviceId,
+                ip,
+                agent
+        ));
+    }
+
+    // ================= APPLE LOGIN =================
+    @PostMapping("/apple")
+    @Operation(summary = "Login with Apple", description = "Verifies an Apple Sign In ID token, links it to an existing account when possible, creates a customer account when needed, and issues a FlightHub token pair.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Apple login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid Apple login payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid Apple token")
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> appleLogin(
+            @Valid @RequestBody AppleLoginRequest req,
+            @Parameter(description = "Stable client device identifier used for refresh-token binding.")
+            @RequestHeader(value = "X-Device-Id") String deviceId,
+            HttpServletRequest request
+    ) {
+
+        String ip = RequestUtil.getClientIp(request);
+        String agent = RequestUtil.getUserAgent(request);
+
+        return ResponseUtil.ok(authService.loginWithApple(
+                req.getIdToken(),
+                req.getFullName(),
                 deviceId,
                 ip,
                 agent

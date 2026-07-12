@@ -180,6 +180,45 @@ Start Vite:
 (cd flighthub-web && npm run dev -- --host 0.0.0.0)
 ```
 
+Google sign-in is optional. To enable it locally, create an OAuth 2.0 Web
+Client in Google Cloud Console with `http://localhost:5173` as an authorized
+JavaScript origin. Then set the same client id for both backend token
+verification and frontend Google Identity Services:
+
+```bash
+# Backend user-service, read by microservices/scripts/run-local-service.sh
+GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+
+# Frontend Vite, export before running npm run dev or place in flighthub-web/.env.local
+VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+```
+
+If these values are empty, password login still works and the Google button
+shows a clear configuration warning.
+
+Apple sign-in is optional. To enable it locally, create a Sign in with Apple
+Service ID in the Apple Developer portal, enable Sign in with Apple, and allow
+this web redirect URL:
+
+```text
+http://localhost:5173/login
+```
+
+Then set the same Service ID for backend token verification and frontend Apple
+JS:
+
+```bash
+# Backend user-service, read by microservices/scripts/run-local-service.sh
+APPLE_CLIENT_ID=com.example.flighthub.web
+
+# Frontend Vite, export before running npm run dev or place in flighthub-web/.env.local
+VITE_APPLE_CLIENT_ID=com.example.flighthub.web
+VITE_APPLE_REDIRECT_URI=http://localhost:5173/login
+```
+
+If these values are empty, the Apple button stays visible but reports that
+Apple login is not configured.
+
 Open:
 
 ```text

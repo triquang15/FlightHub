@@ -57,6 +57,46 @@ export const login = createAsyncThunk(
   }
 );
 
+export const googleLogin = createAsyncThunk(
+  "auth/googleLogin",
+  async ({ idToken, rememberMe = true }, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/api/auth/google", { idToken });
+      const authResponse = res.data.data;
+
+      setAuthTokens(authResponse, rememberMe);
+      toast.success("Logged in with Google");
+
+      return authResponse;
+    } catch (err) {
+      console.error("Google login error:", err);
+      const message = err.response?.data?.message || "Google login failed";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const appleLogin = createAsyncThunk(
+  "auth/appleLogin",
+  async ({ idToken, fullName, rememberMe = true }, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/api/auth/apple", { idToken, fullName });
+      const authResponse = res.data.data;
+
+      setAuthTokens(authResponse, rememberMe);
+      toast.success("Logged in with Apple");
+
+      return authResponse;
+    } catch (err) {
+      console.error("Apple login error:", err);
+      const message = err.response?.data?.message || "Apple login failed";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 // ✅ Forgot Password
 export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",

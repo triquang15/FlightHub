@@ -10,6 +10,12 @@ public interface AuthService {
     AuthResponse login(String email, String password,
                        String deviceId, String ip, String userAgent);
 
+    AuthResponse loginWithGoogle(String idToken,
+                                 String deviceId, String ip, String userAgent);
+
+    AuthResponse loginWithApple(String idToken, String fullName,
+                                String deviceId, String ip, String userAgent);
+
     AuthResponse refreshToken(String refreshToken,
                               String deviceId, String ip, String userAgent);
 

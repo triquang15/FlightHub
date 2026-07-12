@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.triquang.enums.AuthProvider;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +32,10 @@ public class LoginAudit {
     private String email;
 
     private Boolean success;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private AuthProvider provider;
 
     private String ipAddress;
 

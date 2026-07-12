@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
-import { login, signup, forgotPassword, resetPassword } from "./authThunk";
+import { appleLogin, googleLogin, login, signup, forgotPassword, resetPassword } from "./authThunk";
 import { getUserProfile, updateUserProfile, logout } from "../user/userThunks";
 import { getAccessToken, hasValidAccessToken } from "@/utils/authStorage";
 
@@ -92,6 +92,38 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ================= GOOGLE LOGIN =================
+      .addCase(googleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ================= APPLE LOGIN =================
+      .addCase(appleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(appleLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(appleLogin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
