@@ -212,7 +212,7 @@ export const getRoutePerformanceForAirline = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/route-performance/airline`);
       console.log("✅ getRoutePerformanceForAirline success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getRoutePerformanceForAirline error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch route performance");
@@ -227,7 +227,7 @@ export const getAirportPerformanceForAirline = createAsyncThunk(
     try {
       const res = await api.get(`${API_URL}/airport-performance/airline`);
       console.log("✅ getAirportPerformanceForAirline success:", res.data);
-      return res.data;
+      return unwrapApiData(res);
     } catch (err) {
       console.error("❌ getAirportPerformanceForAirline error:", err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || "Failed to fetch airport performance");

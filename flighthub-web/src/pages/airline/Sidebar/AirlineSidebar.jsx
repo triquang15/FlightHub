@@ -38,11 +38,11 @@ const getInitials = (value) =>
     .join("") || "AO"
 
 const statusStyles = {
-  ACTIVE: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
-  PENDING: "border-sky-400/30 bg-sky-400/10 text-sky-300",
-  INACTIVE: "border-amber-400/30 bg-amber-400/10 text-amber-300",
-  SUSPENDED: "border-orange-400/30 bg-orange-400/10 text-orange-300",
-  BANNED: "border-red-400/30 bg-red-400/10 text-red-300",
+  ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300",
+  PENDING: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-300",
+  INACTIVE: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300",
+  SUSPENDED: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/30 dark:bg-orange-400/10 dark:text-orange-300",
+  BANNED: "border-red-200 bg-red-50 text-red-700 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-300",
 }
 
 const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }) => {
@@ -101,13 +101,13 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     )}
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-80 border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-transform duration-200 lg:transition-[width]",
+        "workspace-sidebar-surface fixed inset-y-0 left-0 z-50 flex w-80 border-r border-slate-200 text-slate-950 shadow-xl dark:border-slate-800 dark:text-slate-100 transition-transform duration-200 lg:transition-[width]",
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         sidebarCollapsed ? "lg:w-16" : "lg:w-80"
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cn("border-b border-slate-800", sidebarCollapsed ? "p-2" : "p-4")}>
+        <div className={cn("border-b border-slate-200 dark:border-slate-800", sidebarCollapsed ? "p-2" : "p-4")}>
           <div className={cn("flex items-center", sidebarCollapsed ? "justify-center" : "justify-between gap-3")}>
             {!sidebarCollapsed && (
               <div className="flex min-w-0 items-center gap-3">
@@ -115,8 +115,8 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   {airlineCode}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{airlineName}</p>
-                  <p className="truncate text-xs text-slate-400">Operations Console</p>
+                  <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{airlineName}</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">Operations Console</p>
                 </div>
               </div>
             )}
@@ -126,17 +126,17 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               onClick={isMobileOpen ? onMobileClose : onToggleCollapse}
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="h-9 w-9 shrink-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="h-9 w-9 shrink-0 text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
             >
               {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
           </div>
 
           {!sidebarCollapsed && (
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800 pt-3">
               <div className="flex min-w-0 items-center gap-2">
-                <Building2 className="h-4 w-4 shrink-0 text-slate-500" />
-                <span className="truncate text-xs text-slate-400">{airlineCode} workspace</span>
+                <Building2 className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                <span className="truncate text-xs text-slate-500 dark:text-slate-400">{airlineCode} workspace</span>
               </div>
               <span
                 className={cn(
@@ -174,8 +174,8 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       "flex h-10 w-full items-center rounded-md text-sm transition-colors",
                       sidebarCollapsed ? "justify-center px-2" : "justify-between px-3",
                       hasActiveItem
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                        ? "bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-3">
@@ -190,7 +190,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </button>
 
                   {!sidebarCollapsed && isExpanded && (
-                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-3">
+                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 dark:border-slate-800 pl-3">
                       {section.items.map((item) => {
                         const ItemIcon = item.icon
                         const isActive = isItemActive(
@@ -207,8 +207,8 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                             className={cn(
                               "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors",
                               isActive
-                                ? "bg-sky-500/15 font-medium text-sky-300"
-                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                                ? "bg-sky-500/12 font-medium text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
+                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                             )}
                           >
                             <ItemIcon className="h-4 w-4 shrink-0" />
@@ -224,19 +224,19 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           </nav>
         </ScrollArea>
 
-        <div className={cn("border-t border-slate-800", sidebarCollapsed ? "p-2" : "p-3")}>
+        <div className={cn("border-t border-slate-200 dark:border-slate-800", sidebarCollapsed ? "p-2" : "p-3")}>
           {!sidebarCollapsed && (
             <button
               type="button"
               onClick={() => navigate("/airline/profile")}
-              className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-900"
+              className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-900"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800 text-xs font-semibold text-slate-200">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-slate-800 dark:text-slate-200">
                 {getInitials(ownerName)}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-100">{ownerName}</p>
-                <p className="truncate text-xs text-slate-500">
+                <p className="truncate text-sm font-medium text-slate-950 dark:text-slate-100">{ownerName}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {owner?.email || "Airline Owner"}
                 </p>
               </div>
@@ -248,7 +248,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             onClick={handleLogout}
             title={sidebarCollapsed ? "Sign out" : undefined}
             className={cn(
-              "flex h-10 w-full items-center rounded-md text-sm text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
+              "flex h-10 w-full items-center rounded-md text-sm text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-300",
               sidebarCollapsed ? "justify-center" : "gap-3 px-3"
             )}
           >
@@ -265,7 +265,7 @@ const AirlineSidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               type="button"
               onClick={() => navigate("/airline/profile")}
               title={ownerName}
-              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-400 hover:bg-slate-900 hover:text-white"
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
             >
               <UserRound className="h-4 w-4" />
             </button>

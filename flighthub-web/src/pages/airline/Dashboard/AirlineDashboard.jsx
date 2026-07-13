@@ -23,6 +23,7 @@ const sectionMeta = {
   pricing: ["Pricing & Promotions", "Manage coupons and promotional offers"],
   bookings: ["Booking Management", "Review and manage passenger bookings"],
   transactions: ["Transactions", "Review airline payment and settlement activity"],
+  analytics: ["Performance Overview", "Monitor revenue, occupancy, route, and fleet insight signals"],
   "route-performance": ["Route Performance", "Analyze performance across operated routes"],
   "airport-performance": ["Airport Performance", "Monitor performance across your airport network"],
   profile: ["Account Profile", "Manage your owner identity, contact details, and sign-in security"],
@@ -61,12 +62,12 @@ const AirlineDashboard = () => {
     if (pathname.includes('/pricing')) return 'pricing'
     if (pathname.includes('/bookings')) return 'bookings'
     if (pathname.includes('/transactions') || pathname.includes('/settlements')) return 'settlements'
+    if (pathname.includes('/analytics') || pathname.includes('/reports')) return 'analytics'
     if (pathname.includes('/route-performance')) return 'route-performance'
     if (pathname.includes('/airport-performance')) return 'airport-performance';
     if (pathname.includes('/organization-profile')) return 'organization-profile'
     if (pathname.includes('/profile')) return 'profile'
     if (pathname.includes('/administration')) return 'administration'
-    if (pathname.includes('/reports')) return 'reports'
     return 'overview'
   }
 
@@ -101,7 +102,7 @@ const AirlineDashboard = () => {
   const airlineStatus = String(currentAirline?.status || "INACTIVE").toUpperCase()
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="workspace-shell flex min-h-screen">
       {/* Sidebar */}
       <AirlineSidebar
         activeSection={activeSection}

@@ -1,163 +1,311 @@
-import * as React from "react"
-import { 
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Plane,
-  DollarSign,
-  Calendar,
+import * as React from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
   BarChart3,
-  PieChart,
-  Target,
+  CheckCircle2,
   Clock,
+  DollarSign,
+  Gauge,
   MapPin,
-  Star
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+  Plane,
+  Route,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
-const AnalyticsDashboard = ({ flights }) => {
-  const [dateRange, setDateRange] = React.useState("7days")
-  const [selectedMetric, setSelectedMetric] = React.useState("revenue")
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
-  // Calculate analytics data
+const numberOrZero = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const safePercent = (value, total) => {
+  if (!total) return 0;
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)));
+};
+
+const formatCurrency = (value, compact = true) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: compact ? 0 : 2,
+    notation: compact && Math.abs(value) >= 10000 ? "compact" : "standard",
+  }).format(numberOrZero(value));
+
+const formatNumber = (value) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(numberOrZero(value));
+
+const getStatus = (flight) => String(flight?.realTimeStatus || flight?.status || "Scheduled").toUpperCase();
+
+const textValue = (value, fallback = "") => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (!value || typeof value !== "object") return fallback;
+  return (
+    value.iataCode ||
+    value.code ||
+    value.name ||
+    value.cityName ||
+    value.label ||
+    value.value ||
+    fallback
+  );
+};
+
+const normalizeAirport = (airport) => {
+  if (!airport || typeof airport !== "object") return airport;
+  return airport.airport || airport.airportInfo || airport.location || airport;
+};
+
+const getAirportCode = (airport) => {
+  const normalized = normalizeAirport(airport);
+  return textValue(
+    normalized?.iataCode ||
+      normalized?.code ||
+      airport?.iataCode ||
+      airport?.code ||
+      airport?.airportCode ||
+      airport,
+    "--",
+  );
+};
+
+const getCity = (airport) => {
+  const normalized = normalizeAirport(airport);
+  return textValue(
+    normalized?.city?.name ||
+      normalized?.city ||
+      normalized?.cityName ||
+      normalized?.name ||
+      airport?.city?.name ||
+      airport?.cityName ||
+      airport?.name,
+    "Unknown city",
+  );
+};
+
+const getRouteInfo = (flight) => {
+  const departure = flight?.route?.departure || flight?.departureAirport || {};
+  const arrival = flight?.route?.arrival || flight?.arrivalAirport || {};
+  return {
+    code: `${getAirportCode(departure)}-${getAirportCode(arrival)}`,
+    cities: `${getCity(departure)} -> ${getCity(arrival)}`,
+  };
+};
+
+const getAircraftInfo = (flight) => {
+  const aircraft = flight?.aircraft || {};
+  return {
+    type: aircraft.type || aircraft.model || aircraft.code || flight?.aircraftCode || "Unassigned aircraft",
+    capacity: numberOrZero(aircraft.capacity || aircraft.seatingCapacity || aircraft.totalSeats || flight?.availableSeats),
+  };
+};
+
+const getBookings = (flight) => numberOrZero(flight?.bookings || flight?.bookingCount || flight?.confirmedBookings);
+
+const getFare = (flight) =>
+  numberOrZero(
+    flight?.pricing?.economy ||
+      flight?.fare?.totalPrice ||
+      flight?.fare?.currentPrice ||
+      flight?.fare?.baseFare ||
+      flight?.baseFare,
+  );
+
+const StatCard = ({ icon: Icon, label, value, detail, tone = "indigo" }) => {
+  const tones = {
+    indigo: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300",
+    emerald: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    sky: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+    violet: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
+    rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">{label}</p>
+            <p className="mt-2 truncate text-2xl font-semibold tracking-tight">{value}</p>
+            {detail && <p className="mt-1 truncate text-xs text-muted-foreground" title={detail}>{detail}</p>}
+          </div>
+          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ProgressRow = ({ label, value, total, tone = "bg-primary", detail }) => {
+  const percent = safePercent(value, total);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-medium">{label}</span>
+        <span className="shrink-0 text-muted-foreground">{percent}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full rounded-full", tone)} style={{ width: `${percent}%` }} />
+      </div>
+      {detail && <p className="truncate text-xs text-muted-foreground" title={detail}>{detail}</p>}
+    </div>
+  );
+};
+
+const EmptyState = () => (
+  <Card>
+    <CardContent className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <BarChart3 className="h-6 w-6" />
+      </div>
+      <h3 className="mt-4 text-lg font-semibold">No insight data yet</h3>
+      <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+        Create flight definitions, schedules, fares, and bookings to populate owner performance insights.
+      </p>
+    </CardContent>
+  </Card>
+);
+
+const AnalyticsDashboard = ({ flights = [] }) => {
+  const [dateRange, setDateRange] = React.useState("30days");
+  const safeFlights = React.useMemo(() => (Array.isArray(flights) ? flights : []), [flights]);
+
   const analytics = React.useMemo(() => {
-    const totalFlights = flights.length
-    const activeFlights = flights.filter(f => f.status === "Active").length
-    const totalBookings = flights.reduce((sum, f) => sum + f.bookings, 0)
-    const totalCapacity = flights.reduce((sum, f) => sum + f.aircraft.capacity, 0)
-    const totalRevenue = flights.reduce((sum, f) => sum + (f.bookings * f.pricing.economy), 0)
-    const avgOccupancy = totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0
-    const onTimeFlights = flights.filter(f => f.realTimeStatus === "On-time").length
-    const delayedFlights = flights.filter(f => f.realTimeStatus === "Delayed").length
-    const cancelledFlights = flights.filter(f => f.realTimeStatus === "Cancelled").length
+    const totalFlights = safeFlights.length;
+    const activeFlights = safeFlights.filter((flight) => ["ACTIVE", "SCHEDULED", "ON-TIME", "ON_TIME"].includes(getStatus(flight))).length;
+    const delayedFlights = safeFlights.filter((flight) => getStatus(flight).includes("DELAY")).length;
+    const cancelledFlights = safeFlights.filter((flight) => getStatus(flight).includes("CANCEL")).length;
+    const onTimeFlights = Math.max(0, activeFlights - delayedFlights);
 
-    // Route performance
-    const routeStats = {}
-    flights.forEach(flight => {
-      const route = `${flight.route.departure.airport}-${flight.route.arrival.airport}`
-      if (!routeStats[route]) {
-        routeStats[route] = {
-          route: route,
-          flights: 0,
-          bookings: 0,
-          revenue: 0,
-          capacity: 0,
-          cities: `${flight.route.departure.city} → ${flight.route.arrival.city}`
-        }
-      }
-      routeStats[route].flights += 1
-      routeStats[route].bookings += flight.bookings
-      routeStats[route].revenue += flight.bookings * flight.pricing.economy
-      routeStats[route].capacity += flight.aircraft.capacity
-    })
+    const totals = safeFlights.reduce(
+      (acc, flight) => {
+        const bookings = getBookings(flight);
+        const fare = getFare(flight);
+        const aircraft = getAircraftInfo(flight);
+        acc.bookings += bookings;
+        acc.capacity += aircraft.capacity;
+        acc.revenue += bookings * fare;
+        return acc;
+      },
+      { bookings: 0, capacity: 0, revenue: 0 },
+    );
 
-    const topRoutes = Object.values(routeStats)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
+    const routeMap = new Map();
+    const aircraftMap = new Map();
 
-    // Aircraft performance
-    const aircraftStats = {}
-    flights.forEach(flight => {
-      if (!aircraftStats[flight.aircraft.type]) {
-        aircraftStats[flight.aircraft.type] = {
-          type: flight.aircraft.type,
-          flights: 0,
-          bookings: 0,
-          revenue: 0,
-          capacity: 0
-        }
-      }
-      aircraftStats[flight.aircraft.type].flights += 1
-      aircraftStats[flight.aircraft.type].bookings += flight.bookings
-      aircraftStats[flight.aircraft.type].revenue += flight.bookings * flight.pricing.economy
-      aircraftStats[flight.aircraft.type].capacity += flight.aircraft.capacity
-    })
+    safeFlights.forEach((flight) => {
+      const bookings = getBookings(flight);
+      const fare = getFare(flight);
+      const revenue = bookings * fare;
+      const route = getRouteInfo(flight);
+      const aircraft = getAircraftInfo(flight);
 
-    const topAircraft = Object.values(aircraftStats)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
+      const routeEntry = routeMap.get(route.code) || {
+        route: route.code,
+        cities: route.cities,
+        flights: 0,
+        bookings: 0,
+        revenue: 0,
+        capacity: 0,
+      };
+      routeEntry.flights += 1;
+      routeEntry.bookings += bookings;
+      routeEntry.revenue += revenue;
+      routeEntry.capacity += aircraft.capacity;
+      routeMap.set(route.code, routeEntry);
+
+      const aircraftEntry = aircraftMap.get(aircraft.type) || {
+        type: aircraft.type,
+        flights: 0,
+        bookings: 0,
+        revenue: 0,
+        capacity: 0,
+      };
+      aircraftEntry.flights += 1;
+      aircraftEntry.bookings += bookings;
+      aircraftEntry.revenue += revenue;
+      aircraftEntry.capacity += aircraft.capacity;
+      aircraftMap.set(aircraft.type, aircraftEntry);
+    });
+
+    const topRoutes = [...routeMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    const topAircraft = [...aircraftMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
     return {
       totalFlights,
       activeFlights,
-      totalBookings,
-      totalCapacity,
-      totalRevenue,
-      avgOccupancy,
-      onTimeFlights,
       delayedFlights,
       cancelledFlights,
+      onTimeFlights,
       topRoutes,
       topAircraft,
-      onTimePercentage: totalFlights > 0 ? Math.round((onTimeFlights / totalFlights) * 100) : 0,
-      revenuePerFlight: totalFlights > 0 ? Math.round(totalRevenue / totalFlights) : 0
-    }
-  }, [flights])
+      totalBookings: totals.bookings,
+      totalCapacity: totals.capacity,
+      totalRevenue: totals.revenue,
+      avgOccupancy: safePercent(totals.bookings, totals.capacity),
+      onTimePercentage: safePercent(onTimeFlights, totalFlights),
+      revenuePerFlight: totalFlights ? Math.round(totals.revenue / totalFlights) : 0,
+      fleetUtilization: safePercent(activeFlights, totalFlights),
+    };
+  }, [safeFlights]);
 
-  const kpiCards = [
+  const recommendations = [
     {
-      title: "Total Revenue",
-      value: `₹${(analytics.totalRevenue / 100000).toFixed(1)}L`,
-      change: "+12.5%",
-      trend: "up",
+      title: "Revenue focus",
       icon: DollarSign,
-      color: "text-green-600"
+      tone: "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100",
+      text: analytics.topRoutes[0]
+        ? `${analytics.topRoutes[0].route} is currently the strongest revenue route. Review frequency and fare availability there first.`
+        : "No route revenue signal yet. Publish fares and schedules to activate revenue analytics.",
     },
     {
-      title: "Total Bookings",
-      value: analytics.totalBookings.toLocaleString(),
-      change: "+8.3%",
-      trend: "up", 
-      icon: Users,
-      color: "text-blue-600"
-    },
-    {
-      title: "Average Occupancy",
-      value: `${analytics.avgOccupancy}%`,
-      change: "+5.2%",
-      trend: "up",
+      title: "Capacity signal",
       icon: Target,
-      color: "text-purple-600"
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100",
+      text:
+        analytics.avgOccupancy >= 80
+          ? `Average occupancy is strong at ${analytics.avgOccupancy}%. Protect inventory and monitor overbooking risk.`
+          : `Average occupancy is ${analytics.avgOccupancy}%. Consider promotions or route-level schedule adjustments.`,
     },
     {
-      title: "On-Time Performance",
-      value: `${analytics.onTimePercentage}%`,
-      change: "-2.1%",
-      trend: "down",
+      title: "Operational health",
       icon: Clock,
-      color: "text-orange-600"
+      tone: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100",
+      text:
+        analytics.onTimePercentage >= 85
+          ? `On-time rate is healthy at ${analytics.onTimePercentage}%. Keep monitoring delay-heavy turns.`
+          : `On-time rate is ${analytics.onTimePercentage}%. Investigate delayed flights and aircraft rotations.`,
     },
-    {
-      title: "Revenue per Flight",
-      value: `₹${(analytics.revenuePerFlight / 1000).toFixed(0)}K`,
-      change: "+15.7%",
-      trend: "up",
-      icon: TrendingUp,
-      color: "text-indigo-600"
-    },
-    {
-      title: "Fleet Utilization",
-      value: `${Math.round((analytics.activeFlights / analytics.totalFlights) * 100)}%`,
-      change: "+3.4%",
-      trend: "up",
-      icon: Plane,
-      color: "text-teal-600"
-    }
-  ]
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-          <p className="text-gray-600">Performance insights and business metrics</p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Airline owner insights
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight">Performance Overview</h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            Monitor commercial, operational, route, and fleet signals for your airline workspace.
+          </p>
         </div>
+
         <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -169,255 +317,147 @@ const AnalyticsDashboard = ({ flights }) => {
         </Select>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {kpiCards.map((kpi, index) => {
-          const Icon = kpi.icon
-          const TrendIcon = kpi.trend === "up" ? TrendingUp : TrendingDown
-          
-          return (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{kpi.title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{kpi.value}</p>
-                    <div className="flex items-center mt-2">
-                      <TrendIcon className={cn("h-3 w-3 mr-1", 
-                        kpi.trend === "up" ? "text-green-600" : "text-red-600"
-                      )} />
-                      <span className={cn("text-xs font-medium", 
-                        kpi.trend === "up" ? "text-green-600" : "text-red-600"
-                      )}>
-                        {kpi.change}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-1">vs last period</span>
+      {analytics.totalFlights === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+            <StatCard icon={DollarSign} label="Revenue" value={formatCurrency(analytics.totalRevenue)} detail="Estimated from bookings x fare" tone="emerald" />
+            <StatCard icon={Users} label="Bookings" value={formatNumber(analytics.totalBookings)} detail="Confirmed booking signal" tone="sky" />
+            <StatCard icon={Target} label="Occupancy" value={`${analytics.avgOccupancy}%`} detail={`${formatNumber(analytics.totalBookings)} of ${formatNumber(analytics.totalCapacity)} seats`} tone="violet" />
+            <StatCard icon={Clock} label="On-time" value={`${analytics.onTimePercentage}%`} detail={`${analytics.onTimeFlights} flights on schedule`} tone="amber" />
+            <StatCard icon={TrendingUp} label="Revenue / flight" value={formatCurrency(analytics.revenuePerFlight)} detail="Average estimate" tone="indigo" />
+            <StatCard icon={Plane} label="Fleet utilization" value={`${analytics.fleetUtilization}%`} detail={`${analytics.activeFlights} active flights`} tone="rose" />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Operational Mix
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <ProgressRow label="On schedule" value={analytics.onTimeFlights} total={analytics.totalFlights} tone="bg-emerald-500" detail={`${analytics.onTimeFlights} of ${analytics.totalFlights} flights`} />
+                <ProgressRow label="Delayed" value={analytics.delayedFlights} total={analytics.totalFlights} tone="bg-amber-500" detail={`${analytics.delayedFlights} flights need attention`} />
+                <ProgressRow label="Cancelled" value={analytics.cancelledFlights} total={analytics.totalFlights} tone="bg-rose-500" detail={`${analytics.cancelledFlights} flights cancelled`} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Route className="h-5 w-5 text-primary" />
+                  Top Route Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {analytics.topRoutes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No route performance data available.</p>
+                ) : (
+                  analytics.topRoutes.map((route, index) => {
+                    const occupancy = safePercent(route.bookings, route.capacity);
+                    return (
+                      <div key={route.route} className="rounded-lg border bg-muted/20 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="rounded-md">#{index + 1}</Badge>
+                              <p className="truncate font-semibold" title={route.route}>{route.route}</p>
+                            </div>
+                            <p className="mt-1 truncate text-xs text-muted-foreground" title={route.cities}>{route.cities}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="font-semibold">{formatCurrency(route.revenue)}</p>
+                            <p className="text-xs text-muted-foreground">{route.bookings} bookings</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <ProgressRow label="Occupancy" value={route.bookings} total={route.capacity} detail={`${occupancy}% booked capacity`} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Gauge className="h-5 w-5 text-primary" />
+                  Fleet Utilization
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {analytics.topAircraft.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No aircraft performance data available.</p>
+                ) : (
+                  analytics.topAircraft.map((aircraft) => (
+                    <div key={aircraft.type} className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold" title={aircraft.type}>{aircraft.type}</p>
+                          <p className="text-xs text-muted-foreground">{aircraft.flights} flights · {aircraft.bookings} bookings</p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold">{formatCurrency(aircraft.revenue)}</p>
+                      </div>
+                      <ProgressRow label="Seat utilization" value={aircraft.bookings} total={aircraft.capacity} />
                     </div>
-                  </div>
-                  <div className={cn("p-3 rounded-lg", 
-                    kpi.color === "text-green-600" ? "bg-green-100" :
-                    kpi.color === "text-blue-600" ? "bg-blue-100" :
-                    kpi.color === "text-purple-600" ? "bg-purple-100" :
-                    kpi.color === "text-orange-600" ? "bg-orange-100" :
-                    kpi.color === "text-indigo-600" ? "bg-indigo-100" :
-                    "bg-teal-100"
-                  )}>
-                    <Icon className={cn("h-6 w-6", kpi.color)} />
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Action Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {recommendations.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.title} className={cn("rounded-lg border p-4", item.tone)}>
+                      <div className="flex items-start gap-3">
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-semibold">{item.title}</p>
+                          <p className="mt-1 text-sm opacity-90">{item.text}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <div className="flex items-start gap-3">
+                    {analytics.cancelledFlights > 0 ? (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    ) : (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    )}
+                    <div>
+                      <p className="font-semibold">Next best action</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Review route performance, then adjust fare availability and aircraft assignment for the top under-utilized routes.
+                      </p>
+                    </div>
+                    <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )
-        })}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Flight Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-blue-600" />
-              Flight Status Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">On-time</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{analytics.onTimeFlights}</span>
-                  <Badge className="bg-green-100 text-green-800">
-                    {analytics.onTimePercentage}%
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Delayed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{analytics.delayedFlights}</span>
-                  <Badge className="bg-yellow-100 text-yellow-800">
-                    {Math.round((analytics.delayedFlights / analytics.totalFlights) * 100)}%
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Cancelled</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{analytics.cancelledFlights}</span>
-                  <Badge className="bg-red-100 text-red-800">
-                    {Math.round((analytics.cancelledFlights / analytics.totalFlights) * 100)}%
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            
-            {/* Visual Progress Bars */}
-            <div className="mt-6 space-y-3">
-              <div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Performance Overview</span>
-                  <span>{analytics.totalFlights} total flights</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-l-full" 
-                    style={{ width: `${analytics.onTimePercentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Occupancy Trends */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-purple-600" />
-              Occupancy by Aircraft
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analytics.topAircraft.map((aircraft, index) => {
-                const occupancyRate = Math.round((aircraft.bookings / aircraft.capacity) * 100)
-                return (
-                  <div key={aircraft.type}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">{aircraft.type}</span>
-                      <span className="text-sm text-gray-600">{occupancyRate}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={cn("h-2 rounded-full",
-                          occupancyRate >= 90 ? "bg-green-500" :
-                          occupancyRate >= 70 ? "bg-yellow-500" :
-                          "bg-red-500"
-                        )} 
-                        style={{ width: `${occupancyRate}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>{aircraft.bookings} bookings</span>
-                      <span>₹{(aircraft.revenue / 100000).toFixed(1)}L revenue</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Routes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-green-600" />
-              Top Performing Routes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analytics.topRoutes.map((route, index) => (
-                <div key={route.route} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{route.route}</div>
-                      <div className="text-sm text-gray-600">{route.cities}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-gray-900">₹{(route.revenue / 100000).toFixed(1)}L</div>
-                    <div className="text-sm text-gray-600">{route.bookings} bookings</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Fleet Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-600" />
-              Fleet Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analytics.topAircraft.map((aircraft, index) => {
-                const efficiency = Math.round((aircraft.revenue / aircraft.flights) / 1000)
-                return (
-                  <div key={aircraft.type} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <Plane className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{aircraft.type}</div>
-                        <div className="text-sm text-gray-600">{aircraft.flights} flights</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">₹{efficiency}K</div>
-                      <div className="text-sm text-gray-600">per flight</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Summary Insights */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Key Insights & Recommendations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Revenue Growth</h4>
-              <p className="text-sm text-blue-800">
-                Your revenue has increased by 12.5% this period. The {analytics.topRoutes[0]?.route} route is your highest performer.
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-green-900 mb-2">Occupancy Rate</h4>
-              <p className="text-sm text-green-800">
-                Average occupancy of {analytics.avgOccupancy}% is {analytics.avgOccupancy >= 80 ? 'excellent' : 'good'}. Consider adjusting capacity on underperforming routes.
-              </p>
-            </div>
-            <div className="p-4 bg-orange-50 rounded-lg">
-              <h4 className="font-medium text-orange-900 mb-2">On-Time Performance</h4>
-              <p className="text-sm text-orange-800">
-                {analytics.onTimePercentage}% on-time rate. Focus on improving operational efficiency to reduce delays.
-              </p>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default AnalyticsDashboard
-
+export default AnalyticsDashboard;

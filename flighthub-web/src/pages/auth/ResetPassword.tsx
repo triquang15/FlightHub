@@ -83,15 +83,15 @@ const ResetPassword = () => {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+    <main className="auth-scene-bg relative min-h-screen overflow-hidden text-slate-950 dark:text-white">
       <div className="absolute inset-0">
-        <div className="absolute left-0 top-0 h-72 w-72 animate-float rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute right-0 top-0 h-72 w-72 animate-float rounded-full bg-purple-500/20 blur-3xl" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-0 left-1/2 h-72 w-72 animate-float rounded-full bg-pink-500/20 blur-3xl" style={{ animationDelay: '4s' }} />
+        <div className="absolute left-0 top-0 h-72 w-72 animate-float rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-500/20" />
+        <div className="absolute right-0 top-0 h-72 w-72 animate-float rounded-full bg-purple-500/15 blur-3xl dark:bg-purple-500/20" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-0 left-1/2 h-72 w-72 animate-float rounded-full bg-cyan-500/10 blur-3xl dark:bg-pink-500/20" style={{ animationDelay: '4s' }} />
       </div>
 
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-40 dark:opacity-30"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/svg%3E")`
         }}
@@ -108,48 +108,48 @@ const ResetPassword = () => {
                 <Plane className="h-8 w-8 text-white" />
               </div>
               <div className="ml-4">
-                <h1 className="text-2xl font-bold text-white">FlightHub</h1>
-                <p className="text-sm text-blue-200">Global Flight Distribution Platform</p>
+                <h1 className="text-2xl font-bold text-slate-950 dark:text-white">FlightHub</h1>
+                <p className="text-sm text-slate-600 dark:text-blue-200">Global Flight Distribution Platform</p>
               </div>
             </Link>
 
-            <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-blue-100 backdrop-blur-sm">
-              <ShieldCheck className="h-4 w-4 text-blue-300" />
+            <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-primary/15 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur-sm dark:border-white/10 dark:bg-white/10 dark:text-blue-100">
+              <ShieldCheck className="h-4 w-4 text-primary dark:text-blue-300" />
               Password reset in progress
             </div>
 
-            <h2 className="mb-4 text-4xl font-bold leading-tight text-white xl:text-5xl">
+            <h2 className="mb-4 text-4xl font-bold leading-tight text-slate-950 dark:text-white xl:text-5xl">
               Create a stronger
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-sky-500 bg-clip-text text-transparent dark:from-blue-400 dark:to-purple-400">
                 {' '}FlightHub
               </span>
               <br />
               password
             </h2>
 
-            <p className="text-lg leading-relaxed text-blue-200">
+            <p className="text-lg leading-relaxed text-slate-600 dark:text-blue-200">
               Choose a password with uppercase, lowercase, and a number. Once changed,
               active sessions are revoked so your account starts clean.
             </p>
 
             <div className="mt-8 space-y-4">
-              <div className="flex items-center rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
-                <div className="rounded-lg bg-gradient-to-r from-blue-400 to-purple-400 p-2">
+              <div className="flex items-center rounded-xl border border-white/70 bg-white/55 p-4 shadow-sm backdrop-blur-sm dark:border-white/20 dark:bg-white/10">
+                <div className="rounded-lg bg-gradient-to-r from-primary to-sky-500 p-2 dark:from-blue-400 dark:to-purple-400">
                   <LockKeyhole className="h-5 w-5 text-white" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="font-semibold text-white">Token protected</h3>
-                  <p className="text-sm text-blue-200">Only valid reset links can update credentials.</p>
+                  <h3 className="font-semibold text-slate-950 dark:text-white">Token protected</h3>
+                  <p className="text-sm text-slate-600 dark:text-blue-200">Only valid reset links can update credentials.</p>
                 </div>
               </div>
 
-              <div className="flex items-center rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
-                <div className="rounded-lg bg-gradient-to-r from-blue-400 to-purple-400 p-2">
+              <div className="flex items-center rounded-xl border border-white/70 bg-white/55 p-4 shadow-sm backdrop-blur-sm dark:border-white/20 dark:bg-white/10">
+                <div className="rounded-lg bg-gradient-to-r from-primary to-sky-500 p-2 dark:from-blue-400 dark:to-purple-400">
                   <Shield className="h-5 w-5 text-white" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="font-semibold text-white">Session cleanup</h3>
-                  <p className="text-sm text-blue-200">You will sign in again after reset succeeds.</p>
+                  <h3 className="font-semibold text-slate-950 dark:text-white">Session cleanup</h3>
+                  <p className="text-sm text-slate-600 dark:text-blue-200">You will sign in again after reset succeeds.</p>
                 </div>
               </div>
             </div>
@@ -158,7 +158,7 @@ const ResetPassword = () => {
 
         <section className="flex min-h-screen w-full items-center justify-center p-6 lg:p-12 xl:w-1/2">
           <div className="w-full max-w-md">
-            <Card className="border-0 bg-white/95 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+            <Card className="auth-glass-card border border-white/70 text-foreground backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 dark:border-white/10">
               <CardContent className="p-8">
                 <Link
                   to="/"
@@ -168,7 +168,7 @@ const ResetPassword = () => {
                     <Plane className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-3">
-                    <h1 className="text-xl font-bold text-gray-900">FlightHub</h1>
+                    <h1 className="text-xl font-bold text-foreground">FlightHub</h1>
                   </div>
                 </Link>
 
@@ -176,8 +176,8 @@ const ResetPassword = () => {
                   <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
                     <Lock className="h-6 w-6" />
                   </div>
-                  <h2 className="mb-2 text-2xl font-bold text-gray-900">Reset your password</h2>
-                  <p className="text-gray-600">
+                  <h2 className="mb-2 text-2xl font-bold text-foreground">Reset your password</h2>
+                  <p className="text-muted-foreground">
                     Set a new password for your FlightHub account.
                   </p>
                   <div className="mt-4 flex justify-center gap-2">
@@ -246,13 +246,13 @@ const ResetPassword = () => {
                           disabled={!resetToken || isSubmitting || resetPasswordLoading}
                         />
 
-                        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+                        <div className="rounded-xl border border-border bg-muted/55 p-4 text-sm text-muted-foreground">
                           Use 8-64 characters with at least one uppercase letter, one lowercase letter, and one number.
                         </div>
 
                         <Button
                           type="submit"
-                          className="w-full font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+                          className="h-12 w-full rounded-xl font-semibold shadow-lg transition-all duration-300 hover:scale-[1.01] hover:shadow-xl"
                           disabled={!resetToken || isSubmitting || resetPasswordLoading}
                         >
                           {isSubmitting || resetPasswordLoading ? (
@@ -270,14 +270,14 @@ const ResetPassword = () => {
                 )}
 
                 <div className="mt-6 text-center">
-                  <Button variant="ghost" className="text-primary hover:bg-blue-50 hover:text-primary" asChild>
+                  <Button variant="ghost" className="text-primary hover:bg-primary/10 hover:text-primary" asChild>
                     <Link to="/login">
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back to Login
                     </Link>
                   </Button>
                   {!resetToken && (
-                    <p className="mt-3 text-sm text-gray-500">
+                    <p className="mt-3 text-sm text-muted-foreground">
                       Need a fresh link? <Link to="/forgot-password" className="font-medium text-primary hover:underline">Request reset email</Link>
                     </p>
                   )}

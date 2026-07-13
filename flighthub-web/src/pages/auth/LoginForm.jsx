@@ -248,7 +248,7 @@ const LoginForm = () => {
       onSubmit={handleSubmit}
     >
       {({ isSubmitting, values, setFieldValue }) => (
-        <Form className={`space-y-5 sm:space-y-6 ${loading && !googleLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+        <Form className={`space-y-5 ${loading && !googleLoading ? 'opacity-70 pointer-events-none' : ''}`}>
 
           {/* Error */}
           {error && (
@@ -268,9 +268,9 @@ const LoginForm = () => {
             </label>
             <InputField
               name="email"
-              placeholder="Enter your email"
+              placeholder="you@example.com"
               type="email"
-              className="h-12 px-4 border-gray-200 focus:border-primary focus:ring-primary/20 rounded-xl"
+              className="h-12 rounded-xl px-4 focus:border-primary focus:ring-primary/20"
             />
           </div>
 
@@ -283,7 +283,7 @@ const LoginForm = () => {
             <PasswordField
               name="password"
               placeholder="Enter your password"
-              className="h-12 px-4 border-gray-200 focus:border-primary focus:ring-primary/20 rounded-xl"
+              className="h-12 rounded-xl px-4 focus:border-primary focus:ring-primary/20"
             />
           </div>
 
@@ -311,7 +311,7 @@ const LoginForm = () => {
           {/* Submit */}
           <Button
             type="submit"
-            className="w-full font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group"
+            className="group h-12 w-full rounded-xl font-semibold shadow-lg transition-all duration-300 hover:scale-[1.01] hover:shadow-xl"
             disabled={isSubmitting || loading}
           >
             {(isSubmitting || loading) ? (
@@ -328,8 +328,9 @@ const LoginForm = () => {
           </Button>
 
           {/* Divider */}
-          <div className="text-center text-sm text-muted-foreground">
-            Or sign in using
+          <div className="relative py-1 text-center text-sm text-muted-foreground">
+            <span className="relative z-10 bg-background px-3 dark:bg-slate-950">Or continue with</span>
+            <span className="absolute left-0 top-1/2 h-px w-full bg-border" />
           </div>
 
           {/* Social */}
@@ -337,8 +338,8 @@ const LoginForm = () => {
 
             {/* Google */}
             {googleClientId ? (
-              <div className="relative min-h-11 overflow-hidden rounded-xl border bg-background/60">
-                <div ref={googleButtonRef} className="flex min-h-11 w-full items-center justify-center" />
+              <div className="relative min-h-12 overflow-hidden rounded-xl border bg-background/60">
+                <div ref={googleButtonRef} className="flex min-h-12 w-full items-center justify-center" />
                 {(googleLoading || !googleReady) && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/80 text-sm font-medium text-muted-foreground backdrop-blur-sm">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -350,7 +351,7 @@ const LoginForm = () => {
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-xl bg-background/60"
+                className="h-12 rounded-xl bg-background/60"
                 onClick={() => toast.warning("Google login is not configured. Add VITE_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID.")}
               >
                 <GoogleLogo />
@@ -362,7 +363,7 @@ const LoginForm = () => {
             <Button
               type="button"
               variant="outline"
-              className="h-11 rounded-xl bg-background/60 font-semibold"
+              className="h-12 rounded-xl bg-background/60 font-semibold"
               disabled={appleLoading || (appleClientId && !appleReady)}
               onClick={handleAppleSignIn}
             >
@@ -385,7 +386,7 @@ const LoginForm = () => {
           </div>
 
           {/* Register */}
-          <div className="text-center pt-4">
+          <div className="pt-2 text-center">
             <p className="text-sm text-muted-foreground">
               Don’t have an account?{' '}
               <Link

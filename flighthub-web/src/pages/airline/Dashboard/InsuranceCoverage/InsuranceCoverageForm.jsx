@@ -157,7 +157,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="app-page-surface min-h-screen">
       <div className="bg-white rounded-lg shadow-sm border w-full">
         <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50">
           <Button

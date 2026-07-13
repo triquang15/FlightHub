@@ -140,7 +140,7 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <div className="min-h-screen bg-background transition-colors">
+        <div className="flight-system-bg min-h-screen bg-background transition-colors">
           <SessionExpiredHandler />
           <AuthAccessEventHandler />
           <RouteChangeProgress />

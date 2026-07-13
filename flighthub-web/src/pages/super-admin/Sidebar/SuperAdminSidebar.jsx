@@ -109,13 +109,13 @@ const SuperAdminSidebar = ({
     )}
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-80 border-r border-slate-800 bg-slate-950 text-slate-100 shadow-xl transition-transform duration-200 lg:transition-[width]",
+        "workspace-sidebar-surface fixed inset-y-0 left-0 z-50 flex w-80 border-r border-slate-200 text-slate-950 shadow-xl dark:border-slate-800 dark:text-slate-100 transition-transform duration-200 lg:transition-[width]",
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         sidebarCollapsed ? "lg:w-16" : "lg:w-80"
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cn("border-b border-slate-800", sidebarCollapsed ? "p-2" : "p-4")}>
+        <div className={cn("border-b border-slate-200 dark:border-slate-800", sidebarCollapsed ? "p-2" : "p-4")}>
           <div className={cn("flex items-center", sidebarCollapsed ? "justify-center" : "justify-between gap-3")}>
             {!sidebarCollapsed && (
               <div className="flex min-w-0 items-center gap-3">
@@ -123,8 +123,8 @@ const SuperAdminSidebar = ({
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">FlightHub Admin</p>
-                  <p className="truncate text-xs text-slate-400">Platform Control Center</p>
+                  <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">FlightHub Admin</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">Platform Control Center</p>
                 </div>
               </div>
             )}
@@ -134,19 +134,19 @@ const SuperAdminSidebar = ({
               onClick={isMobileOpen ? onMobileClose : onToggleCollapse}
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="h-9 w-9 shrink-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="h-9 w-9 shrink-0 text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
             >
               {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
           </div>
 
           {!sidebarCollapsed && (
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800 pt-3">
               <div className="flex min-w-0 items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-slate-500" />
-                <span className="truncate text-xs text-slate-400">Platform administration</span>
+                <span className="truncate text-xs text-slate-500 dark:text-slate-400">Platform administration</span>
               </div>
-              <span className="shrink-0 rounded border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+              <span className="shrink-0 rounded border border-violet-300 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300">
                 SYSTEM ADMIN
               </span>
             </div>
@@ -178,8 +178,8 @@ const SuperAdminSidebar = ({
                       "flex h-10 w-full items-center rounded-md text-sm transition-colors",
                       sidebarCollapsed ? "justify-center px-2" : "justify-between px-3",
                       hasActiveItem
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                        ? "bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-3">
@@ -194,7 +194,7 @@ const SuperAdminSidebar = ({
                   </button>
 
                   {!sidebarCollapsed && isExpanded && (
-                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-800 pl-3">
+                    <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 dark:border-slate-800 pl-3">
                       {section.items.map((item) => {
                         const ItemIcon = item.icon
                         const isActive = isItemActive(location.pathname, item.path, siblingPaths)
@@ -207,14 +207,14 @@ const SuperAdminSidebar = ({
                             className={cn(
                               "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors",
                               isActive
-                                ? "bg-violet-500/15 font-medium text-violet-300"
-                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                                ? "bg-violet-500/12 font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                             )}
                           >
                             <ItemIcon className="h-4 w-4 shrink-0" />
                             <span className="min-w-0 flex-1 truncate">{item.label}</span>
                             {hasCount(item.count) && (
-                              <Badge className="h-5 shrink-0 border-0 bg-slate-800 px-1.5 text-[10px] text-slate-300 hover:bg-slate-800">
+                              <Badge className="h-5 shrink-0 border-0 bg-slate-100 px-1.5 text-[10px] text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                                 {formatCount(item.count)}
                               </Badge>
                             )}
@@ -229,19 +229,19 @@ const SuperAdminSidebar = ({
           </nav>
         </ScrollArea>
 
-        <div className={cn("border-t border-slate-800", sidebarCollapsed ? "p-2" : "p-3")}>
+        <div className={cn("border-t border-slate-200 dark:border-slate-800", sidebarCollapsed ? "p-2" : "p-3")}>
           {!sidebarCollapsed && (
             <button
               type="button"
               onClick={() => navigate("/super-admin/profile")}
-              className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-900"
+              className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-900"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-800 text-xs font-semibold text-slate-200">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-violet-100 text-xs font-semibold text-violet-700 dark:bg-slate-800 dark:text-slate-200">
                 {getInitials(adminName)}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-100">{adminName}</p>
-                <p className="truncate text-xs text-slate-500">
+                <p className="truncate text-sm font-medium text-slate-950 dark:text-slate-100">{adminName}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {adminUser?.email || "System Administrator"}
                 </p>
               </div>
@@ -253,7 +253,7 @@ const SuperAdminSidebar = ({
             onClick={handleLogout}
             title={sidebarCollapsed ? "Sign out" : undefined}
             className={cn(
-              "flex h-10 w-full items-center rounded-md text-sm text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
+              "flex h-10 w-full items-center rounded-md text-sm text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-300",
               sidebarCollapsed ? "justify-center" : "gap-3 px-3"
             )}
           >
@@ -266,7 +266,7 @@ const SuperAdminSidebar = ({
               type="button"
               onClick={() => navigate("/super-admin/profile")}
               title={adminName}
-              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-400 hover:bg-slate-900 hover:text-white"
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
             >
               <UserRound className="h-4 w-4" />
             </button>

@@ -136,6 +136,12 @@ export const sidebarSections = [
     icon: ChartNoAxesCombined,
     items: [
       {
+        id: "analytics",
+        label: "Performance Overview",
+        icon: BarChart3,
+        path: "/airline/analytics",
+      },
+      {
         id: "route-performance",
         label: "Route Performance",
         icon: ChartNoAxesCombined,

@@ -705,6 +705,82 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, Object> getRoutePerformanceForAirline(Long userId) {
+        Long airlineId = resolveOwnedAirlineId(userId);
+        int limit = 10;
+        List<BookingAggregateRow> topRoutesByBookings = bookingRepository.findTopFlightsByBookingsForAirline(airlineId, limit);
+        List<BookingAggregateRow> topRoutesByRevenue = bookingRepository.findTopFlightsByRevenueForAirline(airlineId, limit);
+        Map<Long, FlightResponse> flights = resolveFlightsForPerformance(Stream.of(topRoutesByBookings, topRoutesByRevenue)
+                .flatMap(Collection::stream)
+                .map(BookingAggregateRow::getGroupId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+
+        return Map.of(
+                "airlineId", airlineId,
+                "topRoutesByBookings", toRoutePerformanceRows(topRoutesByBookings, flights),
+                "topRoutesByRevenue", toRoutePerformanceRows(topRoutesByRevenue, flights)
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAirportPerformanceForAirline(Long userId) {
+        Long airlineId = resolveOwnedAirlineId(userId);
+        List<BookingAggregateRow> flightRows = bookingRepository.findTopFlightsByBookingsForAirline(airlineId, 500);
+        Map<Long, FlightResponse> flights = resolveFlightsForPerformance(flightRows.stream()
+                .map(BookingAggregateRow::getGroupId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+
+        Map<Long, AirportPerformanceAccumulator> combined = new HashMap<>();
+        Map<Long, AirportPerformanceAccumulator> departures = new HashMap<>();
+        Map<Long, AirportPerformanceAccumulator> arrivals = new HashMap<>();
+
+        for (BookingAggregateRow row : flightRows) {
+            FlightResponse flight = flights.get(row.getGroupId());
+            if (flight == null) {
+                continue;
+            }
+            addAirportPerformance(combined, flight.getDepartureAirport(), row, true, false);
+            addAirportPerformance(combined, flight.getArrivalAirport(), row, false, true);
+            addAirportPerformance(departures, flight.getDepartureAirport(), row, true, false);
+            addAirportPerformance(arrivals, flight.getArrivalAirport(), row, false, true);
+        }
+
+        List<Map<String, Object>> topAirportsByBookings = airportRows(combined, "bookings", 10);
+        List<Map<String, Object>> topAirportsByRevenue = airportRows(combined, "revenue", 10);
+        List<Map<String, Object>> topDepartureAirports = airportRows(departures, "bookings", 10);
+        List<Map<String, Object>> topArrivalAirports = airportRows(arrivals, "bookings", 10);
+
+        BigDecimal totalRevenue = combined.values().stream()
+                .map(AirportPerformanceAccumulator::revenue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        long totalBookings = combined.values().stream()
+                .mapToLong(AirportPerformanceAccumulator::bookings)
+                .sum();
+        long totalFlights = combined.values().stream()
+                .mapToLong(AirportPerformanceAccumulator::flights)
+                .sum();
+
+        return Map.of(
+                "airlineId", airlineId,
+                "totalAirports", combined.size(),
+                "totalBookings", totalBookings,
+                "totalRevenue", totalRevenue,
+                "totalFlights", totalFlights,
+                "topAirportsByBookings", topAirportsByBookings,
+                "topAirportsByRevenue", topAirportsByRevenue,
+                "topDepartureAirports", topDepartureAirports,
+                "topArrivalAirports", topArrivalAirports
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Object> getRoutePerformanceForSuperAdmin() {
         List<BookingAggregateRow> rows = bookingRepository.findTopFlightsByBookings(7);
         List<Long> flightIds = rows.stream()
@@ -716,24 +792,7 @@ public class BookingServiceImpl implements BookingService {
                 : safeExternal("top-route-flights", null, () -> flightClient.getFlightsByIds(flightIds), Collections.emptyMap());
 
         List<Map<String, Object>> topRoutes = rows.stream()
-                .map(row -> {
-                    FlightResponse flight = flights.get(row.getGroupId());
-                    String departure = airportCode(flight == null ? null : flight.getDepartureAirport());
-                    String arrival = airportCode(flight == null ? null : flight.getArrivalAirport());
-                    String flightNumber = flight == null || flight.getFlightNumber() == null
-                            ? "Flight #" + row.getGroupId()
-                            : flight.getFlightNumber();
-                    return Map.<String, Object>of(
-                            "flightId", row.getGroupId(),
-                            "flightNumber", flightNumber,
-                            "departureAirportCode", departure,
-                            "arrivalAirportCode", arrival,
-                            "routeName", departure + " → " + arrival,
-                            "totalBookings", safeLong(row.getTotalBookings()),
-                            "totalRevenue", safeMoney(row.getTotalRevenue()),
-                            "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking())
-                    );
-                })
+                .map(row -> toRoutePerformanceRow(row, flights.get(row.getGroupId())))
                 .toList();
         return Map.of("topRoutesByBookings", topRoutes);
     }
@@ -830,6 +889,51 @@ public class BookingServiceImpl implements BookingService {
             return airport.getIataCode();
         }
         return airport.getName() == null || airport.getName().isBlank() ? "—" : airport.getName();
+    }
+
+    private Long resolveOwnedAirlineId(Long userId) {
+        try {
+            AirlineResponse airline = airlineClient.getAirlineByOwner(userId);
+            if (airline != null && airline.getId() != null) {
+                return airline.getId();
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve owner airline for userId={}: {}", userId, e.getMessage());
+        }
+        throw new BaseException(ErrorCode.AIRLINE_NOT_FOUND);
+    }
+
+    private Map<Long, FlightResponse> resolveFlightsForPerformance(List<Long> flightIds) {
+        return flightIds.isEmpty()
+                ? Collections.emptyMap()
+                : safeExternal("performance-flights", null, () -> flightClient.getFlightsByIds(flightIds), Collections.emptyMap());
+    }
+
+    private List<Map<String, Object>> toRoutePerformanceRows(
+            List<BookingAggregateRow> rows,
+            Map<Long, FlightResponse> flights) {
+        return rows.stream()
+                .map(row -> toRoutePerformanceRow(row, flights.get(row.getGroupId())))
+                .toList();
+    }
+
+    private Map<String, Object> toRoutePerformanceRow(BookingAggregateRow row, FlightResponse flight) {
+        String departure = airportCode(flight == null ? null : flight.getDepartureAirport());
+        String arrival = airportCode(flight == null ? null : flight.getArrivalAirport());
+        String flightNumber = flight == null || flight.getFlightNumber() == null
+                ? "Flight #" + row.getGroupId()
+                : flight.getFlightNumber();
+        return Map.<String, Object>of(
+                "flightId", row.getGroupId(),
+                "flightNumber", flightNumber,
+                "departureAirportCode", departure,
+                "arrivalAirportCode", arrival,
+                "routeName", departure + " → " + arrival,
+                "totalBookings", safeLong(row.getTotalBookings()),
+                "totalRevenue", safeMoney(row.getTotalRevenue()),
+                "averageRevenuePerBooking", safeMoney(row.getAverageRevenuePerBooking()),
+                "totalFlights", safeLong(row.getTotalFlights())
+        );
     }
 
     private static class AirportPerformanceAccumulator {

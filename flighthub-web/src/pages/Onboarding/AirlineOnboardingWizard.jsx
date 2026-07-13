@@ -180,7 +180,7 @@ const AirlineOnboardingWizard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef4ff_42%,#f8fafc_100%)] text-slate-950 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_46%,#020617_100%)] dark:text-white">
+    <div className="app-page-surface min-h-screen text-slate-950 dark:text-white">
       <div className="border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl">

@@ -1,429 +1,360 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
-  MapPin,
-  TrendingUp,
-  DollarSign,
-  Users,
-  Plane,
+  Activity,
   ArrowRight,
   BarChart3,
-  Activity,
-  Trophy
+  DollarSign,
+  Gauge,
+  Plane,
+  RefreshCw,
+  Route,
+  Trophy,
+  Users,
 } from "lucide-react";
-import { getRoutePerformanceForAirline } from '@/Redux/booking/bookingThunk';
+
+import { getRoutePerformanceForAirline } from "@/Redux/booking/bookingThunk";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Cell,
-  ResponsiveContainer,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-const RoutePerformancePage = () => {
-  const dispatch = useDispatch();
-  const { routePerformance, routePerformanceLoading } = useSelector((store) => store.booking);
-  const [selectedMetric, setSelectedMetric] = useState("bookings");
-  const [activeTab, setActiveTab] = useState("overview");
+const asArray = (value) => (Array.isArray(value) ? value : []);
 
-  useEffect(() => {
-    dispatch(getRoutePerformanceForAirline());
-  }, [dispatch]);
+const numberValue = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
-  if (routePerformanceLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading route performance data...</p>
-        </div>
-      </div>
-    );
-  }
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numberValue(value));
 
-  if (!routePerformance) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="text-center space-y-4">
-          <Activity className="h-16 w-16 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground">No route performance data available</p>
-        </div>
-      </div>
-    );
-  }
+const formatNumber = (value) => new Intl.NumberFormat("en-US").format(numberValue(value));
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+const routeCode = (route) =>
+  route?.routeName ||
+  route?.route ||
+  `${route?.departureAirportCode || "--"} to ${route?.arrivalAirportCode || "--"}`;
 
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
+const routeCities = (route) =>
+  [route?.departureAirportName, route?.arrivalAirportName].filter(Boolean).join(" to ") ||
+  route?.flightNumber ||
+  "Route detail unavailable";
 
-  // Calculate summary statistics
-  const totalRoutes = new Set([
-    ...routePerformance.topRoutesByBookings.map(r => r.route),
-    ...routePerformance.topRoutesByRevenue.map(r => r.route)
-  ]).size;
+const progressValue = (value, max) => {
+  const top = numberValue(max, 1);
+  return top <= 0 ? 0 : Math.min(100, Math.round((numberValue(value) / top) * 100));
+};
 
-  const totalBookings = routePerformance.topRoutesByBookings.reduce(
-    (sum, route) => sum + (route.totalBookings || 0),
-    0
+const mergeRoutes = (...lists) => {
+  const rows = new Map();
+  lists.flat().forEach((route) => {
+    if (!route) return;
+    const key = route?.flightId || routeCode(route);
+    rows.set(key, { ...(rows.get(key) || {}), ...route });
+  });
+  return Array.from(rows.values()).sort(
+    (a, b) =>
+      numberValue(b.totalBookings) - numberValue(a.totalBookings) ||
+      numberValue(b.totalRevenue) - numberValue(a.totalRevenue)
   );
+};
 
-  const totalRevenue = routePerformance.topRoutesByRevenue.reduce(
-    (sum, route) => sum + (route.totalRevenue || 0),
-    0
-  );
-
-  const avgRevenuePerRoute = totalRoutes > 0 ? totalRevenue / totalRoutes : 0;
-
-  // Chart colors
-  const COLORS = [
-    'hsl(var(--chart-1))',
-    'hsl(var(--chart-2))',
-    'hsl(var(--chart-3))',
-    'hsl(var(--chart-4))',
-    'hsl(var(--chart-5))',
-    '#8B5CF6',
-    '#EC4899',
-    '#F59E0B',
-    '#10B981',
-    '#3B82F6',
-  ];
-
-  // Prepare data for charts
-  const bookingsChartData = routePerformance.topRoutesByBookings.map(route => ({
-    route: route.route,
-    bookings: route.totalBookings,
-    revenue: route.totalRevenue,
-  }));
-
-  const revenueChartData = routePerformance.topRoutesByRevenue.map(route => ({
-    route: route.route,
-    bookings: route.totalBookings,
-    revenue: route.totalRevenue,
-  }));
-
-  const chartConfig = {
-    bookings: {
-      label: "Bookings",
-      color: "hsl(var(--chart-1))",
-    },
-    revenue: {
-      label: "Revenue",
-      color: "hsl(var(--chart-2))",
-    },
-  };
-
-  const RouteCard = ({ route, index, showRevenue = false }) => {
-    const rankColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-600'];
-    const rankColor = index < 3 ? rankColors[index] : 'bg-primary/10';
-    const rankTextColor = index < 3 ? 'text-white' : 'text-primary';
-
-    return (
-      <div className="group relative overflow-hidden rounded-lg border bg-card hover:shadow-lg transition-all duration-200">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-full" />
-
-        <div className="relative p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center justify-center w-12 h-12 rounded-full ${rankColor} ${rankTextColor} font-bold text-lg shadow-md`}>
-                {index < 3 ? <Trophy className="h-6 w-6" /> : index + 1}
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl font-bold">{route.departureAirportCode}</span>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{route.arrivalAirportCode}</span>
-                </div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {route.departureAirportName} → {route.arrivalAirportName}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Bookings</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <Users className="h-4 w-4 text-blue-500" />
-                {formatNumber(route.totalBookings)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                {formatCurrency(route.totalRevenue)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Avg/Booking</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <TrendingUp className="h-4 w-4 text-purple-500" />
-                {formatCurrency(route.averageRevenuePerBooking)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+const MetricCard = ({ icon: Icon, label, value, detail, tone = "primary" }) => {
+  const tones = {
+    primary: "bg-primary/10 text-primary",
+    emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+    sky: "bg-sky-500/10 text-sky-600 dark:text-sky-300",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Plane className="h-8 w-8" />
-            Route Performance Analysis
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Analyze your most profitable and popular routes
+    <Card>
+      <CardContent className="flex items-center justify-between gap-4 p-5">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 truncate text-2xl font-semibold text-foreground">{value}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground" title={detail}>
+            {detail}
           </p>
         </div>
-        <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select metric" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="bookings">By Bookings</SelectItem>
-            <SelectItem value="revenue">By Revenue</SelectItem>
-            <SelectItem value="average">By Avg Revenue</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const EmptyState = ({ title, description, onRefresh, loading }) => (
+  <Card>
+    <CardContent className="flex min-h-[340px] flex-col items-center justify-center p-8 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <Activity className="h-6 w-6" />
       </div>
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
+      <Button variant="outline" className="mt-5" onClick={onRefresh} disabled={loading}>
+        <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+        Refresh
+      </Button>
+    </CardContent>
+  </Card>
+);
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Routes</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalRoutes}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Top performing routes
-            </p>
-          </CardContent>
-        </Card>
+const RankingList = ({ title, description, rows, metric, maxValue }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-base">
+        {metric === "revenue" ? (
+          <DollarSign className="h-5 w-5 text-primary" />
+        ) : (
+          <Users className="h-5 w-5 text-primary" />
+        )}
+        {title}
+      </CardTitle>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No ranking data available.
+        </p>
+      ) : (
+        rows.map((route, index) => {
+          const value = metric === "revenue" ? route.totalRevenue : route.totalBookings;
+          return (
+            <div key={`${routeCode(route)}-${index}`} className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={index === 0 ? "default" : "secondary"} className="rounded-md">
+                      {index === 0 ? <Trophy className="mr-1 h-3.5 w-3.5" /> : null}
+                      #{index + 1}
+                    </Badge>
+                    <p className="truncate font-semibold" title={routeCode(route)}>
+                      {routeCode(route)}
+                    </p>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground" title={routeCities(route)}>
+                    {routeCities(route)}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold">
+                    {metric === "revenue" ? formatCurrency(value) : formatNumber(value)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {metric === "revenue" ? `${formatNumber(route.totalBookings)} bookings` : formatCurrency(route.totalRevenue)}
+                  </p>
+                </div>
+              </div>
+              <Progress className="mt-4 h-2" value={progressValue(value, maxValue)} />
+            </div>
+          );
+        })
+      )}
+    </CardContent>
+  </Card>
+);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalBookings)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across all top routes
-            </p>
-          </CardContent>
-        </Card>
+const RoutePerformancePage = () => {
+  const dispatch = useDispatch();
+  const { routePerformance, routePerformanceLoading, error } = useSelector((store) => store.booking);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              From top routes
-            </p>
-          </CardContent>
-        </Card>
+  const refresh = React.useCallback(() => {
+    dispatch(getRoutePerformanceForAirline());
+  }, [dispatch]);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Revenue/Route</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(avgRevenuePerRoute)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Average per route
-            </p>
-          </CardContent>
-        </Card>
+  React.useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const routesByBookings = React.useMemo(
+    () => asArray(routePerformance?.topRoutesByBookings),
+    [routePerformance]
+  );
+
+  const routesByRevenue = React.useMemo(() => {
+    const revenueRows = asArray(routePerformance?.topRoutesByRevenue);
+    if (revenueRows.length > 0) return revenueRows;
+    return [...routesByBookings].sort(
+      (a, b) => numberValue(b.totalRevenue) - numberValue(a.totalRevenue)
+    );
+  }, [routePerformance, routesByBookings]);
+
+  const rows = React.useMemo(
+    () => mergeRoutes(routesByBookings, routesByRevenue),
+    [routesByBookings, routesByRevenue]
+  );
+
+  const totalRoutes = rows.length;
+  const totalBookings = rows.reduce((sum, route) => sum + numberValue(route.totalBookings), 0);
+  const totalRevenue = rows.reduce((sum, route) => sum + numberValue(route.totalRevenue), 0);
+  const totalFlights = rows.reduce((sum, route) => sum + numberValue(route.totalFlights), 0);
+  const averageBookingValue = totalBookings ? totalRevenue / totalBookings : 0;
+  const maxBookings = Math.max(...routesByBookings.map((route) => numberValue(route.totalBookings)), 1);
+  const maxRevenue = Math.max(...routesByRevenue.map((route) => numberValue(route.totalRevenue)), 1);
+  const leader = routesByBookings[0] || routesByRevenue[0];
+
+  if (routePerformanceLoading && !routePerformance) {
+    return (
+      <div className="flex min-h-[460px] items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading route performance...</p>
+        </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="bookings">Top by Bookings</TabsTrigger>
-          <TabsTrigger value="revenue">Top by Revenue</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Bookings Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Top Routes by Bookings
-                </CardTitle>
-                <CardDescription>Number of bookings per route</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={bookingsChartData} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="route"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tickLine={false}
-                      />
-                      <YAxis tickLine={false} />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => [
-                              name === 'bookings' ? formatNumber(value) : formatCurrency(value),
-                              name === 'bookings' ? 'Bookings' : 'Revenue'
-                            ]}
-                          />
-                        }
-                      />
-                      <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
-                        {bookingsChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            {/* Revenue Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Top Routes by Revenue
-                </CardTitle>
-                <CardDescription>Revenue generated per route</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueChartData} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="route"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => [
-                              name === 'revenue' ? formatCurrency(value) : formatNumber(value),
-                              name === 'revenue' ? 'Revenue' : 'Bookings'
-                            ]}
-                          />
-                        }
-                      />
-                      <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-                        {revenueChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
+  return (
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-lg border bg-card">
+        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Route className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight">Route Performance</h1>
+                <Badge variant="outline">Owner analytics</Badge>
+              </div>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Monitor confirmed booking demand, revenue contribution, and route quality signals for your airline.
+              </p>
+            </div>
           </div>
-        </TabsContent>
+          <Button variant="outline" onClick={refresh} disabled={routePerformanceLoading}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", routePerformanceLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
+      </section>
 
-        {/* Top by Bookings Tab */}
-        <TabsContent value="bookings" className="space-y-4">
+      {error ? (
+        <EmptyState
+          title="Route analytics could not load"
+          description={error}
+          onRefresh={refresh}
+          loading={routePerformanceLoading}
+        />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No route analytics yet"
+          description="Confirmed bookings are required before route ranking and revenue contribution can be calculated."
+          onRefresh={refresh}
+          loading={routePerformanceLoading}
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <MetricCard icon={Plane} label="Tracked Routes" value={formatNumber(totalRoutes)} detail="Routes with confirmed bookings" tone="primary" />
+            <MetricCard icon={Users} label="Bookings" value={formatNumber(totalBookings)} detail="Confirmed route bookings" tone="sky" />
+            <MetricCard icon={DollarSign} label="Revenue" value={formatCurrency(totalRevenue)} detail="USD confirmed value" tone="emerald" />
+            <MetricCard icon={Gauge} label="Avg Value" value={formatCurrency(averageBookingValue)} detail="Revenue per booking" tone="amber" />
+            <MetricCard icon={BarChart3} label="Flight Coverage" value={formatNumber(totalFlights)} detail="Distinct flight instances" tone="primary" />
+          </div>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Top Routes by Number of Bookings
-              </CardTitle>
-              <CardDescription>
-                Routes ranked by total passenger bookings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {routePerformance.topRoutesByBookings && routePerformance.topRoutesByBookings.length > 0 ? (
-                  routePerformance.topRoutesByBookings.map((route, index) => (
-                    <RouteCard key={`bookings-${index}`} route={route} index={index} />
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No booking data available</p>
-                )}
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-muted-foreground">Strongest route</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xl font-semibold">{routeCode(leader)}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">{routeCities(leader)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-right sm:min-w-[320px]">
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Bookings</p>
+                    <p className="text-lg font-semibold">{formatNumber(leader?.totalBookings)}</p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-lg font-semibold">{formatCurrency(leader?.totalRevenue)}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Top by Revenue Tab */}
-        <TabsContent value="revenue" className="space-y-4">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <RankingList
+              title="Top routes by bookings"
+              description="Demand ranking from confirmed bookings."
+              rows={routesByBookings.slice(0, 6)}
+              metric="bookings"
+              maxValue={maxBookings}
+            />
+            <RankingList
+              title="Top routes by revenue"
+              description="Commercial contribution ranked by confirmed revenue."
+              rows={routesByRevenue.slice(0, 6)}
+              metric="revenue"
+              maxValue={maxRevenue}
+            />
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Top Routes by Revenue
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Route ranking detail
               </CardTitle>
-              <CardDescription>
-                Routes ranked by total revenue generated
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {routePerformance.topRoutesByRevenue && routePerformance.topRoutesByRevenue.length > 0 ? (
-                  routePerformance.topRoutesByRevenue.map((route, index) => (
-                    <RouteCard key={`revenue-${index}`} route={route} index={index} showRevenue />
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No revenue data available</p>
-                )}
+              <div className="max-w-full overflow-x-auto">
+                <Table className="min-w-[980px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Route</TableHead>
+                      <TableHead>Flight</TableHead>
+                      <TableHead className="text-right">Bookings</TableHead>
+                      <TableHead className="text-right">Revenue</TableHead>
+                      <TableHead className="text-right">Avg / Booking</TableHead>
+                      <TableHead className="text-right">Coverage</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((route, index) => (
+                      <TableRow key={`${routeCode(route)}-${index}`}>
+                        <TableCell>
+                          <div className="font-medium">{routeCode(route)}</div>
+                          <div className="max-w-[320px] truncate text-xs text-muted-foreground" title={routeCities(route)}>
+                            {routeCities(route)}
+                          </div>
+                        </TableCell>
+                        <TableCell>{route.flightNumber || `#${route.flightId || "N/A"}`}</TableCell>
+                        <TableCell className="text-right">{formatNumber(route.totalBookings)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(route.totalRevenue)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(route.averageRevenuePerBooking)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(route.totalFlights)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </>
+      )}
     </div>
   );
 };

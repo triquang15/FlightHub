@@ -184,7 +184,7 @@ const SuperAdminDashboard = () => {
   }, [loadPlatformStats]);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="workspace-shell flex min-h-screen">
       {/* Sidebar */}
       <SuperAdminSidebar
         activeSection={activeSection}

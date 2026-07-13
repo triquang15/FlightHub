@@ -89,7 +89,7 @@ const Register = () => {
       {({ isSubmitting, values, errors, touched, setFieldValue }) => (
         <Form className={`space-y-5 ${loading ? 'opacity-70 pointer-events-none' : ''}`}>
           {error && (
-            <Alert className="border-red-200 bg-red-50 text-red-800">
+            <Alert className="border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -97,84 +97,89 @@ const Register = () => {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center">
-                <UserRound className="w-4 h-4 mr-2 text-gray-400" />
+              <label className="flex items-center text-sm font-medium text-foreground">
+                <UserRound className="mr-2 h-4 w-4 text-muted-foreground" />
                 Full name
               </label>
               <InputField
                 name="fullName"
                 placeholder="Enter your full name"
+                className="h-12 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center">
-                <Mail className="w-4 h-4 mr-2 text-gray-400" />
+              <label className="flex items-center text-sm font-medium text-foreground">
+                <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
                 Email address
               </label>
               <InputField
                 name="email"
                 placeholder="Enter your email"
                 type="email"
+                className="h-12 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center">
-                <Phone className="w-4 h-4 mr-2 text-gray-400" />
+              <label className="flex items-center text-sm font-medium text-foreground">
+                <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
                 Phone number
               </label>
               <InputField
                 name="phone"
                 placeholder="0912345678"
                 type="tel"
+                className="h-12 rounded-xl"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center">
-                <Lock className="w-4 h-4 mr-2 text-gray-400" />
+              <label className="flex items-center text-sm font-medium text-foreground">
+                <Lock className="mr-2 h-4 w-4 text-muted-foreground" />
                 Password
               </label>
               <PasswordField
                 name="password"
                 placeholder="Create password"
+                className="h-12 rounded-xl"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center">
-                <Lock className="w-4 h-4 mr-2 text-gray-400" />
+              <label className="flex items-center text-sm font-medium text-foreground">
+                <Lock className="mr-2 h-4 w-4 text-muted-foreground" />
                 Confirm password
               </label>
               <PasswordField
                 name="confirmPassword"
                 placeholder="Confirm password"
+                className="h-12 rounded-xl"
               />
             </div>
           </div>
 
-          <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+          <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4 text-sm text-foreground">
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-blue-700" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
               <div>
                 <p className="font-semibold">Customer account</p>
-                <p className="mt-1 text-blue-800">
+                <p className="mt-1 text-muted-foreground">
                   Airline and admin access are granted through the onboarding and approval workflow, not public signup.
                 </p>
               </div>
             </div>
           </div>
 
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3">
+          <label className="flex items-start gap-3 rounded-2xl border border-border bg-background/60 p-3">
             <input
               name="termsAccepted"
               type="checkbox"
               checked={values.termsAccepted}
               onChange={(event) => setFieldValue('termsAccepted', event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              className="mt-1 h-4 w-4 rounded border-input bg-background text-primary focus:ring-primary"
             />
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-muted-foreground">
               I agree to create a FlightHub customer account and accept the platform security requirements.
               {touched.termsAccepted && errors.termsAccepted && (
                 <span className="mt-1 block text-red-600">{errors.termsAccepted}</span>
@@ -184,7 +189,7 @@ const Register = () => {
 
           <Button
             type="submit"
-            className="w-full font-semibold shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group"
+            className="group h-12 w-full rounded-xl font-semibold shadow-lg transition-all duration-300 hover:scale-[1.01] hover:shadow-xl"
             disabled={isSubmitting || loading}
           >
             {isSubmitting || loading ? (
@@ -201,7 +206,7 @@ const Register = () => {
           </Button>
 
           <div className="text-center pt-2">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
               <Link
                 to="/login"

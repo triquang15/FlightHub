@@ -1,497 +1,416 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
-  MapPin,
-  TrendingUp,
-  DollarSign,
-  Users,
-  Plane,
-  PlaneTakeoff,
-  PlaneLanding,
-  BarChart3,
   Activity,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  BadgeDollarSign,
+  BarChart3,
+  Gauge,
+  Globe2,
+  MapPin,
+  Plane,
+  RefreshCw,
   Trophy,
-  Globe
+  Users,
 } from "lucide-react";
-import { getAirportPerformanceForAirline } from '@/Redux/booking/bookingThunk';
+
+import { getAirportPerformanceForAirline } from "@/Redux/booking/bookingThunk";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Cell,
-  ResponsiveContainer,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-const AirportPerformancePage = () => {
-  const dispatch = useDispatch();
-  const { airportPerformance, airportPerformanceLoading } = useSelector((store) => store.booking);
-  const [activeTab, setActiveTab] = useState("overview");
+const asArray = (value) => (Array.isArray(value) ? value : []);
 
-  useEffect(() => {
-    dispatch(getAirportPerformanceForAirline());
-  }, [dispatch]);
+const numberValue = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
-  if (airportPerformanceLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading airport performance data...</p>
-        </div>
-      </div>
-    );
-  }
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numberValue(value));
 
-  if (!airportPerformance) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="text-center space-y-4">
-          <Activity className="h-16 w-16 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground">No airport performance data available</p>
-        </div>
-      </div>
-    );
-  }
+const formatNumber = (value) => new Intl.NumberFormat("en-US").format(numberValue(value));
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+const airportCode = (airport) => airport?.airportCode || "--";
+const airportName = (airport) => airport?.airportName || "Unknown airport";
+const airportLocation = (airport) =>
+  [airport?.city, airport?.country].filter(Boolean).join(", ") || "Location unavailable";
 
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
+const progressValue = (value, max) => {
+  const top = numberValue(max, 1);
+  return top <= 0 ? 0 : Math.min(100, Math.round((numberValue(value) / top) * 100));
+};
 
-  // Calculate summary statistics
-  const totalAirports = new Set([
-    ...airportPerformance.topAirportsByBookings.map(a => a.airportCode),
-    ...airportPerformance.topAirportsByRevenue.map(a => a.airportCode)
-  ]).size;
-
-  const totalBookings = airportPerformance.topAirportsByBookings.reduce(
-    (sum, airport) => sum + (airport.totalBookings || 0),
-    0
+const mergeAirportRows = (...lists) => {
+  const rows = new Map();
+  lists.flat().forEach((airport) => {
+    if (!airport) return;
+    const key = airport.airportId || airportCode(airport) || airportName(airport);
+    rows.set(key, { ...(rows.get(key) || {}), ...airport });
+  });
+  return Array.from(rows.values()).sort(
+    (a, b) =>
+      numberValue(b.totalRevenue) - numberValue(a.totalRevenue) ||
+      numberValue(b.totalBookings) - numberValue(a.totalBookings)
   );
+};
 
-  const totalRevenue = airportPerformance.topAirportsByRevenue.reduce(
-    (sum, airport) => sum + (airport.totalRevenue || 0),
-    0
-  );
-
-  const totalFlights = airportPerformance.topAirportsByBookings.reduce(
-    (sum, airport) => sum + (airport.totalFlights || 0),
-    0
-  );
-
-  // Chart colors
-  const COLORS = [
-    'hsl(var(--chart-1))',
-    'hsl(var(--chart-2))',
-    'hsl(var(--chart-3))',
-    'hsl(var(--chart-4))',
-    'hsl(var(--chart-5))',
-    '#8B5CF6',
-    '#EC4899',
-    '#F59E0B',
-    '#10B981',
-    '#3B82F6',
-  ];
-
-  // Prepare data for charts
-  const bookingsChartData = airportPerformance.topAirportsByBookings.map(airport => ({
-    airport: airport.airportCode,
-    bookings: airport.totalBookings,
-    revenue: airport.totalRevenue,
-  }));
-
-  const revenueChartData = airportPerformance.topAirportsByRevenue.map(airport => ({
-    airport: airport.airportCode,
-    bookings: airport.totalBookings,
-    revenue: airport.totalRevenue,
-  }));
-
-  const chartConfig = {
-    bookings: {
-      label: "Bookings",
-      color: "hsl(var(--chart-1))",
-    },
-    revenue: {
-      label: "Revenue",
-      color: "hsl(var(--chart-2))",
-    },
-  };
-
-  const AirportCard = ({ airport, index }) => {
-    const rankColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-600'];
-    const rankColor = index < 3 ? rankColors[index] : 'bg-primary/10';
-    const rankTextColor = index < 3 ? 'text-white' : 'text-primary';
-
-    const getPerformanceIcon = (type) => {
-      if (type === 'departure') return <PlaneTakeoff className="h-4 w-4" />;
-      if (type === 'arrival') return <PlaneLanding className="h-4 w-4" />;
-      return <Plane className="h-4 w-4" />;
-    };
-
-    const getPerformanceBadge = (type) => {
-      if (type === 'departure') return { label: 'Departure Hub', color: 'bg-blue-100 text-blue-800' };
-      if (type === 'arrival') return { label: 'Arrival Hub', color: 'bg-green-100 text-green-800' };
-      return { label: 'Both', color: 'bg-purple-100 text-purple-800' };
-    };
-
-    const perfBadge = getPerformanceBadge(airport.performanceType);
-
-    return (
-      <div className="group relative overflow-hidden rounded-lg border bg-card hover:shadow-lg transition-all duration-200">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-full" />
-
-        <div className="relative p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center justify-center w-12 h-12 rounded-full ${rankColor} ${rankTextColor} font-bold text-lg shadow-md`}>
-                {index < 3 ? <Trophy className="h-6 w-6" /> : index + 1}
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl font-bold">{airport.airportCode}</span>
-                  <Badge className={perfBadge.color}>
-                    {getPerformanceIcon(airport.performanceType)}
-                    <span className="ml-1">{perfBadge.label}</span>
-                  </Badge>
-                </div>
-                <p className="text-sm font-semibold text-foreground">{airport.airportName}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Globe className="h-3 w-3" />
-                  {airport.city}, {airport.country}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 pt-4 border-t">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Bookings</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <Users className="h-4 w-4 text-blue-500" />
-                {formatNumber(airport.totalBookings)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                {formatCurrency(airport.totalRevenue)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Avg/Booking</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <TrendingUp className="h-4 w-4 text-purple-500" />
-                {formatCurrency(airport.averageRevenuePerBooking)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Flights</p>
-              <p className="text-lg font-semibold flex items-center gap-1">
-                <Plane className="h-4 w-4 text-orange-500" />
-                {formatNumber(airport.totalFlights)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+const MetricCard = ({ icon: Icon, label, value, detail, tone = "primary" }) => {
+  const tones = {
+    primary: "bg-primary/10 text-primary",
+    emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+    sky: "bg-sky-500/10 text-sky-600 dark:text-sky-300",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <MapPin className="h-8 w-8" />
-            Airport Performance Analysis
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Track your most active and profitable airports
+    <Card>
+      <CardContent className="flex items-center justify-between gap-4 p-5">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 truncate text-2xl font-semibold text-foreground">{value}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground" title={detail}>
+            {detail}
           </p>
         </div>
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const EmptyState = ({ title, description, onRefresh, loading }) => (
+  <Card>
+    <CardContent className="flex min-h-[340px] flex-col items-center justify-center p-8 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <Activity className="h-6 w-6" />
       </div>
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
+      <Button variant="outline" className="mt-5" onClick={onRefresh} disabled={loading}>
+        <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+        Refresh
+      </Button>
+    </CardContent>
+  </Card>
+);
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Airports</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAirports}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Top performing airports
-            </p>
-          </CardContent>
-        </Card>
+const AirportRankingList = ({ title, description, rows, metric, maxValue }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-base">
+        {metric === "revenue" ? (
+          <BadgeDollarSign className="h-5 w-5 text-primary" />
+        ) : (
+          <Users className="h-5 w-5 text-primary" />
+        )}
+        {title}
+      </CardTitle>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No airport ranking data available.
+        </p>
+      ) : (
+        rows.map((airport, index) => {
+          const value = metric === "revenue" ? airport.totalRevenue : airport.totalBookings;
+          return (
+            <div key={`${airportCode(airport)}-${index}`} className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={index === 0 ? "default" : "secondary"} className="rounded-md">
+                      {index === 0 ? <Trophy className="mr-1 h-3.5 w-3.5" /> : null}
+                      #{index + 1}
+                    </Badge>
+                    <p className="truncate font-semibold" title={`${airportCode(airport)} - ${airportName(airport)}`}>
+                      {airportCode(airport)} - {airportName(airport)}
+                    </p>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground" title={airportLocation(airport)}>
+                    {airportLocation(airport)}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold">
+                    {metric === "revenue" ? formatCurrency(value) : formatNumber(value)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {metric === "revenue" ? `${formatNumber(airport.totalBookings)} bookings` : formatCurrency(airport.totalRevenue)}
+                  </p>
+                </div>
+              </div>
+              <Progress className="mt-4 h-2" value={progressValue(value, maxValue)} />
+            </div>
+          );
+        })
+      )}
+    </CardContent>
+  </Card>
+);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalBookings)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across all airports
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              From top airports
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Flights</CardTitle>
-            <Plane className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalFlights)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Operations count
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="bookings">Top by Bookings</TabsTrigger>
-          <TabsTrigger value="revenue">Top by Revenue</TabsTrigger>
-          <TabsTrigger value="hubs">Departure & Arrival</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Bookings Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Top Airports by Bookings
-                </CardTitle>
-                <CardDescription>Number of bookings per airport</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={bookingsChartData} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="airport"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tickLine={false}
-                      />
-                      <YAxis tickLine={false} />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => [
-                              name === 'bookings' ? formatNumber(value) : formatCurrency(value),
-                              name === 'bookings' ? 'Bookings' : 'Revenue'
-                            ]}
-                          />
-                        }
-                      />
-                      <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
-                        {bookingsChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            {/* Revenue Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Top Airports by Revenue
-                </CardTitle>
-                <CardDescription>Revenue generated per airport</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueChartData} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="airport"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => [
-                              name === 'revenue' ? formatCurrency(value) : formatNumber(value),
-                              name === 'revenue' ? 'Revenue' : 'Bookings'
-                            ]}
-                          />
-                        }
-                      />
-                      <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-                        {revenueChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
+const HubCard = ({ title, icon: Icon, rows }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-base">
+        <Icon className="h-5 w-5 text-primary" />
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No hub data available.
+        </p>
+      ) : (
+        rows.slice(0, 5).map((airport, index) => (
+          <div key={`${title}-${airportCode(airport)}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{airportCode(airport)} - {airportName(airport)}</p>
+              <p className="truncate text-xs text-muted-foreground">{airportLocation(airport)}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-semibold">{formatNumber(airport.totalBookings)}</p>
+              <p className="text-xs text-muted-foreground">bookings</p>
+            </div>
           </div>
-        </TabsContent>
+        ))
+      )}
+    </CardContent>
+  </Card>
+);
 
-        {/* Top by Bookings Tab */}
-        <TabsContent value="bookings" className="space-y-4">
+const AirportPerformancePage = () => {
+  const dispatch = useDispatch();
+  const { airportPerformance, airportPerformanceLoading, error } = useSelector((store) => store.booking);
+
+  const refresh = React.useCallback(() => {
+    dispatch(getAirportPerformanceForAirline());
+  }, [dispatch]);
+
+  React.useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const topAirportsByBookings = React.useMemo(
+    () => asArray(airportPerformance?.topAirportsByBookings),
+    [airportPerformance]
+  );
+  const topAirportsByRevenue = React.useMemo(
+    () => asArray(airportPerformance?.topAirportsByRevenue),
+    [airportPerformance]
+  );
+  const topDepartureAirports = React.useMemo(
+    () => asArray(airportPerformance?.topDepartureAirports),
+    [airportPerformance]
+  );
+  const topArrivalAirports = React.useMemo(
+    () => asArray(airportPerformance?.topArrivalAirports),
+    [airportPerformance]
+  );
+
+  const rows = React.useMemo(
+    () =>
+      mergeAirportRows(
+        topAirportsByRevenue,
+        topAirportsByBookings,
+        topDepartureAirports,
+        topArrivalAirports
+      ),
+    [topAirportsByRevenue, topAirportsByBookings, topDepartureAirports, topArrivalAirports]
+  );
+
+  const totalAirports =
+    numberValue(airportPerformance?.totalAirports) ||
+    new Set(rows.map((airport) => airport.airportId || airportCode(airport))).size;
+  const totalBookings =
+    numberValue(airportPerformance?.totalBookings) ||
+    rows.reduce((sum, airport) => sum + numberValue(airport.totalBookings), 0);
+  const totalRevenue =
+    numberValue(airportPerformance?.totalRevenue) ||
+    rows.reduce((sum, airport) => sum + numberValue(airport.totalRevenue), 0);
+  const totalFlights =
+    numberValue(airportPerformance?.totalFlights) ||
+    rows.reduce((sum, airport) => sum + numberValue(airport.totalFlights), 0);
+  const averageBookingValue = totalBookings ? totalRevenue / totalBookings : 0;
+  const maxBookings = Math.max(...topAirportsByBookings.map((airport) => numberValue(airport.totalBookings)), 1);
+  const maxRevenue = Math.max(...topAirportsByRevenue.map((airport) => numberValue(airport.totalRevenue)), 1);
+  const leader = topAirportsByBookings[0] || topAirportsByRevenue[0];
+
+  if (airportPerformanceLoading && !airportPerformance) {
+    return (
+      <div className="flex min-h-[460px] items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading airport performance...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-lg border bg-card">
+        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <MapPin className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight">Airport Performance</h1>
+                <Badge variant="outline">Owner analytics</Badge>
+              </div>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Track airport demand, revenue, and departure/arrival hub patterns for your airline.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={refresh} disabled={airportPerformanceLoading}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", airportPerformanceLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
+      </section>
+
+      {error ? (
+        <EmptyState
+          title="Airport analytics could not load"
+          description={error}
+          onRefresh={refresh}
+          loading={airportPerformanceLoading}
+        />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No airport analytics yet"
+          description="Confirmed bookings with flight airport data are required before airport ranking can be calculated."
+          onRefresh={refresh}
+          loading={airportPerformanceLoading}
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <MetricCard icon={Globe2} label="Tracked Airports" value={formatNumber(totalAirports)} detail="Airports touched by bookings" tone="primary" />
+            <MetricCard icon={Users} label="Bookings" value={formatNumber(totalBookings)} detail="Confirmed airport demand" tone="sky" />
+            <MetricCard icon={BadgeDollarSign} label="Revenue" value={formatCurrency(totalRevenue)} detail="USD confirmed value" tone="emerald" />
+            <MetricCard icon={Gauge} label="Avg Value" value={formatCurrency(averageBookingValue)} detail="Revenue per booking touchpoint" tone="amber" />
+            <MetricCard icon={Plane} label="Flight Coverage" value={formatNumber(totalFlights)} detail="Distinct flight coverage" tone="primary" />
+          </div>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Top Airports by Number of Bookings
-              </CardTitle>
-              <CardDescription>
-                Airports ranked by total passenger bookings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {airportPerformance.topAirportsByBookings && airportPerformance.topAirportsByBookings.length > 0 ? (
-                  airportPerformance.topAirportsByBookings.map((airport, index) => (
-                    <AirportCard key={`bookings-${index}`} airport={airport} index={index} />
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No booking data available</p>
-                )}
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-muted-foreground">Demand leader</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xl font-semibold">{airportCode(leader)}</span>
+                    <span className="text-sm text-muted-foreground">{airportName(leader)} - {airportLocation(leader)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-right sm:min-w-[320px]">
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Bookings</p>
+                    <p className="text-lg font-semibold">{formatNumber(leader?.totalBookings)}</p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-lg font-semibold">{formatCurrency(leader?.totalRevenue)}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Top by Revenue Tab */}
-        <TabsContent value="revenue" className="space-y-4">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <AirportRankingList
+              title="Top airports by bookings"
+              description="Passenger demand ranked by airport touchpoint."
+              rows={topAirportsByBookings.slice(0, 6)}
+              metric="bookings"
+              maxValue={maxBookings}
+            />
+            <AirportRankingList
+              title="Top airports by revenue"
+              description="Commercial contribution ranked by confirmed revenue."
+              rows={topAirportsByRevenue.slice(0, 6)}
+              metric="revenue"
+              maxValue={maxRevenue}
+            />
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <HubCard title="Departure hubs" icon={ArrowUpFromLine} rows={topDepartureAirports} />
+            <HubCard title="Arrival hubs" icon={ArrowDownToLine} rows={topArrivalAirports} />
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Top Airports by Revenue
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Airport ranking detail
               </CardTitle>
-              <CardDescription>
-                Airports ranked by total revenue generated
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {airportPerformance.topAirportsByRevenue && airportPerformance.topAirportsByRevenue.length > 0 ? (
-                  airportPerformance.topAirportsByRevenue.map((airport, index) => (
-                    <AirportCard key={`revenue-${index}`} airport={airport} index={index} />
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No revenue data available</p>
-                )}
+              <div className="max-w-full overflow-x-auto">
+                <Table className="min-w-[1080px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Airport</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Bookings</TableHead>
+                      <TableHead className="text-right">Revenue</TableHead>
+                      <TableHead className="text-right">Avg / Booking</TableHead>
+                      <TableHead className="text-right">Flights</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((airport, index) => (
+                      <TableRow key={`${airportCode(airport)}-${index}`}>
+                        <TableCell>
+                          <div className="font-medium">{airportCode(airport)}</div>
+                          <div className="max-w-[320px] truncate text-xs text-muted-foreground" title={airportName(airport)}>
+                            {airportName(airport)}
+                          </div>
+                        </TableCell>
+                        <TableCell>{airportLocation(airport)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {airport.performanceType || "mixed"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{formatNumber(airport.totalBookings)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(airport.totalRevenue)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(airport.averageRevenuePerBooking)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(airport.totalFlights)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Departure & Arrival Hubs Tab */}
-        <TabsContent value="hubs" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Departure Airports */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PlaneTakeoff className="h-5 w-5" />
-                  Top Departure Airports
-                </CardTitle>
-                <CardDescription>Most active departure hubs</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {airportPerformance.topDepartureAirports && airportPerformance.topDepartureAirports.length > 0 ? (
-                    airportPerformance.topDepartureAirports.slice(0, 5).map((airport, index) => (
-                      <AirportCard key={`departure-${index}`} airport={airport} index={index} />
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">No departure data available</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Arrival Airports */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PlaneLanding className="h-5 w-5" />
-                  Top Arrival Airports
-                </CardTitle>
-                <CardDescription>Most active arrival hubs</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {airportPerformance.topArrivalAirports && airportPerformance.topArrivalAirports.length > 0 ? (
-                    airportPerformance.topArrivalAirports.slice(0, 5).map((airport, index) => (
-                      <AirportCard key={`arrival-${index}`} airport={airport} index={index} />
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">No arrival data available</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+        </>
+      )}
     </div>
   );
 };

@@ -16,7 +16,7 @@ const WorkspaceHeader = ({
   onOpenNavigation,
   actions,
 }) => (
-  <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+  <header className="workspace-header-surface sticky top-0 z-30 border-b border-border/80 supports-[backdrop-filter]:bg-background/70">
     <div className="flex min-h-20 items-center gap-3 px-4 py-3 sm:px-6">
       <Button
         type="button"

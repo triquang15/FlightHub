@@ -38,9 +38,9 @@ export const ALERT_COLORS = {
 
 // Common CSS classes for consistent styling
 export const COMMON_STYLES = {
-  pageContainer: 'flex min-h-screen bg-background',
+  pageContainer: 'workspace-shell flex min-h-screen',
   contentArea: 'flex-1 transition-all duration-300 ease-in-out',
-  header: 'bg-background border-b border-border sticky top-0 z-30',
+  header: 'workspace-header-surface border-b border-border sticky top-0 z-30',
   headerContent: 'px-6 py-4',
   mainContent: 'flex-1 p-6',
   statCard: 'p-4 rounded-xl border',

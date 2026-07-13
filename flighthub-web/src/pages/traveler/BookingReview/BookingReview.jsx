@@ -880,7 +880,7 @@ const BookingReview = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
+    <div className="app-page-surface min-h-screen text-slate-950 dark:text-white">
       {/* Header */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/85">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">

@@ -191,6 +191,20 @@ public class BookingController {
 		return ResponseUtil.ok(bookingService.getAirlinePerformanceForSuperAdmin());
 	}
 
+	@Operation(summary = "Route performance for airline", description = "Returns route rankings for the authenticated airline owner.")
+	@GetMapping("/route-performance/airline")
+	public ResponseEntity<?> getRoutePerformanceForAirline(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+		return ResponseUtil.ok(bookingService.getRoutePerformanceForAirline(userId));
+	}
+
+	@Operation(summary = "Airport performance for airline", description = "Returns airport rankings for the authenticated airline owner.")
+	@GetMapping("/airport-performance/airline")
+	public ResponseEntity<?> getAirportPerformanceForAirline(
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+		return ResponseUtil.ok(bookingService.getAirportPerformanceForAirline(userId));
+	}
+
 	@Operation(summary = "Airport performance for platform", description = "Returns airport rankings by confirmed booking demand, revenue, departure volume, and arrival volume.")
 	@GetMapping("/airport-performance/super-admin")
 	public ResponseEntity<?> getAirportPerformanceForSuperAdmin() {

@@ -218,7 +218,7 @@ const UserProfile = ({
   }
 
   return (
-    <main className={embedded ? "w-full" : "min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8"}>
+    <main className={embedded ? "w-full" : "app-page-surface min-h-screen px-4 py-8 sm:px-6 lg:px-8"}>
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="border-b bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-7 text-white sm:px-7">

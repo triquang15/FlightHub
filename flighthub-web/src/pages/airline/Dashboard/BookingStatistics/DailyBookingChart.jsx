@@ -11,12 +11,16 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { formatDate } from "@/utils/formateDate";
+import { CalendarDays } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 const chartConfig = {
   bookingCount: {
     label: "Bookings",
-    color: "hsl(var(--chart-1))",
+    theme: {
+      light: "#2563eb",
+      dark: "#60a5fa",
+    },
   },
 };
 
@@ -24,12 +28,15 @@ const DailyBookingChart = ({ data = [] }) => {
   const hasData = data.length > 0;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader>
-        <CardTitle>Daily Bookings</CardTitle>
+    <Card className="overflow-hidden border-border/70 bg-card/85 shadow-sm backdrop-blur">
+      <CardHeader className="border-b border-border/70">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CalendarDays className="h-4 w-4 text-primary" />
+          Daily Bookings
+        </CardTitle>
         <CardDescription>Confirmed bookings across the last 30 days.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         {hasData ? (
           <ChartContainer config={chartConfig} className="h-[300px] w-full">
             <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
@@ -39,7 +46,7 @@ const DailyBookingChart = ({ data = [] }) => {
                   <stop offset="95%" stopColor="var(--color-bookingCount)" stopOpacity={0.08} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDate}
@@ -76,7 +83,7 @@ const DailyBookingChart = ({ data = [] }) => {
 };
 
 const EmptyChartState = () => (
-  <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+  <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
     No daily booking data yet.
   </div>
 );

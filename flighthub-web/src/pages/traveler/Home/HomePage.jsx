@@ -127,7 +127,7 @@ const HomePage = () => {
   }
 
   return (
-    <main className="overflow-hidden bg-background">
+    <main className="overflow-hidden">
       <section className="relative isolate bg-slate-950 text-white">
         <div className="absolute inset-0 -z-20">
           <img

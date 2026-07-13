@@ -133,7 +133,7 @@ const Ticket = () => {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 dark:bg-slate-950">
+      <main className="app-page-surface min-h-screen px-4">
         <PageLoader
           message="Preparing your e-ticket..."
           detail="Loading passenger, flight, seat, and payment confirmation details."
@@ -145,7 +145,7 @@ const Ticket = () => {
 
   if (error || !booking) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <main className="flex min-h-screen items-center justify-center app-page-surface px-4">
         <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300">
             <AlertCircle className="h-7 w-7" />
@@ -176,7 +176,7 @@ const Ticket = () => {
   if (!ticketReady) {
     const cancelled = booking.status === "CANCELLED"
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <main className="flex min-h-screen items-center justify-center app-page-surface px-4">
         <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <span className={cn(
             "mx-auto flex h-14 w-14 items-center justify-center rounded-2xl",
@@ -208,8 +208,8 @@ const Ticket = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
-      <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <main className="app-page-surface min-h-screen text-slate-950 dark:text-slate-50">
+      <section className="border-b border-slate-200 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div>
             <Button variant="ghost" onClick={() => navigate("/bookings")} className="-ml-3 rounded-xl">

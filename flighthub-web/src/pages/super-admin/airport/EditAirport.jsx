@@ -41,7 +41,7 @@ const EditAirport = () => {
 
   if (!airport && loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
+      <div className="flex min-h-screen items-center justify-center app-page-surface text-foreground">
         <div className="text-center">
           <p className="text-lg text-gray-300">Loading airport data...</p>
         </div>
@@ -51,7 +51,7 @@ const EditAirport = () => {
 
   if (!airport && !loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
+      <div className="flex min-h-screen items-center justify-center app-page-surface text-foreground">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-white mb-2">Airport Not Found</h2>
           <p className="text-gray-300 mb-4">

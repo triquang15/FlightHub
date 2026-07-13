@@ -62,7 +62,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(airport?.id || id);
-  
+
   // Redux
   const dispatch = useDispatch();
   const { timezones, timezonesLoading } = useSelector((state) => state.airport);
@@ -209,7 +209,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-slate-950 dark:text-white">
+    <div className="app-page-surface min-h-screen dark:text-white">
       <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 w-full">
         <div className="flex items-center space-x-4 p-4 border-b bg-gray-50/50 dark:bg-slate-950 dark:border-gray-700">
           <Button
@@ -510,7 +510,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                   </CardContent>
                 </Card>
 
-               
+
 
                 {/* Summary Card */}
                 <Card className="bg-blue-50/50 dark:bg-slate-900 border-blue-200 dark:border-gray-700">

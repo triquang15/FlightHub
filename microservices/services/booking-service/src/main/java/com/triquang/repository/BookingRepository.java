@@ -179,6 +179,42 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
             """, nativeQuery = true)
     List<BookingAggregateRow> findTopFlightsByBookings(@Param("limit") int limit);
 
+    @Query(value = """
+            SELECT flight_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_instance_id) AS totalFlights
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id = :airlineId
+              AND flight_id IS NOT NULL
+            GROUP BY flight_id
+            ORDER BY totalBookings DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopFlightsByBookingsForAirline(
+            @Param("airlineId") Long airlineId,
+            @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT flight_id AS groupId,
+                   COUNT(*) AS totalBookings,
+                   COALESCE(SUM(total_amount), 0) AS totalRevenue,
+                   COALESCE(AVG(total_amount), 0) AS averageRevenuePerBooking,
+                   COUNT(DISTINCT flight_instance_id) AS totalFlights
+            FROM bookings
+            WHERE status = 'CONFIRMED'
+              AND airline_id = :airlineId
+              AND flight_id IS NOT NULL
+            GROUP BY flight_id
+            ORDER BY totalRevenue DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<BookingAggregateRow> findTopFlightsByRevenueForAirline(
+            @Param("airlineId") Long airlineId,
+            @Param("limit") int limit);
+
 
     @Query("SELECT b FROM Booking b " +
             "LEFT JOIN FETCH b.passengers " +

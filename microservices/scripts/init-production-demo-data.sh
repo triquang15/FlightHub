@@ -687,6 +687,7 @@ fare_vn211_standard="$(lookup_fare_id "$flight_vn211" "Economy Standard")"
 fare_vn218_saver="$(lookup_fare_id "$flight_vn218" "Economy Saver")"
 fare_vn136_basic="$(lookup_fare_id "$flight_vn136" "Economy Basic")"
 fare_vn135_basic="$(lookup_fare_id "$flight_vn135" "Economy Basic")"
+fare_vn651_standard="$(lookup_fare_id "$flight_vn651" "Economy Standard")"
 fare_vj122_saver="$(lookup_fare_id "$flight_vj122" "Eco Saver")"
 fare_vj122_skyboss="$(lookup_fare_id "$flight_vj122" "SkyBoss")"
 fare_vj123_plus="$(lookup_fare_id "$flight_vj123" "Eco Plus")"
@@ -710,7 +711,7 @@ fare_jl751_standard="$(lookup_fare_id "$flight_jl751" "Economy Standard")"
 fare_jl753_standard="$(lookup_fare_id "$flight_jl753" "Economy Standard")"
 
 for required in fare_vn210_lite fare_vn210_flex fare_vn210_business fare_vn211_standard \
-  fare_vn218_saver fare_vn136_basic fare_vn135_basic fare_vj122_saver fare_vj122_skyboss \
+  fare_vn218_saver fare_vn136_basic fare_vn135_basic fare_vn651_standard fare_vj122_saver fare_vj122_skyboss \
   fare_vj123_plus fare_vj803_asia fare_vj804_asia fare_ak520_low fare_ak521_low \
   fare_sq185_value fare_sq185_business fare_sq186_value fare_tg551_classic fare_tg550_classic \
   fare_cx764_essential fare_cx765_essential fare_ek393_saver fare_ek392_saver \
@@ -756,6 +757,7 @@ run_sql_file_with_settings \
   flight_vn218="$flight_vn218" \
   flight_vn136="$flight_vn136" \
   flight_vn135="$flight_vn135" \
+  flight_vn651="$flight_vn651" \
   flight_vj122="$flight_vj122" \
   flight_vj123="$flight_vj123" \
   flight_vj803="$flight_vj803" \
@@ -780,6 +782,7 @@ run_sql_file_with_settings \
   flight_instances_vn218="$flight_instances_vn218" \
   flight_instances_vn136="$flight_instances_vn136" \
   flight_instances_vn135="$flight_instances_vn135" \
+  flight_instances_vn651="$flight_instances_vn651" \
   flight_instances_vj122="$flight_instances_vj122" \
   flight_instances_vj123="$flight_instances_vj123" \
   flight_instances_vj803="$flight_instances_vj803" \
@@ -806,6 +809,7 @@ run_sql_file_with_settings \
   fare_vn218_saver="$fare_vn218_saver" \
   fare_vn136_basic="$fare_vn136_basic" \
   fare_vn135_basic="$fare_vn135_basic" \
+  fare_vn651_standard="$fare_vn651_standard" \
   fare_vj122_saver="$fare_vj122_saver" \
   fare_vj122_skyboss="$fare_vj122_skyboss" \
   fare_vj123_plus="$fare_vj123_plus" \

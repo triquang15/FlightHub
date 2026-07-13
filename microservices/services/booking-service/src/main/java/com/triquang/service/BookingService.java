@@ -40,6 +40,10 @@ public interface BookingService {
 
 	Map<String, Object> getAirlinePerformanceForSuperAdmin();
 
+	Map<String, Object> getRoutePerformanceForAirline(Long userId);
+
+	Map<String, Object> getAirportPerformanceForAirline(Long userId);
+
 	Map<String, Object> getAirportPerformanceForSuperAdmin();
 
 	Map<String, Object> getRoutePerformanceForSuperAdmin();

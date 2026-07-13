@@ -7,6 +7,7 @@ import {
   Calendar,
   Loader2,
   RefreshCw,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,10 +41,11 @@ const BookingStatisticsOverview = () => {
 
   if (loading && !statistics) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center">
+      <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-border/70 bg-card/80">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading booking analytics...</p>
+          <p className="text-sm font-medium text-foreground">Loading booking analytics</p>
+          <p className="mt-1 text-xs text-muted-foreground">Preparing trend and revenue signals...</p>
         </div>
       </div>
     );
@@ -51,8 +53,8 @@ const BookingStatisticsOverview = () => {
 
   if (error && !statistics) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+      <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-border/70 bg-card/80">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-700 shadow-sm dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
           <AlertCircle className="mx-auto mb-4 h-8 w-8" />
           <p className="mb-4 text-sm font-medium">Error loading booking analytics: {error}</p>
           <Button onClick={refresh}>Retry</Button>
@@ -63,24 +65,32 @@ const BookingStatisticsOverview = () => {
 
   return (
     <div className="min-w-0 space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <BarChart3 className="h-5 w-5" />
+      <div className="rounded-xl border border-border/70 bg-card/85 p-5 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <BarChart3 className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  Booking Analytics
+                </h2>
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Owner insights
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Track confirmed booking volume, revenue, and trend quality for this airline.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Booking Analytics
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Track confirmed booking volume, revenue, and trend quality for this airline.
-            </p>
-          </div>
+          <Button variant="outline" onClick={refresh} disabled={loading} className="shrink-0">
+            <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" onClick={refresh} disabled={loading}>
-          <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
-          Refresh
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -135,7 +145,7 @@ const toneClasses = {
 };
 
 const MetricCard = ({ label, value, detail, icon: Icon, tone }) => (
-  <Card className="overflow-hidden">
+  <Card className="overflow-hidden border-border/70 bg-card/85 shadow-sm backdrop-blur">
     <CardContent className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

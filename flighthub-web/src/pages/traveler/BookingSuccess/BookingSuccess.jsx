@@ -254,7 +254,7 @@ const BookingSuccess = () => {
 
   if (loading || paymentLoading || syncingConfirmation) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 text-slate-950 dark:bg-slate-950 dark:text-white">
+      <main className="min-h-screen app-page-surface px-4 text-slate-950 dark:text-white">
         <PageLoader
           message={paymentLoading || syncingConfirmation ? "Confirming payment" : "Loading booking"}
           detail={
@@ -270,7 +270,7 @@ const BookingSuccess = () => {
 
   if (error || !booking) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-950 dark:bg-slate-950 dark:text-white">
+      <main className="flex min-h-screen items-center justify-center app-page-surface px-4 text-slate-950 dark:text-white">
         <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300">
             <AlertCircle className="h-7 w-7" />
@@ -323,8 +323,8 @@ const BookingSuccess = () => {
   const heroTone = cancelled ? "rose" : confirmed ? "emerald" : "amber"
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
-      <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <main className="app-page-surface min-h-screen text-slate-950 dark:text-slate-50">
+      <section className="border-b border-slate-200 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <Button variant="ghost" onClick={() => navigate("/bookings")} className="-ml-3 mb-5 rounded-xl">
             <ArrowLeft className="mr-2 h-4 w-4" />

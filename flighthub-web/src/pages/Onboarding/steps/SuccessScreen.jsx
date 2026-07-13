@@ -44,7 +44,7 @@ const SuccessScreen = ({ airlineData }) => {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#eef4ff_42%,#f8fafc_100%)] text-slate-950 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_46%,#020617_100%)] dark:text-white">
+    <div className="relative app-page-surface min-h-screen overflow-hidden text-slate-950 dark:text-white">
       <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_50%_0%,rgba(34,197,94,0.22),transparent_60%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(34,197,94,0.18),transparent_62%)]" />
       <div className="absolute left-1/2 top-20 h-36 w-36 -translate-x-1/2 animate-[success-breathe_5s_ease-in-out_infinite] rounded-full border border-emerald-300/40 opacity-70 blur-sm dark:border-emerald-300/20" />
       <div className="absolute left-[18%] top-32 hidden h-2 w-2 animate-pulse rounded-full bg-emerald-400/70 sm:block" />

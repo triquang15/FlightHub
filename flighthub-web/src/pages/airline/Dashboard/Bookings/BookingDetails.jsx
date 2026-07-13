@@ -1,550 +1,381 @@
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import React, { useState } from "react"
 import {
-  CreditCard,
-  Plane,
-  User,
-  X,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  Mail,
-  Phone,
-  Utensils,
   Armchair,
-  Ticket,
-  Receipt,
-  Info,
-  Shield,
+  Calendar,
   ChevronDown,
-  ChevronUp
-} from 'lucide-react'
-import React, { useState } from 'react'
+  ChevronUp,
+  Clock,
+  CreditCard,
+  Info,
+  Mail,
+  MapPin,
+  Phone,
+  Plane,
+  Receipt,
+  Shield,
+  Ticket,
+  User,
+  Users,
+  Utensils,
+  X,
+} from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+
+const formatDate = (value) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
+const formatTime = (value) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const formatMoney = (amount, currency = "USD") =>
+  `${currency || "USD"} ${Number(amount || 0).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}`
+
+const getPassengerName = (passenger) =>
+  passenger?.fullName ||
+  [passenger?.firstName, passenger?.lastName].filter(Boolean).join(" ") ||
+  "Passenger"
+
+const InfoTile = ({ icon: Icon, label, value, detail }) => (
+  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {label}
+    </div>
+    <p className="mt-1 break-words text-sm font-semibold text-foreground">{value || "-"}</p>
+    {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
+  </div>
+)
+
+const SectionCard = ({ icon: Icon, title, children, className }) => (
+  <Card className={cn("overflow-hidden border-border/70 bg-card/90 shadow-sm", className)}>
+    <CardHeader className="border-b border-border/70 px-4 py-3">
+      <CardTitle className="flex items-center gap-2 text-base">
+        <Icon className="h-4 w-4 text-primary" />
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-4">{children}</CardContent>
+  </Card>
+)
 
 const BookingDetails = ({ booking, onClose, getStatusBadge, getPaymentStatusBadge }) => {
   const [expandedAncillary, setExpandedAncillary] = useState(null)
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getCurrency = () => booking.currency || booking.ancillaries?.[0]?.currency || 'INR'
+  const currency = booking.currency || booking.ancillaries?.[0]?.currency || "USD"
+  const passengers = Array.isArray(booking.passengers) ? booking.passengers : []
+  const seats = Array.isArray(booking.seatInstances) ? booking.seatInstances : []
+  const meals = Array.isArray(booking.meals) ? booking.meals : []
+  const ancillaries = Array.isArray(booking.ancillaries) ? booking.ancillaries : []
+  const tickets = Array.isArray(booking.tickets) ? booking.tickets : []
 
   const toggleAncillary = (id) => {
-    setExpandedAncillary(prev => prev === id ? null : id)
+    setExpandedAncillary((previous) => (previous === id ? null : id))
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Booking Details</h2>
-              <p className="text-gray-600 mt-1">Reference: <span className="font-semibold">{booking.bookingReference}</span></p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-2xl">
+        <div className="sticky top-0 z-10 border-b border-border/70 bg-background/95 px-5 py-4 backdrop-blur">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                  Booking Details
+                </h2>
+                {getStatusBadge(booking.status)}
+                {getPaymentStatusBadge(booking.paymentStatus)}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Reference <span className="font-semibold text-foreground">{booking.bookingReference || "-"}</span>
+              </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0" aria-label="Close booking details">
               <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Status & User Info */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              {getStatusBadge(booking.status)}
-              {getPaymentStatusBadge(booking.paymentStatus)}
-              {booking.isPast && <Badge variant="secondary">Past</Badge>}
-              {booking.isUpcoming && <Badge className="bg-blue-100 text-blue-800">Upcoming</Badge>}
+        <div className="min-h-0 overflow-y-auto p-5">
+          <div className="grid gap-4 md:grid-cols-4">
+            <InfoTile icon={Receipt} label="Total amount" value={formatMoney(booking.totalAmount, currency)} />
+            <InfoTile icon={Plane} label="Flight" value={booking.flightNumber || booking.flightName} detail={booking.flightName} />
+            <InfoTile icon={Users} label="Passengers" value={booking.totalPassengers || passengers.length || 0} />
+            <InfoTile icon={Calendar} label="Booked" value={formatDate(booking.bookingDate)} detail={formatTime(booking.bookingDate)} />
+          </div>
+
+          {(booking.userName || booking.userEmail || booking.contactInfo) && (
+            <SectionCard icon={User} title="Customer & Contact" className="mt-4">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <InfoTile label="Booked by" value={booking.userName || "-"} detail={booking.userEmail} />
+                <InfoTile icon={Mail} label="Email" value={booking.contactInfo?.email || booking.email || booking.userEmail} />
+                <InfoTile icon={Phone} label="Phone" value={booking.contactInfo?.phone || booking.phone} />
+                <InfoTile label="Trip type" value={booking.tripType || "One way"} detail={booking.cabinClass || booking.fareName} />
+              </div>
+            </SectionCard>
+          )}
+
+          <SectionCard icon={Plane} title="Flight Information" className="mt-4">
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Departure
+                </p>
+                <p className="mt-3 text-2xl font-semibold text-foreground">{formatTime(booking.departureTime)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{formatDate(booking.departureTime)}</p>
+                <p className="mt-4 text-base font-semibold text-foreground">{booking.departureAirport || "-"}</p>
+              </div>
+
+              <div className="flex items-center justify-center rounded-xl border border-border/70 bg-muted/20 px-5 py-4 text-center">
+                <div>
+                  <Clock className="mx-auto h-5 w-5 text-primary" />
+                  <p className="mt-2 text-sm font-semibold text-foreground">{booking.flightDuration || "Direct"}</p>
+                  <p className="text-xs text-muted-foreground">{booking.flightNumber || "Flight"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Arrival
+                </p>
+                <p className="mt-3 text-2xl font-semibold text-foreground">{formatTime(booking.arrivalTime)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{formatDate(booking.arrivalTime)}</p>
+                <p className="mt-4 text-base font-semibold text-foreground">{booking.arrivalAirport || "-"}</p>
+              </div>
             </div>
-            {(booking.userName || booking.userEmail) && (
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Booked by</p>
-                {booking.userName && <p className="font-semibold text-gray-900">{booking.userName}</p>}
-                {booking.userEmail && <p className="text-sm text-gray-500">{booking.userEmail}</p>}
+          </SectionCard>
+
+          <SectionCard icon={Users} title={`Passengers (${passengers.length || booking.totalPassengers || 0})`} className="mt-4">
+            {passengers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No passenger details were returned for this booking.</p>
+            ) : (
+              <div className="space-y-3">
+                {passengers.map((passenger, index) => {
+                  const seat = seats[index]
+                  return (
+                    <div key={passenger.id || index} className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-semibold text-foreground">{getPassengerName(passenger)}</p>
+                            <Badge variant="secondary" className="rounded-md">
+                              {passenger.isAdult === false ? "Child" : "Adult"}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">Passenger {index + 1}</p>
+                        </div>
+                        {seat && (
+                          <div className="flex w-fit items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                            <Armchair className="h-4 w-4 text-primary" />
+                            <span className="font-semibold text-foreground">
+                              {seat.seatNumber || seat.seatPosition || "-"}
+                            </span>
+                            {seat.seatType && <Badge variant="outline">{seat.seatType}</Badge>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <InfoTile label="Gender" value={passenger.gender} />
+                        <InfoTile label="Date of birth" value={formatDate(passenger.dateOfBirth)} />
+                        <InfoTile label="Age" value={passenger.age ? `${passenger.age} years` : "-"} />
+                        <InfoTile label="Nationality" value={passenger.nationality} />
+                        {passenger.email && <InfoTile icon={Mail} label="Email" value={passenger.email} />}
+                        {passenger.phone && <InfoTile icon={Phone} label="Phone" value={passenger.phone} />}
+                      </div>
+
+                      {(passenger.requiresWheelchairAssistance || passenger.dietaryPreferences || passenger.medicalConditions) && (
+                        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                          <p className="flex items-center gap-2 font-medium">
+                            <Info className="h-4 w-4" />
+                            Special requirements
+                          </p>
+                          <ul className="mt-2 list-inside list-disc space-y-1">
+                            {passenger.requiresWheelchairAssistance && <li>Wheelchair assistance required</li>}
+                            {passenger.dietaryPreferences && <li>Dietary preferences: {passenger.dietaryPreferences}</li>}
+                            {passenger.medicalConditions && <li>Medical conditions: {passenger.medicalConditions}</li>}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
-          </div>
+          </SectionCard>
 
-          {/* Contact Information */}
-          {booking.contactInfo && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-indigo-600" />
-                  Contact Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm text-gray-600 flex items-center gap-1">
-                      <Mail className="h-3 w-3" /> Email
-                    </Label>
-                    <p className="font-medium mt-1">{booking.contactInfo.email || '—'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600 flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> Phone
-                    </Label>
-                    <p className="font-medium mt-1">{booking.contactInfo.phone || '—'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Flight Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plane className="h-5 w-5 text-blue-600" />
-                Flight Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-gray-600">Flight Number</Label>
-                    <p className="font-semibold text-lg">{booking.flightNumber}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">Flight Name</Label>
-                    <p className="font-medium">{booking.flightName}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">Duration</Label>
-                    <p className="font-medium">{booking.flightDuration}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-gray-600 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> Departure
-                    </Label>
-                    <p className="font-semibold mt-1">{booking.departureAirport}</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(booking.departureTime)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatTime(booking.departureTime)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-gray-600 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> Arrival
-                    </Label>
-                    <p className="font-semibold mt-1">{booking.arrivalAirport}</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(booking.arrivalTime)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatTime(booking.arrivalTime)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Passengers Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-green-600" />
-                Passenger Information ({booking.totalPassengers} {booking.totalPassengers === 1 ? 'Passenger' : 'Passengers'})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {booking.passengers?.map((passenger, index) => (
-                  <div key={passenger.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold text-lg flex items-center gap-2">
-                          {passenger.fullName}
-                          {passenger.isAdult ?
-                            <Badge variant="secondary" className="text-xs">Adult</Badge> :
-                            <Badge variant="secondary" className="text-xs">Child</Badge>
-                          }
-                        </h4>
-                        <p className="text-sm text-gray-600">Passenger {index + 1}</p>
-                      </div>
-                      {booking.seatInstances?.[index] && (
-                        <div className="flex items-center gap-2">
-                          <Armchair className="h-4 w-4 text-gray-500" />
-                          <span className="font-semibold">{booking.seatInstances[index].seatNumber}</span>
-                          <Badge variant="outline" className="text-xs">{booking.seatInstances[index].seatType}</Badge>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <Label className="text-xs text-gray-600">Gender</Label>
-                        <p className="font-medium">{passenger.gender}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600">Date of Birth</Label>
-                        <p className="font-medium">{formatDate(passenger.dateOfBirth)}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600">Age</Label>
-                        <p className="font-medium">{passenger.age} years</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600">Nationality</Label>
-                        <p className="font-medium">{passenger.nationality}</p>
-                      </div>
-                      {passenger.email && (
-                        <div className="col-span-2">
-                          <Label className="text-xs text-gray-600 flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> Email
-                          </Label>
-                          <p className="font-medium">{passenger.email}</p>
-                        </div>
-                      )}
-                      {passenger.phone && (
-                        <div className="col-span-2">
-                          <Label className="text-xs text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> Phone
-                          </Label>
-                          <p className="font-medium">{passenger.phone}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Seat Details */}
-                    {booking.seatInstances?.[index] && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Label className="text-xs text-gray-600 mb-2 block">Seat Details</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                          <div>
-                            <p className="text-xs text-gray-500">Seat</p>
-                            <p className="font-medium">{booking.seatInstances[index].seatPosition}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Type</p>
-                            <p className="font-medium capitalize">{booking.seatInstances[index].seat?.seatType?.toLowerCase() || booking.seatInstances[index].seatType}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Status</p>
-                            <Badge variant="outline" className="text-xs">{booking.seatInstances[index].status}</Badge>
-                          </div>
-                          {booking.seatInstances[index].mealPreference && (
-                            <div className="flex items-center gap-2">
-                              <Utensils className="h-3 w-3 text-gray-500" />
-                              <span className="text-xs">{booking.seatInstances[index].mealPreference}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Special Requirements */}
-                    {(passenger.requiresWheelchairAssistance || passenger.dietaryPreferences || passenger.medicalConditions) && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Label className="text-xs text-gray-600 flex items-center gap-1 mb-2">
-                          <Info className="h-3 w-3" /> Special Requirements
-                        </Label>
-                        <div className="space-y-1 text-sm">
-                          {passenger.requiresWheelchairAssistance && (
-                            <p className="text-gray-700">• Wheelchair assistance required</p>
-                          )}
-                          {passenger.dietaryPreferences && (
-                            <p className="text-gray-700">• Dietary preferences: {passenger.dietaryPreferences}</p>
-                          )}
-                          {passenger.medicalConditions && (
-                            <p className="text-gray-700">• Medical conditions: {passenger.medicalConditions}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Meals */}
-          {booking.meals && booking.meals.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Utensils className="h-5 w-5 text-orange-600" />
-                  Meals ({booking.meals.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {booking.meals.map((mealItem) => (
-                  <div key={mealItem.id} className="border rounded-lg p-4 flex gap-4">
-                    {mealItem.meal?.imageUrl && (
-                      <img
-                        src={mealItem.meal.imageUrl}
-                        alt={mealItem.meal.name}
-                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-sm">{mealItem.meal?.name}</h4>
-                        <span className="text-sm font-semibold text-orange-600 flex-shrink-0">
-                          {mealItem.price ? `${getCurrency()} ${mealItem.price}` : 'Complimentary'}
-                        </span>
-                      </div>
-                      <Badge variant="outline" className="text-xs mt-1">{mealItem.meal?.mealType}</Badge>
-                      {mealItem.meal?.dietaryRestriction && (
-                        <p className="text-xs text-gray-600 mt-1">{mealItem.meal.dietaryRestriction}</p>
-                      )}
-                      {mealItem.meal?.ingredients && (
-                        <p className="text-xs text-gray-400 mt-1 truncate">{mealItem.meal.ingredients}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Ancillary Services */}
-          {booking.ancillaries && booking.ancillaries.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  Ancillary Services ({booking.ancillaries.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {booking.ancillaries.map((item) => (
-                  <div key={item.id} className="border rounded-lg overflow-hidden">
-                    {/* Ancillary Header */}
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-base">{item.ancillary?.name}</h4>
-                            <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200">
-                              {item.ancillary?.type?.replace('_', ' ')}
-                            </Badge>
-                            {item.ancillary?.rfisc && (
-                              <Badge variant="outline" className="text-xs font-mono">{item.ancillary.rfisc}</Badge>
-                            )}
-                          </div>
-                          {item.ancillary?.description && (
-                            <p className="text-sm text-gray-600 mt-1">{item.ancillary.description}</p>
-                          )}
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                            <span>Max Qty: {item.maxQuantity}</span>
-                            <span className={item.available ? 'text-green-600 font-medium' : 'text-red-500'}>
-                              {item.available ? 'Available' : 'Unavailable'}
+          {(meals.length > 0 || ancillaries.length > 0) && (
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {meals.length > 0 && (
+                <SectionCard icon={Utensils} title={`Meals (${meals.length})`}>
+                  <div className="space-y-3">
+                    {meals.map((mealItem) => (
+                      <div key={mealItem.id} className="flex gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+                        {mealItem.meal?.imageUrl && (
+                          <img
+                            src={mealItem.meal.imageUrl}
+                            alt={mealItem.meal.name}
+                            className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="truncate text-sm font-semibold text-foreground">{mealItem.meal?.name || "Meal"}</p>
+                            <span className="shrink-0 text-sm font-semibold text-primary">
+                              {mealItem.price ? formatMoney(mealItem.price, currency) : "Included"}
                             </span>
-                            {item.includedInFare && (
-                              <Badge variant="secondary" className="text-xs">Included in fare</Badge>
-                            )}
                           </div>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="font-bold text-lg text-blue-700">
-                            {item.currency} {item.price?.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Toggle coverages */}
-                      {item.ancillary?.coverages && item.ancillary.coverages.length > 0 && (
-                        <button
-                          onClick={() => toggleAncillary(item.id)}
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-3 font-medium"
-                        >
-                          {expandedAncillary === item.id ? (
-                            <><ChevronUp className="h-4 w-4" /> Hide {item.ancillary.coverages.length} coverages</>
-                          ) : (
-                            <><ChevronDown className="h-4 w-4" /> View {item.ancillary.coverages.length} coverages</>
+                          {mealItem.meal?.mealType && <Badge variant="outline" className="mt-2">{mealItem.meal.mealType}</Badge>}
+                          {mealItem.meal?.dietaryRestriction && (
+                            <p className="mt-1 text-xs text-muted-foreground">{mealItem.meal.dietaryRestriction}</p>
                           )}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Coverages */}
-                    {expandedAncillary === item.id && item.ancillary?.coverages && (
-                      <div className="border-t bg-gray-50 p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {item.ancillary.coverages.map((coverage) => (
-                            <div key={coverage.id} className="bg-white border rounded-lg p-3">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold">{coverage.name}</p>
-                                  <Badge variant="outline" className="text-xs mt-1 font-mono">
-                                    {coverage.coverageType?.replace(/_/g, ' ')}
-                                  </Badge>
-                                </div>
-                                {coverage.coverageAmount && (
-                                  <span className="text-sm font-bold text-green-600 flex-shrink-0">
-                                    {coverage.currency} {coverage.coverageAmount?.toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                              {coverage.description && (
-                                <p className="text-xs text-gray-500 mt-2">{coverage.description}</p>
-                              )}
-                              {coverage.claimCondition && (
-                                <p className="text-xs text-amber-700 bg-amber-50 rounded p-2 mt-2">
-                                  <span className="font-medium">Claim: </span>{coverage.claimCondition}
-                                </p>
-                              )}
-                              {coverage.emergencyContact && (
-                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                  <Phone className="h-3 w-3" /> {coverage.emergencyContact}
-                                </p>
-                              )}
-                            </div>
-                          ))}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Fare & Payment Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fare Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-purple-600" />
-                  Fare Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-sm text-gray-600">Fare Type</Label>
-                  <p className="font-semibold">{booking.fareName}</p>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <Label className="text-sm text-gray-600">Base Fare</Label>
-                  <p className="font-medium">{getCurrency()} {booking.fareBaseFare?.toLocaleString()}</p>
-                </div>
-                <div className="flex justify-between">
-                  <Label className="text-sm text-gray-600">Taxes & Fees</Label>
-                  <p className="font-medium">{getCurrency()} {booking.fareTaxesAndFees?.toLocaleString()}</p>
-                </div>
-                <div className="flex justify-between">
-                  <Label className="text-sm text-gray-600">Airline Fees</Label>
-                  <p className="font-medium">{getCurrency()} {booking.fareAirlineFees?.toLocaleString()}</p>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <Label className="text-base font-semibold">Total Amount</Label>
-                  <p className="font-bold text-xl text-purple-600">{getCurrency()} {booking.totalAmount?.toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment & Ticket Information */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-green-600" />
-                    Payment Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-sm text-gray-600">Payment Status</Label>
-                    <div className="mt-1">
-                      {getPaymentStatusBadge(booking.paymentStatus)}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">Booking Date</Label>
-                    <p className="font-medium">{formatDate(booking.bookingDate)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">Last Modified</Label>
-                    <p className="font-medium">{formatDate(booking.lastModified)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tickets */}
-              {booking.tickets && booking.tickets.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Ticket className="h-5 w-5 text-orange-600" />
-                      Tickets ({booking.tickets.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {booking.tickets.map((ticket) => (
-                      <div key={ticket.id} className="border rounded-lg p-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold text-sm font-mono">{ticket.ticketNumber}</p>
-                            <p className="text-xs text-gray-600">
-                              {ticket.passengerFirstName} {ticket.passengerLastName}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {ticket.status}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Issued: {formatDate(ticket.issuedAt)}
-                        </p>
                       </div>
                     ))}
-                  </CardContent>
-                </Card>
+                  </div>
+                </SectionCard>
+              )}
+
+              {ancillaries.length > 0 && (
+                <SectionCard icon={Shield} title={`Ancillary Services (${ancillaries.length})`}>
+                  <div className="space-y-3">
+                    {ancillaries.map((item) => {
+                      const coverages = Array.isArray(item.ancillary?.coverages) ? item.ancillary.coverages : []
+                      return (
+                        <div key={item.id} className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
+                          <div className="p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-semibold text-foreground">{item.ancillary?.name || "Ancillary"}</p>
+                                  {item.ancillary?.type && (
+                                    <Badge variant="outline">{item.ancillary.type.replace(/_/g, " ")}</Badge>
+                                  )}
+                                </div>
+                                {item.ancillary?.description && (
+                                  <p className="mt-1 text-sm text-muted-foreground">{item.ancillary.description}</p>
+                                )}
+                              </div>
+                              <p className="shrink-0 font-semibold text-primary">{formatMoney(item.price, item.currency || currency)}</p>
+                            </div>
+
+                            {coverages.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleAncillary(item.id)}
+                                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                              >
+                                {expandedAncillary === item.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                {expandedAncillary === item.id ? "Hide" : "View"} {coverages.length} coverages
+                              </button>
+                            )}
+                          </div>
+
+                          {expandedAncillary === item.id && coverages.length > 0 && (
+                            <div className="grid gap-3 border-t border-border/70 bg-background/50 p-3 sm:grid-cols-2">
+                              {coverages.map((coverage) => (
+                                <div key={coverage.id} className="rounded-lg border border-border/70 bg-card p-3">
+                                  <p className="text-sm font-semibold text-foreground">{coverage.name}</p>
+                                  {coverage.coverageType && <Badge variant="outline" className="mt-1">{coverage.coverageType.replace(/_/g, " ")}</Badge>}
+                                  {coverage.description && <p className="mt-2 text-xs text-muted-foreground">{coverage.description}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </SectionCard>
               )}
             </div>
+          )}
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <SectionCard icon={Receipt} title="Fare Breakdown">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Fare type</span>
+                  <span className="font-semibold text-foreground">{booking.fareName || "-"}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Base fare</span>
+                  <span className="font-medium text-foreground">{formatMoney(booking.fareBaseFare, currency)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Taxes & fees</span>
+                  <span className="font-medium text-foreground">{formatMoney(booking.fareTaxesAndFees, currency)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Airline fees</span>
+                  <span className="font-medium text-foreground">{formatMoney(booking.fareAirlineFees, currency)}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between gap-4 rounded-lg bg-primary/10 p-3">
+                  <span className="font-semibold text-foreground">Total amount</span>
+                  <span className="text-xl font-bold text-primary">{formatMoney(booking.totalAmount, currency)}</span>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard icon={CreditCard} title="Payment & Tickets">
+              <div className="space-y-3">
+                <InfoTile label="Payment status" value={booking.paymentStatus || "PENDING"} />
+                <InfoTile label="Last modified" value={formatDate(booking.lastModified)} detail={formatTime(booking.lastModified)} />
+                {tickets.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Ticket className="h-4 w-4 text-primary" />
+                      Tickets
+                    </p>
+                    {tickets.map((ticket) => (
+                      <div key={ticket.id} className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-mono text-sm font-semibold text-foreground">{ticket.ticketNumber}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[ticket.passengerFirstName, ticket.passengerLastName].filter(Boolean).join(" ")}
+                            </p>
+                          </div>
+                          <Badge variant="outline">{ticket.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
           </div>
 
-          {/* Special Requests */}
           {booking.specialRequests && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Info className="h-5 w-5 text-gray-600" />
-                  Special Requests
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700">{booking.specialRequests}</p>
-              </CardContent>
-            </Card>
+            <SectionCard icon={Info} title="Special Requests" className="mt-4">
+              <p className="text-sm text-muted-foreground">{booking.specialRequests}</p>
+            </SectionCard>
           )}
         </div>
       </div>
