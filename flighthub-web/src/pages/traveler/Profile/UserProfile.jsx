@@ -1,17 +1,25 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Formik, Form, Field } from "formik"
 import * as Yup from "yup"
+import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { changePassword, getUserProfile, updateUserProfile } from "@/Redux/user/userThunks"
+import {
+  changePassword,
+  deleteUserAvatar,
+  getUserProfile,
+  updateUserProfile,
+  uploadUserAvatar,
+} from "@/Redux/user/userThunks"
 
 import {
   CalendarDays,
+  Camera,
   CheckCircle2,
   Clock3,
   Eye,
@@ -22,9 +30,14 @@ import {
   Phone,
   Save,
   ShieldCheck,
+  Trash2,
+  Upload,
   User,
   X,
 } from "lucide-react"
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 const profileSchema = Yup.object({
   fullName: Yup.string().required("Required").min(3, "Min 3 characters"),
@@ -149,11 +162,13 @@ const UserProfile = ({
   const [editMode, setEditMode] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [loadingPassword, setLoadingPassword] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [visiblePasswords, setVisiblePasswords] = useState({
     current: false,
     next: false,
     confirm: false,
   })
+  const avatarInputRef = useRef(null)
 
   useEffect(() => {
     if (!userProfile) {
@@ -199,6 +214,42 @@ const UserProfile = ({
     }
   }
 
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file) return
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, or WEBP image")
+      return
+    }
+
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error("Profile photo must be 5MB or smaller")
+      return
+    }
+
+    try {
+      setAvatarUploading(true)
+      await dispatch(uploadUserAvatar(file)).unwrap()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    try {
+      setAvatarUploading(true)
+      await dispatch(deleteUserAvatar()).unwrap()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   const togglePasswordVisibility = (key) => {
     setVisiblePasswords((current) => ({
       ...current,
@@ -216,6 +267,8 @@ const UserProfile = ({
       confirm: false,
     })
   }
+
+  const avatarSrc = user.avatarUrl || user.profilePicture
 
   return (
     <main className={embedded ? "w-full" : "app-page-surface min-h-screen px-4 py-8 sm:px-6 lg:px-8"}>
@@ -249,12 +302,35 @@ const UserProfile = ({
             <Card className="rounded-lg">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-24 w-24 border">
-                    <AvatarImage src={user.profilePicture} />
+                  <div className="relative">
+                    <Avatar className="h-24 w-24 border shadow-sm">
+                      <AvatarImage src={avatarSrc} />
                     <AvatarFallback className="text-2xl font-semibold">
                       {getInitials(user.fullName)}
                     </AvatarFallback>
-                  </Avatar>
+                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading || loading}
+                      className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Upload profile photo"
+                      title="Upload profile photo"
+                    >
+                      {avatarUploading ? (
+                        <Upload className="h-4 w-4 animate-pulse" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </div>
 
                   <h2 className="mt-4 max-w-full truncate text-xl font-semibold">
                     {user.fullName || "Unnamed user"}
@@ -275,6 +351,33 @@ const UserProfile = ({
                       </Badge>
                     )}
                   </div>
+
+                  <div className="mt-5 flex w-full flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading || loading}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {user.hasCustomAvatar ? "Change photo" : "Upload photo"}
+                    </Button>
+                    {user.hasCustomAvatar && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={handleRemoveAvatar}
+                        disabled={avatarUploading || loading}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remove photo
+                      </Button>
+                    )}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    JPG, PNG, or WEBP. Maximum 5MB.
+                  </p>
                 </div>
               </CardContent>
             </Card>

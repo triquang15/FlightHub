@@ -25,6 +25,12 @@ public class UserDTO {
 
     private UserRole role;
 
+    private String avatarUrl;
+
+    private String profilePicture;
+
+    private boolean hasCustomAvatar;
+
     private LocalDateTime lastLogin;
 
     private List<AuthProvider> loginProviders;

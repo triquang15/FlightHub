@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.UserRole;
@@ -22,6 +23,10 @@ public interface UserService {
     UserDTO createUserByAdmin(AdminCreateUserRequest request);
 
     UserDTO updateProfile(Long userId, UpdateProfileRequest request);
+
+    UserDTO updateAvatar(Long userId, MultipartFile file);
+
+    UserDTO deleteAvatar(Long userId);
 
     void deleteUser(Long id);
 

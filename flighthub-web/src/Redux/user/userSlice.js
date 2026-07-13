@@ -2,6 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   getUserProfile,
   updateUserProfile,
+  uploadUserAvatar,
+  deleteUserAvatar,
   getAllUsers,
   getUserById,
   logout
@@ -58,6 +60,30 @@ const userSlice = createSlice({
         state.userProfile = action.payload;
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.profileError = action.payload;
+      })
+      .addCase(uploadUserAvatar.pending, (state) => {
+        state.loading = true;
+        state.profileError = null;
+      })
+      .addCase(uploadUserAvatar.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userProfile = action.payload;
+      })
+      .addCase(uploadUserAvatar.rejected, (state, action) => {
+        state.loading = false;
+        state.profileError = action.payload;
+      })
+      .addCase(deleteUserAvatar.pending, (state) => {
+        state.loading = true;
+        state.profileError = null;
+      })
+      .addCase(deleteUserAvatar.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userProfile = action.payload;
+      })
+      .addCase(deleteUserAvatar.rejected, (state, action) => {
         state.loading = false;
         state.profileError = action.payload;
       })

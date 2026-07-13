@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
@@ -35,6 +36,8 @@ import com.triquang.repository.UserPreferencesRepository;
 import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.repository.UserIdentityRepository;
 import com.triquang.service.UserService;
+import com.triquang.service.storage.AvatarStorageService;
+import com.triquang.service.storage.AvatarStorageService.StoredAvatar;
 import com.triquang.utils.TokenHashUtil;
 
 import lombok.RequiredArgsConstructor;
@@ -56,6 +59,7 @@ public class UserServiceImpl implements UserService {
     private final UserIdentityRepository userIdentityRepository;
     private final TokenHashUtil tokenHashUtil;
     private final SecurityEventProducer securityEventProducer;
+    private final AvatarStorageService avatarStorageService;
 
     // ================= PROFILE =================
     @Override
@@ -85,6 +89,42 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         return enrichLoginInfo(UserMapper.toDTO(user), userIdentityRepository.findByUserId(user.getId()));
+    }
+
+    @Override
+    public UserDTO updateAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        String previousObjectKey = user.getAvatarObjectKey();
+        StoredAvatar storedAvatar = avatarStorageService.store(userId, file);
+
+        user.setAvatarUrl(storedAvatar.publicUrl());
+        user.setAvatarObjectKey(storedAvatar.objectKey());
+        user.setAvatarUpdatedAt(LocalDateTime.now());
+
+        User saved = userRepository.save(user);
+        if (previousObjectKey != null && !previousObjectKey.equals(storedAvatar.objectKey())) {
+            avatarStorageService.delete(previousObjectKey);
+        }
+
+        return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
+    }
+
+    @Override
+    public UserDTO deleteAvatar(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        String previousObjectKey = user.getAvatarObjectKey();
+        user.setAvatarUrl(null);
+        user.setAvatarObjectKey(null);
+        user.setAvatarUpdatedAt(null);
+
+        User saved = userRepository.save(user);
+        avatarStorageService.delete(previousObjectKey);
+
+        return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
     }
 
     // ================= CHANGE PASSWORD =================
@@ -323,6 +363,17 @@ public class UserServiceImpl implements UserService {
                     dto.setLastLoginProvider(identity.getProvider());
                     dto.setLastProviderLoginAt(identity.getLastLoginAt());
                 });
+
+        if (dto.getAvatarUrl() == null) {
+            safeIdentities.stream()
+                    .map(UserIdentity::getAvatarUrl)
+                    .filter(value -> value != null && !value.isBlank())
+                    .findFirst()
+                    .ifPresent(value -> {
+                        dto.setAvatarUrl(value);
+                        dto.setProfilePicture(value);
+                    });
+        }
 
         return dto;
     }

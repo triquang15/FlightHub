@@ -91,6 +91,7 @@ public class RouteConfig {
                 .route(RequestPredicates.path("/api/auth/**"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/users/forgot-password"), HandlerFunctions.http())
                 .route(RequestPredicates.POST("/api/users/reset-password"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/users/profile/avatar/file/{userId}/{filename}"), HandlerFunctions.http())
                 .filter(redisRateLimitFilter)
                 .build();
     }

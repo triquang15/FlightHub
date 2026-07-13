@@ -59,6 +59,14 @@ public class User {
 
     private LocalDateTime lastLogin;
 
+    @Column(length = 1000)
+    private String avatarUrl;
+
+    @Column(length = 512)
+    private String avatarObjectKey;
+
+    private LocalDateTime avatarUpdatedAt;
+
     // ===== PASSWORD RESET (HASH ONLY) =====
     private String resetTokenHash;
 

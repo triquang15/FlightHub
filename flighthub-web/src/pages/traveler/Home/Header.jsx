@@ -41,7 +41,10 @@ const Header = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const { isAuthenticated, user } = useSelector((state) => state.auth)
+  const { isAuthenticated, user: authUser } = useSelector((state) => state.auth)
+  const { userProfile } = useSelector((state) => state.user)
+  const user = userProfile || authUser
+  const avatarSrc = user?.avatarUrl || user?.profilePicture
 
   const navigationLinks = [
     {
@@ -113,7 +116,7 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-11 max-w-56 justify-start gap-2 rounded-full px-2 pr-3">
                     <Avatar size="lg">
-                      <AvatarImage src={user.profilePicture} alt="" />
+                      <AvatarImage src={avatarSrc} alt="" />
                       <AvatarFallback className="bg-primary/10 font-semibold text-primary">{getInitials(user.fullName)}</AvatarFallback>
                     </Avatar>
                     <span className="min-w-0 text-left">
@@ -169,7 +172,7 @@ const Header = () => {
               <div className="mb-4 space-y-3 rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-3">
                   <Avatar size="lg">
-                    <AvatarImage src={user.profilePicture} alt="" />
+                    <AvatarImage src={avatarSrc} alt="" />
                     <AvatarFallback className="bg-primary/10 font-semibold text-primary">{getInitials(user.fullName)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

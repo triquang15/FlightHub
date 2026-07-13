@@ -246,6 +246,35 @@ VITE_APPLE_REDIRECT_URI=http://localhost:5173/login
 If these values are empty, the Apple button stays visible but reports that
 Apple login is not configured.
 
+Profile photos are stored locally in development while keeping the backend
+contract ready for S3 later. User Service saves only metadata on the `users`
+record:
+
+```text
+avatar_url
+avatar_object_key
+avatar_updated_at
+```
+
+Local avatar settings:
+
+```bash
+# Public URL used when User Service returns avatar_url through API Gateway
+APP_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for uploaded profile photos
+USER_AVATAR_LOCAL_DIR=/tmp/flighthub/avatars
+
+# Optional upload limits
+USER_AVATAR_MAX_FILE_SIZE=5MB
+USER_AVATAR_MAX_REQUEST_SIZE=6MB
+```
+
+Supported formats are JPG, PNG, and WEBP up to 5MB. When moving to S3, keep the
+controller and database fields unchanged and replace the local
+`AvatarStorageService` implementation with an S3-backed implementation that
+returns the object key and public or signed URL.
+
 Open:
 
 ```text

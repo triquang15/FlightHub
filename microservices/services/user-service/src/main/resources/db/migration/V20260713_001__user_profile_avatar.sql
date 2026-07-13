@@ -1,0 +1,4 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(1000),
+    ADD COLUMN IF NOT EXISTS avatar_object_key VARCHAR(512),
+    ADD COLUMN IF NOT EXISTS avatar_updated_at TIMESTAMP;

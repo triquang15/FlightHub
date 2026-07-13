@@ -22,6 +22,9 @@ public final class UserMapper {
                 .fullName(user.getFullName())
                 .phone(user.getPhone())
                 .role(user.getRole())
+                .avatarUrl(user.getAvatarUrl())
+                .profilePicture(user.getAvatarUrl())
+                .hasCustomAvatar(user.getAvatarObjectKey() != null && !user.getAvatarObjectKey().isBlank())
                 .lastLogin(user.getLastLogin())
                 .verified(user.isVerified())   // 🔥 boolean primitive
                 .active(user.isActive())       // 🔥 boolean primitive

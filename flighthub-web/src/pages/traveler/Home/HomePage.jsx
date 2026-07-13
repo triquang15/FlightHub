@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
+import { motion } from "framer-motion"
 import {
   ArrowRight,
   BadgeCheck,
@@ -34,21 +35,21 @@ const deals = [
     title: "Save more when signed in",
     description: "Access account-aware booking, saved travelers, and faster trip management.",
     code: "MEMBER15",
-    accent: "bg-violet-600",
+    accent: "from-violet-500 to-fuchsia-400",
   },
   {
     eyebrow: "Weekend escape",
     title: "Short-haul trips made easy",
     description: "Use flexible dates and clear fare cards to compare quick getaways.",
     code: "WEEKEND",
-    accent: "bg-sky-600",
+    accent: "from-sky-500 to-cyan-400",
   },
   {
     eyebrow: "First booking",
     title: "Start with a clean checkout",
     description: "Review fare, seats, bags, payment, and ticket details before paying.",
     code: "HELLO25",
-    accent: "bg-emerald-600",
+    accent: "from-emerald-500 to-teal-400",
   },
 ]
 
@@ -113,6 +114,11 @@ const benefits = [
   },
 ]
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 22 },
+  visible: { opacity: 1, y: 0 },
+}
+
 const HomePage = () => {
   const navigate = useNavigate()
   const searchSectionRef = React.useRef(null)
@@ -127,68 +133,98 @@ const HomePage = () => {
   }
 
   return (
-    <main className="overflow-hidden">
-      <section className="relative isolate bg-slate-950 text-white">
+    <main className="overflow-hidden bg-background text-foreground">
+      <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-20">
           <img
             src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=2400&q=85"
             alt=""
-            className="h-full w-full object-cover opacity-35"
+            className="h-full w-full object-cover opacity-42 dark:opacity-34"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.98),rgba(15,23,42,0.88),rgba(88,28,135,0.45))]" />
-          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(2,6,23,1),transparent_42%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.9)_45%,rgba(255,255,255,0.42)_100%)] dark:bg-[linear-gradient(90deg,rgba(18,9,40,0.98)_0%,rgba(18,9,40,0.88)_48%,rgba(49,46,129,0.38)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,rgba(103,61,229,0.18),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_44%)] dark:bg-[radial-gradient(circle_at_82%_20%,rgba(103,61,229,0.36),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_46%)]" />
         </div>
 
-        <div className="mx-auto grid min-h-[610px] max-w-7xl items-center gap-12 px-4 pb-32 pt-16 sm:px-6 sm:pb-40 sm:pt-20 lg:grid-cols-[0.94fr_1.06fr] lg:px-8 lg:pb-44">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white/90 backdrop-blur-md">
-              <Sparkles className="h-4 w-4 text-amber-300" />
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <motion.div
+            className="absolute left-[7%] top-[24%] hidden h-2 w-2 rounded-full bg-primary shadow-[0_0_30px_rgba(103,61,229,0.8)] sm:block"
+            animate={{ x: ["0vw", "76vw"], y: [0, -72, -18], opacity: [0.25, 1, 0.25] }}
+            transition={{ duration: 9.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute right-[12%] top-[19%] flex h-12 w-12 items-center justify-center rounded-full border bg-background/65 text-primary shadow-xl backdrop-blur-xl"
+            animate={{ y: [0, -18, 0], rotate: [0, 6, 0] }}
+            transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Plane className="h-5 w-5" />
+          </motion.div>
+        </div>
+
+        <div className="mx-auto grid min-h-[650px] max-w-7xl items-center gap-12 px-4 pb-32 pt-16 sm:px-6 sm:pb-40 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:pb-44">
+          <motion.div
+            className="max-w-3xl"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
+          >
+            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-4 py-2 text-xs font-bold shadow-sm backdrop-blur-xl">
+              <Sparkles className="h-4 w-4 text-primary" />
               Search smarter. Book cleaner. Travel with context.
-            </div>
-            <h1 className="mt-7 max-w-3xl text-4xl font-semibold leading-[1.04] sm:text-6xl lg:text-7xl">
+            </motion.div>
+
+            <motion.h1 variants={fadeUp} className="mt-7 max-w-3xl text-4xl font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
               Find the flight that fits the whole trip.
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            </motion.h1>
+
+            <motion.p variants={fadeUp} className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               Compare routes, fares, seats, baggage, and payment options in a traveler flow designed for confidence from search to e-ticket.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={scrollToSearch} className="h-12 rounded-full bg-white px-6 text-slate-950 hover:bg-slate-100">
+            </motion.p>
+
+            <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Button onClick={scrollToSearch} className="h-12 rounded-full px-6">
                 Search flights <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button onClick={() => navigate("/bookings")} variant="outline" className="h-12 rounded-full border-white/25 bg-white/5 px-6 text-white hover:bg-white/10 hover:text-white">
+              <Button onClick={() => navigate("/bookings")} variant="outline" className="h-12 rounded-full bg-background/65 px-6 backdrop-blur-xl">
                 My bookings
               </Button>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-300">
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
               {["Clear fare breakdown", "Seat selection ready", "E-ticket after payment"].map((item) => (
-                <span key={item} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-300" />
+                <span key={item} className="flex items-center gap-2 rounded-full border bg-background/55 px-3 py-2 backdrop-blur-xl">
+                  <Check className="h-4 w-4 text-emerald-500" />
                   {item}
                 </span>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="relative hidden lg:block">
-            <div className="absolute -left-6 top-8 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-md [animation:float-panel_6s_ease-in-out_infinite]">
+          <motion.div
+            className="relative hidden lg:block"
+            initial={{ opacity: 0, y: 28, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+          >
+            <div className="absolute -left-6 top-8 rounded-2xl border bg-background/72 px-4 py-3 shadow-xl backdrop-blur-xl [animation:float-panel_6s_ease-in-out_infinite]">
               <div className="flex items-center gap-3">
-                <BadgeCheck className="h-5 w-5 text-emerald-300" />
+                <BadgeCheck className="h-5 w-5 text-emerald-500" />
                 <span className="text-sm font-semibold">Secure checkout</span>
               </div>
             </div>
-            <div className="relative ml-auto max-w-xl overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur-xl [animation:panel-rise_700ms_ease-out_both]">
-              <div className="rounded-[1.35rem] bg-white p-5 text-slate-950">
+
+            <div className="relative ml-auto max-w-xl overflow-hidden rounded-[2rem] border bg-background/70 p-3 shadow-2xl shadow-primary/10 backdrop-blur-2xl">
+              <div className="rounded-[1.35rem] border bg-card/90 p-5 shadow-sm backdrop-blur-xl">
                 <div className="flex items-center justify-between border-b pb-5">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-600">Trip preview</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Trip preview</p>
                     <h2 className="mt-2 text-2xl font-semibold">SGN to SIN</h2>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Live fares</span>
+                  <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">Live fares</span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                   <AirportPreview code="SGN" city="Ho Chi Minh City" label="From" />
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full border bg-background text-primary shadow-sm">
                     <Plane className="h-4 w-4" />
                   </span>
                   <AirportPreview code="SIN" city="Singapore" label="To" align="right" />
@@ -196,34 +232,34 @@ const HomePage = () => {
 
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   {quickStats.map((stat) => (
-                    <div key={stat.label} className="rounded-2xl border bg-slate-50 p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{stat.label}</p>
+                    <div key={stat.label} className="rounded-2xl border bg-muted/35 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
                       <p className="mt-2 text-lg font-semibold">{stat.value}</p>
-                      <p className="mt-1 text-[11px] leading-4 text-slate-500">{stat.detail}</p>
+                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{stat.detail}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-4 rounded-2xl bg-slate-950 p-4 text-white">
+                <div className="mt-4 rounded-2xl border bg-muted/35 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Checkout total</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Checkout total</p>
                       <p className="mt-2 text-3xl font-semibold">$128.00</p>
                     </div>
-                    <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-violet-100">1 traveler</span>
+                    <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">1 traveler</span>
                   </div>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-2/3 rounded-full bg-violet-400 [animation:loading-bar_2.8s_ease-in-out_infinite]" />
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-primary/10">
+                    <div className="h-full w-2/3 rounded-full bg-primary [animation:loading-bar_2.8s_ease-in-out_infinite]" />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <section ref={searchSectionRef} className="relative z-10 mx-auto -mt-24 max-w-7xl px-4 sm:-mt-28 sm:px-6 lg:-mt-32 lg:px-8">
-        <FlightSearchBar onSearch={handleSearch} className="border-white/20 shadow-2xl shadow-slate-950/20" />
+        <FlightSearchBar onSearch={handleSearch} className="shadow-2xl shadow-primary/10" />
         <div className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs font-semibold text-muted-foreground sm:text-sm">
           {["No hidden booking fees", "Secure payment", "Flexible fare options", "24/7 trip context"].map((item) => (
             <span key={item} className="flex items-center gap-2">
@@ -243,7 +279,7 @@ const HomePage = () => {
         <div className="mt-10 grid gap-5 lg:grid-cols-3">
           {deals.map((deal) => (
             <article key={deal.code} className="group relative overflow-hidden rounded-3xl border bg-card p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl">
-              <div className={cn("absolute inset-x-0 top-0 h-1", deal.accent)} />
+              <div className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", deal.accent)} />
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{deal.eyebrow}</p>
               <h3 className="mt-5 text-2xl font-semibold tracking-tight">{deal.title}</h3>
               <p className="mt-3 min-h-12 text-sm leading-6 text-muted-foreground">{deal.description}</p>
@@ -303,7 +339,7 @@ const HomePage = () => {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {bookingSteps.map(({ icon: Icon, title, description }, index) => (
-              <div key={title} className="rounded-3xl border bg-card p-6">
+              <div key={title} className="rounded-3xl border bg-card p-6 transition hover:-translate-y-1 hover:shadow-xl">
                 <div className="flex items-center justify-between">
                   <div className="inline-flex rounded-2xl bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div>
                   <span className="text-xs font-bold text-muted-foreground">0{index + 1}</span>
@@ -319,7 +355,7 @@ const HomePage = () => {
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {benefits.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="rounded-3xl border bg-card p-6">
+            <div key={title} className="rounded-3xl border bg-card p-6 transition hover:-translate-y-1 hover:shadow-xl">
               <div className="inline-flex rounded-2xl bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div>
               <h3 className="mt-5 font-semibold">{title}</h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
@@ -329,15 +365,16 @@ const HomePage = () => {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
-        <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-14 text-white sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16">
+        <div className="relative overflow-hidden rounded-[2rem] border bg-card px-6 py-14 shadow-xl sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-emerald-400 to-sky-400" />
           <div className="relative max-w-2xl">
-            <div className="flex items-center gap-1 text-amber-300" aria-label="Rated five stars">
+            <div className="flex items-center gap-1 text-amber-500" aria-label="Rated five stars">
               {Array.from({ length: 5 }).map((_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
             </div>
             <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">Ready to choose your next route?</h2>
-            <p className="mt-4 text-slate-300">Start with a clean search, then move through fare selection, seat choice, payment, and ticketing.</p>
+            <p className="mt-4 text-muted-foreground">Start with a clean search, then move through fare selection, seat choice, payment, and ticketing.</p>
           </div>
-          <Button onClick={scrollToSearch} className="relative mt-8 h-12 rounded-full bg-white px-6 text-slate-950 hover:bg-slate-100 lg:mt-0">
+          <Button onClick={scrollToSearch} className="relative mt-8 h-12 rounded-full px-6 lg:mt-0">
             Start searching <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
@@ -355,10 +392,10 @@ const SectionHeader = ({ eyebrow, title, description }) => (
 )
 
 const AirportPreview = ({ code, city, label, align = "left" }) => (
-  <div className={cn("rounded-2xl bg-slate-50 p-4", align === "right" && "text-right")}>
-    <p className="text-xs font-medium text-slate-500">{label}</p>
+  <div className={cn("rounded-2xl border bg-muted/35 p-4", align === "right" && "text-right")}>
+    <p className="text-xs font-medium text-muted-foreground">{label}</p>
     <p className="mt-2 text-3xl font-bold">{code}</p>
-    <p className="text-xs text-slate-500">{city}</p>
+    <p className="truncate text-xs text-muted-foreground">{city}</p>
   </div>
 )
 

@@ -4,6 +4,9 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
@@ -32,6 +36,8 @@ import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.UserPreferencesResponse;
 import com.triquang.service.UserService;
 import com.triquang.service.UserPreferencesService;
+import com.triquang.service.storage.AvatarStorageService;
+import com.triquang.service.storage.AvatarStorageService.AvatarResource;
 import com.triquang.utils.ResponseUtil;
 
 import jakarta.validation.Valid;
@@ -49,6 +55,7 @@ public class UserController {
 
     private final UserService userService;
     private final UserPreferencesService userPreferencesService;
+    private final AvatarStorageService avatarStorageService;
 
     // ================= GET MY PROFILE =================
     @GetMapping("/profile")
@@ -76,6 +83,36 @@ public class UserController {
             @Valid @RequestBody UpdateProfileRequest request) {
 
         return ResponseUtil.ok(userService.updateProfile(userId, request));
+    }
+
+    @PostMapping(value = "/profile/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload my profile avatar", description = "Uploads and stores the authenticated user's profile image. Local storage is used in development and can be replaced by S3 storage later.")
+    public ResponseEntity<ApiResponse<UserDTO>> uploadAvatar(
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+            @RequestParam("file") MultipartFile file) {
+
+        return ResponseUtil.ok(userService.updateAvatar(userId, file));
+    }
+
+    @DeleteMapping("/profile/avatar")
+    @Operation(summary = "Remove my profile avatar", description = "Removes the authenticated user's custom profile avatar and falls back to provider image or initials.")
+    public ResponseEntity<ApiResponse<UserDTO>> deleteAvatar(
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+
+        return ResponseUtil.ok(userService.deleteAvatar(userId));
+    }
+
+    @GetMapping("/profile/avatar/file/{userId}/{filename}")
+    @Operation(summary = "Read profile avatar file", description = "Public image endpoint for locally stored profile avatars.")
+    public ResponseEntity<Resource> readAvatar(
+            @PathVariable Long userId,
+            @PathVariable String filename) {
+
+        AvatarResource avatar = avatarStorageService.load(userId, filename);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(avatar.contentType()))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .body(avatar.resource());
     }
 
     @GetMapping("/preferences")

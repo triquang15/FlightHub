@@ -45,6 +45,47 @@ export const updateUserProfile = createAsyncThunk(
 );
 
 // ============================
+// UPLOAD PROFILE AVATAR
+// ============================
+export const uploadUserAvatar = createAsyncThunk(
+  "user/uploadAvatar",
+  async (file, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await api.post("/api/users/profile/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success("Profile photo updated");
+      return res.data?.data;
+    } catch (err) {
+      const message = getError(err) || "Failed to upload profile photo";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// ============================
+// DELETE PROFILE AVATAR
+// ============================
+export const deleteUserAvatar = createAsyncThunk(
+  "user/deleteAvatar",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.delete("/api/users/profile/avatar");
+      toast.success("Profile photo removed");
+      return res.data?.data;
+    } catch (err) {
+      const message = getError(err) || "Failed to remove profile photo";
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// ============================
 // CHANGE PASSWORD
 // ============================
 export const changePassword = createAsyncThunk(

@@ -48,6 +48,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/forgot-password").permitAll()
                 .requestMatchers("/api/users/reset-password").permitAll()
+                .requestMatchers("/api/users/profile/avatar/file/**").permitAll()
 
                 // INTERNAL API (FIX BUG 403)
                 .requestMatchers("/api/internal/**").permitAll()
