@@ -40,9 +40,9 @@ const journeySteps = [
 ]
 
 const experienceMetrics = [
-  { label: "Trip modes", value: "One-way · Round-trip · Multi-city" },
-  { label: "Payments", value: "Stripe · PayPal" },
-  { label: "Operations", value: "Inventory · Seats · Notifications" },
+  { label: "Trip modes", values: ["One-way", "Round-trip", "Multi-city"] },
+  { label: "Payments", values: ["Stripe", "PayPal"] },
+  { label: "Operations", values: ["Inventory", "Seats", "Notifications"] },
 ]
 
 const bookingCards = [
@@ -272,8 +272,8 @@ const LandingPage = () => {
                     </span>
                   </div>
 
-                  <div className="grid gap-4 p-5 xl:grid-cols-[1.1fr_0.9fr]">
-                    <div className="relative min-h-[360px] overflow-hidden rounded-[1.5rem] border bg-muted/35 p-5">
+                  <div className="grid gap-4 p-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
+                    <div className="relative min-h-[360px] rounded-[1.5rem] border bg-muted/35 p-5">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(103,61,229,0.18),transparent_14rem)]" />
                       <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-border to-transparent" />
                       <motion.div
@@ -282,20 +282,26 @@ const LandingPage = () => {
                         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
                       />
 
-                      <div className="relative flex h-full flex-col justify-between gap-6">
-                        <div className="flex items-start justify-between gap-6">
+                      <div className="relative flex h-full flex-col justify-between gap-5">
+                        <div className="flex items-start justify-between gap-4">
                           <FlightNode label="From" code="SGN" city="Ho Chi Minh City" />
-                          <div className="mt-8 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border bg-background text-primary shadow-lg">
-                            <Plane className="h-5 w-5" />
+                          <div className="mt-8 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-background text-primary shadow-lg">
+                            <Plane className="h-4 w-4" />
                           </div>
                           <FlightNode label="To" code="SIN" city="Singapore" align="right" />
                         </div>
 
                         <div className="grid gap-3">
                           {experienceMetrics.map((item) => (
-                            <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl border bg-background/78 px-4 py-3">
-                              <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{item.label}</span>
-                              <span className="min-w-0 truncate text-sm font-semibold text-foreground">{item.value}</span>
+                            <div key={item.label} className="rounded-2xl border bg-background/78 px-4 py-3">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{item.label}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {item.values.map((value) => (
+                                  <span key={value} className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                                    {value}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -539,8 +545,8 @@ const SectionHeader = ({ eyebrow, title, description }) => (
 const FlightNode = ({ code, city, label, align = "left" }) => (
   <div className={cn("min-w-0", align === "right" && "text-right")}>
     <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-    <p className="mt-3 text-5xl font-semibold tracking-tight sm:text-6xl">{code}</p>
-    <p className="mt-2 max-w-44 truncate text-sm text-muted-foreground">{city}</p>
+    <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{code}</p>
+    <p className="mt-1.5 max-w-44 text-sm leading-5 text-muted-foreground">{city}</p>
   </div>
 )
 

@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
+import { useDispatch, useSelector } from "react-redux"
 import {
   ArrowRight,
   BadgeCheck,
@@ -22,6 +23,8 @@ import FlightSearchBar from "@/pages/traveler/Home/FlightSearchBar"
 import { Button } from "@/components/ui/button"
 import { buildTravelerSearchParams } from "@/utils/travelerSearchParams"
 import { cn } from "@/lib/utils"
+import api from "@/utils/api"
+import { listAllAirports } from "@/Redux/airport/airportThunk"
 
 const quickStats = [
   { label: "Search modes", value: "3", detail: "One-way, round-trip, multi-city" },
@@ -53,12 +56,13 @@ const deals = [
   },
 ]
 
-const destinations = [
+const fallbackDestinations = [
   {
     city: "Singapore",
     country: "Singapore",
     tag: "Food and culture",
     price: "$89",
+    routeLabel: "SGN -> SIN",
     image: "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80",
   },
   {
@@ -66,6 +70,7 @@ const destinations = [
     country: "Japan",
     tag: "City adventure",
     price: "$219",
+    routeLabel: "SGN -> NRT",
     image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
   },
   {
@@ -73,6 +78,7 @@ const destinations = [
     country: "France",
     tag: "Romantic escape",
     price: "$429",
+    routeLabel: "SGN -> CDG",
     image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80",
   },
   {
@@ -80,8 +86,51 @@ const destinations = [
     country: "United Arab Emirates",
     tag: "Sun and luxury",
     price: "$189",
+    routeLabel: "SGN -> DXB",
     image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
   },
+]
+
+const routeVisuals = [
+  {
+    match: ["SIN", "Singapore"],
+    tag: "Food and culture",
+    image: "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    match: ["HAN", "Hanoi", "Noi Bai"],
+    tag: "Capital connection",
+    image: "https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    match: ["HKG", "Hong Kong"],
+    tag: "Skyline escape",
+    image: "https://images.unsplash.com/photo-1536599018102-9f803c140fc1?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    match: ["KUL", "Kuala Lumpur"],
+    tag: "City break",
+    image: "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    match: ["NRT", "HND", "Tokyo"],
+    tag: "City adventure",
+    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    match: ["DXB", "Dubai"],
+    tag: "Sun and luxury",
+    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+  },
+]
+
+const candidatePairs = [
+  ["SGN", "SIN"],
+  ["SIN", "SGN"],
+  ["SGN", "HAN"],
+  ["HAN", "SGN"],
+  ["SGN", "HKG"],
+  ["KUL", "SGN"],
 ]
 
 const bookingSteps = [
@@ -119,9 +168,132 @@ const fadeUp = {
   visible: { opacity: 1, y: 0 },
 }
 
+const getAirportId = (airport) => airport?.id || airport?.airportId
+const getIata = (airport) => airport?.iataCode || airport?.iata || ""
+const getAirportCity = (airport) =>
+  airport?.city?.name || airport?.cityName || airport?.address?.cityName || airport?.address?.city || airport?.name || "City"
+const getAirportCountry = (airport) =>
+  airport?.country || airport?.countryName || airport?.city?.country || airport?.address?.country || ""
+
+const toIsoDate = (date) => {
+  const offset = date.getTimezoneOffset()
+  return new Date(date.getTime() - offset * 60 * 1000).toISOString().slice(0, 10)
+}
+
+const addDays = (days) => {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + days)
+  return toIsoDate(date)
+}
+
+const formatDisplayDate = (value) => {
+  if (!value) return "Next available"
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value))
+}
+
+const formatMoney = (amount, currency = "USD") => {
+  const value = Number(amount)
+  if (!Number.isFinite(value) || value <= 0) return null
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+const unwrapSearchContent = (payload) => {
+  const data = payload?.data?.data ?? payload?.data ?? payload
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.content)) return data.content
+  if (Array.isArray(data?.results)) return data.results
+  return []
+}
+
+const getFareAmount = (flight) =>
+  flight?.fare?.totalPrice ?? flight?.fare?.currentPrice ?? flight?.fare?.baseFare ?? flight?.lowestFare ?? flight?.price
+
+const getRouteVisual = (airport) => {
+  const haystack = [getIata(airport), getAirportCity(airport), airport?.name, getAirportCountry(airport)]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return routeVisuals.find((visual) =>
+    visual.match.some((token) => haystack.includes(token.toLowerCase())),
+  ) || fallbackDestinations[0]
+}
+
+const buildAirportCandidates = (airports = []) => {
+  const byIata = new Map(
+    airports
+      .filter((airport) => getAirportId(airport) && getIata(airport))
+      .map((airport) => [getIata(airport).toUpperCase(), airport]),
+  )
+
+  const preferred = candidatePairs
+    .map(([from, to]) => ({ from: byIata.get(from), to: byIata.get(to) }))
+    .filter((route) => route.from && route.to && getAirportId(route.from) !== getAirportId(route.to))
+
+  if (preferred.length >= 4) return preferred.slice(0, 6)
+
+  const pool = airports.filter((airport) => getAirportId(airport)).slice(0, 8)
+  const generated = []
+  for (let index = 0; index < pool.length - 1 && generated.length < 6; index += 1) {
+    generated.push({ from: pool[index], to: pool[index + 1] })
+  }
+
+  return [...preferred, ...generated]
+    .filter((route, index, list) =>
+      list.findIndex((item) => getAirportId(item.from) === getAirportId(route.from) && getAirportId(item.to) === getAirportId(route.to)) === index,
+    )
+    .slice(0, 6)
+}
+
+const createRouteCard = ({ from, to, date, flight, fallbackIndex = 0 }) => {
+  const visual = getRouteVisual(to)
+  const amount = formatMoney(getFareAmount(flight), flight?.fare?.currency || "USD")
+  const fromCode = getIata(from) || "FROM"
+  const toCode = getIata(to) || "TO"
+
+  return {
+    id: `${getAirportId(from) || fromCode}-${getAirportId(to) || toCode}-${date || fallbackIndex}`,
+    from,
+    to,
+    fromCode,
+    toCode,
+    routeLabel: `${fromCode} -> ${toCode}`,
+    city: getAirportCity(to),
+    country: getAirportCountry(to) || getAirportCity(to),
+    tag: flight ? "Live search result" : visual.tag,
+    price: amount || "Live fares",
+    date,
+    dateLabel: formatDisplayDate(date),
+    flights: flight ? 1 : null,
+    image: visual.image,
+    href: getAirportId(from) && getAirportId(to) && date
+      ? `/search?${new URLSearchParams({
+          from: String(getAirportId(from)),
+          to: String(getAirportId(to)),
+          depart: date,
+          passengers: "1",
+          cabinClass: "ECONOMY",
+          trip: "oneway",
+        }).toString()}`
+      : null,
+  }
+}
+
 const HomePage = () => {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const { airports = [], loading: airportsLoading } = useSelector((state) => state.airport)
   const searchSectionRef = React.useRef(null)
+  const [dynamicRoutes, setDynamicRoutes] = React.useState([])
+  const [routesLoading, setRoutesLoading] = React.useState(false)
 
   const scrollToSearch = () => {
     searchSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -131,6 +303,76 @@ const HomePage = () => {
     const searchParams = buildTravelerSearchParams(searchData)
     navigate(`/search?${searchParams.toString()}`)
   }
+
+  React.useEffect(() => {
+    if (!airports.length && !airportsLoading) {
+      dispatch(listAllAirports({ page: 0, size: 100, sortBy: "name", sortDirection: "asc" }))
+    }
+  }, [airports.length, airportsLoading, dispatch])
+
+  React.useEffect(() => {
+    const candidates = buildAirportCandidates(airports)
+    if (!candidates.length) return
+
+    let cancelled = false
+    const probeDates = [1, 2, 3, 7, 14].map(addDays)
+
+    const loadDynamicRoutes = async () => {
+      setRoutesLoading(true)
+      const cards = []
+
+      for (const [index, candidate] of candidates.slice(0, 4).entries()) {
+        let matchedCard = null
+
+        for (const date of probeDates) {
+          try {
+            const response = await api.get("/api/flights/search", {
+              params: {
+                departureAirportId: getAirportId(candidate.from),
+                arrivalAirportId: getAirportId(candidate.to),
+                departureDate: date,
+                passengers: 1,
+                cabinClass: "ECONOMY",
+                page: 0,
+                size: 1,
+                sortBy: "departure",
+                sortOrder: "asc",
+              },
+            })
+            const [firstFlight] = unwrapSearchContent(response)
+            if (firstFlight) {
+              matchedCard = createRouteCard({ ...candidate, date, flight: firstFlight, fallbackIndex: index })
+              break
+            }
+          } catch {
+            break
+          }
+        }
+
+        cards.push(matchedCard || createRouteCard({ ...candidate, date: probeDates[0], fallbackIndex: index }))
+      }
+
+      if (!cancelled) {
+        setDynamicRoutes(cards)
+        setRoutesLoading(false)
+      }
+    }
+
+    loadDynamicRoutes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [airports])
+
+  const routeCards = dynamicRoutes.length
+    ? dynamicRoutes
+    : fallbackDestinations.map((destination, index) => ({
+        ...destination,
+        id: `fallback-${destination.city}-${index}`,
+        dateLabel: "Flexible",
+        href: null,
+      }))
 
   return (
     <main className="overflow-hidden bg-background text-foreground">
@@ -297,30 +539,20 @@ const HomePage = () => {
           <SectionHeader
             eyebrow="Trending routes"
             title="Pick a direction, then refine the search"
-            description="Destination cards are visual entry points. The search panel remains the source of truth for live data."
+            description="Built from live airport data and public flight search checks. Cards fall back gracefully when a route has no current fare."
           />
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {destinations.map((destination) => (
-              <button
-                key={destination.city}
-                type="button"
-                onClick={scrollToSearch}
-                className="group relative min-h-96 overflow-hidden rounded-3xl text-left shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
-                aria-label={`Search flights to ${destination.city}`}
-              >
-                <img src={destination.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-md">{destination.tag}</span>
-                  <h3 className="mt-3 text-2xl font-semibold">{destination.city}</h3>
-                  <div className="mt-1 flex items-center justify-between text-sm text-white/75">
-                    <span>{destination.country}</span>
-                    <span>From <strong className="text-white">{destination.price}</strong></span>
-                  </div>
-                </div>
-              </button>
-            ))}
+            {routesLoading && !dynamicRoutes.length
+              ? Array.from({ length: 4 }).map((_, index) => <RouteCardSkeleton key={index} />)
+              : routeCards.slice(0, 4).map((route, index) => (
+                  <TrendingRouteCard
+                    key={route.id || route.city}
+                    route={route}
+                    index={index}
+                    onClick={() => route.href ? navigate(route.href) : scrollToSearch()}
+                  />
+                ))}
           </div>
         </div>
       </section>
@@ -397,6 +629,83 @@ const AirportPreview = ({ code, city, label, align = "left" }) => (
     <p className="mt-2 text-3xl font-bold">{code}</p>
     <p className="truncate text-xs text-muted-foreground">{city}</p>
   </div>
+)
+
+const RouteCardSkeleton = () => (
+  <div className="min-h-96 animate-pulse overflow-hidden rounded-3xl border bg-card">
+    <div className="h-52 bg-muted" />
+    <div className="space-y-4 p-5">
+      <div className="h-4 w-24 rounded-full bg-muted" />
+      <div className="h-7 w-36 rounded-lg bg-muted" />
+      <div className="h-4 w-full rounded-full bg-muted" />
+      <div className="h-10 w-full rounded-xl bg-muted" />
+    </div>
+  </div>
+)
+
+const TrendingRouteCard = ({ route, index, onClick }) => (
+  <motion.button
+    type="button"
+    onClick={onClick}
+    className="group relative min-h-96 overflow-hidden rounded-3xl text-left shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
+    aria-label={`Search ${route.routeLabel || route.city}`}
+    initial={{ opacity: 0, y: 18 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-80px" }}
+    transition={{ duration: 0.42, delay: index * 0.06 }}
+  >
+    <img
+      src={route.image}
+      alt=""
+      loading="lazy"
+      className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+    />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/32 to-black/5" />
+
+    <div className="absolute left-5 right-5 top-5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+          {route.tag}
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-100 backdrop-blur-md">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 [animation:soft-pulse_1.8s_ease-in-out_infinite]" />
+          {route.href ? "Search-ready" : "Explore"}
+        </span>
+      </div>
+    </div>
+
+    <div className="absolute inset-x-6 top-1/2 h-px bg-white/35">
+      <motion.span
+        className="absolute -top-2 left-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-primary shadow-lg"
+        animate={{ x: ["0rem", "14rem"] }}
+        transition={{ duration: 6 + index, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Plane className="h-3 w-3" />
+      </motion.span>
+    </div>
+
+    <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">{route.routeLabel}</p>
+      <h3 className="mt-3 truncate text-2xl font-semibold">{route.city}</h3>
+      <p className="mt-1 truncate text-sm text-white/70">{route.country}</p>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">From</p>
+          <p className="mt-1 text-lg font-semibold">{route.price}</p>
+        </div>
+        <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">Depart</p>
+          <p className="mt-1 text-lg font-semibold">{route.dateLabel}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-slate-950 transition group-hover:translate-y-[-2px]">
+        <span className="text-sm font-bold">{route.href ? "Search this route" : "Refine search"}</span>
+        <ChevronRight className="h-4 w-4" />
+      </div>
+    </div>
+  </motion.button>
 )
 
 export default HomePage
