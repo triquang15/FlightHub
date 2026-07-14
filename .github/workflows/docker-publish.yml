@@ -1,5 +1,7 @@
 name: Publish Docker Images
 
+run-name: Publish Docker Images from ${{ github.ref_name }} as ${{ inputs.image_tag || 'latest' }}
+
 on:
   workflow_dispatch:
     inputs:

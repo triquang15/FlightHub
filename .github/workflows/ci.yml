@@ -3,14 +3,12 @@ name: FlightHub CI
 on:
   push:
     branches:
-      - main
       - master
-      - "codex/**"
+      - dev
   pull_request:
     branches:
-      - main
       - master
-      - "codex/**"
+      - dev
 
 permissions:
   contents: read
