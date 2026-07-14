@@ -30,6 +30,7 @@ import { fetchFlightMealsByFlightId } from "@/Redux/flightMeal/flightMealThunk";
 import { getFlightFares } from "@/Redux/fare/fareThunk";
 import { getFlightById } from "@/Redux/flight/flightThunk";
 import { clearCurrentFlight } from "@/Redux/flight/flightSlice";
+import FlightMealCard from "../FlightMeals/FlightMealCard";
 
 const statusClass = {
   SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300",
@@ -337,6 +338,28 @@ const FlightDetail = () => {
                 The assigned aircraft has no cabin classes. Configure its cabins before creating fares or cabin-scoped ancillary products.
               </AlertDescription>
             </Alert>
+          ) : null}
+
+          {meals.length > 0 ? (
+            <div className="space-y-3 border-t border-border pt-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Meals assigned to this flight</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Review sellable meal price, availability, and catalog imagery.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => navigate(`/airline/flights/${id}/meals/assign`)}>
+                  <UtensilsCrossed className="size-4" />
+                  Add more meals
+                </Button>
+              </div>
+              <div className="grid gap-3">
+                {meals.map((meal) => (
+                  <FlightMealCard key={meal.id} flightMeal={meal} />
+                ))}
+              </div>
+            </div>
           ) : null}
         </CardContent>
       </Card>

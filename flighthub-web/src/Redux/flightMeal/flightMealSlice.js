@@ -28,6 +28,27 @@ const asArray = (value) => {
 };
 
 const unwrapItem = (value) => value?.data ?? value;
+const normalizeFlightMeal = (flightMeal) => {
+  if (!flightMeal || typeof flightMeal !== "object") return null;
+  return {
+    ...flightMeal,
+    available: flightMeal.available !== false,
+    price: Number.isFinite(Number(flightMeal.price)) ? Number(flightMeal.price) : 0,
+    currency: String(flightMeal.currency || "USD").toUpperCase(),
+  };
+};
+
+const upsertFlightMeal = (state, payload) => {
+  const item = normalizeFlightMeal(unwrapItem(payload));
+  if (!item) return;
+  const index = state.flightMeals.findIndex((flightMeal) => flightMeal.id === item.id);
+  if (index >= 0) {
+    state.flightMeals[index] = item;
+  } else {
+    state.flightMeals.push(item);
+  }
+  state.currentFlightMeal = item;
+};
 
 const flightMealSlice = createSlice({
   name: "flightMeal",
@@ -49,9 +70,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(createFlightMeal.fulfilled, (state, action) => {
         state.loading = false;
-        const created = unwrapItem(action.payload);
-        state.flightMeals.push(created);
-        state.currentFlightMeal = created;
+        upsertFlightMeal(state, action.payload);
       })
       .addCase(createFlightMeal.rejected, (state, action) => {
         state.loading = false;
@@ -65,7 +84,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(bulkCreateFlightMeals.fulfilled, (state, action) => {
         state.loading = false;
-        state.flightMeals.push(...asArray(action.payload));
+        asArray(action.payload).forEach((flightMeal) => upsertFlightMeal(state, flightMeal));
       })
       .addCase(bulkCreateFlightMeals.rejected, (state, action) => {
         state.loading = false;
@@ -79,7 +98,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(fetchFlightMealsByFlightId.fulfilled, (state, action) => {
         state.loading = false;
-        state.flightMeals = asArray(action.payload);
+        state.flightMeals = asArray(action.payload).map(normalizeFlightMeal).filter(Boolean);
       })
       .addCase(fetchFlightMealsByFlightId.rejected, (state, action) => {
         state.loading = false;
@@ -93,12 +112,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(updateFlightMeal.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = unwrapItem(action.payload);
-        const index = state.flightMeals.findIndex((fm) => fm.id === updated.id);
-        if (index !== -1) {
-          state.flightMeals[index] = updated;
-        }
-        state.currentFlightMeal = updated;
+        upsertFlightMeal(state, action.payload);
       })
       .addCase(updateFlightMeal.rejected, (state, action) => {
         state.loading = false;
@@ -112,12 +126,7 @@ const flightMealSlice = createSlice({
       })
       .addCase(updateFlightMealAvailability.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = unwrapItem(action.payload);
-        const index = state.flightMeals.findIndex((fm) => fm.id === updated.id);
-        if (index !== -1) {
-          state.flightMeals[index] = updated;
-        }
-        state.currentFlightMeal = updated;
+        upsertFlightMeal(state, action.payload);
       })
       .addCase(updateFlightMealAvailability.rejected, (state, action) => {
         state.loading = false;

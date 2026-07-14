@@ -1,7 +1,10 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { getApiErrorMessage, unwrapApiData } from "@/utils/flightOps";
 
-const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const rejectFlightMealError = (error, rejectWithValue, fallback) =>
+  rejectWithValue(getApiErrorMessage(error, fallback));
+
 /**
  * Create a new flight meal
  */
@@ -9,13 +12,9 @@ export const createFlightMeal = createAsyncThunk(
   "flightMeal/create",
   async (flightMealData, { rejectWithValue }) => {
     try {
-      const response = await api.post("/api/flight-meals", flightMealData, {
-        });
-      return response.data;
+      return unwrapApiData(await api.post("/api/flight-meals", flightMealData));
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create flight meal"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to create flight meal");
     }
   }
 );
@@ -27,13 +26,9 @@ export const bulkCreateFlightMeals = createAsyncThunk(
   "flightMeal/bulkCreate",
   async (flightMealsData, { rejectWithValue }) => {
     try {
-      const response = await api.post("/api/flight-meals/bulk", flightMealsData, {
-        });
-      return response.data;
+      return unwrapApiData(await api.post("/api/flight-meals/bulk", flightMealsData));
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to bulk create flight meals"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to bulk create flight meals");
     }
   }
 );
@@ -45,14 +40,9 @@ export const fetchFlightMealsByFlightId = createAsyncThunk(
   "flightMeal/fetchByFlightId",
   async (flightId, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/api/flight-meals/flight/${flightId}`, {
-        });
-      return unwrapApiData(response);
+      return unwrapApiData(await api.get(`/api/flight-meals/flight/${flightId}`));
     } catch (error) {
-      console.log("Error fetching flight meals by flight ID:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch flight meals by flight"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to fetch flight meals by flight");
     }
   }
 );
@@ -64,13 +54,9 @@ export const updateFlightMeal = createAsyncThunk(
   "flightMeal/update",
   async ({ flightMealId, flightMealData }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/api/flight-meals/${flightMealId}`, flightMealData, {
-        });
-      return response.data;
+      return unwrapApiData(await api.put(`/api/flight-meals/${flightMealId}`, flightMealData));
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update flight meal"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to update flight meal");
     }
   }
 );
@@ -82,18 +68,15 @@ export const updateFlightMealAvailability = createAsyncThunk(
   "flightMeal/updateAvailability",
   async ({ flightMealId, available }, { rejectWithValue }) => {
     try {
-      const response = await api.patch(
+      return unwrapApiData(await api.patch(
         `/api/flight-meals/${flightMealId}/availability`,
         null,
         {
           params: { available },
           }
-      );
-      return response.data;
+      ));
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update flight meal availability"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to update flight meal availability");
     }
   }
 );
@@ -105,13 +88,10 @@ export const deleteFlightMeal = createAsyncThunk(
   "flightMeal/delete",
   async (flightMealId, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/flight-meals/${flightMealId}`, {
-        });
+      await api.delete(`/api/flight-meals/${flightMealId}`);
       return flightMealId;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to delete flight meal"
-      );
+      return rejectFlightMealError(error, rejectWithValue, "Failed to delete flight meal");
     }
   }
 );
