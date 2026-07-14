@@ -1,0 +1,2 @@
+ALTER TABLE meals
+    ADD COLUMN IF NOT EXISTS image_object_key VARCHAR(512);

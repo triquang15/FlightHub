@@ -327,6 +327,36 @@ upload happens after profile creation because the storage object key is scoped t
 an airline ID. For S3 migration, keep the controller/DTO contract unchanged and
 replace `AirlineLogoStorageService` with an S3-backed implementation.
 
+### Meal catalog images
+
+Meal images use the same local-first storage pattern. Ancillary Service keeps
+display URL and object key metadata on the `meals` record:
+
+```text
+image_url
+image_object_key
+```
+
+Local meal image settings:
+
+```bash
+# Public URL used when Ancillary Service returns image_url through API Gateway
+APP_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for uploaded meal catalog images
+MEAL_IMAGE_STORAGE_DIR=/tmp/flighthub/meal-images
+
+# Optional upload limits
+MEAL_IMAGE_MAX_FILE_SIZE=8MB
+MEAL_IMAGE_MAX_REQUEST_SIZE=9MB
+```
+
+Airline owners can upload or remove JPG, PNG, or WEBP meal images from the meal
+catalog edit page after the meal exists. Hosted image URLs still work for seed
+data or external CDN images. For S3 migration, keep the controller/DTO contract
+unchanged and replace `MealImageStorageService` with an S3-backed
+implementation.
+
 Open:
 
 ```text

@@ -7,6 +7,8 @@ import {
   searchMeals,
   updateMeal,
   updateMealAvailability,
+  uploadMealImage,
+  deleteMealImage,
   deleteMeal,
 } from "./mealThunk";
 
@@ -35,6 +37,20 @@ const normalizeMeal = (meal) => {
     available: meal.available !== false,
     requiresAdvanceBooking: Boolean(meal.requiresAdvanceBooking),
   };
+};
+
+const upsertMeal = (state, payload) => {
+  const updated = normalizeMeal(payload);
+  if (!updated) return;
+  const meals = toMealArray(state.meals);
+  const index = meals.findIndex((meal) => meal.id === updated.id);
+  if (index !== -1) {
+    meals[index] = updated;
+    state.meals = meals;
+  } else {
+    state.meals = [updated, ...meals];
+  }
+  state.currentMeal = updated;
 };
 
 const mealSlice = createSlice({
@@ -126,17 +142,7 @@ const mealSlice = createSlice({
       })
       .addCase(updateMeal.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = normalizeMeal(action.payload);
-        if (!updated) return;
-        const meals = toMealArray(state.meals);
-        const index = meals.findIndex((m) => m.id === updated.id);
-        if (index !== -1) {
-          meals[index] = updated;
-          state.meals = meals;
-        } else {
-          state.meals = [updated, ...meals];
-        }
-        state.currentMeal = updated;
+        upsertMeal(state, action.payload);
       })
       .addCase(updateMeal.rejected, (state, action) => {
         state.loading = false;
@@ -150,17 +156,35 @@ const mealSlice = createSlice({
       })
       .addCase(updateMealAvailability.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = normalizeMeal(action.payload);
-        if (!updated) return;
-        const meals = toMealArray(state.meals);
-        const index = meals.findIndex((m) => m.id === updated.id);
-        if (index !== -1) {
-          meals[index] = updated;
-          state.meals = meals;
-        }
-        state.currentMeal = updated;
+        upsertMeal(state, action.payload);
       })
       .addCase(updateMealAvailability.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Meal image
+      .addCase(uploadMealImage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(uploadMealImage.fulfilled, (state, action) => {
+        state.loading = false;
+        upsertMeal(state, action.payload);
+      })
+      .addCase(uploadMealImage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteMealImage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteMealImage.fulfilled, (state, action) => {
+        state.loading = false;
+        upsertMeal(state, action.payload);
+      })
+      .addCase(deleteMealImage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

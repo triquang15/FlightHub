@@ -19,6 +19,7 @@ public class MealResponse {
     private String allergens;
     private String nutritionalInfo;
     private String imageUrl;
+    private Boolean hasCustomImage;
     private Double price;
     private String currency;
     private Boolean available;

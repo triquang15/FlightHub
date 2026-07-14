@@ -42,8 +42,11 @@ public class Meal {
     @Column(length = 2000)
     private String ingredients;
 
-    @Column(length = 500)
+    @Column(length = 1024)
     private String imageUrl;
+
+    @Column(length = 512)
+    private String imageObjectKey;
 
     @Column(nullable = false)
     @Builder.Default

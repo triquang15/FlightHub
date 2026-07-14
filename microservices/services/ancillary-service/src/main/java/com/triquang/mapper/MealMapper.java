@@ -19,6 +19,7 @@ public class MealMapper {
                 .dietaryRestriction(meal.getDietaryRestriction())
                 .ingredients(meal.getIngredients())
                 .imageUrl(meal.getImageUrl())
+                .hasCustomImage(meal.getImageObjectKey() != null && !meal.getImageObjectKey().isBlank())
                 .available(meal.getAvailable())
                 .requiresAdvanceBooking(meal.getRequiresAdvanceBooking())
                 .advanceBookingHours(meal.getAdvanceBookingHours())

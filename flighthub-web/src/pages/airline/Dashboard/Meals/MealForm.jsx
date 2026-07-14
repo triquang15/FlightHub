@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
@@ -12,7 +14,8 @@ import {
   SelectValue,
 } from "../../../../components/ui/select";
 
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { deleteMealImage, uploadMealImage } from "../../../../Redux/meal/mealThunk";
 
 const MEAL_TYPES = [
   "BREAKFAST",
@@ -37,8 +40,10 @@ const DIETARY_RESTRICTIONS = [
 ];
 
 const MealForm = ({ onSubmit, onCancel }) => {
- 
+  const dispatch = useDispatch();
   const { currentMeal } = useSelector((state) => state.meal);
+  const [hydratedMealId, setHydratedMealId] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
  
   const [formData, setFormData] = useState({
@@ -56,7 +61,7 @@ const MealForm = ({ onSubmit, onCancel }) => {
   });
 
   useEffect(() => {
-    if (currentMeal) {
+    if (currentMeal && currentMeal.id !== hydratedMealId) {
       const initialValues = {
         code: currentMeal?.code ?? "",
         name: currentMeal?.name ?? "",
@@ -74,8 +79,9 @@ const MealForm = ({ onSubmit, onCancel }) => {
       };
 
       setFormData(initialValues);
+      setHydratedMealId(currentMeal.id);
     }
-  }, [currentMeal]);
+  }, [currentMeal, hydratedMealId]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -95,6 +101,46 @@ const MealForm = ({ onSubmit, onCancel }) => {
         : null,
     };
     onSubmit(submitData);
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !currentMeal?.id) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, or WEBP meal image");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Meal image must be 8MB or smaller");
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const updated = await dispatch(uploadMealImage({ mealId: currentMeal.id, file })).unwrap();
+      handleChange("imageUrl", updated?.imageUrl || "");
+      toast.success("Meal image uploaded");
+    } catch (uploadError) {
+      toast.error(uploadError || "Unable to upload meal image");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    if (!currentMeal?.id) return;
+    setImageUploading(true);
+    try {
+      await dispatch(deleteMealImage(currentMeal.id)).unwrap();
+      handleChange("imageUrl", "");
+      toast.success("Meal image removed");
+    } catch (removeError) {
+      toast.error(removeError || "Unable to remove meal image");
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   return (
@@ -198,18 +244,68 @@ const MealForm = ({ onSubmit, onCancel }) => {
  
  
 
-      {/* Image URL */}
-      <div className="space-y-2">
-        <Label htmlFor="imageUrl">Image URL</Label>
-        <Input
-          className="w-full"
-          id="imageUrl"
-          type="url"
-          value={formData.imageUrl}
-          onChange={(e) => handleChange("imageUrl", e.target.value)}
-          placeholder="https://example.com/meal-image.jpg"
-          maxLength={500}
-        />
+      {/* Image */}
+      <div className="rounded-md border border-border bg-muted/20 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="h-36 w-full overflow-hidden rounded-md border border-border bg-card lg:w-56">
+            {formData.imageUrl ? (
+              <img
+                src={formData.imageUrl}
+                alt={formData.name || "Meal preview"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImageIcon className="size-8" />
+                <span className="text-xs font-medium">No meal image</span>
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <Label htmlFor="imageUrl">Image URL</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use a hosted URL or upload a JPG, PNG, or WEBP image after the meal is created.
+              </p>
+            </div>
+            <Input
+              className="w-full"
+              id="imageUrl"
+              type="url"
+              value={formData.imageUrl}
+              onChange={(e) => handleChange("imageUrl", e.target.value)}
+              placeholder="https://example.com/meal-image.jpg"
+              maxLength={1024}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!currentMeal?.id || imageUploading}
+                onClick={() => document.getElementById("meal-image-upload")?.click()}
+              >
+                {imageUploading ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+                Upload image
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={!currentMeal?.id || !formData.imageUrl || imageUploading}
+                onClick={handleImageRemove}
+              >
+                <X className="size-4" />
+                Remove image
+              </Button>
+              <input
+                id="meal-image-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Advance Booking Settings */}

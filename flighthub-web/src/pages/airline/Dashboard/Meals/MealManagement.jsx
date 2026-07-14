@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit, Plus, RefreshCw, Search, Trash2, UtensilsCrossed } from "lucide-react";
+import { Edit, ImageIcon, Plus, RefreshCw, Search, Trash2, UtensilsCrossed } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -233,8 +233,19 @@ const MealManagement = () => {
                     {filteredMeals.map((meal) => (
                       <tr key={meal.id} className="hover:bg-muted/30">
                         <td className="px-4 py-3">
-                          <p className="font-medium text-foreground">{meal.name}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Code {meal.code}</p>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                              {meal.imageUrl ? (
+                                <img src={meal.imageUrl} alt={meal.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <ImageIcon className="size-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">{meal.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Code {meal.code}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3"><Badge variant="outline">{typeLabel(meal.mealType)}</Badge></td>
                         <td className="px-4 py-3">
@@ -261,9 +272,18 @@ const MealManagement = () => {
                   <Card key={meal.id} className="rounded-md border-border bg-card">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">{meal.name}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Code {meal.code}</p>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                            {meal.imageUrl ? (
+                              <img src={meal.imageUrl} alt={meal.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <ImageIcon className="size-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-foreground">{meal.name}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Code {meal.code}</p>
+                          </div>
                         </div>
                         <div className="flex shrink-0 gap-1">
                           <IconAction label="Edit meal" icon={Edit} onClick={() => navigate(`/airline/meals/${meal.id}/edit`)} />

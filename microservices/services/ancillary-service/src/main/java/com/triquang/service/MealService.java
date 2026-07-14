@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.triquang.payload.request.MealRequest;
 import com.triquang.payload.response.MealResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface MealService {
 
@@ -20,5 +21,9 @@ public interface MealService {
 	void delete(Long userId, Long id);
 
 	MealResponse updateAvailability(Long userId, Long id, Boolean available);
+
+	MealResponse updateImage(Long userId, Long id, MultipartFile file);
+
+	MealResponse deleteImage(Long userId, Long id);
 
 }

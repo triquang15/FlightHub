@@ -2,6 +2,11 @@ spring:
   application:
     name: ancillary-service
 
+  servlet:
+    multipart:
+      max-file-size: ${MEAL_IMAGE_MAX_FILE_SIZE:8MB}
+      max-request-size: ${MEAL_IMAGE_MAX_REQUEST_SIZE:9MB}
+
   config:
     import: optional:configserver:http://localhost:8888
 
@@ -71,6 +76,12 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  storage:
+    meal-image:
+      local-dir: ${MEAL_IMAGE_STORAGE_DIR:${java.io.tmpdir}/flighthub/meal-images}
 
 management:
   endpoints:

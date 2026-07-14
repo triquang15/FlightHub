@@ -127,6 +127,15 @@ public class RouteConfig {
 
     @Bean
     @Order(0)
+    public RouterFunction<ServerResponse> publicAncillaryMediaRoutes() {
+        return routeWithoutCB("public-ancillary-media", "ancillary-service")
+                .route(RequestPredicates.GET("/api/meals/{id}/image/file/{filename}"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
     public RouterFunction<ServerResponse> publicPricingRoutes() {
         return routeWithCB("public-pricing", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
                 .route(RequestPredicates.GET("/api/fares/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())

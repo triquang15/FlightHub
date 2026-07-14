@@ -2,6 +2,10 @@ package com.triquang.controller;
 
 import java.util.List;
 
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.payload.request.MealRequest;
 import com.triquang.service.MealService;
+import com.triquang.service.storage.MealImageStorageService;
 import com.triquang.utils.ResponseUtil;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class MealController {
 
 	private final MealService mealService;
+	private final MealImageStorageService mealImageStorageService;
 
 	// =========================
 	// CREATE
@@ -110,6 +117,50 @@ public class MealController {
 			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		return ResponseUtil.ok(mealService.update(userId, id, request));
+	}
+
+	@PostMapping(value = "/{id:\\d+}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "Upload meal image", description = "Uploads or replaces the display image for an owned meal catalog item. Local storage is S3-ready via object key.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Meal image updated"),
+			@ApiResponse(responseCode = "400", description = "Unsupported image or file too large"),
+			@ApiResponse(responseCode = "403", description = "Meal belongs to another airline"),
+			@ApiResponse(responseCode = "404", description = "Meal not found")
+	})
+	public ResponseEntity<?> uploadMealImage(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+			@PathVariable Long id,
+			@RequestParam("file") MultipartFile file) {
+
+		return ResponseUtil.ok(mealService.updateImage(userId, id, file));
+	}
+
+	@DeleteMapping("/{id:\\d+}/image")
+	@Operation(summary = "Remove meal image", description = "Removes the uploaded image and clears image metadata for an owned meal catalog item.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Meal image removed"),
+			@ApiResponse(responseCode = "403", description = "Meal belongs to another airline"),
+			@ApiResponse(responseCode = "404", description = "Meal not found")
+	})
+	public ResponseEntity<?> deleteMealImage(@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+			@PathVariable Long id) {
+
+		return ResponseUtil.ok(mealService.deleteImage(userId, id));
+	}
+
+	@GetMapping("/{id:\\d+}/image/file/{filename:.+}")
+	@Operation(summary = "Serve meal image", description = "Publicly serves a stored meal image for browser rendering.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "Meal image returned"),
+			@ApiResponse(responseCode = "404", description = "Meal image not found")
+	})
+	public ResponseEntity<Resource> getMealImage(@PathVariable Long id, @PathVariable String filename) {
+		MealImageStorageService.MealImageResource image = mealImageStorageService.load(id, filename);
+
+		return ResponseEntity.ok()
+				.contentType(MediaType.parseMediaType(image.contentType()))
+				.cacheControl(CacheControl.noCache())
+				.header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+				.body(image.resource());
 	}
 
 	// =========================

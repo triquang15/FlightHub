@@ -28,7 +28,7 @@ public class MealRequest {
 	@Size(max = 2000, message = "Ingredients list must not exceed 2000 characters")
 	private String ingredients;
 
-	@Size(max = 500, message = "Image URL must not exceed 500 characters")
+	@Size(max = 1024, message = "Image URL must not exceed 1024 characters")
 	private String imageUrl;
 
 	@NotNull(message = "Availability status is required")

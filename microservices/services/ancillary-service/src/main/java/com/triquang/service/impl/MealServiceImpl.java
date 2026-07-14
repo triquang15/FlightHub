@@ -15,10 +15,12 @@ import com.triquang.repository.FlightMealRepository;
 import com.triquang.service.AirlineIntegrationService;
 import com.triquang.service.MealService;
 import com.triquang.service.AncillaryOwnershipService;
+import com.triquang.service.storage.MealImageStorageService;
 import com.triquang.utils.MealSpecification;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +35,7 @@ public class MealServiceImpl implements MealService {
     private final AirlineIntegrationService airlineIntegrationService;
     private final AncillaryOwnershipService ownershipService;
     private final FlightMealRepository flightMealRepository;
+    private final MealImageStorageService mealImageStorageService;
 
     @Override
     @Transactional
@@ -173,6 +176,7 @@ public class MealServiceImpl implements MealService {
         if (flightMealRepository.existsByMealId(id)) {
             throw new BaseException(ErrorCode.MEAL_IN_USE);
         }
+        mealImageStorageService.delete(meal.getImageObjectKey());
         mealRepository.delete(meal);
         log.info("Meal deleted successfully with id: {}", id);
     }
@@ -187,6 +191,36 @@ public class MealServiceImpl implements MealService {
         Meal updatedMeal = mealRepository.save(meal);
         log.info("Meal availability updated successfully for id: {}", updatedMeal.getId());
 
+        return MealMapper.toResponse(updatedMeal);
+    }
+
+    @Override
+    @Transactional
+    public MealResponse updateImage(Long userId, Long id, MultipartFile file) {
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
+        String previousObjectKey = meal.getImageObjectKey();
+
+        MealImageStorageService.StoredMealImage storedImage = mealImageStorageService.store(id, file);
+        meal.setImageUrl(storedImage.publicUrl());
+        meal.setImageObjectKey(storedImage.objectKey());
+
+        Meal updatedMeal = mealRepository.save(meal);
+        mealImageStorageService.delete(previousObjectKey);
+
+        log.info("Meal image updated successfully for id: {}", updatedMeal.getId());
+        return MealMapper.toResponse(updatedMeal);
+    }
+
+    @Override
+    @Transactional
+    public MealResponse deleteImage(Long userId, Long id) {
+        Meal meal = ownershipService.requireOwnedMeal(userId, id);
+        mealImageStorageService.delete(meal.getImageObjectKey());
+        meal.setImageUrl(null);
+        meal.setImageObjectKey(null);
+
+        Meal updatedMeal = mealRepository.save(meal);
+        log.info("Meal image removed successfully for id: {}", updatedMeal.getId());
         return MealMapper.toResponse(updatedMeal);
     }
 

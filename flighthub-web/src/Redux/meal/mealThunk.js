@@ -77,6 +77,32 @@ export const updateMealAvailability = createAsyncThunk(
   },
 );
 
+export const uploadMealImage = createAsyncThunk(
+  "meal/uploadImage",
+  async ({ mealId, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      return unwrapApiData(await api.post(`${API_URL}/${mealId}/image`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }));
+    } catch (error) {
+      return rejectMealError(error, rejectWithValue, "Failed to upload meal image");
+    }
+  },
+);
+
+export const deleteMealImage = createAsyncThunk(
+  "meal/deleteImage",
+  async (mealId, { rejectWithValue }) => {
+    try {
+      return unwrapApiData(await api.delete(`${API_URL}/${mealId}/image`));
+    } catch (error) {
+      return rejectMealError(error, rejectWithValue, "Failed to remove meal image");
+    }
+  },
+);
+
 export const deleteMeal = createAsyncThunk(
   "meal/delete",
   async (mealId, { rejectWithValue }) => {
