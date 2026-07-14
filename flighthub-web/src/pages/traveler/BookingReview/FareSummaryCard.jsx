@@ -33,6 +33,8 @@ const getFareAmount = (fare, field, fallbackField) => {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 };
 
+const mealQuantity = (meal) => Math.max(Number(meal?.quantity) || 1, 1);
+
 const PAYMENT_OPTIONS = [
   {
     value: 'STRIPE',
@@ -76,7 +78,8 @@ const FareSummaryCard = ({
 
   // Calculate additional charges - sum up all seats for multiple passengers
   const seatCharges = selectedSeats.reduce((sum, seat) => sum + (seat?.price || 0), 0);
-  const mealCharges = (selectedMeals || []).reduce((sum, meal) => sum + (meal.price || 0), 0);
+  const mealCharges = (selectedMeals || []).reduce((sum, meal) => sum + (meal.price || 0) * mealQuantity(meal), 0);
+  const selectedMealCount = (selectedMeals || []).reduce((sum, meal) => sum + mealQuantity(meal), 0);
   const baggageCharges = selectedBaggage.reduce((sum, bag) => sum + ((bag.price || 0) * (bag.quantity || 0)), 0);
 
   // Get insurance price from Redux data
@@ -197,7 +200,7 @@ const FareSummaryCard = ({
                     <FareItem label="Seat Selection" amount={seatCharges} />
                   )}
                   {mealCharges > 0 && (
-                    <FareItem label={`Meals (${(selectedMeals || []).length})`} amount={mealCharges} />
+                    <FareItem label={`Meals (${selectedMealCount})`} amount={mealCharges} />
                   )}
                   {baggageCharges > 0 && (
                     <FareItem

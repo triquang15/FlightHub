@@ -103,6 +103,8 @@ const parsePaxTypeCount = (value) => {
   return total > 0 ? total : null;
 };
 
+const mealQuantity = (meal) => Math.max(Number(meal?.quantity) || 1, 1);
+
 const SectionLabel = ({ eyebrow, title, description }) => (
   <div className="mb-3">
     <p className="text-xs font-semibold uppercase text-blue-600 dark:text-blue-300">
@@ -279,7 +281,7 @@ const BookingReview = () => {
     },
     {
       label: "Add-ons",
-      value: `${selectedSeatCount} seats | ${selectedBaggageCount} bags | ${selectedMeals.length} meals`,
+      value: `${selectedSeatCount} seats | ${selectedBaggageCount} bags | ${selectedMeals.reduce((sum, meal) => sum + mealQuantity(meal), 0)} meals`,
       icon: ShieldCheck,
       complete:
         selectedSeatCount > 0 ||
@@ -309,7 +311,7 @@ const BookingReview = () => {
       0,
     );
     const mealCharges = selectedMeals.reduce(
-      (sum, meal) => sum + (meal.price || 0),
+      (sum, meal) => sum + (meal.price || 0) * mealQuantity(meal),
       0,
     );
     const baggageCharges = selectedBaggage.reduce(
@@ -664,7 +666,7 @@ const BookingReview = () => {
       0,
     );
     const mealCharges = selectedMeals.reduce(
-      (sum, meal) => sum + (meal.price || 0),
+      (sum, meal) => sum + (meal.price || 0) * mealQuantity(meal),
       0,
     );
     const baggageCharges = selectedBaggage.reduce(
@@ -709,7 +711,11 @@ const BookingReview = () => {
 
     // Add meal ancillary IDs
     selectedMeals.forEach((meal) => {
-      if (meal.flightMealId) mealIds.push(meal.flightMealId);
+      if (meal.flightMealId) {
+        for (let index = 0; index < mealQuantity(meal); index += 1) {
+          mealIds.push(meal.flightMealId);
+        }
+      }
     });
 
     // Add baggage ancillary IDs
@@ -738,9 +744,13 @@ const BookingReview = () => {
       .filter((seat) => seat !== null && seat !== undefined)
       .map((seat) => seat.seatNumber);
 
+    const expandedSelectedMeals = selectedMeals.flatMap((meal) =>
+      Array.from({ length: mealQuantity(meal) }, () => meal),
+    );
+
     // Get dietary preferences from selected meals
     const getDietaryPreference = (passengerIndex) => {
-      const passengerMeal = selectedMeals[passengerIndex];
+      const passengerMeal = expandedSelectedMeals[passengerIndex];
       if (passengerMeal?.dietaryRestriction) {
         const restrictions = {
           VEGETARIAN: "Vegetarian",
@@ -993,9 +1003,10 @@ const BookingReview = () => {
                   onSelectBaggage={setSelectedBaggage}
                 />
 
-                <MealSelection
+      <MealSelection
                   selectedMeals={selectedMeals}
                   onSelectMeal={setSelectedMeals}
+                  totalPassengers={passengerCount}
                 />
 
                 <TripSecure
