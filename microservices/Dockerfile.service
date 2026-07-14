@@ -1,0 +1,19 @@
+FROM eclipse-temurin:25-jre-alpine
+
+ARG JAR_FILE
+ARG SERVICE_NAME=flighthub-service
+
+LABEL org.opencontainers.image.title="${SERVICE_NAME}"
+LABEL org.opencontainers.image.source="https://github.com/triquang15/FlightHub"
+
+WORKDIR /app
+
+RUN addgroup -S flighthub && adduser -S flighthub -G flighthub
+
+COPY ${JAR_FILE} /app/app.jar
+
+USER flighthub
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

@@ -567,6 +567,19 @@ services:
       TWILIO_ENABLED: ${TWILIO_ENABLED:-false}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
 
+  flighthub-web:
+    <<: *service-defaults
+    image: triquang15/flighthub-web:${FLIGHTHUB_IMAGE_TAG:-latest}
+    container_name: flighthub-web
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: 0.25
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:80"
+
   # ===========================================================================
   # ONE-SHOT DATA SEEDING
   # ===========================================================================

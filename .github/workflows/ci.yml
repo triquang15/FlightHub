@@ -1,0 +1,83 @@
+name: FlightHub CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+  pull_request:
+    branches:
+      - main
+      - master
+      - "codex/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flighthub-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Maven package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: microservices
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Package backend modules
+        run: mvn -B -ntp -DskipTests package
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flighthub-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: npm
+          cache-dependency-path: flighthub-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Build frontend
+        run: npm run build -- --logLevel error
+
+  compose:
+    name: Compose config validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate dev compose
+        run: docker compose -f microservices/docker-compose/docker-compose.dev.yml config --quiet
+
+      - name: Validate prod compose
+        run: docker compose -f microservices/docker-compose/docker-compose.prod.yml config --quiet

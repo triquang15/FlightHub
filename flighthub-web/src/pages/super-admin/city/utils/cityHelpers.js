@@ -138,36 +138,32 @@ export const downloadCSV = (csvContent, filename = 'cities.csv') => {
   document.body.removeChild(link);
 };
 
-// ================= EXCEL EXPORT =================
+const escapeCsvCell = (value) => {
+  const normalized = value == null ? '' : String(value);
+  return `"${normalized.replace(/"/g, '""')}"`;
+};
+
+// ================= EXCEL-COMPATIBLE EXPORT =================
 export const exportCitiesToExcel = async (cities) => {
-  const XLSX = await import('xlsx');
   const { saveAs } = await import('file-saver');
 
-  const data = cities.map((city) => ({
-    ID: city.id,
-    Name: city.name,
-    CityCode: city.cityCode,
-    Country: city.countryName,
-    CountryCode: city.countryCode,
-    Region: city.regionCode || '',
-    Timezone: city.timeZoneOffset || ''
-  }));
+  const headers = ['ID', 'Name', 'City Code', 'Country', 'Country Code', 'Region', 'Timezone'];
+  const rows = cities.map((city) => [
+    city.id,
+    city.name,
+    city.cityCode,
+    city.countryName,
+    city.countryCode,
+    city.regionCode || '',
+    city.timeZoneOffset || ''
+  ]);
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(','))
+    .join('\n');
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Cities');
-
-  const excelBuffer = XLSX.write(workbook, {
-    bookType: 'xlsx',
-    type: 'array'
-  });
-
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
-
-  saveAs(blob, 'cities.xlsx');
+  saveAs(blob, 'cities.csv');
 };
 
 // ================= PDF EXPORT =================

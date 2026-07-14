@@ -615,7 +615,79 @@ bash microservices/scripts/local-infra.sh stack-stop
 Local source changes do not appear in Docker services until their images are
 rebuilt.
 
-## 7. Troubleshooting
+## 7. CI/CD
+
+GitHub Actions are split into two workflows:
+
+- `.github/workflows/ci.yml`: runs automatically on push and pull request.
+- `.github/workflows/docker-publish.yml`: runs manually when you want to publish
+  Docker Hub images.
+
+The CI workflow checks:
+
+```text
+backend: mvn -B -ntp -DskipTests package
+frontend: npm ci && npm run build -- --logLevel error
+compose: docker compose config validation for dev and prod compose files
+```
+
+Docker publishing requires these GitHub repository secrets:
+
+```text
+DOCKERHUB_USERNAME
+DOCKERHUB_TOKEN
+```
+
+Optional GitHub repository variables used while building the frontend image:
+
+```text
+VITE_API_BASE_URL=http://localhost:8080
+VITE_GOOGLE_CLIENT_ID=<google-web-client-id>
+VITE_FACEBOOK_APP_ID=<facebook-app-id>
+```
+
+To publish images:
+
+1. Open GitHub Actions.
+2. Select `Publish Docker Images`.
+3. Click `Run workflow`.
+4. Enter an image tag, for example `2026-07-14-01` or `latest`.
+
+The workflow publishes these backend images:
+
+```text
+triquang15/gds-service-registry
+triquang15/gds-config-server
+triquang15/gds-api-gateway
+triquang15/gds-user
+triquang15/gds-airline
+triquang15/gds-flight-ops
+triquang15/gds-location
+triquang15/gds-seat
+triquang15/gds-pricing
+triquang15/gds-ancillary
+triquang15/gds-booking
+triquang15/gds-payment
+triquang15/gds-subscription
+triquang15/gds-notification
+```
+
+It also publishes the frontend image:
+
+```text
+triquang15/flighthub-web
+```
+
+After publishing, run the Docker-only stack with the same tag:
+
+```bash
+FLIGHTHUB_IMAGE_TAG=2026-07-14-01 bash microservices/scripts/local-infra.sh stack-up
+```
+
+The production compose file includes `flighthub-web` and exposes it on
+`${FRONTEND_HOST_PORT:-5173}`.
+
+## 8. Troubleshooting
 
 ### Service Does Not Start
 
@@ -653,7 +725,7 @@ docker compose -f microservices/docker-compose/docker-compose.dev.yml logs -f ka
 docker compose -f microservices/docker-compose/docker-compose.dev.yml logs -f userdb
 ```
 
-## 8. Ready Checklist
+## 9. Ready Checklist
 
 ```text
 [ ] Infrastructure containers are healthy

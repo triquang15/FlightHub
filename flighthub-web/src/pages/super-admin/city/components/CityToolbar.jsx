@@ -49,14 +49,14 @@ const CityToolbar = ({
       {/* RIGHT */}
       <div className="flex items-center gap-2">
 
-        {/* EXPORT EXCEL */}
+        {/* EXPORT CSV */}
         <Button
           variant="outline"
           onClick={onExportExcel}
           className="flex items-center gap-2"
         >
           <FileSpreadsheet className="w-4 h-4 text-green-600" />
-          Excel
+          CSV
         </Button>
 
         {/* EXPORT PDF */}
