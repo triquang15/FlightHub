@@ -21,6 +21,7 @@ public class AncillaryResponse {
     private String categoryDisplayName;
     private String categoryIcon;
     private String iconUrl;
+    private Boolean hasCustomIcon;
     private AncillaryMetadata metadata;
     private List<InsuranceCoverageResponse> coverages;
     private Integer displayOrder;

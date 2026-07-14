@@ -36,6 +36,12 @@ public class Ancillary {
     @Column(length = 1000)
     private String description;
 
+    @Column(length = 1024)
+    private String iconUrl;
+
+    @Column(length = 512)
+    private String iconObjectKey;
+
     @Column(columnDefinition = "TEXT")
     @Convert(converter = AncillaryMetadataConverter.class)
     private AncillaryMetadata metadata;

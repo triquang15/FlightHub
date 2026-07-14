@@ -129,6 +129,7 @@ public class RouteConfig {
     @Order(0)
     public RouterFunction<ServerResponse> publicAncillaryMediaRoutes() {
         return routeWithoutCB("public-ancillary-media", "ancillary-service")
+                .route(RequestPredicates.GET("/api/ancillaries/{id}/icon/file/{filename}"), HandlerFunctions.http())
                 .route(RequestPredicates.GET("/api/meals/{id}/image/file/{filename}"), HandlerFunctions.http())
                 .filter(redisRateLimitFilter)
                 .build();

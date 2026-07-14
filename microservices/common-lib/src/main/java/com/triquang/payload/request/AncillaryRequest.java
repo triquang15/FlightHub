@@ -31,7 +31,7 @@ public class AncillaryRequest {
 	@Size(max = 1000, message = "Description cannot be longer than 1000 characters")
 	private String description;
 
-	@Size(max = 500, message = "Icon URL cannot be longer than 500 characters")
+	@Size(max = 1024, message = "Icon URL cannot be longer than 1024 characters")
 	private String iconUrl;
 
 	private AncillaryMetadata metadata;

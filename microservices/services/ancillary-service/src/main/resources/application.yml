@@ -4,8 +4,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: ${MEAL_IMAGE_MAX_FILE_SIZE:8MB}
-      max-request-size: ${MEAL_IMAGE_MAX_REQUEST_SIZE:9MB}
+      max-file-size: ${ANCILLARY_MEDIA_MAX_FILE_SIZE:${MEAL_IMAGE_MAX_FILE_SIZE:8MB}}
+      max-request-size: ${ANCILLARY_MEDIA_MAX_REQUEST_SIZE:${MEAL_IMAGE_MAX_REQUEST_SIZE:9MB}}
 
   config:
     import: optional:configserver:http://localhost:8888
@@ -80,6 +80,8 @@ springdoc:
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
   storage:
+    ancillary-icon:
+      local-dir: ${ANCILLARY_ICON_STORAGE_DIR:${java.io.tmpdir}/flighthub/ancillary-icons}
     meal-image:
       local-dir: ${MEAL_IMAGE_STORAGE_DIR:${java.io.tmpdir}/flighthub/meal-images}
 

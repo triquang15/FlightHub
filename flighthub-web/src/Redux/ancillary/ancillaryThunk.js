@@ -51,6 +51,32 @@ export const updateAncillary = createAsyncThunk(
   },
 );
 
+export const uploadAncillaryIcon = createAsyncThunk(
+  "ancillary/uploadIcon",
+  async ({ id, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      return unwrapApiData(await api.post(`${API_URL}/${id}/icon`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }));
+    } catch (err) {
+      return rejectAncillaryError(err, rejectWithValue, "Failed to upload ancillary icon");
+    }
+  },
+);
+
+export const deleteAncillaryIcon = createAsyncThunk(
+  "ancillary/deleteIcon",
+  async (id, { rejectWithValue }) => {
+    try {
+      return unwrapApiData(await api.delete(`${API_URL}/${id}/icon`));
+    } catch (err) {
+      return rejectAncillaryError(err, rejectWithValue, "Failed to remove ancillary icon");
+    }
+  },
+);
+
 export const deleteAncillary = createAsyncThunk(
   "ancillary/delete",
   async (id, { rejectWithValue }) => {

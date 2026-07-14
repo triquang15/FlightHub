@@ -4,6 +4,8 @@ import {
   getAncillaryById,
   getAllAncillaries,
   updateAncillary,
+  uploadAncillaryIcon,
+  deleteAncillaryIcon,
   deleteAncillary
 } from "./ancillaryThunk.js";
 
@@ -23,6 +25,18 @@ const toAncillaryArray = (payload) => {
 };
 
 const normalizeAncillary = (payload) => payload?.data ?? payload ?? null;
+
+const upsertAncillary = (state, payload) => {
+  const ancillary = normalizeAncillary(payload);
+  if (!ancillary) return;
+  state.ancillary = ancillary;
+  const index = state.ancillaries.findIndex((item) => item.id === ancillary.id);
+  if (index >= 0) {
+    state.ancillaries[index] = ancillary;
+  } else {
+    state.ancillaries.unshift(ancillary);
+  }
+};
 
 const ancillarySlice = createSlice({
   name: "ancillary",
@@ -55,9 +69,7 @@ const ancillarySlice = createSlice({
       })
       .addCase(createAncillary.fulfilled, (state, action) => {
         state.loading = false;
-        const ancillary = normalizeAncillary(action.payload);
-        state.ancillary = ancillary;
-        if (ancillary) state.ancillaries.unshift(ancillary);
+        upsertAncillary(state, action.payload);
       })
       .addCase(createAncillary.rejected, (state, action) => {
         state.loading = false;
@@ -102,12 +114,36 @@ const ancillarySlice = createSlice({
       })
       .addCase(updateAncillary.fulfilled, (state, action) => {
         state.loading = false;
-        const ancillary = normalizeAncillary(action.payload);
-        state.ancillary = ancillary;
-        const index = state.ancillaries.findIndex(a => a.id === ancillary?.id);
-        if (index !== -1) state.ancillaries[index] = ancillary;
+        upsertAncillary(state, action.payload);
       })
       .addCase(updateAncillary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ICON
+    builder
+      .addCase(uploadAncillaryIcon.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(uploadAncillaryIcon.fulfilled, (state, action) => {
+        state.loading = false;
+        upsertAncillary(state, action.payload);
+      })
+      .addCase(uploadAncillaryIcon.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteAncillaryIcon.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAncillaryIcon.fulfilled, (state, action) => {
+        state.loading = false;
+        upsertAncillary(state, action.payload);
+      })
+      .addCase(deleteAncillaryIcon.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

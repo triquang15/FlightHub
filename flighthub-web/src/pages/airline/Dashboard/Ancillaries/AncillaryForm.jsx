@@ -3,7 +3,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Package } from "lucide-react";
+import { ArrowLeft, ImageIcon, Loader2, Save, Package, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +19,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { SpinnerLoader } from "@/components/common/Loader";
 import {
   createAncillary,
+  deleteAncillaryIcon,
   getAncillaryById,
   updateAncillary,
+  uploadAncillaryIcon,
 } from "@/Redux/ancillary/ancillaryThunk";
 import { clearAncillaryError, clearCurrentAncillary } from "@/Redux/ancillary/ancillarySlice";
 import { toast } from "sonner";
@@ -65,6 +67,7 @@ const AncillaryForm = () => {
   const isEditMode = Boolean(id);
 
   const { ancillary, loading } = useSelector((state) => state.ancillary);
+  const [iconUploading, setIconUploading] = React.useState(false);
 
   const formik = useFormik({
     initialValues: {
@@ -73,6 +76,7 @@ const AncillaryForm = () => {
       rfisc: "",
       name: "",
       description: "",
+      iconUrl: "",
       displayOrder: 0,
       metadata: {
         baggage: {
@@ -148,6 +152,7 @@ const AncillaryForm = () => {
         rfisc: ancillary.rfisc || "",
         name: ancillary.name || "",
         description: ancillary.description || "",
+        iconUrl: ancillary.iconUrl || "",
         displayOrder: ancillary.displayOrder || 0,
         metadata: {
           baggage: ancillary.metadata?.baggage || {
@@ -165,6 +170,46 @@ const AncillaryForm = () => {
       });
     }
   }, [ancillary, isEditMode]);
+
+  const handleIconUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !ancillary?.id) return;
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/svg+xml"].includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, WEBP, or SVG icon");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ancillary icon must be 5MB or smaller");
+      return;
+    }
+
+    setIconUploading(true);
+    try {
+      const updated = await dispatch(uploadAncillaryIcon({ id: ancillary.id, file })).unwrap();
+      formik.setFieldValue("iconUrl", updated?.iconUrl || "");
+      toast.success("Ancillary icon uploaded");
+    } catch (uploadError) {
+      toast.error(uploadError || "Unable to upload ancillary icon");
+    } finally {
+      setIconUploading(false);
+    }
+  };
+
+  const handleIconRemove = async () => {
+    if (!ancillary?.id) return;
+    setIconUploading(true);
+    try {
+      await dispatch(deleteAncillaryIcon(ancillary.id)).unwrap();
+      formik.setFieldValue("iconUrl", "");
+      toast.success("Ancillary icon removed");
+    } catch (removeError) {
+      toast.error(removeError || "Unable to remove ancillary icon");
+    } finally {
+      setIconUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-5 pb-8">
@@ -298,6 +343,69 @@ const AncillaryForm = () => {
               <p className="text-sm text-muted-foreground">
                 {formik.values.description.length}/1000 characters
               </p>
+            </div>
+
+            <div className="rounded-md border border-border bg-muted/20 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row">
+                <div className="h-32 w-full overflow-hidden rounded-md border border-border bg-card lg:w-52">
+                  {formik.values.iconUrl ? (
+                    <img
+                      src={formik.values.iconUrl}
+                      alt={formik.values.name || "Ancillary icon"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <ImageIcon className="size-8" />
+                      <span className="text-xs font-medium">No catalog visual</span>
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div>
+                    <Label>Icon or Image URL</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Use a hosted URL or upload a JPG, PNG, WEBP, or SVG after the catalog item is created.
+                    </p>
+                  </div>
+                  <Input
+                    className="w-full"
+                    type="url"
+                    name="iconUrl"
+                    value={formik.values.iconUrl}
+                    onChange={formik.handleChange}
+                    placeholder="https://example.com/ancillary-icon.webp"
+                    maxLength={1024}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!ancillary?.id || iconUploading}
+                      onClick={() => document.getElementById("ancillary-icon-upload")?.click()}
+                    >
+                      {iconUploading ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+                      Upload icon
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={!ancillary?.id || !formik.values.iconUrl || iconUploading}
+                      onClick={handleIconRemove}
+                    >
+                      <X className="size-4" />
+                      Remove icon
+                    </Button>
+                    <input
+                      id="ancillary-icon-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                      className="hidden"
+                      onChange={handleIconUpload}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* BAGGAGE METADATA - Show only if type is BAGGAGE */}

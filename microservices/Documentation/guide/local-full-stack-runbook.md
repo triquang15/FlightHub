@@ -357,6 +357,35 @@ data or external CDN images. For S3 migration, keep the controller/DTO contract
 unchanged and replace `MealImageStorageService` with an S3-backed
 implementation.
 
+### Ancillary catalog icons
+
+Master ancillary icons/images use the same Ancillary Service local-first
+storage boundary. The `ancillaries` record stores:
+
+```text
+icon_url
+icon_object_key
+```
+
+Local ancillary icon settings:
+
+```bash
+# Public URL used when Ancillary Service returns icon_url through API Gateway
+APP_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for uploaded ancillary icons
+ANCILLARY_ICON_STORAGE_DIR=/tmp/flighthub/ancillary-icons
+
+# Optional shared upload limits for ancillary media
+ANCILLARY_MEDIA_MAX_FILE_SIZE=8MB
+ANCILLARY_MEDIA_MAX_REQUEST_SIZE=9MB
+```
+
+Airline owners can upload or remove JPG, PNG, WEBP, or SVG visuals from the
+Master Ancillaries edit page after the catalog item exists. For S3 migration,
+keep the API/DTO contract unchanged and replace `AncillaryIconStorageService`
+with an S3-backed implementation.
+
 Open:
 
 ```text

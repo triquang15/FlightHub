@@ -98,6 +98,7 @@ const AncillaryList = () => {
     [ancillaryList],
   );
   const coverageCount = ancillaryList.filter((item) => Array.isArray(item.coverages) && item.coverages.length > 0).length;
+  const visualCount = ancillaryList.filter((item) => item.iconUrl).length;
   const baggageCount = ancillaryList.filter((item) => item.type === "BAGGAGE").length;
   const protectionCount = ancillaryList.filter((item) => item.type === "TRAVEL_PROTECTION").length;
 
@@ -151,7 +152,7 @@ const AncillaryList = () => {
           <Stat label="Catalog items" value={ancillaryList.length} detail="total" />
           <Stat label="Baggage" value={baggageCount} detail="items" />
           <Stat label="Protection" value={protectionCount} detail="items" />
-          <Stat label="With coverages" value={coverageCount} detail="items" />
+          <Stat label="With visual" value={visualCount} detail="items" />
         </section>
 
         <section className="overflow-hidden rounded-md border border-border bg-card">
@@ -216,8 +217,12 @@ const AncillaryList = () => {
                   <Card key={ancillary.id} className="rounded-md border-border bg-card">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
-                        <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                          <Icon className="size-5" />
+                        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-primary/10 text-primary">
+                          {ancillary.iconUrl ? (
+                            <img src={ancillary.iconUrl} alt={ancillary.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <Icon className="size-5" />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-start justify-between gap-3">

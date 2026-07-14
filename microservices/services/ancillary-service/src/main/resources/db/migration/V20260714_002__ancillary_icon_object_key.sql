@@ -1,0 +1,3 @@
+ALTER TABLE ancillaries
+    ADD COLUMN IF NOT EXISTS icon_url VARCHAR(1024),
+    ADD COLUMN IF NOT EXISTS icon_object_key VARCHAR(512);

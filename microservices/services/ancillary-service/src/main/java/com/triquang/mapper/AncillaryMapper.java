@@ -22,6 +22,8 @@ public class AncillaryMapper {
                 .rfisc(entity.getRfisc())
                 .name(entity.getName())
                 .description(entity.getDescription())
+                .iconUrl(entity.getIconUrl())
+                .hasCustomIcon(entity.getIconObjectKey() != null && !entity.getIconObjectKey().isBlank())
                 .metadata(entity.getMetadata())
                 .coverages(coverageResponseList)
                 .displayOrder(entity.getDisplayOrder())

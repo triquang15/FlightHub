@@ -18,6 +18,9 @@ import com.triquang.repository.FlightCabinAncillaryRepository;
 import com.triquang.service.AirlineIntegrationService;
 import com.triquang.service.AncillaryService;
 import com.triquang.service.AncillaryOwnershipService;
+import com.triquang.service.storage.AncillaryIconStorageService;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,8 +34,10 @@ public class AncillaryServiceImpl implements AncillaryService {
     private final AirlineIntegrationService airlineIntegrationService;
     private final AncillaryOwnershipService ownershipService;
     private final FlightCabinAncillaryRepository flightCabinAncillaryRepository;
+    private final AncillaryIconStorageService ancillaryIconStorageService;
 
     @Override
+    @Transactional
     public AncillaryResponse create(Long userId, AncillaryRequest request){
         Long airlineId=airlineIntegrationService.getAirlineIdForUser(userId);
         Ancillary ancillary = Ancillary.builder()
@@ -41,6 +46,7 @@ public class AncillaryServiceImpl implements AncillaryService {
                 .rfisc(request.getRfisc())
                 .name(request.getName())
                 .description(request.getDescription())
+                .iconUrl(request.getIconUrl())
                 .metadata(request.getMetadata())
                 .displayOrder(request.getDisplayOrder())
                 .airlineId(airlineId)
@@ -51,6 +57,7 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AncillaryResponse getById(Long userId, Long id){
         var ancillary = ownershipService.requireOwnedAncillary(userId, id);
 
@@ -63,6 +70,7 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AncillaryResponse> getAllByAirlineId(Long userId) {
         Long airlineId=airlineIntegrationService.getAirlineIdForUser(userId);
         return ancillaryRepository.findByAirlineId(airlineId)
@@ -79,6 +87,7 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
+    @Transactional
     public AncillaryResponse update(Long userId, Long id, AncillaryRequest request) {
         var ancillary = ownershipService.requireOwnedAncillary(userId, id);
 
@@ -87,6 +96,7 @@ public class AncillaryServiceImpl implements AncillaryService {
         ancillary.setRfisc(request.getRfisc());
         ancillary.setName(request.getName());
         ancillary.setDescription(request.getDescription());
+        ancillary.setIconUrl(request.getIconUrl());
         ancillary.setMetadata(request.getMetadata());
         ancillary.setDisplayOrder(request.getDisplayOrder());
 
@@ -101,12 +111,52 @@ public class AncillaryServiceImpl implements AncillaryService {
     }
 
     @Override
+    @Transactional
+    public AncillaryResponse updateIcon(Long userId, Long id, MultipartFile file) {
+        var ancillary = ownershipService.requireOwnedAncillary(userId, id);
+        String previousObjectKey = ancillary.getIconObjectKey();
+
+        AncillaryIconStorageService.StoredAncillaryIcon storedIcon = ancillaryIconStorageService.store(id, file);
+        ancillary.setIconUrl(storedIcon.publicUrl());
+        ancillary.setIconObjectKey(storedIcon.objectKey());
+
+        Ancillary updated = ancillaryRepository.save(ancillary);
+        ancillaryIconStorageService.delete(previousObjectKey);
+
+        List<InsuranceCoverageResponse> coverages = insuranceCoverageRepository.findByAncillary(updated)
+                .stream()
+                .map(InsuranceCoverageMapper::toResponse)
+                .toList();
+
+        return AncillaryMapper.toResponse(updated, coverages);
+    }
+
+    @Override
+    @Transactional
+    public AncillaryResponse deleteIcon(Long userId, Long id) {
+        var ancillary = ownershipService.requireOwnedAncillary(userId, id);
+        ancillaryIconStorageService.delete(ancillary.getIconObjectKey());
+        ancillary.setIconUrl(null);
+        ancillary.setIconObjectKey(null);
+
+        Ancillary updated = ancillaryRepository.save(ancillary);
+        List<InsuranceCoverageResponse> coverages = insuranceCoverageRepository.findByAncillary(updated)
+                .stream()
+                .map(InsuranceCoverageMapper::toResponse)
+                .toList();
+
+        return AncillaryMapper.toResponse(updated, coverages);
+    }
+
+    @Override
+    @Transactional
     public void delete(Long userId, Long id) {
         var ancillary = ownershipService.requireOwnedAncillary(userId, id);
         if (flightCabinAncillaryRepository.existsByAncillaryId(id)
                 || insuranceCoverageRepository.existsByAncillaryId(id)) {
             throw new BaseException(ErrorCode.ANCILLARY_IN_USE);
         }
+        ancillaryIconStorageService.delete(ancillary.getIconObjectKey());
         ancillaryRepository.delete(ancillary);
     }
 }
