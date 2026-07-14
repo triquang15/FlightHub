@@ -141,6 +141,7 @@ public class RouteConfig {
         return routeWithCB("public-pricing", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
                 .route(RequestPredicates.GET("/api/fares/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())
                 .route(RequestPredicates.GET("/api/fares/lowest/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/coupons/public/**"), HandlerFunctions.http())
                 .filter(redisRateLimitFilter)
                 .build();
     }

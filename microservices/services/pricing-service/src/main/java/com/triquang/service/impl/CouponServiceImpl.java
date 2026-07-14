@@ -19,6 +19,7 @@ import com.triquang.service.CouponService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,6 +83,17 @@ public class CouponServiceImpl implements CouponService {
                 )
                 .stream()
                 .filter(this::hasRemainingUsage)
+                .map(CouponMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CouponResponse> getPublicActiveCoupons(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 12));
+        return couponRepository
+                .findPublicActiveCoupons(CouponStatus.ACTIVE, Instant.now(), PageRequest.of(0, safeLimit))
+                .stream()
                 .map(CouponMapper::toResponse)
                 .toList();
     }

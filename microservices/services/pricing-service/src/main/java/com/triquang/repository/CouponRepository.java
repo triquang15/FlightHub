@@ -38,6 +38,20 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     @Query("""
         SELECT c FROM Coupon c
+        WHERE c.status = :status
+          AND c.validFrom <= :now
+          AND c.validUntil >= :now
+          AND (c.usageLimit IS NULL OR c.usedCount < c.usageLimit)
+        ORDER BY c.validUntil ASC, c.createdAt DESC
+    """)
+    List<Coupon> findPublicActiveCoupons(
+            @Param("status") CouponStatus status,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT c FROM Coupon c
         WHERE c.airlineId = :airlineId
           AND (:status IS NULL OR c.status = :status)
           AND (

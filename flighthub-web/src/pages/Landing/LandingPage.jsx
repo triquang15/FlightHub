@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import api from "@/utils/api"
 
 const navItems = [
   { label: "Booking", href: "#booking" },
@@ -63,6 +64,30 @@ const bookingCards = [
   },
 ]
 
+const fallbackPromotions = [
+  {
+    id: "member15",
+    code: "MEMBER15",
+    title: "Member fare",
+    description: "Save more when signed in and manage the trip from your account.",
+    discount: "15% off",
+  },
+  {
+    id: "weekend",
+    code: "WEEKEND",
+    title: "Weekend escape",
+    description: "Short-haul routes with clean fare comparison and seat selection.",
+    discount: "Limited offer",
+  },
+  {
+    id: "hello25",
+    code: "HELLO25",
+    title: "First booking",
+    description: "Start with a cleaner checkout from fare to ticket confirmation.",
+    discount: "$25 off",
+  },
+]
+
 const workspaceCards = [
   {
     title: "Traveler",
@@ -84,10 +109,19 @@ const workspaceCards = [
   },
 ]
 
-const analyticsRows = [
-  { route: "SGN -> HAN", bookings: "42", revenue: "$5.8k", trend: "+18%" },
-  { route: "SIN -> SGN", bookings: "28", revenue: "$4.1k", trend: "+11%" },
-  { route: "SGN -> HKG", bookings: "19", revenue: "$3.2k", trend: "+7%" },
+const fallbackRoutes = [
+  { fromCode: "SGN", toCode: "SIN", fromCity: "Ho Chi Minh City", toCity: "Singapore", price: "$128", departures: 2 },
+  { fromCode: "SGN", toCode: "HAN", fromCity: "Ho Chi Minh City", toCity: "Hanoi", price: "$96", departures: 3 },
+  { fromCode: "SIN", toCode: "SGN", fromCity: "Singapore", toCity: "Ho Chi Minh City", price: "$136", departures: 2 },
+]
+
+const preferredRoutePairs = [
+  ["SGN", "SIN"],
+  ["SIN", "SGN"],
+  ["SGN", "HAN"],
+  ["HAN", "SGN"],
+  ["SGN", "HKG"],
+  ["KUL", "SGN"],
 ]
 
 const platformCards = [
@@ -114,9 +148,233 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.08 } },
 }
 
+const getPageItems = (payload) => {
+  const data = payload?.data?.data ?? payload?.data ?? payload
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.content)) return data.content
+  if (Array.isArray(data?.results)) return data.results
+  return []
+}
+
+const getAirportId = (airport) => airport?.id || airport?.airportId
+const getIata = (airport) => airport?.iataCode || airport?.iata || ""
+const getAirportCity = (airport) =>
+  airport?.city?.name || airport?.cityName || airport?.address?.cityName || airport?.address?.city || airport?.name || "City"
+const getAirportHeroImage = (airport) =>
+  airport?.heroImageUrl || airport?.imageUrl || airport?.destinationImageUrl || airport?.media?.heroImageUrl || null
+
+const toIsoDate = (date) => {
+  const offset = date.getTimezoneOffset()
+  return new Date(date.getTime() - offset * 60 * 1000).toISOString().slice(0, 10)
+}
+
+const addDays = (days) => {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + days)
+  return toIsoDate(date)
+}
+
+const formatMoney = (amount, currency = "USD") => {
+  const value = Number(amount)
+  if (!Number.isFinite(value) || value <= 0) return null
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+const getFareAmount = (flight) =>
+  flight?.fare?.totalPrice ?? flight?.fare?.currentPrice ?? flight?.fare?.baseFare ?? flight?.lowestFare ?? flight?.price
+
+const formatCouponDiscount = (coupon) => {
+  const value = Number(coupon?.discountValue ?? 0)
+  if (!Number.isFinite(value) || value <= 0) return "Special fare"
+  if (coupon?.discountType === "PERCENTAGE") return `${value}% off`
+  return formatMoney(value) ? `${formatMoney(value)} off` : "Special fare"
+}
+
+const formatCouponDate = (value) => {
+  if (!value) return "Limited time"
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value))
+}
+
+const createPromotion = (coupon, index = 0) => {
+  if (!coupon) return fallbackPromotions[index % fallbackPromotions.length]
+  return {
+    id: coupon.id || coupon.code || `coupon-${index}`,
+    code: coupon.code || "OFFER",
+    title: formatCouponDiscount(coupon),
+    description: coupon.description || "Use this promo code during checkout on eligible fares.",
+    discount: coupon.validUntil ? `Valid until ${formatCouponDate(coupon.validUntil)}` : "Active now",
+  }
+}
+
+const buildRouteCandidates = (airports = []) => {
+  const byIata = new Map(
+    airports
+      .filter((airport) => getAirportId(airport) && getIata(airport))
+      .map((airport) => [getIata(airport).toUpperCase(), airport]),
+  )
+
+  const preferred = preferredRoutePairs
+    .map(([from, to]) => ({ from: byIata.get(from), to: byIata.get(to) }))
+    .filter((route) => route.from && route.to && getAirportId(route.from) !== getAirportId(route.to))
+
+  if (preferred.length >= 4) return preferred.slice(0, 5)
+
+  const pool = airports.filter((airport) => getAirportId(airport)).slice(0, 8)
+  const generated = []
+  for (let index = 0; index < pool.length - 1 && generated.length < 5; index += 1) {
+    generated.push({ from: pool[index], to: pool[index + 1] })
+  }
+
+  return [...preferred, ...generated]
+    .filter((route, index, list) =>
+      list.findIndex((item) => getAirportId(item.from) === getAirportId(route.from) && getAirportId(item.to) === getAirportId(route.to)) === index,
+    )
+    .slice(0, 5)
+}
+
+const createLiveRoute = ({ from, to, date, flight, fallback }) => {
+  const fromCode = getIata(from) || fallback?.fromCode || "FROM"
+  const toCode = getIata(to) || fallback?.toCode || "TO"
+  const price = formatMoney(getFareAmount(flight), flight?.fare?.currency || "USD") || fallback?.price || "Live fares"
+
+  return {
+    fromCode,
+    toCode,
+    fromCity: getAirportCity(from) || fallback?.fromCity || "Origin",
+    toCity: getAirportCity(to) || fallback?.toCity || "Destination",
+    price,
+    date,
+    departures: flight ? 1 : fallback?.departures || 0,
+    image: getAirportHeroImage(to) || getAirportHeroImage(from) || null,
+    href: getAirportId(from) && getAirportId(to) && date
+      ? `/search?${new URLSearchParams({
+          from: String(getAirportId(from)),
+          to: String(getAirportId(to)),
+          depart: date,
+          passengers: "1",
+          cabinClass: "ECONOMY",
+          trip: "oneway",
+        }).toString()}`
+      : null,
+  }
+}
+
 const LandingPage = () => {
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [liveRoutes, setLiveRoutes] = React.useState(fallbackRoutes)
+  const [isLiveLoading, setIsLiveLoading] = React.useState(true)
+  const [promotions, setPromotions] = React.useState(fallbackPromotions)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const loadLiveRoutes = async () => {
+      setIsLiveLoading(true)
+
+      try {
+        const airportsResponse = await api.get("/api/airports", {
+          params: { page: 0, size: 100, sortBy: "iataCode", sortDirection: "asc" },
+        })
+        const airports = getPageItems(airportsResponse)
+        const candidates = buildRouteCandidates(airports)
+        const probeDates = [1, 2, 3, 7, 14].map(addDays)
+        const routes = []
+
+        for (const [index, candidate] of candidates.entries()) {
+          let matchedRoute = null
+
+          for (const date of probeDates) {
+            try {
+              const response = await api.get("/api/flights/search", {
+                params: {
+                  departureAirportId: getAirportId(candidate.from),
+                  arrivalAirportId: getAirportId(candidate.to),
+                  departureDate: date,
+                  passengers: 1,
+                  cabinClass: "ECONOMY",
+                  page: 0,
+                  size: 1,
+                  sortBy: "departure",
+                  sortOrder: "asc",
+                },
+              })
+              const [firstFlight] = getPageItems(response)
+              if (firstFlight) {
+                matchedRoute = createLiveRoute({ ...candidate, date, flight: firstFlight, fallback: fallbackRoutes[index] })
+                break
+              }
+            } catch {
+              break
+            }
+          }
+
+          routes.push(matchedRoute || createLiveRoute({ ...candidate, date: probeDates[0], fallback: fallbackRoutes[index] }))
+        }
+
+        if (!cancelled) {
+          setLiveRoutes(routes.length ? routes : fallbackRoutes)
+        }
+      } catch {
+        if (!cancelled) setLiveRoutes(fallbackRoutes)
+      } finally {
+        if (!cancelled) setIsLiveLoading(false)
+      }
+    }
+
+    loadLiveRoutes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const loadPromotions = async () => {
+      try {
+        const response = await api.get("/api/coupons/public/active", { params: { limit: 3 } })
+        const coupons = getPageItems(response)
+        if (!cancelled) {
+          setPromotions(coupons.length ? coupons.slice(0, 3).map(createPromotion) : fallbackPromotions)
+        }
+      } catch {
+        if (!cancelled) setPromotions(fallbackPromotions)
+      }
+    }
+
+    loadPromotions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const heroRoute = liveRoutes[0] || fallbackRoutes[0]
+  const hasSearchReadyRoute = liveRoutes.some((route) => Boolean(route.href))
+  const analyticsRows = liveRoutes.slice(0, 3).map((route, index) => ({
+    route: `${route.fromCode} -> ${route.toCode}`,
+    bookings: route.departures ? `${route.departures}` : "Live",
+    revenue: route.price,
+    trend: route.href ? "Search-ready" : index === 0 && isLiveLoading ? "Loading" : "Fallback",
+  }))
+  const handleHeroRouteClick = () => {
+    if (heroRoute.href) {
+      navigate(heroRoute.href)
+      return
+    }
+    navigate("/traveler")
+  }
+  const heroBackgroundImage = heroRoute.image || "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=2600&q=85"
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -190,7 +448,7 @@ const LandingPage = () => {
         <section className="relative isolate min-h-screen overflow-hidden pt-16">
           <div className="absolute inset-0 -z-20">
             <img
-              src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=2600&q=85"
+              src={heroBackgroundImage}
               alt=""
               className="h-full w-full object-cover opacity-45 dark:opacity-38"
             />
@@ -253,8 +511,8 @@ const LandingPage = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.75, delay: 0.12, ease: "easeOut" }}
             >
-              <FloatingBadge className="-left-5 top-16 hidden lg:flex" icon={Gauge} label="Services healthy" />
-              <FloatingBadge className="-right-3 bottom-24 hidden lg:flex" icon={Clock3} label="Seat holds ready" reverse />
+              <FloatingBadge className="-left-5 top-16 hidden lg:flex" icon={Gauge} label={hasSearchReadyRoute ? "Live routes found" : "Search data ready"} />
+              <FloatingBadge className="-right-3 bottom-24 hidden lg:flex" icon={Clock3} label={isLiveLoading ? "Checking inventory" : "Fare checks ready"} reverse />
 
               <div className="relative overflow-hidden rounded-[2.25rem] border bg-background/72 p-3 shadow-2xl shadow-primary/10 backdrop-blur-2xl dark:bg-background/58">
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-primary/12 blur-3xl" />
@@ -264,11 +522,13 @@ const LandingPage = () => {
                   <div className="flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Flight operations view</p>
-                      <h2 className="mt-2 text-2xl font-semibold">Bookable route, ready for checkout</h2>
+                      <h2 className="mt-2 text-2xl font-semibold">
+                        {heroRoute.fromCode} to {heroRoute.toCode}
+                      </h2>
                     </div>
                     <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
                       <span className="h-2 w-2 rounded-full bg-emerald-500 [animation:soft-pulse_1.8s_ease-in-out_infinite]" />
-                      Live inventory
+                      {isLiveLoading ? "Checking inventory" : hasSearchReadyRoute ? "Live inventory" : "Fallback preview"}
                     </span>
                   </div>
 
@@ -284,11 +544,11 @@ const LandingPage = () => {
 
                       <div className="relative flex h-full flex-col justify-between gap-5">
                         <div className="flex items-start justify-between gap-4">
-                          <FlightNode label="From" code="SGN" city="Ho Chi Minh City" />
+                          <FlightNode label="From" code={heroRoute.fromCode} city={heroRoute.fromCity} />
                           <div className="mt-8 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-background text-primary shadow-lg">
                             <Plane className="h-4 w-4" />
                           </div>
-                          <FlightNode label="To" code="SIN" city="Singapore" align="right" />
+                          <FlightNode label="To" code={heroRoute.toCode} city={heroRoute.toCity} align="right" />
                         </div>
 
                         <div className="grid gap-3">
@@ -335,8 +595,10 @@ const LandingPage = () => {
                       <div className="mt-6 rounded-2xl border bg-background/78 p-4">
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Sample total</p>
-                            <p className="mt-1 text-3xl font-semibold">$128</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                              {heroRoute.href ? "Live fare from" : "Preview fare"}
+                            </p>
+                            <p className="mt-1 text-3xl font-semibold">{heroRoute.price}</p>
                           </div>
                           <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">1 traveler</span>
                         </div>
@@ -347,6 +609,10 @@ const LandingPage = () => {
                             transition={{ duration: 2.9, repeat: Infinity, ease: "easeInOut" }}
                           />
                         </div>
+                        <Button onClick={handleHeroRouteClick} className="mt-4 w-full rounded-xl">
+                          {heroRoute.href ? "Search this route" : "Open traveler search"}
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -379,6 +645,35 @@ const LandingPage = () => {
                   <h3 className="mt-6 text-xl font-semibold">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
                 </motion.article>
+              ))}
+            </div>
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+              {promotions.map((promo, index) => (
+                <motion.button
+                  key={promo.id}
+                  type="button"
+                  onClick={() => navigate("/traveler")}
+                  className="group rounded-3xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl"
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.4, delay: index * 0.06 }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Active offer</p>
+                      <h3 className="mt-3 text-xl font-semibold">{promo.title}</h3>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-3 py-1.5 font-mono text-xs font-bold text-primary">
+                      {promo.code}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{promo.description}</p>
+                  <div className="mt-5 flex items-center justify-between border-t pt-4">
+                    <span className="text-xs font-semibold text-muted-foreground">{promo.discount}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </div>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -427,12 +722,12 @@ const LandingPage = () => {
               <div className="rounded-[1.35rem] border bg-muted/35 p-4">
                 <div className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Route performance</p>
-                    <h3 className="mt-2 text-xl font-semibold">Top corridors</h3>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Live route signals</p>
+                    <h3 className="mt-2 text-xl font-semibold">Search-ready corridors</h3>
                   </div>
                   <span className="inline-flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground">
                     <BarChart3 className="h-4 w-4 text-primary" />
-                    Dynamic dashboard
+                    Dynamic data
                   </span>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -440,11 +735,16 @@ const LandingPage = () => {
                     <div key={`${row.route}-${index}`} className="grid gap-3 rounded-2xl border bg-background p-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
                       <div className="min-w-0">
                         <p className="font-semibold">{row.route}</p>
-                        <p className="text-xs text-muted-foreground">Confirmed route performance</p>
+                        <p className="text-xs text-muted-foreground">Public search availability signal</p>
                       </div>
-                      <MetricPill label="Bookings" value={row.bookings} />
-                      <MetricPill label="Revenue" value={row.revenue} />
-                      <span className="w-fit rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-300">
+                      <MetricPill label="Departures" value={row.bookings} />
+                      <MetricPill label="Fare from" value={row.revenue} />
+                      <span className={cn(
+                        "w-fit rounded-full px-3 py-1 text-xs font-bold",
+                        row.trend === "Search-ready"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                      )}>
                         {row.trend}
                       </span>
                     </div>
@@ -545,8 +845,16 @@ const SectionHeader = ({ eyebrow, title, description }) => (
 const FlightNode = ({ code, city, label, align = "left" }) => (
   <div className={cn("min-w-0", align === "right" && "text-right")}>
     <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-    <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{code}</p>
-    <p className="mt-1.5 max-w-44 text-sm leading-5 text-muted-foreground">{city}</p>
+    <p className="mt-2 truncate text-3xl font-semibold tracking-tight sm:text-4xl">{code}</p>
+    <p
+      className={cn(
+        "mt-1.5 max-w-36 truncate text-sm leading-5 text-muted-foreground sm:max-w-44",
+        align === "right" && "ml-auto",
+      )}
+      title={city}
+    >
+      {city}
+    </p>
   </div>
 )
 
