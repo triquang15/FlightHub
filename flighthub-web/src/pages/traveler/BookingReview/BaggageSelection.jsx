@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import { useSelector } from "react-redux";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+const formatCurrency = (amount = 0, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0);
 
 const normalizeList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -135,7 +137,10 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
             option?.description ||
             "Additional baggage allowance for this flight.",
           price: getBaggagePrice(option),
+          currency: String(option?.currency || option?.ancillary?.currency || "USD").toUpperCase(),
+          iconUrl: option?.ancillary?.iconUrl || option?.iconUrl,
           available: option?.available !== false && option?.status !== "INACTIVE",
+          includedInFare: Boolean(option?.includedInFare),
           flightId: option?.flightId,
           type: option?.ancillary?.type || option?.type,
           subType: option?.ancillary?.subType || option?.subType,
@@ -217,7 +222,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
     0,
   );
   const totalBaggageCost = selectedItems.reduce(
-    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    (sum, item) => sum + (item.includedInFare ? 0 : Number(item.price || 0) * Number(item.quantity || 0)),
     0,
   );
 
@@ -259,7 +264,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
         <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right dark:border-white/10 dark:bg-slate-950/40">
           <p className="text-xs text-slate-500 dark:text-slate-400">Selected</p>
           <p className="text-sm font-semibold text-slate-950 dark:text-white">
-            {totalBaggageCount} bags | {currencyFormatter.format(totalBaggageCost)}
+            {totalBaggageCount} bags | {formatCurrency(totalBaggageCost)}
           </p>
         </div>
       </div>
@@ -309,9 +314,20 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                   <div className="min-w-0 flex-1">
                     <div className="mb-3 flex items-start gap-3">
                       <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md ${categoryConfig.iconShell}`}
+                        className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 dark:border-white/10 ${categoryConfig.iconShell}`}
                       >
-                        <CategoryIcon className={`h-5 w-5 ${categoryConfig.iconColor}`} />
+                        {baggage.iconUrl ? (
+                          <img
+                            src={baggage.iconUrl}
+                            alt={baggage.name}
+                            className="h-full w-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <CategoryIcon className={`h-5 w-5 ${categoryConfig.iconColor}`} />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -319,6 +335,11 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                           <h3 className="text-base font-semibold text-slate-950 dark:text-white">
                             {baggage.name}
                           </h3>
+                          {baggage.includedInFare && (
+                            <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
+                              Included
+                            </span>
+                          )}
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${categoryConfig.shell}`}
                           >
@@ -371,11 +392,11 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                         Price per bag
                       </p>
                       <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">
-                        {currencyFormatter.format(baggage.price)}
+                        {baggage.includedInFare ? "Included" : formatCurrency(baggage.price, baggage.currency)}
                       </p>
                       {quantity > 0 && (
                         <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                          Total {currencyFormatter.format(optionTotal)}
+                          Total {baggage.includedInFare ? "Included" : formatCurrency(optionTotal, baggage.currency)}
                         </p>
                       )}
                     </div>
@@ -430,7 +451,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
             </p>
             <div className="flex items-center gap-3">
               <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                {currencyFormatter.format(totalBaggageCost)}
+                {formatCurrency(totalBaggageCost)}
               </p>
               <button
                 type="button"
@@ -449,8 +470,19 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                 className="flex items-center justify-between gap-3 rounded-md border border-white/70 bg-white p-3 text-sm shadow-sm dark:border-white/10 dark:bg-slate-950/50"
               >
                 <div className="min-w-0 flex flex-1 items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
-                    <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-blue-50 dark:border-white/10 dark:bg-blue-500/10">
+                    {item.iconUrl ? (
+                      <img
+                        src={item.iconUrl}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-950 dark:text-white">
@@ -464,7 +496,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="font-semibold text-slate-950 dark:text-white">
-                    {currencyFormatter.format(item.price * item.quantity)}
+                    {item.includedInFare ? "Included" : formatCurrency(item.price * item.quantity, item.currency)}
                   </span>
                   <button
                     type="button"
