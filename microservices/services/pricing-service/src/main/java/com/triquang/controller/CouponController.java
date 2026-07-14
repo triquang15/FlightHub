@@ -68,6 +68,16 @@ public class CouponController {
         return ResponseUtil.ok(couponService.getActiveCoupons(userId));
     }
 
+    @GetMapping("/public/active")
+    @Operation(
+            summary = "List public active coupons",
+            description = "Returns currently active promo codes suitable for public landing and traveler discovery pages. No authentication is required."
+    )
+    public ResponseEntity<ApiResponse<List<CouponResponse>>> getPublicActiveCoupons(
+            @RequestParam(defaultValue = "6") int limit) {
+        return ResponseUtil.ok(couponService.getPublicActiveCoupons(limit));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get an owned coupon by ID")
     public ResponseEntity<ApiResponse<CouponResponse>> getCouponById(

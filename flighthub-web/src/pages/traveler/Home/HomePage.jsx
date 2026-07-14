@@ -56,6 +56,35 @@ const deals = [
   },
 ]
 
+const formatCouponDiscount = (coupon) => {
+  const value = Number(coupon?.discountValue ?? 0)
+  if (!Number.isFinite(value) || value <= 0) return "Live offer"
+  if (coupon?.discountType === "PERCENTAGE") return `${value}% off`
+  const amount = formatMoney(value)
+  return amount ? `${amount} off` : "Live offer"
+}
+
+const formatCouponValidity = (value) => {
+  if (!value) return "Eligible fares"
+  return `Valid until ${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value))}`
+}
+
+const createDealCard = (coupon, index = 0) => {
+  if (!coupon) return deals[index % deals.length]
+  const accents = ["from-violet-500 to-fuchsia-400", "from-sky-500 to-cyan-400", "from-emerald-500 to-teal-400"]
+  return {
+    eyebrow: "Active promo",
+    title: formatCouponDiscount(coupon),
+    description: coupon.description || "Use this code during checkout on eligible FlightHub fares.",
+    code: coupon.code || "OFFER",
+    accent: accents[index % accents.length],
+    helper: formatCouponValidity(coupon.validUntil),
+  }
+}
+
 const fallbackDestinations = [
   {
     city: "Singapore",
@@ -298,6 +327,7 @@ const HomePage = () => {
   const searchSectionRef = React.useRef(null)
   const [dynamicRoutes, setDynamicRoutes] = React.useState([])
   const [routesLoading, setRoutesLoading] = React.useState(false)
+  const [dynamicDeals, setDynamicDeals] = React.useState(deals)
 
   const scrollToSearch = () => {
     searchSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -368,6 +398,28 @@ const HomePage = () => {
       cancelled = true
     }
   }, [airports])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const loadDeals = async () => {
+      try {
+        const response = await api.get("/api/coupons/public/active", { params: { limit: 3 } })
+        const coupons = unwrapSearchContent(response)
+        if (!cancelled) {
+          setDynamicDeals(coupons.length ? coupons.slice(0, 3).map(createDealCard) : deals)
+        }
+      } catch {
+        if (!cancelled) setDynamicDeals(deals)
+      }
+    }
+
+    loadDeals()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const routeCards = dynamicRoutes.length
     ? dynamicRoutes
@@ -524,14 +576,17 @@ const HomePage = () => {
           description="These cards guide common traveler actions and are ready to connect with promotions or recommendation data later."
         />
         <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          {deals.map((deal) => (
+          {dynamicDeals.map((deal) => (
             <article key={deal.code} className="group relative overflow-hidden rounded-3xl border bg-card p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl">
               <div className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", deal.accent)} />
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{deal.eyebrow}</p>
               <h3 className="mt-5 text-2xl font-semibold tracking-tight">{deal.title}</h3>
               <p className="mt-3 min-h-12 text-sm leading-6 text-muted-foreground">{deal.description}</p>
               <div className="mt-7 flex items-center justify-between border-t pt-5">
-                <span className="rounded-full bg-muted px-3 py-1.5 font-mono text-xs font-semibold">{deal.code}</span>
+                <div className="min-w-0">
+                  <span className="rounded-full bg-muted px-3 py-1.5 font-mono text-xs font-semibold">{deal.code}</span>
+                  {deal.helper && <p className="mt-2 text-xs font-medium text-muted-foreground">{deal.helper}</p>}
+                </div>
                 <TicketPercent className="h-5 w-5 text-muted-foreground transition group-hover:text-primary" />
               </div>
             </article>

@@ -19,6 +19,8 @@ public interface CouponService {
 
     List<CouponResponse> getActiveCoupons(Long userId);
 
+    List<CouponResponse> getPublicActiveCoupons(int limit);
+
     CouponResponse updateCoupon(Long userId, Long id, CouponRequest request);
 
     void deleteCoupon(Long userId, Long id);
