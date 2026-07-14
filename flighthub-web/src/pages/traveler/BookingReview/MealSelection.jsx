@@ -54,7 +54,7 @@ const getDietaryConfig = (restriction) => {
     },
     KOSHER: {
       label: "Kosher",
-      className: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-200",
+      className: "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200",
     },
     GLUTEN_FREE: {
       label: "Gluten Free",

@@ -77,7 +77,7 @@ const InsuranceCoverageManagement = () => {
             </p>
           </div>
 
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+          <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
             <div className="flex items-center gap-3">
               <Layers className="h-10 w-10 opacity-90" />
               <div>

@@ -17,8 +17,8 @@ const FlexibilityAddOn = ({ flexibilityData, selectedPlan, onSelectPlan }) => {
       className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
     >
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-50 dark:bg-violet-500/10">
-          <Shield className="h-6 w-6 text-violet-600 dark:text-violet-300" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-500/10">
+          <Shield className="h-6 w-6 text-amber-600 dark:text-amber-300" />
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Flexibility Add-Ons</h2>
@@ -37,14 +37,14 @@ const FlexibilityAddOn = ({ flexibilityData, selectedPlan, onSelectPlan }) => {
               whileTap={{ scale: 0.98 }}
               className={`relative cursor-pointer rounded-xl border-2 p-5 transition-all ${
                 isSelected
-                  ? 'border-violet-600 bg-violet-50 dark:border-violet-400/70 dark:bg-violet-500/10'
-                  : 'border-slate-200 bg-white hover:border-violet-300 dark:border-white/10 dark:bg-slate-950/30'
+                  ? 'border-amber-500 bg-amber-50 dark:border-amber-400/70 dark:bg-amber-500/10'
+                  : 'border-slate-200 bg-white hover:border-amber-300 dark:border-white/10 dark:bg-slate-950/30'
               }`}
               onClick={() => onSelectPlan(isSelected ? null : option.id)}
             >
               {option.popular && (
                 <div className="absolute -top-3 right-4">
-                  <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-semibold rounded-full shadow-lg flex items-center gap-1">
+                  <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold rounded-full shadow-lg flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
                     Most Popular
                   </span>
@@ -64,7 +64,7 @@ const FlexibilityAddOn = ({ flexibilityData, selectedPlan, onSelectPlan }) => {
                 <div
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     isSelected
-                      ? 'border-purple-600 bg-purple-600'
+                      ? 'border-amber-500 bg-amber-500'
                       : 'border-slate-300 bg-white dark:border-white/20 dark:bg-slate-900'
                   }`}
                 >

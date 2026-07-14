@@ -59,7 +59,7 @@ const ROLE_OPTIONS = [
 function getRoleMeta(role) {
   switch (role) {
     case SYSTEM_ADMIN_ROLE:
-      return { label: "System Admin", color: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" };
+      return { label: "System Admin", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300" };
     case "ROLE_AIRLINE_OWNER":
       return { label: "Airline Owner", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" };
     case "ROLE_CUSTOMER":
@@ -555,7 +555,7 @@ const UserManagement = () => {
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-300">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
               <Shield className="h-3.5 w-3.5" />
               System administration
             </div>
@@ -723,7 +723,7 @@ const UserManagement = () => {
         <StatCard icon={Users} label="Results shown" value={stats.visible} detail={`${total || 0} total matching records`} color="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" />
         <StatCard icon={UserCheck} label="Active visible" value={stats.active} detail="Accounts not disabled" color="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" />
         <StatCard icon={Plane} label="Airline owners" value={stats.airlineOwners} detail="Current page count" color="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" />
-        <StatCard icon={Shield} label="Protected admins" value={stats.superAdmins} detail="Deletion disabled" color="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" />
+        <StatCard icon={Shield} label="Protected admins" value={stats.superAdmins} detail="Deletion disabled" color="bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300" />
         <StatCard icon={KeyRound} label="Social linked" value={stats.socialLinked} detail="Google or Facebook connected" color="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" />
       </div>
 

@@ -23,7 +23,7 @@ const steps = [
     title: 'Airline Profile',
     description: 'Configure airline details',
     icon: Sparkles,
-    color: 'from-purple-500 to-pink-500'
+    color: 'from-sky-500 to-cyan-500'
   },
   {
     id: 'support',

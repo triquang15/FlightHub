@@ -137,7 +137,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="space-y-4 text-center">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/20 sm:h-16 sm:w-16">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/20 sm:h-16 sm:w-16">
           <Shield className="w-8 h-8 text-white" />
         </div>
         <div>
@@ -208,7 +208,7 @@ const OwnerDetailsStep = ({ data, onDataChange, onNext }) => {
                 <Button
                   type="submit"
                   disabled={!isValid || isSubmitting}
-                  className="group h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 font-bold text-white shadow-xl shadow-blue-950/15 transition-all duration-300 hover:scale-[1.01] hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 dark:shadow-black/30 sm:h-14 sm:text-lg"
+                  className="group h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 font-bold text-white shadow-xl shadow-blue-950/15 transition-all duration-300 hover:scale-[1.01] hover:from-blue-700 hover:to-cyan-700 disabled:opacity-60 dark:shadow-black/30 sm:h-14 sm:text-lg"
                   size="lg"
                 >
                   {isSubmitting ? (

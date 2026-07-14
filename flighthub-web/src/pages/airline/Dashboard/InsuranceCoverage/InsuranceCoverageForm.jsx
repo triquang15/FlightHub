@@ -177,7 +177,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-3 rounded-lg">
+                <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-3 rounded-lg">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 {isEdit ? "Edit Insurance Coverage" : "Create New Insurance Coverage"}
@@ -286,10 +286,10 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                 </Card>
 
                 {/* Coverage Details */}
-                <Card className="border-l-4 border-l-purple-500">
+                <Card className="border-l-4 border-l-cyan-500">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-purple-600" />
+                      <FileText className="h-5 w-5 text-cyan-600" />
                       Coverage Details
                     </CardTitle>
                   </CardHeader>
@@ -301,7 +301,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                           htmlFor="coverageType"
                           className="flex items-center gap-2"
                         >
-                          <Shield className="h-4 w-4 text-purple-600" />
+                          <Shield className="h-4 w-4 text-cyan-600" />
                           Coverage Type *
                         </Label>
                         <Select
@@ -336,7 +336,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                       {/* Coverage Name */}
                       <div>
                         <Label htmlFor="name" className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-purple-600" />
+                          <FileText className="h-4 w-4 text-cyan-600" />
                           Coverage Name *
                         </Label>
                         <Field
@@ -364,7 +364,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                         htmlFor="description"
                         className="flex items-center gap-2"
                       >
-                        <Info className="h-4 w-4 text-purple-600" />
+                        <Info className="h-4 w-4 text-cyan-600" />
                         Description
                       </Label>
                       <Field
@@ -604,7 +604,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                 </Card>
 
                 {/* Coverage Summary */}
-                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-blue-900">
                       <Info className="h-5 w-5" />
@@ -723,7 +723,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 min-w-[140px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        className="flex items-center gap-2 min-w-[140px] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
                       >
                         <Save className="h-4 w-4" />
                         {isSubmitting

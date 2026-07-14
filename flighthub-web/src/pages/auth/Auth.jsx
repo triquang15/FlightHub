@@ -37,8 +37,8 @@ const Auth = ({ isLogin }) => {
           alt=""
           className="h-full w-full object-cover opacity-18 mix-blend-multiply dark:opacity-24 dark:mix-blend-screen"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.82)_0%,rgba(248,250,252,0.72)_52%,rgba(237,233,254,0.72)_100%)] dark:bg-[linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.9)_52%,rgba(88,28,135,0.6)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_18%,rgba(103,61,229,0.22),transparent_30%),linear-gradient(0deg,rgba(255,255,255,0.9),transparent_45%)] dark:bg-[radial-gradient(circle_at_75%_18%,rgba(124,58,237,0.52),transparent_30%),linear-gradient(0deg,rgba(2,6,23,1),transparent_45%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.84)_0%,rgba(248,250,252,0.74)_52%,rgba(224,242,254,0.7)_100%)] dark:bg-[linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.9)_52%,rgba(8,47,73,0.58)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_18%,rgba(14,165,233,0.2),transparent_30%),linear-gradient(0deg,rgba(255,255,255,0.9),transparent_45%)] dark:bg-[radial-gradient(circle_at_75%_18%,rgba(56,189,248,0.34),transparent_30%),linear-gradient(0deg,rgba(2,6,23,1),transparent_45%)]" />
       </div>
 
       <div className="pointer-events-none absolute inset-0 -z-10 opacity-55 dark:opacity-45">
@@ -82,7 +82,7 @@ const Auth = ({ isLogin }) => {
           transition={{ duration: 0.65, ease: 'easeOut' }}
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/60 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm backdrop-blur-xl dark:border-white/15 dark:bg-white/10 dark:text-white/90">
-            <Radar className="h-4 w-4 text-primary dark:text-violet-200" />
+            <Radar className="h-4 w-4 text-primary dark:text-cyan-200" />
             Secure workspace access
           </div>
 
@@ -138,7 +138,7 @@ const Auth = ({ isLogin }) => {
             </div>
               <div className="absolute -right-4 bottom-12 hidden rounded-3xl border border-white/70 bg-white/70 px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl [animation:float-panel_7s_ease-in-out_infinite_reverse] sm:block dark:border-white/10 dark:bg-white/10">
               <span className="flex items-center gap-2">
-                <Clock3 className="h-4 w-4 text-violet-200" />
+                <Clock3 className="h-4 w-4 text-cyan-200" />
                 Session aware
               </span>
             </div>

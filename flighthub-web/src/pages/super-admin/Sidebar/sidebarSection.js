@@ -107,7 +107,7 @@ export const sidebarSections = [
     id: "identity",
     title: "Identity & Security",
     icon: UserCog,
-    color: "from-violet-500 to-indigo-600",
+    color: "from-blue-500 to-cyan-600",
     items: [
       {
         id: "users-list",

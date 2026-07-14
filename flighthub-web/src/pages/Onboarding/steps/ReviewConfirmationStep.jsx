@@ -74,7 +74,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
     }
   };
 
-  const DataCard = ({ title, icon: Icon, children, onEdit, editLabel = "Edit", gradient = "from-blue-500 to-purple-600" }) => (
+  const DataCard = ({ title, icon: Icon, children, onEdit, editLabel = "Edit", gradient = "from-blue-500 to-cyan-500" }) => (
     <Card className="overflow-hidden rounded-lg border border-slate-200 bg-white/90 text-slate-950 shadow-sm transition-all duration-200 hover:shadow-md dark:border-white/10 dark:bg-white/[0.03] dark:text-white">
       <div className={`h-1 bg-gradient-to-r ${gradient}`}></div>
       <CardHeader className="border-b border-slate-200 pb-4 dark:border-white/10">
@@ -155,7 +155,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
           title="Airline Profile"
           icon={Plane}
           onEdit={() => onEdit(2)}
-          gradient="from-purple-500 to-pink-600"
+          gradient="from-sky-500 to-cyan-500"
         >
           <div className="space-y-0 rounded-lg bg-slate-50/80 p-3 dark:bg-slate-950/50">
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -172,7 +172,7 @@ const ReviewConfirmationStep = ({ formData, onEdit, onPrevious, onComplete }) =>
               <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-white/10 dark:bg-slate-950/60">
                 <div className="mb-1 text-sm text-slate-500 dark:text-slate-400">ICAO Code</div>
                 {formData.airline.icaoCode ? (
-                  <Badge variant="outline" className="border-purple-200 bg-purple-50 px-3 py-1 font-mono text-lg text-purple-800 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-200">
+                  <Badge variant="outline" className="border-sky-200 bg-sky-50 px-3 py-1 font-mono text-lg text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200">
                     {formData.airline.icaoCode}
                   </Badge>
                 ) : (

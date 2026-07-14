@@ -540,7 +540,7 @@ const AirlineManagement = ({ activeSection }) => {
               { label: "Visible airlines", value: filteredAirlines.length, icon: Building2, tone: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
               { label: "Active", value: activeCount, icon: CheckCircle, tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
               { label: "Pending review", value: pendingCount, icon: Clock, tone: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-              { label: "Registry complete", value: readyCount, icon: ShieldCheck, tone: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
+              { label: "Registry complete", value: readyCount, icon: ShieldCheck, tone: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300" },
             ].map(({ label, value, icon: Icon, tone }) => (
               <div key={label} className="rounded-lg border bg-background p-4">
                 <div className="flex items-center justify-between gap-3">

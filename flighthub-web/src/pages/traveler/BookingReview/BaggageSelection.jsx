@@ -52,9 +52,9 @@ const getCategoryConfig = (category = "CHECKED") => {
     return {
       icon: Package,
       label: "Cabin baggage",
-      shell: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-200",
-      iconShell: "bg-violet-50 dark:bg-violet-500/10",
-      iconColor: "text-violet-600 dark:text-violet-300",
+      shell: "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200",
+      iconShell: "bg-cyan-50 dark:bg-cyan-500/10",
+      iconColor: "text-cyan-600 dark:text-cyan-300",
     };
   }
 
