@@ -83,6 +83,13 @@ const getPaidAddOnAmount = (item, quantity = 1) => {
   return (Number.isFinite(Number(value)) ? Number(value) : 0) * quantity;
 };
 
+const formatCurrency = (amount = 0, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0);
+
 const getFareAmount = (fare, field, fallbackField) => {
   const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
   return Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -296,6 +303,13 @@ const BookingReview = () => {
         Boolean(selectedTravelProtection),
     },
   ];
+  const displayCurrency = String(
+    fareItems.find((item) => item.fare?.currency)?.fare?.currency ||
+      selectedFare?.currency ||
+      returnFare?.currency ||
+      selectedTravelProtection?.currency ||
+      "USD",
+  ).toUpperCase();
 
   // Helper function to calculate seat price
   const getSeatPrice = (seat) => {
@@ -390,10 +404,10 @@ const BookingReview = () => {
       setPromoCode(normalizedCode);
       setAppliedCoupon(coupon);
       toast.success("Promo code applied", {
-        description: `${normalizedCode} saved ${new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-        }).format(Number(coupon?.discountAmount || 0))}.`,
+        description: `${normalizedCode} saved ${formatCurrency(
+          coupon?.discountAmount,
+          displayCurrency,
+        )}.`,
       });
     } catch (error) {
       setAppliedCoupon(null);
@@ -868,7 +882,7 @@ const BookingReview = () => {
       } else if (result.success) {
         // No payment needed, booking confirmed
         toast.success(
-          `Booking confirmed! Total: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(grandTotal)}\nBooking Reference: ${
+          `Booking confirmed! Total: ${formatCurrency(grandTotal, displayCurrency)}\nBooking Reference: ${
             result.bookingReference || "N/A"
           }`,
           { id: "booking-toast", duration: 5000 },
@@ -1052,6 +1066,7 @@ const BookingReview = () => {
                   onProceedToPayment={handleProceedToPayment}
                   isLoading={bookingLoading}
                   totalPassengers={totalPassengers}
+                  currency={displayCurrency}
                 />
               </div>
             </div>
@@ -1063,7 +1078,7 @@ const BookingReview = () => {
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">Total Amount</p>
                 <p className="text-lg font-bold text-slate-950 dark:text-white">
-                  {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(pricingSummary.grandTotal)}
+                  {formatCurrency(pricingSummary.grandTotal, displayCurrency)}
                 </p>
               </div>
               <button

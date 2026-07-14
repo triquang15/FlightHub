@@ -7,7 +7,7 @@ const formatCurrency = (amount = 0, currency = 'USD') => new Intl.NumberFormat('
   currency,
 }).format(Number(amount) || 0);
 
-const FareItem = ({ label, amount, highlight = false, info = null }) => (
+const FareItem = ({ label, amount, highlight = false, info = null, currency = 'USD' }) => (
   <div className={`flex items-start justify-between py-2 ${highlight ? 'font-semibold' : ''}`}>
     <div className="flex items-center gap-1">
       <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -23,7 +23,7 @@ const FareItem = ({ label, amount, highlight = false, info = null }) => (
       )}
     </div>
     <span className={`text-sm ${highlight ? 'text-slate-950 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-      {formatCurrency(amount)}
+      {formatCurrency(amount, currency)}
     </span>
   </div>
 );
@@ -75,7 +75,8 @@ const FareSummaryCard = ({
   onApplyPromo,
   onProceedToPayment,
   isLoading = false,
-  totalPassengers
+  totalPassengers,
+  currency = 'USD',
 }) => {
 
   const [showBreakdown, setShowBreakdown] = useState(true);
@@ -86,6 +87,11 @@ const FareSummaryCard = ({
   const seatCharges = selectedSeats.reduce((sum, seat) => sum + (seat?.price || 0), 0);
   const mealCharges = (selectedMeals || []).reduce((sum, meal) => sum + (meal.price || 0) * mealQuantity(meal), 0);
   const selectedMealCount = (selectedMeals || []).reduce((sum, meal) => sum + mealQuantity(meal), 0);
+  const selectedBaggageCount = selectedBaggage.reduce((sum, bag) => sum + (Number(bag.quantity) || 0), 0);
+  const includedBaggageCount = selectedBaggage.reduce(
+    (sum, bag) => sum + (bag.includedInFare ? Number(bag.quantity) || 0 : 0),
+    0,
+  );
   const baggageCharges = selectedBaggage.reduce(
     (sum, bag) => sum + getPaidAddOnAmount(bag, Number(bag.quantity) || 0),
     0,
@@ -93,6 +99,7 @@ const FareSummaryCard = ({
 
   // Get insurance price from Redux data
   const travelProtectionCharge = getPaidAddOnAmount(travelProtection, passengerCount);
+  const hasIncludedTravelProtection = Boolean(travelProtection?.includedInFare);
 
   // Base fare calculations
   const normalizedFareItems = Array.isArray(fareItems) && fareItems.length
@@ -139,10 +146,10 @@ const FareSummaryCard = ({
             <span className="text-sm text-slate-600 dark:text-slate-300">Total Amount</span>
             <div className="text-right">
               <p className="text-2xl font-bold text-slate-950 dark:text-white">
-                {formatCurrency(grandTotal)}
+                {formatCurrency(grandTotal, currency)}
               </p>
               {savings > 0 && (
-                <p className="text-xs font-medium text-green-600 dark:text-green-300">You save {formatCurrency(savings)}</p>
+                <p className="text-xs font-medium text-green-600 dark:text-green-300">You save {formatCurrency(savings, currency)}</p>
               )}
             </div>
           </div>
@@ -187,11 +194,13 @@ const FareSummaryCard = ({
                       <FareItem
                         label={`Base Fare x ${passengerCount}`}
                         amount={itemBaseFare}
+                        currency={currency}
                         info="Basic ticket price before taxes and fees"
                       />
                       <FareItem
                         label={`Taxes & Fees x ${passengerCount}`}
                         amount={itemTaxes}
+                        currency={currency}
                         info="Government taxes and airline fees"
                       />
                     </div>
@@ -200,26 +209,37 @@ const FareSummaryCard = ({
               </div>
 
               {/* Add-ons */}
-              {(seatCharges > 0 || mealCharges > 0 || baggageCharges > 0 || travelProtectionCharge > 0) && (
+              {(seatCharges > 0 || mealCharges > 0 || baggageCharges > 0 || travelProtectionCharge > 0 || includedBaggageCount > 0 || hasIncludedTravelProtection) && (
                 <div className="border-b border-slate-200 py-3 dark:border-white/10">
                   <p className="mb-2 text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">
                     Add-ons
                   </p>
                   {seatCharges > 0 && (
-                    <FareItem label="Seat Selection" amount={seatCharges} />
+                    <FareItem label="Seat Selection" amount={seatCharges} currency={currency} />
                   )}
                   {mealCharges > 0 && (
-                    <FareItem label={`Meals (${selectedMealCount})`} amount={mealCharges} />
+                    <FareItem label={`Meals (${selectedMealCount})`} amount={mealCharges} currency={currency} />
                   )}
                   {baggageCharges > 0 && (
                     <FareItem
-                      label={`Extra Baggage (${selectedBaggage.reduce((sum, b) => sum + b.quantity, 0)} bags)`}
+                      label={`Extra Baggage (${selectedBaggageCount} bags)`}
                       amount={baggageCharges}
+                      currency={currency}
                     />
                   )}
-                  
+                  {includedBaggageCount > 0 && (
+                    <FareItem
+                      label={`Included Baggage (${includedBaggageCount} bags)`}
+                      amount={0}
+                      currency={currency}
+                    />
+                  )}
+
                   {travelProtectionCharge > 0 && (
-                    <FareItem label={`Travel Insurance x ${passengerCount}`} amount={travelProtectionCharge} />
+                    <FareItem label={`Travel Insurance x ${passengerCount}`} amount={travelProtectionCharge} currency={currency} />
+                  )}
+                  {hasIncludedTravelProtection && (
+                    <FareItem label="Travel Insurance included" amount={0} currency={currency} />
                   )}
                 </div>
               )}
@@ -229,6 +249,7 @@ const FareSummaryCard = ({
                   <FareItem
                     label={`Promo ${appliedCoupon?.code || promoCode}`}
                     amount={-discountAmount}
+                    currency={currency}
                   />
                 </div>
               )}
@@ -239,6 +260,7 @@ const FareSummaryCard = ({
                   label="Grand Total"
                   amount={grandTotal}
                   highlight={true}
+                  currency={currency}
                 />
               </div>
             </motion.div>
@@ -285,7 +307,7 @@ const FareSummaryCard = ({
           </div>
           {appliedCoupon && (
             <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-200">
-              {appliedCoupon.code} applied. You saved {formatCurrency(discountAmount)}.
+              {appliedCoupon.code} applied. You saved {formatCurrency(discountAmount, currency)}.
             </p>
           )}
         </div>

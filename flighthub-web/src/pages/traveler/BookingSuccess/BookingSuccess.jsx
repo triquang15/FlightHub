@@ -93,6 +93,17 @@ const BookingSuccess = () => {
   const isPaymentCancelled = ["cancelled", "canceled", "cancel", "failed"].includes(
     paymentStatusParam?.toString().toLowerCase()
   )
+  const storedPayment = useMemo(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("paymentDetails") || "null")
+    } catch {
+      return null
+    }
+  }, [])
+  const callbackPaymentId = Number(searchParams.get("paymentId") || storedPayment?.paymentId)
+  const stripeSessionId = searchParams.get("session_id")
+  const paypalOrderId = searchParams.get("token")
+  const hasProviderCallback = Boolean(callbackPaymentId && (stripeSessionId || paypalOrderId))
 
   const refreshBookingUntilSettled = useCallback(async () => {
     if (!bookingId) return null
@@ -126,23 +137,19 @@ const BookingSuccess = () => {
       return
     }
 
-    let storedPayment
-    try {
-      storedPayment = JSON.parse(sessionStorage.getItem("paymentDetails") || "null")
-    } catch {
-      storedPayment = null
+    if (callbackPaymentId && !stripeSessionId && !paypalOrderId) {
+      hasProcessedPaymentRef.current = true
+      setPaymentCallbackError("Payment provider reference is missing. Please refresh the booking status or check My bookings.")
+      return
     }
 
-    const paymentId = Number(searchParams.get("paymentId") || storedPayment?.paymentId)
-    const stripeSessionId = searchParams.get("session_id")
-    const paypalOrderId = searchParams.get("token")
-
-    if (!paymentId || (!stripeSessionId && !paypalOrderId)) return
+    if (!hasProviderCallback) return
 
     hasProcessedPaymentRef.current = true
     setSyncingConfirmation(true)
     try {
-      await dispatch(verifyPayment({ paymentId, stripeSessionId, paypalOrderId })).unwrap()
+      setPaymentCallbackError(null)
+      await dispatch(verifyPayment({ paymentId: callbackPaymentId, stripeSessionId, paypalOrderId })).unwrap()
       sessionStorage.removeItem("paymentDetails")
       const latest = await refreshBookingUntilSettled()
       toast.success(
@@ -162,7 +169,16 @@ const BookingSuccess = () => {
     } finally {
       setSyncingConfirmation(false)
     }
-  }, [bookingId, dispatch, isPaymentCancelled, refreshBookingUntilSettled, searchParams])
+  }, [
+    bookingId,
+    callbackPaymentId,
+    dispatch,
+    hasProviderCallback,
+    isPaymentCancelled,
+    paypalOrderId,
+    refreshBookingUntilSettled,
+    stripeSessionId,
+  ])
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -199,6 +215,31 @@ const BookingSuccess = () => {
       toast.error(cancelError || "Could not cancel this booking")
     } finally {
       setCancellingBooking(false)
+    }
+  }
+
+  const handleRetryPaymentVerification = async () => {
+    hasProcessedPaymentRef.current = false
+    await processPayment()
+  }
+
+  const handleRefreshStatus = async () => {
+    if (!bookingId) return
+    try {
+      setSyncingConfirmation(true)
+      const latest = await refreshBookingUntilSettled()
+      if (latest?.status === "CONFIRMED") {
+        setPaymentCallbackError(null)
+        toast.success("Booking is confirmed. Your e-ticket is ready.")
+      } else if (latest?.status === "CANCELLED") {
+        toast.error("Booking is cancelled.")
+      } else {
+        toast.info("Booking is still pending payment confirmation.")
+      }
+    } catch (refreshError) {
+      toast.error(refreshError || "Could not refresh booking status")
+    } finally {
+      setSyncingConfirmation(false)
     }
   }
 
@@ -471,6 +512,18 @@ const BookingSuccess = () => {
                 <FileText className="mr-2 h-4 w-4" />
                 All bookings
               </Button>
+              {(pending || paid || paymentCallbackError) && (
+                <Button onClick={handleRefreshStatus} variant="outline" className="w-full rounded-xl">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh status
+                </Button>
+              )}
+              {paymentCallbackError && hasProviderCallback && booking.status !== "CANCELLED" && (
+                <Button onClick={handleRetryPaymentVerification} className="w-full rounded-xl">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry payment check
+                </Button>
+              )}
               {pending && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

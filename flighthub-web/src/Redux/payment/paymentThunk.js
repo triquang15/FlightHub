@@ -2,6 +2,17 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 const API_URL = "/api/payments";
 const unwrapApiData = (response) => response?.data?.data ?? response?.data;
+const getApiErrorMessage = (err, fallback) => {
+  const payload = err.response?.data;
+  return (
+    payload?.message ||
+    payload?.error ||
+    payload?.errorMessage ||
+    payload?.errorCode ||
+    err.message ||
+    fallback
+  );
+};
 
 
 // ---------- VERIFY PAYMENT ----------
@@ -16,7 +27,7 @@ export const verifyPayment = createAsyncThunk(
       const res = await api.post(`${API_URL}/verify`, request);
       return unwrapApiData(res);
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || "Failed to verify payment");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to verify payment"));
     }
   }
 );
