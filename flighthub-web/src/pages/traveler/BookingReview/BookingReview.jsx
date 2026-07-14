@@ -77,6 +77,12 @@ const getSelectedTravelProtection = (payload) => {
   return payload || null;
 };
 
+const getPaidAddOnAmount = (item, quantity = 1) => {
+  if (!item || item.includedInFare) return 0;
+  const value = item.price ?? item.totalPrice ?? item.ancillary?.price ?? 0;
+  return (Number.isFinite(Number(value)) ? Number(value) : 0) * quantity;
+};
+
 const getFareAmount = (fare, field, fallbackField) => {
   const value = fare?.[field] ?? fare?.[fallbackField] ?? 0;
   return Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -315,10 +321,10 @@ const BookingReview = () => {
       0,
     );
     const baggageCharges = selectedBaggage.reduce(
-      (sum, bag) => sum + (bag.price || 0) * (bag.quantity || 0),
+      (sum, bag) => sum + getPaidAddOnAmount(bag, Number(bag.quantity) || 0),
       0,
     );
-    const travelProtectionCharge = selectedTravelProtection?.price || 0;
+    const travelProtectionCharge = getPaidAddOnAmount(selectedTravelProtection);
     const baseFare = fareItems.reduce(
       (sum, item) => sum + getFareAmount(item.fare, "baseFare", "price") * passengerCount,
       0,
@@ -670,13 +676,12 @@ const BookingReview = () => {
       0,
     );
     const baggageCharges = selectedBaggage.reduce(
-      (sum, bag) => sum + (bag.price || 0) * (bag.quantity || 0),
+      (sum, bag) => sum + getPaidAddOnAmount(bag, Number(bag.quantity) || 0),
       0,
     );
 
     const travelProtectionData = travelProtectionPackage;
-    const travelProtectionCharge =
-      selectedTravelProtection?.price || travelProtectionData?.price || 0;
+    const travelProtectionCharge = getPaidAddOnAmount(selectedTravelProtection);
 
 
     const baseFare = fareItems.reduce(

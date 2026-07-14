@@ -14,16 +14,19 @@ import {
 } from "lucide-react";
 import { useSelector } from "react-redux";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+const formatCurrency = (amount = 0, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(amount) || 0);
 
-const normalizePackage = (payload) => {
-  if (Array.isArray(payload)) return payload[0] || null;
-  if (Array.isArray(payload?.data)) return payload.data[0] || null;
-  if (Array.isArray(payload?.content)) return payload.content[0] || null;
-  return payload || null;
+const normalizePackages = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return payload ? [payload] : [];
 };
 
 const getCoverageIcon = (coverageType) => {
@@ -46,16 +49,36 @@ const formatCoverageType = (value = "") =>
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const getPackagePrice = (option) => {
+  const value = option?.price ?? option?.totalPrice ?? option?.ancillary?.price ?? 0;
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+};
+
+const normalizeProtectionOption = (option) => ({
+  ...option,
+  price: getPackagePrice(option),
+  currency: String(option?.currency || option?.ancillary?.currency || "USD").toUpperCase(),
+  includedInFare: Boolean(option?.includedInFare),
+  available: option?.available !== false && option?.status !== "INACTIVE",
+});
+
 const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
   const [showDetails, setShowDetails] = useState(false);
   const { ancillariesByType } = useSelector(
     (state) => state.flightCabinAncillary,
   );
 
-  const tripSecureData = useMemo(
-    () => normalizePackage(ancillariesByType.TRAVEL_PROTECTION),
+  const protectionOptions = useMemo(
+    () => normalizePackages(ancillariesByType.TRAVEL_PROTECTION).map(normalizeProtectionOption),
     [ancillariesByType.TRAVEL_PROTECTION],
   );
+  const availableOptions = protectionOptions.filter((option) => option.available);
+  const selectedOptionId = selectedTravelProtection?.id || selectedTravelProtection?.ancillaryId;
+  const tripSecureData =
+    availableOptions.find((option) => (option.id || option.ancillaryId) === selectedOptionId) ||
+    selectedTravelProtection ||
+    availableOptions[0] ||
+    null;
 
   const coverages = Array.isArray(tripSecureData?.ancillary?.coverages)
     ? tripSecureData.ancillary.coverages
@@ -69,6 +92,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
     0,
   );
   const insurancePrice = Number(tripSecureData?.price || 0);
+  const insuranceCurrency = tripSecureData?.currency || "USD";
   const insuranceName = tripSecureData?.ancillary?.name || "Travel Protection";
   const insuranceDescription =
     tripSecureData?.ancillary?.description ||
@@ -79,7 +103,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
   const isSelected = Boolean(selectedTravelProtection);
 
   const handleSelection = (value) => {
-    onSelectTravelProtection(value === "yes" ? tripSecureData : null);
+    onSelectTravelProtection(value === "yes" && tripSecureData ? tripSecureData : null);
   };
 
   return (
@@ -108,7 +132,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
             <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-left sm:text-right dark:border-blue-400/20 dark:bg-blue-500/10">
               <p className="text-xs text-slate-600 dark:text-slate-300">Per passenger</p>
               <p className="text-lg font-bold text-blue-700 dark:text-blue-200">
-                {currencyFormatter.format(insurancePrice)}
+                {tripSecureData.includedInFare ? "Included" : formatCurrency(insurancePrice, insuranceCurrency)}
               </p>
             </div>
           )}
@@ -116,7 +140,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
       </div>
 
       <div className="p-6">
-        {!tripSecureData ? (
+        {!availableOptions.length ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center dark:border-white/10 dark:bg-slate-950/40">
             <ShieldCheck className="mx-auto mb-2 h-9 w-9 text-slate-400 dark:text-slate-500" />
             <p className="text-sm font-semibold text-slate-950 dark:text-white">
@@ -128,6 +152,42 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
           </div>
         ) : (
           <>
+            {availableOptions.length > 1 && (
+              <div className="mb-5 grid gap-3 md:grid-cols-2">
+                {availableOptions.map((option) => {
+                  const optionId = option.id || option.ancillaryId;
+                  const optionSelected = selectedOptionId === optionId;
+
+                  return (
+                    <button
+                      key={optionId}
+                      type="button"
+                      onClick={() => onSelectTravelProtection(option)}
+                      className={`rounded-lg border p-4 text-left transition-all ${
+                        optionSelected
+                          ? "border-blue-500 bg-blue-50 shadow-sm dark:border-blue-300 dark:bg-blue-500/10"
+                          : "border-slate-200 bg-white hover:border-blue-300 dark:border-white/10 dark:bg-slate-950/40 dark:hover:border-blue-400/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-950 dark:text-white">
+                            {option.ancillary?.name || "Travel Protection"}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            {option.ancillary?.description || "Trip disruption coverage"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-sm font-bold text-blue-700 dark:text-blue-200">
+                          {option.includedInFare ? "Included" : formatCurrency(option.price, option.currency)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/40">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -136,7 +196,9 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
                   </p>
                   <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
                     {isSelected
-                      ? `Added for ${currencyFormatter.format(insurancePrice)} per passenger.`
+                      ? tripSecureData.includedInFare
+                        ? "Included in your fare for every passenger."
+                        : `Added for ${formatCurrency(insurancePrice, insuranceCurrency)} per passenger.`
                       : "You can continue without insurance; claims support will not be included."}
                   </p>
                 </div>
@@ -187,7 +249,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
                         </div>
                         {coverage.coverageAmount > 0 && (
                           <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                            {currencyFormatter.format(coverage.coverageAmount)}
+                            {formatCurrency(coverage.coverageAmount, insuranceCurrency)}
                           </p>
                         )}
                       </div>
@@ -247,7 +309,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
                                 </div>
                                 {coverage.coverageAmount > 0 && (
                                   <span className="shrink-0 text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                                    {currencyFormatter.format(coverage.coverageAmount)}
+                                    {formatCurrency(coverage.coverageAmount, insuranceCurrency)}
                                   </span>
                                 )}
                               </div>
@@ -275,7 +337,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
                             </p>
                           </div>
                           <p className="shrink-0 text-lg font-bold text-blue-700 dark:text-blue-200">
-                            {currencyFormatter.format(totalCoverage)}
+                            {formatCurrency(totalCoverage, insuranceCurrency)}
                           </p>
                         </div>
                       </div>

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards, Loader2, X } from 'lucide-react';
 
-const formatCurrency = (amount = 0) => new Intl.NumberFormat('en-US', {
+const formatCurrency = (amount = 0, currency = 'USD') => new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'USD',
+  currency,
 }).format(Number(amount) || 0);
 
 const FareItem = ({ label, amount, highlight = false, info = null }) => (
@@ -34,6 +34,12 @@ const getFareAmount = (fare, field, fallbackField) => {
 };
 
 const mealQuantity = (meal) => Math.max(Number(meal?.quantity) || 1, 1);
+
+const getPaidAddOnAmount = (item, quantity = 1) => {
+  if (!item || item.includedInFare) return 0;
+  const value = item.price ?? item.totalPrice ?? item.ancillary?.price ?? 0;
+  return (Number.isFinite(Number(value)) ? Number(value) : 0) * quantity;
+};
 
 const PAYMENT_OPTIONS = [
   {
@@ -80,10 +86,13 @@ const FareSummaryCard = ({
   const seatCharges = selectedSeats.reduce((sum, seat) => sum + (seat?.price || 0), 0);
   const mealCharges = (selectedMeals || []).reduce((sum, meal) => sum + (meal.price || 0) * mealQuantity(meal), 0);
   const selectedMealCount = (selectedMeals || []).reduce((sum, meal) => sum + mealQuantity(meal), 0);
-  const baggageCharges = selectedBaggage.reduce((sum, bag) => sum + ((bag.price || 0) * (bag.quantity || 0)), 0);
+  const baggageCharges = selectedBaggage.reduce(
+    (sum, bag) => sum + getPaidAddOnAmount(bag, Number(bag.quantity) || 0),
+    0,
+  );
 
   // Get insurance price from Redux data
-  const travelProtectionCharge = (travelProtection?.price || 0) * passengerCount;
+  const travelProtectionCharge = getPaidAddOnAmount(travelProtection, passengerCount);
 
   // Base fare calculations
   const normalizedFareItems = Array.isArray(fareItems) && fareItems.length
