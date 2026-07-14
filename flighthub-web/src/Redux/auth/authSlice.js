@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
-import { appleLogin, googleLogin, login, signup, forgotPassword, resetPassword } from "./authThunk";
+import { facebookLogin, googleLogin, login, signup, forgotPassword, resetPassword } from "./authThunk";
 import { getUserProfile, updateUserProfile, logout } from "../user/userThunks";
 import { getAccessToken, hasValidAccessToken } from "@/utils/authStorage";
 
@@ -112,18 +112,18 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // ================= APPLE LOGIN =================
-      .addCase(appleLogin.pending, (state) => {
+      // ================= FACEBOOK LOGIN =================
+      .addCase(facebookLogin.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(appleLogin.fulfilled, (state, action) => {
+      .addCase(facebookLogin.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
         state.isAuthenticated = true;
         state.error = null;
       })
-      .addCase(appleLogin.rejected, (state, action) => {
+      .addCase(facebookLogin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

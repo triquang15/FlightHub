@@ -79,6 +79,10 @@ function getInitials(user) {
     .join("") || "?";
 }
 
+function getUserAvatarSrc(user) {
+  return user?.avatarUrl || user?.profilePicture || "";
+}
+
 function getAccountState(user) {
   if (user?.active === false) {
     return {
@@ -104,6 +108,11 @@ function getLoginProviderMeta(provider) {
       return {
         label: "Google",
         color: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+      };
+    case "FACEBOOK":
+      return {
+        label: "Facebook",
+        color: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
       };
     case "APPLE":
       return {
@@ -176,7 +185,7 @@ function getProviderLoginLabel(provider, dateStr) {
 function getCompactProviderLoginLabel(provider, dateStr) {
   const providerLabel = getLoginProviderMeta(provider).label;
   const compact = formatCompactDate(dateStr);
-  return `${providerLabel} · ${compact.date}`;
+  return `${providerLabel} · ${compact.date}${compact.time ? `, ${compact.time}` : ""}`;
 }
 
 function titleOrUndefined(value) {
@@ -533,7 +542,7 @@ const UserManagement = () => {
     const activeUsers = filtered.filter((u) => u.active !== false).length;
     const airlineOwners = safeUsers.filter((u) => u.role === "ROLE_AIRLINE_OWNER").length;
     const superAdmins = safeUsers.filter((u) => u.role === SYSTEM_ADMIN_ROLE).length;
-    const socialLinked = safeUsers.filter((u) => getLoginProviders(u).some((provider) => provider === "GOOGLE" || provider === "APPLE")).length;
+    const socialLinked = safeUsers.filter((u) => getLoginProviders(u).some((provider) => provider === "GOOGLE" || provider === "FACEBOOK")).length;
     return { visible: visibleUsers, active: activeUsers, airlineOwners, superAdmins, socialLinked };
   }, [filtered, safeUsers]);
 
@@ -715,7 +724,7 @@ const UserManagement = () => {
         <StatCard icon={UserCheck} label="Active visible" value={stats.active} detail="Accounts not disabled" color="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" />
         <StatCard icon={Plane} label="Airline owners" value={stats.airlineOwners} detail="Current page count" color="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" />
         <StatCard icon={Shield} label="Protected admins" value={stats.superAdmins} detail="Deletion disabled" color="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" />
-        <StatCard icon={KeyRound} label="Social linked" value={stats.socialLinked} detail="Google or Apple connected" color="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" />
+        <StatCard icon={KeyRound} label="Social linked" value={stats.socialLinked} detail="Google or Facebook connected" color="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" />
       </div>
 
       {/* filters */}
@@ -820,7 +829,7 @@ const UserManagement = () => {
           <option value="all">All Login Methods</option>
           <option value="PASSWORD">Password</option>
           <option value="GOOGLE">Google</option>
-          <option value="APPLE">Apple</option>
+          <option value="FACEBOOK">Facebook</option>
         </select>
 
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
@@ -937,6 +946,7 @@ const UserManagement = () => {
                 const compactProviderLoginLabel = getCompactProviderLoginLabel(lastProvider, providerLoginAt);
                 const lastLogin = formatCompactDate(user.lastLogin);
                 const created = formatCompactDate(user.createdAt, "—");
+                const avatarSrc = getUserAvatarSrc(user);
 
                 return (
                   <tr
@@ -953,19 +963,25 @@ const UserManagement = () => {
                       <div className="flex min-w-0 items-center gap-3">
 
                         {/* avatar */}
-                        <div
-                          className="
-                            h-10 w-10 shrink-0 rounded-full
-                            bg-gradient-to-br from-indigo-100 to-indigo-200
-                            dark:from-indigo-800 dark:to-indigo-700
-                            flex items-center justify-center
-                            text-indigo-600 dark:text-indigo-200
-                            font-semibold text-xs
-                            shadow-sm
-                          "
-                        >
-                          {getInitials(user)}
-                        </div>
+                        {avatarSrc ? (
+                          <img
+                            src={avatarSrc}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            className="
+                              flex h-10 w-10 shrink-0 items-center justify-center rounded-full
+                              bg-gradient-to-br from-indigo-100 to-indigo-200
+                              text-xs font-semibold text-indigo-600 shadow-sm
+                              dark:from-indigo-800 dark:to-indigo-700 dark:text-indigo-200
+                            "
+                          >
+                            {getInitials(user)}
+                          </div>
+                        )}
 
                         <div className="min-w-0">
                           <p
@@ -978,6 +994,11 @@ const UserManagement = () => {
                           {user.username && (
                             <p className="truncate text-xs text-gray-400 dark:text-gray-500" title={user.username}>
                               @{user.username}
+                            </p>
+                          )}
+                          {user.hasCustomAvatar && (
+                            <p className="truncate text-[11px] text-indigo-500 dark:text-indigo-300">
+                              Custom profile photo
                             </p>
                           )}
                         </div>

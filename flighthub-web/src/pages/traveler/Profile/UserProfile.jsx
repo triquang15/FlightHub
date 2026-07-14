@@ -24,6 +24,9 @@ import {
   Clock3,
   Eye,
   EyeOff,
+  Fingerprint,
+  Image as ImageIcon,
+  KeyRound,
   Lock,
   Mail,
   Pencil,
@@ -67,6 +70,21 @@ const passwordSchema = Yup.object({
 const formatRole = (role) =>
   role ? role.replace("ROLE_", "").replaceAll("_", " ") : "Traveler"
 
+const formatProvider = (provider) => {
+  switch (provider) {
+    case "GOOGLE":
+      return "Google"
+    case "FACEBOOK":
+      return "Facebook"
+    case "APPLE":
+      return "Apple"
+    case "PASSWORD":
+      return "Password"
+    default:
+      return provider || "Password"
+  }
+}
+
 const formatDate = (value) => {
   if (!value) return "Not available"
 
@@ -100,6 +118,23 @@ const DetailRow = ({ icon: Icon, label, value }) => (
     </div>
   </div>
 )
+
+const LoginMethodBadge = ({ provider }) => {
+  const label = formatProvider(provider)
+  const className = {
+    GOOGLE: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300",
+    FACEBOOK: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300",
+    APPLE: "border-slate-300 bg-slate-950 text-white dark:border-slate-700 dark:bg-white dark:text-slate-950",
+    PASSWORD: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
+  }[provider] || "border-border bg-muted text-muted-foreground"
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>
+      <KeyRound className="h-3.5 w-3.5" />
+      {label}
+    </span>
+  )
+}
 
 const passwordRules = [
   {
@@ -269,6 +304,12 @@ const UserProfile = ({
   }
 
   const avatarSrc = user.avatarUrl || user.profilePicture
+  const loginProviders = Array.isArray(user.loginProviders) && user.loginProviders.length > 0
+    ? user.loginProviders
+    : ["PASSWORD"]
+  const lastLoginProvider = user.lastLoginProvider || loginProviders[0]
+  const lastProviderLoginAt = user.lastProviderLoginAt || user.lastLogin
+  const hasPasswordLogin = loginProviders.includes("PASSWORD")
 
   return (
     <main className={embedded ? "w-full" : "app-page-surface min-h-screen px-4 py-8 sm:px-6 lg:px-8"}>
@@ -376,7 +417,11 @@ const UserProfile = ({
                     )}
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    JPG, PNG, or WEBP. Maximum 5MB.
+                    {user.hasCustomAvatar
+                      ? "Stored as your FlightHub profile photo."
+                      : avatarSrc
+                        ? "Using your connected account photo until you upload one."
+                        : "JPG, PNG, or WEBP. Maximum 5MB."}
                   </p>
                 </div>
               </CardContent>
@@ -387,6 +432,34 @@ const UserProfile = ({
                 <DetailRow icon={ShieldCheck} label="Role" value={formatRole(user.role)} />
                 <DetailRow icon={CalendarDays} label="Member since" value={formatDate(user.createdAt)} />
                 <DetailRow icon={Clock3} label="Last login" value={formatDate(user.lastLogin)} />
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-lg">
+              <CardContent className="space-y-4 p-6">
+                <div>
+                  <h2 className="text-base font-semibold">Login methods</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Connected sign-in methods for this account.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {loginProviders.map((provider) => (
+                    <LoginMethodBadge key={provider} provider={provider} />
+                  ))}
+                </div>
+                <div className="grid gap-3">
+                  <DetailRow
+                    icon={Fingerprint}
+                    label="Last method"
+                    value={`${formatProvider(lastLoginProvider)} · ${formatDate(lastProviderLoginAt)}`}
+                  />
+                  <DetailRow
+                    icon={ImageIcon}
+                    label="Profile photo source"
+                    value={user.hasCustomAvatar ? "Uploaded profile photo" : avatarSrc ? "Connected account photo" : "Initials fallback"}
+                  />
+                </div>
               </CardContent>
             </Card>
           </aside>
@@ -506,9 +579,15 @@ const UserProfile = ({
                   </div>
                 </div>
 
-                <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
-                  Change password
-                </Button>
+                {hasPasswordLogin ? (
+                  <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
+                    Change password
+                  </Button>
+                ) : (
+                  <Badge variant="secondary" className="w-fit">
+                    Social sign-in account
+                  </Badge>
+                )}
               </CardContent>
             </Card>
           </div>

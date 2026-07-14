@@ -77,20 +77,20 @@ export const googleLogin = createAsyncThunk(
   }
 );
 
-export const appleLogin = createAsyncThunk(
-  "auth/appleLogin",
-  async ({ idToken, fullName, rememberMe = true }, { rejectWithValue }) => {
+export const facebookLogin = createAsyncThunk(
+  "auth/facebookLogin",
+  async ({ accessToken, rememberMe = true }, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/auth/apple", { idToken, fullName });
+      const res = await api.post("/api/auth/facebook", { accessToken });
       const authResponse = res.data.data;
 
       setAuthTokens(authResponse, rememberMe);
-      toast.success("Logged in with Apple");
+      toast.success("Logged in with Facebook");
 
       return authResponse;
     } catch (err) {
-      console.error("Apple login error:", err);
-      const message = err.response?.data?.message || "Apple login failed";
+      console.error("Facebook login error:", err);
+      const message = err.response?.data?.message || "Facebook login failed";
       toast.error(message);
       return rejectWithValue(message);
     }

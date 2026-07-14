@@ -34,6 +34,7 @@ import com.triquang.repository.UserRepository;
 import com.triquang.repository.UserPreferencesRepository;
 import com.triquang.service.AppleIdentityService;
 import com.triquang.service.AuthService;
+import com.triquang.service.FacebookIdentityService;
 import com.triquang.service.GoogleIdentityService;
 import com.triquang.service.SuspiciousLoginService;
 import com.triquang.utils.TokenHashUtil;
@@ -61,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final TokenHashUtil tokenHashUtil;
     private final SuspiciousLoginService suspiciousLoginService;
     private final AppleIdentityService appleIdentityService;
+    private final FacebookIdentityService facebookIdentityService;
     private final GoogleIdentityService googleIdentityService;
     private final PasswordEncoder passwordEncoder;
 
@@ -232,6 +234,74 @@ public class AuthServiceImpl implements AuthService {
 
         user.setLastLogin(LocalDateTime.now());
         auditService.saveLoginAudit(normalizedEmail, true, AuthProvider.GOOGLE, ip, agent);
+
+        upsertKnownDevice(user, normalizedDeviceId, ip, agent);
+        upsertSession(user, normalizedDeviceId, ip, agent);
+
+        return buildAuthResponse(user, normalizedDeviceId, ip, agent);
+    }
+
+    // ================= FACEBOOK LOGIN =================
+    @Override
+    public AuthResponse loginWithFacebook(String accessToken,
+                                          String deviceId, String ip, String agent) {
+
+        String normalizedDeviceId = normalizeDeviceId(deviceId);
+        FacebookIdentityService.FacebookIdentity identity = facebookIdentityService.verify(accessToken);
+        String normalizedEmail = normalizeEmail(identity.email());
+
+        User user = userIdentityRepository
+                .findByProviderAndProviderUserId(AuthProvider.FACEBOOK, identity.subject())
+                .map(UserIdentity::getUser)
+                .orElseGet(() -> userRepository.findByEmail(normalizedEmail)
+                        .map(existing -> {
+                            if (!existing.isActive()) throw new BaseException(ErrorCode.ACCOUNT_DISABLED);
+                            if (!existing.isVerified()) existing.setVerified(true);
+                            if (trimToNull(existing.getFullName()) == null && trimToNull(identity.name()) != null) {
+                                existing.setFullName(trimToNull(identity.name()));
+                            }
+                            return existing;
+                        })
+                        .orElseGet(() -> {
+                            User createdUser = User.builder()
+                                    .email(normalizedEmail)
+                                    .password(passwordEncoder.encode("FACEBOOK_AUTH_" + UUID.randomUUID()))
+                                    .fullName(resolveFacebookName(identity, normalizedEmail))
+                                    .role(UserRole.ROLE_CUSTOMER)
+                                    .verified(true)
+                                    .active(true)
+                                    .build();
+
+                            User saved = userRepository.save(createdUser);
+                            userPreferencesRepository.save(UserPreferences.builder()
+                                    .user(saved)
+                                    .build());
+                            return saved;
+                        }));
+
+        if (!user.isActive()) throw new BaseException(ErrorCode.ACCOUNT_DISABLED);
+
+        upsertUserIdentity(
+                user,
+                AuthProvider.FACEBOOK,
+                identity.subject(),
+                normalizedEmail,
+                identity.name(),
+                identity.picture()
+        );
+
+        boolean suspicious = suspiciousLoginService.isSuspicious(
+                user.getId(), normalizedEmail, normalizedDeviceId, ip
+        );
+
+        if (suspicious) {
+            suspiciousLoginService.handleSuspicious(
+                    user.getId(), normalizedEmail, normalizedDeviceId, ip
+            );
+        }
+
+        user.setLastLogin(LocalDateTime.now());
+        auditService.saveLoginAudit(normalizedEmail, true, AuthProvider.FACEBOOK, ip, agent);
 
         upsertKnownDevice(user, normalizedDeviceId, ip, agent);
         upsertSession(user, normalizedDeviceId, ip, agent);
@@ -458,6 +528,20 @@ public class AuthServiceImpl implements AuthService {
 
     private String resolveAppleName(AppleIdentityService.AppleIdentity identity, String email) {
         String name = trimToNull(identity.fullName());
+        if (name != null) {
+            return name;
+        }
+
+        int atIndex = email.indexOf('@');
+        if (atIndex > 0) {
+            return email.substring(0, atIndex);
+        }
+
+        return email;
+    }
+
+    private String resolveFacebookName(FacebookIdentityService.FacebookIdentity identity, String email) {
+        String name = trimToNull(identity.name());
         if (name != null) {
             return name;
         }

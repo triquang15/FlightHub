@@ -204,7 +204,7 @@ bash microservices/scripts/local-infra.sh frontend-down
 The Docker frontend service mounts `flighthub-web` into a Node container, keeps
 `node_modules` in a named Docker volume, and serves Vite on
 `http://localhost:${FRONTEND_HOST_PORT:-5173}`. Vite still reads
-`flighthub-web/.env.local`, so Google/Apple login variables do not need to be
+`flighthub-web/.env.local`, so Google/Facebook login variables do not need to be
 duplicated in Docker Compose.
 
 Google sign-in is optional. To enable it locally, create an OAuth 2.0 Web
@@ -223,28 +223,28 @@ VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
 If these values are empty, password login still works and the Google button
 shows a clear configuration warning.
 
-Apple sign-in is optional. To enable it locally, create a Sign in with Apple
-Service ID in the Apple Developer portal, enable Sign in with Apple, and allow
-this web redirect URL:
+Facebook login is optional. To enable it locally, create a Facebook app in Meta
+for Developers, add Facebook Login for web, and allow this site URL/domain:
 
 ```text
-http://localhost:5173/login
+http://localhost:5173
+localhost
 ```
 
-Then set the same Service ID for backend token verification and frontend Apple
-JS:
+Then set the frontend app id plus backend app id/secret for Graph API token
+verification:
 
 ```bash
 # Backend user-service, read by microservices/scripts/run-local-service.sh
-APPLE_CLIENT_ID=com.example.flighthub.web
+FACEBOOK_APP_ID=your-facebook-app-id
+FACEBOOK_APP_SECRET=your-facebook-app-secret
 
 # Frontend Vite, export before running npm run dev or place in flighthub-web/.env.local
-VITE_APPLE_CLIENT_ID=com.example.flighthub.web
-VITE_APPLE_REDIRECT_URI=http://localhost:5173/login
+VITE_FACEBOOK_APP_ID=your-facebook-app-id
 ```
 
-If these values are empty, the Apple button stays visible but reports that
-Apple login is not configured.
+If these values are empty, the Facebook button stays visible but reports that
+Facebook login is not configured.
 
 Profile photos are stored locally in development while keeping the backend
 contract ready for S3 later. User Service saves only metadata on the `users`

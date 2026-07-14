@@ -75,6 +75,9 @@ app:
   oauth:
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
+    facebook:
+      app-id: ${FACEBOOK_APP_ID:}
+      app-secret: ${FACEBOOK_APP_SECRET:}
     apple:
       client-id: ${APPLE_CLIENT_ID:}
   storage:

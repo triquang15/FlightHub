@@ -13,6 +13,9 @@ public interface AuthService {
     AuthResponse loginWithGoogle(String idToken,
                                  String deviceId, String ip, String userAgent);
 
+    AuthResponse loginWithFacebook(String accessToken,
+                                   String deviceId, String ip, String userAgent);
+
     AuthResponse loginWithApple(String idToken, String fullName,
                                 String deviceId, String ip, String userAgent);
 

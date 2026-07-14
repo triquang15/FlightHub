@@ -1,6 +1,7 @@
 package com.triquang.controller;
 
 import com.triquang.payload.request.AppleLoginRequest;
+import com.triquang.payload.request.FacebookLoginRequest;
 import com.triquang.payload.request.GoogleLoginRequest;
 import com.triquang.payload.request.LoginRequest;
 import com.triquang.payload.request.RefreshTokenRequest;
@@ -109,6 +110,32 @@ public class AuthController {
 
         return ResponseUtil.ok(authService.loginWithGoogle(
                 req.getIdToken(),
+                deviceId,
+                ip,
+                agent
+        ));
+    }
+
+    // ================= FACEBOOK LOGIN =================
+    @PostMapping("/facebook")
+    @Operation(summary = "Login with Facebook", description = "Verifies a Facebook Login access token, links it to an existing account when possible, creates a customer account when needed, and issues a FlightHub token pair.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Facebook login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid Facebook login payload"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid Facebook token")
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> facebookLogin(
+            @Valid @RequestBody FacebookLoginRequest req,
+            @Parameter(description = "Stable client device identifier used for refresh-token binding.")
+            @RequestHeader(value = "X-Device-Id") String deviceId,
+            HttpServletRequest request
+    ) {
+
+        String ip = RequestUtil.getClientIp(request);
+        String agent = RequestUtil.getUserAgent(request);
+
+        return ResponseUtil.ok(authService.loginWithFacebook(
+                req.getAccessToken(),
                 deviceId,
                 ip,
                 agent

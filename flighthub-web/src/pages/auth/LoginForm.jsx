@@ -2,7 +2,7 @@ import InputField from '@/components/InputField';
 import PasswordField from '@/components/PasswordField';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { appleLogin, googleLogin, login } from '@/Redux/auth/authThunk';
+import { facebookLogin, googleLogin, login } from '@/Redux/auth/authThunk';
 import { Form, Formik } from 'formik';
 import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import * as React from 'react';
@@ -20,11 +20,10 @@ const LoginForm = () => {
   const googleButtonRef = React.useRef(null);
   const [googleReady, setGoogleReady] = React.useState(false);
   const [googleLoading, setGoogleLoading] = React.useState(false);
-  const [appleReady, setAppleReady] = React.useState(false);
-  const [appleLoading, setAppleLoading] = React.useState(false);
+  const [facebookReady, setFacebookReady] = React.useState(false);
+  const [facebookLoading, setFacebookLoading] = React.useState(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const appleClientId = import.meta.env.VITE_APPLE_CLIENT_ID;
-  const appleRedirectUri = import.meta.env.VITE_APPLE_REDIRECT_URI || `${window.location.origin}/login`;
+  const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
 
   const validationSchema = Yup.object().shape({
     email: Yup.string()
@@ -41,7 +40,7 @@ const LoginForm = () => {
     rememberMe: false
   };
 
-  const getRedirectTarget = () => {
+  const getRedirectTarget = React.useCallback(() => {
     const searchParams = new URLSearchParams(location.search);
     const queryRedirect = searchParams.get('redirect');
     const stateRedirect = location.state?.from
@@ -54,7 +53,7 @@ const LoginForm = () => {
     }
 
     return target;
-  };
+  }, [location.search, location.state]);
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
@@ -76,7 +75,7 @@ const LoginForm = () => {
     const role = authResponse.user?.role;
     const redirectTarget = getRedirectTarget();
     navigate(getSafeRedirectForRole(role, redirectTarget), { replace: true });
-  }, [navigate, location.search, location.state]);
+  }, [navigate, getRedirectTarget]);
 
   React.useEffect(() => {
     if (!googleClientId || !googleButtonRef.current) {
@@ -154,43 +153,42 @@ const LoginForm = () => {
   }, [dispatch, googleClientId, redirectAfterAuth]);
 
   React.useEffect(() => {
-    if (!appleClientId) {
-      setAppleReady(false);
+    if (!facebookAppId) {
       return;
     }
 
     let cancelled = false;
 
-    const initializeApple = () => {
-      if (cancelled || !window.AppleID?.auth) return;
+    const initializeFacebook = () => {
+      if (cancelled || !window.FB) return;
 
-      window.AppleID.auth.init({
-        clientId: appleClientId,
-        scope: "name email",
-        redirectURI: appleRedirectUri,
-        usePopup: true,
+      window.FB.init({
+        appId: facebookAppId,
+        cookie: true,
+        xfbml: false,
+        version: "v20.0",
       });
-      setAppleReady(true);
+      setFacebookReady(true);
     };
 
-    if (window.AppleID?.auth) {
-      initializeApple();
+    if (window.FB) {
+      initializeFacebook();
       return () => {
         cancelled = true;
       };
     }
 
-    const existingScript = document.querySelector('script[src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"]');
+    const existingScript = document.querySelector('script[src="https://connect.facebook.net/en_US/sdk.js"]');
     const script = existingScript || document.createElement("script");
 
-    script.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.async = true;
     script.defer = true;
-    script.onload = initializeApple;
+    script.onload = initializeFacebook;
     script.onerror = () => {
       if (!cancelled) {
-        setAppleReady(false);
-        toast.error("Could not load Apple Sign-In. Please try again later.");
+        setFacebookReady(false);
+        toast.error("Could not load Facebook Login. Please try again later.");
       }
     };
 
@@ -201,43 +199,40 @@ const LoginForm = () => {
     return () => {
       cancelled = true;
     };
-  }, [appleClientId, appleRedirectUri]);
+  }, [facebookAppId]);
 
-  const handleAppleSignIn = async () => {
-    if (!appleClientId) {
-      toast.warning("Apple login is not configured. Add VITE_APPLE_CLIENT_ID and APPLE_CLIENT_ID.");
+  const handleFacebookSignIn = async () => {
+    if (!facebookAppId) {
+      toast.warning("Facebook login is not configured. Add VITE_FACEBOOK_APP_ID, FACEBOOK_APP_ID, and FACEBOOK_APP_SECRET.");
       return;
     }
 
-    if (!window.AppleID?.auth) {
-      toast.warning("Apple Sign-In is still loading. Please try again.");
+    if (!window.FB) {
+      toast.warning("Facebook Login is still loading. Please try again.");
       return;
     }
 
     try {
-      setAppleLoading(true);
-      const response = await window.AppleID.auth.signIn();
-      const idToken = response?.authorization?.id_token;
+      setFacebookLoading(true);
+      const response = await new Promise((resolve) => {
+        window.FB.login(resolve, { scope: "public_profile,email", return_scopes: true });
+      });
+      const accessToken = response?.authResponse?.accessToken;
 
-      if (!idToken) {
-        toast.error("Apple did not return a login credential");
+      if (!accessToken) {
+        toast.error("Facebook did not return a login credential");
         return;
       }
 
-      const name = response?.user?.name;
-      const fullName = [name?.firstName, name?.lastName].filter(Boolean).join(" ");
-      const authResponse = await dispatch(appleLogin({
-        idToken,
-        fullName,
+      const authResponse = await dispatch(facebookLogin({
+        accessToken,
         rememberMe: true,
       })).unwrap();
       redirectAfterAuth(authResponse);
     } catch (err) {
-      if (err?.error !== "popup_closed_by_user") {
-        console.error("Apple sign-in failed:", err);
-      }
+      console.error("Facebook sign-in failed:", err);
     } finally {
-      setAppleLoading(false);
+      setFacebookLoading(false);
     }
   };
 
@@ -248,7 +243,7 @@ const LoginForm = () => {
       onSubmit={handleSubmit}
     >
       {({ isSubmitting, values, setFieldValue }) => (
-        <Form className={`space-y-5 ${loading && !googleLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+        <Form className={`space-y-5 ${loading && !googleLoading && !facebookLoading ? 'opacity-70 pointer-events-none' : ''}`}>
 
           {/* Error */}
           {error && (
@@ -359,27 +354,27 @@ const LoginForm = () => {
               </Button>
             )}
 
-            {/* Apple */}
+            {/* Facebook */}
             <Button
               type="button"
               variant="outline"
               className="h-12 rounded-xl bg-background/60 font-semibold"
-              disabled={appleLoading || (appleClientId && !appleReady)}
-              onClick={handleAppleSignIn}
+              disabled={facebookLoading || (facebookAppId && !facebookReady)}
+              onClick={handleFacebookSignIn}
             >
-              {appleLoading || (appleClientId && !appleReady) ? (
+              {facebookLoading || (facebookAppId && !facebookReady) ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <AppleLogo />
+                <FacebookLogo />
               )}
               <span className="ml-2 text-sm">
-                {appleClientId
-                  ? appleLoading
-                    ? "Signing in with Apple..."
-                    : appleReady
-                      ? "Continue with Apple"
-                      : "Loading Apple..."
-                  : "Apple unavailable"}
+                {facebookAppId
+                  ? facebookLoading
+                    ? "Signing in with Facebook..."
+                    : facebookReady
+                      ? "Continue with Facebook"
+                      : "Loading Facebook..."
+                  : "Facebook unavailable"}
               </span>
             </Button>
 
@@ -413,9 +408,10 @@ const GoogleLogo = () => (
   </svg>
 );
 
-const AppleLogo = () => (
-  <svg className="h-5 w-5 text-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M17.05 12.57c-.03-3.18 2.6-4.7 2.72-4.78-1.48-2.16-3.78-2.46-4.6-2.49-1.96-.2-3.82 1.15-4.82 1.15-.99 0-2.52-1.12-4.14-1.09-2.13.03-4.1 1.24-5.2 3.15-2.22 3.85-.57 9.56 1.6 12.68 1.06 1.53 2.32 3.25 3.98 3.19 1.6-.06 2.2-1.03 4.13-1.03 1.92 0 2.47 1.03 4.16 1 1.72-.03 2.81-1.56 3.86-3.1 1.22-1.78 1.72-3.51 1.75-3.6-.04-.02-3.35-1.28-3.44-5.08ZM13.9 3.24C14.78 2.17 15.37.69 15.21-.78c-1.27.05-2.8.85-3.71 1.91-.81.94-1.52 2.45-1.33 3.89 1.41.11 2.85-.72 3.73-1.78Z" />
+const FacebookLogo = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="11" fill="#1877F2" />
+    <path fill="#fff" d="M15.5 12.7h-2.2V20h-3v-7.3H8.8v-2.6h1.5V8.4c0-1.2.6-3.2 3.2-3.2h2.4v2.6h-1.7c-.3 0-.8.2-.8.9v1.4h2.5l-.4 2.6Z" />
   </svg>
 );
 
