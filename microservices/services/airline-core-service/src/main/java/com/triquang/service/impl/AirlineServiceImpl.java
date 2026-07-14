@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.client.CityClient;
 import com.triquang.enums.AirlineStatus;
@@ -24,6 +25,8 @@ import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.AirlineRepository;
 import com.triquang.service.AirlineService;
+import com.triquang.service.storage.AirlineLogoStorageService;
+import com.triquang.service.storage.AirlineLogoStorageService.StoredAirlineLogo;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ public class AirlineServiceImpl implements AirlineService {
 
     private final AirlineRepository airlineRepository;
     private final CityClient cityClient;
+    private final AirlineLogoStorageService airlineLogoStorageService;
 
     // ================= CREATE =================
     @Override
@@ -173,6 +177,40 @@ public class AirlineServiceImpl implements AirlineService {
         return mapWithCity(saved); // single → OK
     }
 
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#id"),
+            @CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public AirlineResponse updateLogo(Long id, Long ownerId, MultipartFile file) {
+
+        Airline airline = requireOwnedAirline(id, ownerId);
+        StoredAirlineLogo logo = airlineLogoStorageService.store(id, file);
+
+        airlineLogoStorageService.delete(airline.getLogoObjectKey());
+        airline.setLogoObjectKey(logo.objectKey());
+        airline.setLogoUrl(logo.publicUrl());
+
+        return mapWithCity(airlineRepository.save(airline));
+    }
+
+    @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "airlines", key = "#id"),
+            @CacheEvict(cacheNames = "airlinesByOwner", key = "#ownerId"),
+            @CacheEvict(cacheNames = "airlinesDropdown", allEntries = true)
+    })
+    public AirlineResponse deleteLogo(Long id, Long ownerId) {
+
+        Airline airline = requireOwnedAirline(id, ownerId);
+        airlineLogoStorageService.delete(airline.getLogoObjectKey());
+        airline.setLogoObjectKey(null);
+        airline.setLogoUrl(null);
+
+        return mapWithCity(airlineRepository.save(airline));
+    }
+
     // ================= DELETE =================
     @Override
     @Caching(evict = {
@@ -189,6 +227,7 @@ public class AirlineServiceImpl implements AirlineService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
+        airlineLogoStorageService.delete(airline.getLogoObjectKey());
         airlineRepository.delete(airline);
     }
 
@@ -249,6 +288,16 @@ public class AirlineServiceImpl implements AirlineService {
     }
 
     // ================= HELPER =================
+    private Airline requireOwnedAirline(Long id, Long ownerId) {
+        Airline airline = airlineRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRLINE_NOT_FOUND));
+
+        if (!airline.getOwnerId().equals(ownerId)) {
+            throw new BaseException(ErrorCode.INVALID_INPUT);
+        }
+
+        return airline;
+    }
 
     // SINGLE entity
     private AirlineResponse mapWithCity(Airline airline) {

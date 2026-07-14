@@ -5,6 +5,8 @@ import com.triquang.payload.response.ApiResponse;
 import com.triquang.payload.response.AirportResponse;
 import com.triquang.service.AirportService;
 import com.triquang.service.GeoTimezoneService;
+import com.triquang.service.storage.AirportMediaStorageService;
+import com.triquang.service.storage.AirportMediaStorageService.AirportMediaResource;
 import com.triquang.utils.ResponseUtil;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,9 +18,13 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/airports")
@@ -35,6 +41,7 @@ public class AirportController {
 
     private final AirportService airportService;
     private final GeoTimezoneService geoTimezoneService;
+    private final AirportMediaStorageService airportMediaStorageService;
 
     // ================= SEARCH =================
     @Operation(
@@ -133,6 +140,57 @@ public class AirportController {
         return ResponseUtil.ok(
                 airportService.updateAirport(id, request)
         );
+    }
+
+    @Operation(
+            summary = "Upload airport hero image",
+            description = "Uploads an airport destination image used by traveler landing pages and route cards. Development stores files locally; the storage service is S3-ready for later migration."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Airport hero image updated")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid or unsupported image file")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Airport not found")
+    @PostMapping(value = "/{id}/media/hero", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<AirportResponse>> uploadHeroImage(
+            @Parameter(description = "Airport database ID", example = "1")
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseUtil.ok(
+                airportService.updateHeroImage(id, file)
+        );
+    }
+
+    @Operation(
+            summary = "Remove airport hero image",
+            description = "Removes a custom airport hero image and makes traveler UI fall back to its default route visual."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Airport hero image removed")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Airport not found")
+    @DeleteMapping("/{id}/media/hero")
+    public ResponseEntity<ApiResponse<AirportResponse>> deleteHeroImage(
+            @Parameter(description = "Airport database ID", example = "1")
+            @PathVariable Long id
+    ) {
+        return ResponseUtil.ok(
+                airportService.deleteHeroImage(id)
+        );
+    }
+
+    @Operation(
+            summary = "Read airport hero image file",
+            description = "Public image endpoint for locally stored airport destination images."
+    )
+    @GetMapping("/{id}/media/hero/file/{filename}")
+    public ResponseEntity<Resource> readHeroImage(
+            @Parameter(description = "Airport database ID", example = "1")
+            @PathVariable Long id,
+            @PathVariable String filename
+    ) {
+        AirportMediaResource media = airportMediaStorageService.loadHeroImage(id, filename);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(media.contentType()))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .body(media.resource());
     }
 
     // ================= DELETE =================

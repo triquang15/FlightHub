@@ -68,3 +68,9 @@ management:
       enabled: true
     os:
       enabled: true
+
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  storage:
+    airline-logo:
+      local-dir: ${AIRLINE_LOGO_STORAGE_DIR:${java.io.tmpdir}/flighthub/airline-logos}

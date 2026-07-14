@@ -120,6 +120,7 @@ public class RouteConfig {
     public RouterFunction<ServerResponse> publicAirlineRoutes() {
         return routeWithoutCB("public-airline", "airline-core-service")
                 .route(RequestPredicates.GET("/api/airlines/dropdown"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/airlines/{id}/logo/file/{filename}"), HandlerFunctions.http())
                 .filter(redisRateLimitFilter)
                 .build();
     }

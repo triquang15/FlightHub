@@ -94,6 +94,42 @@ export const updateAirport = createAsyncThunk(
 );
 
 // ============================
+// HERO IMAGE
+// ============================
+export const uploadAirportHeroImage = createAsyncThunk(
+  "airport/uploadHeroImage",
+  async ({ airportId, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await api.post(`/api/airports/${airportId}/media/hero`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to upload airport image"
+      );
+    }
+  }
+);
+
+export const deleteAirportHeroImage = createAsyncThunk(
+  "airport/deleteHeroImage",
+  async (airportId, { rejectWithValue }) => {
+    try {
+      const res = await api.delete(`/api/airports/${airportId}/media/hero`);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to remove airport image"
+      );
+    }
+  }
+);
+
+// ============================
 // DELETE
 // ============================
 export const deleteAirport = createAsyncThunk(

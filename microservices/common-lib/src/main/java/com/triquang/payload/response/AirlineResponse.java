@@ -23,6 +23,7 @@ public class AirlineResponse {
     private String alias;
 
     private String logoUrl;
+    private Boolean hasCustomLogo;
     private String website;
 
     private AirlineStatus status;

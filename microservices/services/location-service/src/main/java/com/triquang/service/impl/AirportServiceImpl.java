@@ -11,6 +11,8 @@ import com.triquang.repository.AirportRepository;
 import com.triquang.repository.CityRepository;
 import com.triquang.service.AirportService;
 import com.triquang.service.GeoTimezoneService;
+import com.triquang.service.storage.AirportMediaStorageService;
+import com.triquang.service.storage.AirportMediaStorageService.StoredAirportMedia;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,6 +35,7 @@ public class AirportServiceImpl implements AirportService {
     private final AirportRepository airportRepository;
     private final CityRepository cityRepository;
     private final GeoTimezoneService geoTimezoneService;
+    private final AirportMediaStorageService airportMediaStorageService;
 
     // ================= SEARCH =================
     @Override
@@ -194,6 +198,43 @@ public class AirportServiceImpl implements AirportService {
         return AirportMapper.toResponse(airportRepository.save(airport));
     }
 
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airportById", key = "#id"),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
+    })
+    public AirportResponse updateHeroImage(Long id, MultipartFile file) {
+
+        Airport airport = airportRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+
+        StoredAirportMedia media = airportMediaStorageService.storeHeroImage(id, file);
+        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
+        airport.setHeroImageObjectKey(media.objectKey());
+        airport.setHeroImageUrl(media.publicUrl());
+
+        return AirportMapper.toResponse(airportRepository.save(airport));
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "airportById", key = "#id"),
+        @CacheEvict(cacheNames = "airportsByCity", allEntries = true)
+    })
+    public AirportResponse deleteHeroImage(Long id) {
+
+        Airport airport = airportRepository.findById(id)
+                .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
+
+        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
+        airport.setHeroImageObjectKey(null);
+        airport.setHeroImageUrl(null);
+
+        return AirportMapper.toResponse(airportRepository.save(airport));
+    }
+
     // ================= DELETE =================
     @Override
     @Transactional
@@ -206,6 +247,7 @@ public class AirportServiceImpl implements AirportService {
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
 
+        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
         airportRepository.delete(airport);
     }
 

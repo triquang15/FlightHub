@@ -26,4 +26,7 @@ public class AirportResponse {
     private CityResponse city;
     private GeoCode geoCode;
     private Analytics analytics;
+
+    private String heroImageUrl;
+    private Boolean hasCustomHeroImage;
 }

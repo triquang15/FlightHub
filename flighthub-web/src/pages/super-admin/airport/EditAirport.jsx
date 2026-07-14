@@ -9,11 +9,13 @@ const EditAirport = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { airportId } = useParams();
-  const { airports, loading } = useSelector((state) => state.airport);
+  const { airports, airport: selectedAirport, loading } = useSelector((state) => state.airport);
   const { cityList: cities } = useSelector((state) => state.city);
 
   // Find the airport from the list or fetch it
-  const airport = airports?.find((a) => a.id === parseInt(airportId));
+  const airport =
+    airports?.find((a) => a.id === parseInt(airportId)) ||
+    (selectedAirport?.id === parseInt(airportId) ? selectedAirport : null);
 
   // Load cities and airport data on component mount
   useEffect(() => {

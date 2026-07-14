@@ -5,6 +5,7 @@ import {
   Edit,
   AlertTriangle,
   CheckCircle,
+  Image,
   MapPin,
   MoreVertical,
   Plane,
@@ -157,15 +158,24 @@ const AirportTable = ({
               </TableCell>
               <TableCell className="w-72 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-10 w-10 shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-semibold text-xs">
-                    {(airport.iataCode || airport.name || '?')[0].toUpperCase()}
-                  </div>
+                  {airport.heroImageUrl ? (
+                    <img
+                      src={airport.heroImageUrl}
+                      alt=""
+                      className="h-11 w-11 shrink-0 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-gray-700"
+                    />
+                  ) : (
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-xs font-semibold text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300">
+                      {(airport.iataCode || airport.name || '?')[0].toUpperCase()}
+                    </div>
+                  )}
 
                   <div className="min-w-0">
                     <p className="truncate font-medium text-gray-900 dark:text-gray-100">
                       {airport.name}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                      {airport.heroImageUrl && <Image className="h-3 w-3 text-cyan-500" />}
                       {airport.iataCode}
                     </p>
                   </div>

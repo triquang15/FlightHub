@@ -13,6 +13,10 @@
 
 BEGIN;
 
+ALTER TABLE airports
+    ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR(1024),
+    ADD COLUMN IF NOT EXISTS hero_image_object_key VARCHAR(512);
+
 WITH airport_seed (
     iata_code,
     name,
@@ -160,6 +164,27 @@ ON CONFLICT (iata_code) DO UPDATE SET
     size_category = EXCLUDED.size_category,
     airlines_count = EXCLUDED.airlines_count,
     on_time_performance = EXCLUDED.on_time_performance;
+
+WITH airport_images(iata_code, hero_image_url) AS (
+    VALUES
+        ('SGN', 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1200&q=80'),
+        ('HAN', 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?auto=format&fit=crop&w=1200&q=80'),
+        ('SIN', 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80'),
+        ('KUL', 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=1200&q=80'),
+        ('HKG', 'https://images.unsplash.com/photo-1536599018102-9f803c140fc1?auto=format&fit=crop&w=1200&q=80'),
+        ('NRT', 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80'),
+        ('HND', 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80'),
+        ('DXB', 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80'),
+        ('BKK', 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1200&q=80'),
+        ('CDG', 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80'),
+        ('LHR', 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1200&q=80'),
+        ('JFK', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1200&q=80')
+)
+UPDATE airports airport
+SET hero_image_url = airport_images.hero_image_url
+FROM airport_images
+WHERE airport.iata_code = airport_images.iata_code
+  AND (airport.hero_image_object_key IS NULL OR airport.hero_image_object_key = '');
 
 SELECT setval(
     pg_get_serial_sequence('airports', 'id'),

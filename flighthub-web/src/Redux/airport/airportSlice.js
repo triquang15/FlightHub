@@ -5,6 +5,8 @@ import {
   getAirportById,
   listAllAirports,
   updateAirport,
+  uploadAirportHeroImage,
+  deleteAirportHeroImage,
   detectTimezone,
   fetchTimezones
 } from "./airportThunk";
@@ -122,6 +124,32 @@ const airportSlice = createSlice({
         state.error = action.payload;
       })
 
+      // ================= HERO IMAGE =================
+      .addCase(uploadAirportHeroImage.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(uploadAirportHeroImage.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        upsertAirport(state, action.payload);
+      })
+      .addCase(uploadAirportHeroImage.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteAirportHeroImage.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteAirportHeroImage.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        upsertAirport(state, action.payload);
+      })
+      .addCase(deleteAirportHeroImage.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
       // ================= DELETE =================
       .addCase(deleteAirport.pending, (state) => {
         state.actionLoading = true;
@@ -179,3 +207,16 @@ export const {
 } = airportSlice.actions;
 
 export default airportSlice.reducer;
+
+const upsertAirport = (state, airport) => {
+  if (!airport?.id) return;
+
+  const index = state.airports.findIndex((item) => item.id === airport.id);
+  if (index !== -1) {
+    state.airports[index] = airport;
+  }
+
+  if (state.airport?.id === airport.id) {
+    state.airport = airport;
+  }
+};

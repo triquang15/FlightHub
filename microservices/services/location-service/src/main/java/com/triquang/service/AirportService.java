@@ -5,6 +5,7 @@ import com.triquang.payload.response.AirportResponse;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,6 +30,10 @@ public interface AirportService {
 
     // ================= UPDATE =================
     AirportResponse updateAirport(Long id, AirportRequest request);
+
+    AirportResponse updateHeroImage(Long id, MultipartFile file);
+
+    AirportResponse deleteHeroImage(Long id);
 
     // ================= DELETE =================
     void deleteAirport(Long id);

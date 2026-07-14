@@ -55,6 +55,12 @@ public class Airport {
     @Embedded
     private Analytics analytics;
 
+    @Column(name = "hero_image_url", length = 1024)
+    private String heroImageUrl;
+
+    @Column(name = "hero_image_object_key", length = 512)
+    private String heroImageObjectKey;
+
     // ================= SAFE TIMEZONE =================
     @Transient
     @com.fasterxml.jackson.annotation.JsonIgnore

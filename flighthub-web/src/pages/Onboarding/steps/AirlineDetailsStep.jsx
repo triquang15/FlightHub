@@ -15,7 +15,6 @@ import {
   Plane,
   Building2,
   Globe,
-  Upload,
   MapPin,
   ArrowLeft,
   ArrowRight,
@@ -49,8 +48,8 @@ const validationSchema = Yup.object({
     .nullable(),
   logoUrl: Yup.string()
     .trim()
-    .matches(/^(https?:\/\/|data:image\/).+/, {
-      message: "Enter a valid logo URL or upload an image",
+    .matches(/^https?:\/\/.+/, {
+      message: "Enter a valid http(s) logo URL",
       excludeEmptyString: true
     })
     .nullable()
@@ -84,19 +83,6 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   const alliances = ["Star Alliance", "SkyTeam", "Oneworld", "Unaligned"];
 
   
-
-  const handleLogoUpload = (event, setFieldValue) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const logoUrl = e.target.result;
-        setLogoPreview(logoUrl);
-        setFieldValue("logoUrl", logoUrl);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = (values) => {
     onDataChange(values);
@@ -323,7 +309,9 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-slate-950 dark:text-white">Brand Identity</h4>
-                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">Upload your airline logo to establish brand presence</p>
+                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
+                      Add a hosted logo now, or upload a local logo from your airline profile after registration.
+                    </p>
                   </div>
                 </div>
 
@@ -335,7 +323,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                           <Input
                             {...field}
                             id="logoUrl"
-                            placeholder="Enter logo URL or upload file below"
+                            placeholder="https://cdn.example.com/logo.png"
                             className={baseInputClass}
                             onChange={(e) => {
                               setFieldValue("logoUrl", e.target.value);
@@ -344,26 +332,6 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                           />
                         )}
                       </Field>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleLogoUpload(e, setFieldValue)}
-                        className="hidden"
-                        id="logo-upload"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          document.getElementById("logo-upload").click()
-                        }
-                        className="h-12 rounded-lg border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/60 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload
-                      </Button>
                     </div>
                   </div>
 
@@ -383,7 +351,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
                   )}
 
                   <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-                    Recommended: PNG or SVG format, minimum 200x200px, transparent background
+                    Recommended: PNG or SVG format, minimum 200x200px, transparent background. Local upload is available after the airline profile exists.
                   </p>
                 </div>
               </section>

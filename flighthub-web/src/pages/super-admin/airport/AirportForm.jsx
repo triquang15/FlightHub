@@ -13,6 +13,9 @@ import {
   Hash,
   AlertTriangle,
   CheckCircle,
+  Image,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +35,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTimezones } from "@/Redux/airport/airportThunk";
+import {
+  deleteAirportHeroImage,
+  fetchTimezones,
+  uploadAirportHeroImage,
+} from "@/Redux/airport/airportThunk";
 
 
 // Size category options
@@ -58,6 +65,16 @@ const getAirportFormReadiness = (values) => {
   };
 };
 
+const isValidImageUrl = (value) => {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};
+
 const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -65,7 +82,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
 
   // Redux
   const dispatch = useDispatch();
-  const { timezones, timezonesLoading } = useSelector((state) => state.airport);
+  const { timezones, timezonesLoading, actionLoading } = useSelector((state) => state.airport);
 
   // Fetch timezones on mount
   useEffect(() => {
@@ -88,6 +105,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
     // GeoCode
     latitude: airport?.geoCode?.latitude || "",
     longitude: airport?.geoCode?.longitude || "",
+    heroImageUrl: airport?.heroImageUrl || "",
 
     // Analytics
     travelerScore: airport?.analytics?.travelerScore || "",
@@ -138,7 +156,50 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
       .min(0, "Must be between 0 and 100")
       .max(100, "Must be between 0 and 100")
       .nullable(),
+    heroImageUrl: Yup.string()
+      .test("is-url", "Enter a valid http(s) image URL", isValidImageUrl)
+      .max(1024, "Image URL must be less than 1024 characters"),
   });
+
+  const handleHeroUpload = async (event, setFieldValue) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !airport?.id) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, or WEBP image");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Airport image must be 8MB or smaller");
+      return;
+    }
+
+    try {
+      const updated = await dispatch(uploadAirportHeroImage({ airportId: airport.id, file })).unwrap();
+      setFieldValue("heroImageUrl", updated.heroImageUrl || "");
+      toast.success("Airport image uploaded");
+    } catch (error) {
+      toast.error(error || "Unable to upload airport image");
+    }
+  };
+
+  const handleHeroDelete = async (setFieldValue) => {
+    if (!airport?.id) {
+      setFieldValue("heroImageUrl", "");
+      return;
+    }
+
+    try {
+      await dispatch(deleteAirportHeroImage(airport.id)).unwrap();
+      setFieldValue("heroImageUrl", "");
+      toast.success("Airport image removed");
+    } catch (error) {
+      toast.error(error || "Unable to remove airport image");
+    }
+  };
 
   // Handle form submission
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
@@ -188,6 +249,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                   : null,
               }
             : null,
+        heroImageUrl: values.heroImageUrl || null,
       };
 
       if (onSubmit) {
@@ -316,6 +378,95 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                           className="text-sm text-red-600 mt-1"
                         />
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Traveler Image */}
+                <Card className="border-l-4 border-l-cyan-500">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Image className="h-5 w-5 text-cyan-600" />
+                      Traveler Route Image
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="heroImageUrl" className="flex items-center gap-2">
+                          <Image className="h-4 w-4 text-cyan-600" />
+                          Hero image URL
+                        </Label>
+                        <Field
+                          as={Input}
+                          id="heroImageUrl"
+                          name="heroImageUrl"
+                          className="w-full"
+                          placeholder="https://cdn.example.com/airports/sgn.jpg"
+                        />
+                        <ErrorMessage
+                          name="heroImageUrl"
+                          component="div"
+                          className="mt-1 text-sm text-red-600"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Used by traveler Trending routes and destination cards. Upload is available after the airport exists.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <input
+                          id="airport-hero-upload"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(event) => handleHeroUpload(event, setFieldValue)}
+                          disabled={!isEditing || actionLoading}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!isEditing || actionLoading}
+                          onClick={() => document.getElementById("airport-hero-upload")?.click()}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload image
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={actionLoading || !values.heroImageUrl}
+                          onClick={() => handleHeroDelete(setFieldValue)}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                      </div>
+
+                      {!isEditing && (
+                        <p className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-800 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
+                          Save this airport first, then edit it to upload a local image file.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl border bg-muted/30">
+                      {values.heroImageUrl ? (
+                        <img
+                          src={values.heroImageUrl}
+                          alt=""
+                          className="h-48 w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-48 flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <Image className="h-8 w-8" />
+                          <span className="text-sm font-medium">No airport image</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -521,7 +672,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-5">
                       <div className="space-y-2">
                         <h4 className="font-medium text-blue-900 mb-2">Basic Info</h4>
                         <div className="flex items-center justify-between">
@@ -575,6 +726,15 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                                   ?.label || values.sizeCategory
                               : "N/A"}
                           </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-blue-900 mb-2">Media</h4>
+                        <div className="flex items-center justify-between">
+                          <span>Hero image:</span>
+                          <Badge variant={values.heroImageUrl ? "default" : "outline"}>
+                            {values.heroImageUrl ? "Ready" : "Fallback"}
+                          </Badge>
                         </div>
                       </div>
                     </div>

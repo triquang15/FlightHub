@@ -11,6 +11,8 @@ import {
   Plane,
   Save,
   ShieldCheck,
+  Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +24,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getAirlineByAdmin, updateAirline } from "@/Redux/airline/airlineThunks";
+import {
+  deleteAirlineLogo,
+  getAirlineByAdmin,
+  updateAirline,
+  uploadAirlineLogo,
+} from "@/Redux/airline/airlineThunks";
 
 const EMPTY_PROFILE = {
   name: "",
@@ -236,6 +243,43 @@ export default function AirlineAdminProfile() {
     }
   };
 
+  const uploadLogo = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !currentAirline?.id) return;
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/svg+xml"].includes(file.type)) {
+      toast.error("Please upload a JPG, PNG, WEBP, or SVG logo");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo must be 5MB or smaller");
+      return;
+    }
+
+    try {
+      const updated = await dispatch(uploadAirlineLogo({ airlineId: currentAirline.id, file })).unwrap();
+      setDraft((current) => ({ ...current, logoUrl: updated.logoUrl || "" }));
+      toast.success("Airline logo uploaded");
+    } catch (uploadError) {
+      toast.error(uploadError || "Unable to upload airline logo");
+    }
+  };
+
+  const removeLogo = async () => {
+    if (!currentAirline?.id) return;
+
+    try {
+      await dispatch(deleteAirlineLogo(currentAirline.id)).unwrap();
+      setDraft((current) => ({ ...current, logoUrl: "" }));
+      toast.success("Airline logo removed");
+    } catch (removeError) {
+      toast.error(removeError || "Unable to remove airline logo");
+    }
+  };
+
   if (loading && !currentAirline) {
     return (
       <div className="flex min-h-64 items-center justify-center rounded-lg border bg-card">
@@ -387,6 +431,53 @@ export default function AirlineAdminProfile() {
                 placeholder="https://cdn.example/logo.png"
                 error={formErrors.logoUrl}
               />
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <AirlineLogo profile={displayed} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Logo asset</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Upload a local logo now; storage is ready to migrate to S3 later.
+                    </p>
+                    {currentAirline?.hasCustomLogo ? (
+                      <Badge variant="outline" className="mt-2">Uploaded logo</Badge>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    id="airline-logo-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={uploadLogo}
+                    disabled={updateLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateLoading || !currentAirline?.id}
+                    onClick={() => document.getElementById("airline-logo-upload")?.click()}
+                  >
+                    {updateLoading ? <Loader2 className="animate-spin" /> : <Upload />}
+                    Upload logo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={updateLoading || !displayed.logoUrl}
+                    onClick={removeLogo}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 />
+                    Remove
+                  </Button>
+                </div>
+              </div>
             </div>
           </section>
 

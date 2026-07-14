@@ -90,6 +90,40 @@ export const updateAirline = createAsyncThunk(
   }
 );
 
+export const uploadAirlineLogo = createAsyncThunk(
+  "airline/uploadLogo",
+  async ({ airlineId, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/api/airlines/${airlineId}/logo`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data?.data;
+    } catch (err) {
+      console.error("Upload airline logo error:", err);
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to upload airline logo"
+      );
+    }
+  }
+);
+
+export const deleteAirlineLogo = createAsyncThunk(
+  "airline/deleteLogo",
+  async (airlineId, { rejectWithValue }) => {
+    try {
+      const res = await api.delete(`/api/airlines/${airlineId}/logo`);
+      return res.data?.data;
+    } catch (err) {
+      console.error("Delete airline logo error:", err);
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to remove airline logo"
+      );
+    }
+  }
+);
+
 // ✅ Delete Airline
 export const deleteAirline = createAsyncThunk(
   "airline/delete",

@@ -18,6 +18,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.enums.AirlineStatus;
 import com.triquang.enums.ErrorCode;
@@ -39,6 +43,8 @@ import com.triquang.payload.response.AirlineDropdownItem;
 import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.ApiResponse;
 import com.triquang.service.AirlineService;
+import com.triquang.service.storage.AirlineLogoStorageService;
+import com.triquang.service.storage.AirlineLogoStorageService.AirlineLogoResource;
 import com.triquang.utils.ResponseUtil;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,6 +60,7 @@ import lombok.RequiredArgsConstructor;
 public class AirlineController {
 
 	private final AirlineService airlineService;
+	private final AirlineLogoStorageService airlineLogoStorageService;
 
 	// ---------- CREATE ----------
 	@PostMapping
@@ -131,6 +138,33 @@ public class AirlineController {
 			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
 
 		return ResponseUtil.ok(airlineService.updateAirline(id, request, userId));
+	}
+
+	@PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "Upload airline logo", description = "Uploads an airline logo owned by the authenticated airline owner. Local storage is used in development and can be replaced by S3 later.")
+	public ResponseEntity<ApiResponse<AirlineResponse>> uploadLogo(@PathVariable Long id,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId,
+			@RequestParam("file") MultipartFile file) {
+
+		return ResponseUtil.ok(airlineService.updateLogo(id, userId, file));
+	}
+
+	@DeleteMapping("/{id}/logo")
+	@Operation(summary = "Remove airline logo", description = "Removes a custom uploaded airline logo and clears logoUrl.")
+	public ResponseEntity<ApiResponse<AirlineResponse>> deleteLogo(@PathVariable Long id,
+			@Parameter(hidden = true) @RequestHeader("X-User-Id") Long userId) {
+
+		return ResponseUtil.ok(airlineService.deleteLogo(id, userId));
+	}
+
+	@GetMapping("/{id}/logo/file/{filename}")
+	@Operation(summary = "Read airline logo file", description = "Public image endpoint for locally stored airline logos.")
+	public ResponseEntity<Resource> readLogo(@PathVariable Long id, @PathVariable String filename) {
+		AirlineLogoResource logo = airlineLogoStorageService.load(id, filename);
+		return ResponseEntity.ok()
+				.contentType(MediaType.parseMediaType(logo.contentType()))
+				.header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+				.body(logo.resource());
 	}
 
 	// ---------- DELETE ----------

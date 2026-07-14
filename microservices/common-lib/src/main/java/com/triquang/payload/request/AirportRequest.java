@@ -37,4 +37,7 @@ public class AirportRequest {
 
     @Valid
     private GeoCode geoCode;
+
+    @Size(max = 1024, message = "Hero image URL must be less than 1024 characters")
+    private String heroImageUrl;
 }

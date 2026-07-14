@@ -22,6 +22,7 @@ public class AirportMapper {
 
                 .address(request.getAddress())
                 .geoCode(request.getGeoCode())
+                .heroImageUrl(normalizeBlank(request.getHeroImageUrl()))
                 .build();
     }
 
@@ -43,6 +44,8 @@ public class AirportMapper {
                 )
                 .geoCode(airport.getGeoCode())
                 .analytics(airport.getAnalytics())
+                .heroImageUrl(airport.getHeroImageUrl())
+                .hasCustomHeroImage(airport.getHeroImageObjectKey() != null && !airport.getHeroImageObjectKey().isBlank())
                 .build();
     }
 
@@ -71,5 +74,20 @@ public class AirportMapper {
         if (request.getGeoCode() != null) {
             existingAirport.setGeoCode(request.getGeoCode());
         }
+
+        if (request.getHeroImageUrl() != null) {
+            existingAirport.setHeroImageUrl(normalizeBlank(request.getHeroImageUrl()));
+            if (!hasText(request.getHeroImageUrl())) {
+                existingAirport.setHeroImageObjectKey(null);
+            }
+        }
+    }
+
+    private static String normalizeBlank(String value) {
+        return hasText(value) ? value.trim() : null;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

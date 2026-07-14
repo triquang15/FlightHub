@@ -47,6 +47,7 @@ public class AirlineMapper {
                 .name(airline.getName())
                 .alias(airline.getAlias())
                 .logoUrl(airline.getLogoUrl())
+                .hasCustomLogo(airline.getLogoObjectKey() != null && !airline.getLogoObjectKey().isBlank())
                 .website(airline.getWebsite())
                 .status(airline.getStatus())
                 .alliance(airline.getAlliance())
@@ -80,7 +81,10 @@ public class AirlineMapper {
         }
 
         if (request.getLogoUrl() != null) {
-            airline.setLogoUrl(request.getLogoUrl());
+            airline.setLogoUrl(trim(request.getLogoUrl()));
+            if (trim(request.getLogoUrl()) == null) {
+                airline.setLogoObjectKey(null);
+            }
         }
 
         if (request.getWebsite() != null) {

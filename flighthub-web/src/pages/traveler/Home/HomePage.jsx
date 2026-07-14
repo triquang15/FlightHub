@@ -174,6 +174,8 @@ const getAirportCity = (airport) =>
   airport?.city?.name || airport?.cityName || airport?.address?.cityName || airport?.address?.city || airport?.name || "City"
 const getAirportCountry = (airport) =>
   airport?.country || airport?.countryName || airport?.city?.country || airport?.address?.country || ""
+const getAirportHeroImage = (airport) =>
+  airport?.heroImageUrl || airport?.imageUrl || airport?.destinationImageUrl || airport?.media?.heroImageUrl || null
 
 const toIsoDate = (date) => {
   const offset = date.getTimezoneOffset()
@@ -258,6 +260,7 @@ const createRouteCard = ({ from, to, date, flight, fallbackIndex = 0 }) => {
   const amount = formatMoney(getFareAmount(flight), flight?.fare?.currency || "USD")
   const fromCode = getIata(from) || "FROM"
   const toCode = getIata(to) || "TO"
+  const heroImage = getAirportHeroImage(to) || getAirportHeroImage(from) || visual.image
 
   return {
     id: `${getAirportId(from) || fromCode}-${getAirportId(to) || toCode}-${date || fallbackIndex}`,
@@ -273,7 +276,8 @@ const createRouteCard = ({ from, to, date, flight, fallbackIndex = 0 }) => {
     date,
     dateLabel: formatDisplayDate(date),
     flights: flight ? 1 : null,
-    image: visual.image,
+    image: heroImage,
+    imageSource: getAirportHeroImage(to) ? "airport" : "fallback",
     href: getAirportId(from) && getAirportId(to) && date
       ? `/search?${new URLSearchParams({
           from: String(getAirportId(from)),
@@ -371,6 +375,7 @@ const HomePage = () => {
         ...destination,
         id: `fallback-${destination.city}-${index}`,
         dateLabel: "Flexible",
+        imageSource: "fallback",
         href: null,
       }))
 
@@ -665,7 +670,7 @@ const TrendingRouteCard = ({ route, index, onClick }) => (
     <div className="absolute left-5 right-5 top-5">
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-          {route.tag}
+          {route.imageSource === "airport" ? "Airport image" : route.tag}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-100 backdrop-blur-md">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 [animation:soft-pulse_1.8s_ease-in-out_infinite]" />

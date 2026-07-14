@@ -2,6 +2,7 @@ package com.triquang.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.enums.AirlineStatus;
 import com.triquang.payload.request.AirlineRequest;
@@ -34,6 +35,10 @@ public interface AirlineService {
 	List<AirlineResponse> getAirlinesByOwner(Long ownerId);
 
 	AirlineResponse updateAirline(Long id, AirlineRequest request, Long ownerId);
+
+	AirlineResponse updateLogo(Long id, Long ownerId, MultipartFile file);
+
+	AirlineResponse deleteLogo(Long id, Long ownerId);
 
 	void deleteAirline(Long id, Long ownerId);
 }

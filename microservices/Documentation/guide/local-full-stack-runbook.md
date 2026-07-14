@@ -275,6 +275,58 @@ controller and database fields unchanged and replace the local
 `AvatarStorageService` implementation with an S3-backed implementation that
 returns the object key and public or signed URL.
 
+### Airport route images
+
+Airport destination images use the same local-first, S3-ready pattern. Location
+Service stores only media metadata on the `airports` record:
+
+```text
+hero_image_url
+hero_image_object_key
+```
+
+Local airport media settings:
+
+```bash
+# Public URL used when Location Service returns hero_image_url through API Gateway
+APP_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for airport route/traveler images
+AIRPORT_MEDIA_STORAGE_DIR=/tmp/flighthub/airport-media
+```
+
+System Admins can upload or remove airport hero images from Airport Management.
+Traveler Trending routes prefer `airport.heroImageUrl` and fall back to bundled
+route imagery when no custom image exists. For S3 migration, keep the airport
+DTO/API contract unchanged and replace `AirportMediaStorageService` with an
+S3-backed implementation.
+
+### Airline logo uploads
+
+Airline logos also use local-first storage with the same S3 migration boundary.
+Airline Core Service stores only media metadata on the `airlines` record:
+
+```text
+logo_url
+logo_object_key
+```
+
+Local airline logo settings:
+
+```bash
+# Public URL used when Airline Core Service returns logo_url through API Gateway
+APP_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for airline logos
+AIRLINE_LOGO_STORAGE_DIR=/tmp/flighthub/airline-logos
+```
+
+Airline owners can upload or remove logos from the airline profile page after
+the airline profile exists. Onboarding accepts a hosted logo URL only; local file
+upload happens after profile creation because the storage object key is scoped to
+an airline ID. For S3 migration, keep the controller/DTO contract unchanged and
+replace `AirlineLogoStorageService` with an S3-backed implementation.
+
 Open:
 
 ```text

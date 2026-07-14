@@ -5,6 +5,8 @@ import {
   getAirlinesForDropdown,
   getAllAirlines,
   updateAirline,
+  uploadAirlineLogo,
+  deleteAirlineLogo,
   deleteAirline,
   rejectAirline,
   approveAirline,
@@ -18,6 +20,30 @@ const mergeAirlineResponse = (currentAirline, nextAirline) => ({
   countryCode: nextAirline?.countryCode ?? currentAirline?.countryCode,
   countryName: nextAirline?.countryName ?? currentAirline?.countryName,
 });
+
+const upsertAirline = (state, airline) => {
+  if (!airline?.id) return;
+
+  state.currentAirline = mergeAirlineResponse(state.currentAirline, airline);
+
+  const index = state.airlines.findIndex((item) => item.id === airline.id);
+  if (index !== -1) {
+    state.airlines[index] = mergeAirlineResponse(state.airlines[index], airline);
+  }
+
+  const paginatedIndex = state.paginatedAirlines.content.findIndex((item) => item.id === airline.id);
+  if (paginatedIndex !== -1) {
+    state.paginatedAirlines.content[paginatedIndex] = mergeAirlineResponse(
+      state.paginatedAirlines.content[paginatedIndex],
+      airline
+    );
+  }
+
+  const dropdownIndex = state.dropdownAirlines.findIndex((item) => item.id === airline.id);
+  if (dropdownIndex !== -1) {
+    state.dropdownAirlines[dropdownIndex] = mergeAirlineResponse(state.dropdownAirlines[dropdownIndex], airline);
+  }
+};
 
 const initialState = {
   // Data
@@ -186,20 +212,36 @@ const airlineSlice = createSlice({
       .addCase(updateAirline.fulfilled, (state, action) => {
         state.loading = false;
         state.updateLoading = false;
-        state.currentAirline = action.payload;
-        // Update in airlines array
-        const index = state.airlines.findIndex(airline => airline.id === action.payload.id);
-        if (index !== -1) {
-          state.airlines[index] = action.payload;
-        }
-        // Update in paginated airlines
-        const paginatedIndex = state.paginatedAirlines.content.findIndex(airline => airline.id === action.payload.id);
-        if (paginatedIndex !== -1) {
-          state.paginatedAirlines.content[paginatedIndex] = action.payload;
-        }
+        upsertAirline(state, action.payload);
       })
       .addCase(updateAirline.rejected, (state, action) => {
         state.loading = false;
+        state.updateLoading = false;
+        state.error = action.payload;
+      })
+
+      // Airline Logo
+      .addCase(uploadAirlineLogo.pending, (state) => {
+        state.updateLoading = true;
+        state.error = null;
+      })
+      .addCase(uploadAirlineLogo.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        upsertAirline(state, action.payload);
+      })
+      .addCase(uploadAirlineLogo.rejected, (state, action) => {
+        state.updateLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteAirlineLogo.pending, (state) => {
+        state.updateLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteAirlineLogo.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        upsertAirline(state, action.payload);
+      })
+      .addCase(deleteAirlineLogo.rejected, (state, action) => {
         state.updateLoading = false;
         state.error = action.payload;
       })

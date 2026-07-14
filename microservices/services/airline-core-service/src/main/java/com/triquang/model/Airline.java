@@ -53,6 +53,9 @@ public class Airline {
 
     private String logoUrl;
 
+    @Column(name = "logo_object_key", length = 512)
+    private String logoObjectKey;
+
     private String website;
 
     @Enumerated(EnumType.STRING)
