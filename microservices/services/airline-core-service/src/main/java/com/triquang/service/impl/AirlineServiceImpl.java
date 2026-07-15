@@ -15,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.client.CityClient;
 import com.triquang.client.MediaServiceClient;
+import com.triquang.client.UserClient;
+import com.triquang.dto.UserDTO;
 import com.triquang.enums.AirlineStatus;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
@@ -25,6 +27,7 @@ import com.triquang.payload.response.AirlineDropdownItem;
 import com.triquang.payload.response.AirlineResponse;
 import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.AirlineRepository;
+import com.triquang.event.AirlineNotificationProducer;
 import com.triquang.service.AirlineService;
 import com.triquang.service.storage.AirlineLogoStorageService;
 
@@ -42,6 +45,8 @@ public class AirlineServiceImpl implements AirlineService {
     private final CityClient cityClient;
     private final AirlineLogoStorageService airlineLogoStorageService;
     private final MediaServiceClient mediaServiceClient;
+    private final UserClient userClient;
+    private final AirlineNotificationProducer airlineNotificationProducer;
 
     // ================= CREATE =================
     @Override
@@ -248,9 +253,14 @@ public class AirlineServiceImpl implements AirlineService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
+        AirlineStatus previousStatus = airline.getStatus();
         airline.setStatus(status);
 
-        return AirlineMapper.toResponse(airlineRepository.save(airline));
+        Airline saved = airlineRepository.save(airline);
+        publishDecision(saved, decisionLabel(previousStatus, status),
+                "Airline status changed from " + previousStatus + " to " + status + ".");
+
+        return AirlineMapper.toResponse(saved);
     }
 
     @Override
@@ -267,6 +277,10 @@ public class AirlineServiceImpl implements AirlineService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
+        publishDecision(
+                airline,
+                "REJECTED",
+                "Your airline application was rejected by the FlightHub platform team.");
         airlineRepository.delete(airline);
         log.info("Rejected pending airline id={} ownerId={}", airlineId, airline.getOwnerId());
     }
@@ -412,5 +426,32 @@ public class AirlineServiceImpl implements AirlineService {
 
     private String normalizeCode(String value) {
         return value == null || value.isBlank() ? null : value.trim().toUpperCase();
+    }
+
+    private void publishDecision(Airline airline, String decision, String reason) {
+        try {
+            airlineNotificationProducer.sendOnboardingDecision(airline, fetchOwner(airline.getOwnerId()), decision, reason);
+        } catch (Exception ex) {
+            log.warn("Could not publish airline onboarding decision airlineId={}: {}", airline.getId(), ex.getMessage());
+        }
+    }
+
+    private UserDTO fetchOwner(Long ownerId) {
+        if (ownerId == null) {
+            return null;
+        }
+        try {
+            return userClient.getUserById(ownerId);
+        } catch (Exception ex) {
+            log.warn("Could not fetch airline owner userId={}: {}", ownerId, ex.getMessage());
+            return null;
+        }
+    }
+
+    private String decisionLabel(AirlineStatus previousStatus, AirlineStatus status) {
+        if (previousStatus == AirlineStatus.PENDING && status == AirlineStatus.ACTIVE) {
+            return "APPROVED";
+        }
+        return status != null ? status.name() : "UPDATED";
     }
 }

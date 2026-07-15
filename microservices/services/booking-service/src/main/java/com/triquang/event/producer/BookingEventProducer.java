@@ -9,8 +9,14 @@ import org.springframework.stereotype.Service;
 import com.triquang.dto.UserDTO;
 import com.triquang.message.BookingConfirmedEvent;
 import com.triquang.message.BookingLegNotificationData;
+import com.triquang.message.BookingRefundedNotificationEvent;
+import com.triquang.message.FlightScheduleChangedNotificationEvent;
 import com.triquang.message.PassengerNotificationData;
 import com.triquang.message.PaymentCompletedEvent;
+import com.triquang.message.PaymentFailedEvent;
+import com.triquang.message.PaymentFailedNotificationEvent;
+import com.triquang.message.PaymentRefundedEvent;
+import com.triquang.message.TicketIssuedEvent;
 import com.triquang.model.Booking;
 import com.triquang.model.BookingLeg;
 import com.triquang.model.Passenger;
@@ -41,6 +47,21 @@ public class BookingEventProducer {
 
     @Value("${kafka.topics.booking-confirmed:booking.confirmed}")
     private String bookingConfirmedTopic;
+
+    @Value("${kafka.topics.payment-failed-notification:payment.failed.notification}")
+    private String paymentFailedNotificationTopic;
+
+    @Value("${kafka.topics.booking-refunded-notification:booking.refunded.notification}")
+    private String bookingRefundedNotificationTopic;
+
+    @Value("${kafka.topics.ticket-issued:booking.ticket-issued}")
+    private String ticketIssuedTopic;
+
+    @Value("${kafka.topics.flight-schedule-changed-notification:flight.schedule-changed.notification}")
+    private String flightScheduleChangedNotificationTopic;
+
+    @Value("${notification.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     public void sendBookingConfirmed(Booking booking,
                                      PaymentCompletedEvent payment,
@@ -194,8 +215,141 @@ public class BookingEventProducer {
                 .build();
 
         kafkaTemplate.send(bookingConfirmedTopic, booking.getBookingReference(), event);
+        sendTicketIssued(event);
         log.info("Published enriched BookingConfirmedEvent for booking={}", booking.getBookingReference());
     }
+
+    public void sendPaymentFailed(Booking booking, PaymentFailedEvent payment, UserDTO user) {
+        Contact contact = contact(booking);
+        PaymentFailedNotificationEvent event = PaymentFailedNotificationEvent.builder()
+                .eventId("payment-failed-" + booking.getBookingReference() + "-" + payment.getPaymentId())
+                .bookingId(booking.getId())
+                .bookingReference(booking.getBookingReference())
+                .userId(booking.getUserId())
+                .userName(user != null ? user.getFullName() : "Valued Customer")
+                .contactEmail(contact.email())
+                .contactPhone(contact.phone())
+                .amount(payment.getAmount())
+                .currency(booking.getCurrency() != null ? booking.getCurrency() : "USD")
+                .paymentGateway(payment.getPaymentGateway())
+                .transactionId(payment.getTransactionId())
+                .failureReason(payment.getFailureReason())
+                .failedAt(payment.getFailedAt() != null ? payment.getFailedAt() : LocalDateTime.now())
+                .manageBookingUrl(frontendBaseUrl + "/bookings")
+                .build();
+
+        kafkaTemplate.send(paymentFailedNotificationTopic, booking.getBookingReference(), event);
+        log.info("Published PaymentFailedNotificationEvent for booking={}", booking.getBookingReference());
+    }
+
+    public void sendBookingRefunded(Booking booking, PaymentRefundedEvent payment, UserDTO user) {
+        Contact contact = contact(booking);
+        BookingRefundedNotificationEvent event = BookingRefundedNotificationEvent.builder()
+                .eventId("booking-refunded-" + booking.getBookingReference() + "-" + payment.getPaymentId())
+                .bookingId(booking.getId())
+                .bookingReference(booking.getBookingReference())
+                .userId(booking.getUserId())
+                .userName(user != null ? user.getFullName() : "Valued Customer")
+                .contactEmail(contact.email())
+                .contactPhone(contact.phone())
+                .amount(payment.getAmount())
+                .currency(payment.getCurrency() != null ? payment.getCurrency() : booking.getCurrency())
+                .paymentGateway(payment.getPaymentGateway())
+                .providerPaymentId(payment.getProviderPaymentId())
+                .refundId(payment.getRefundId())
+                .refundedAt(payment.getRefundedAt() != null ? payment.getRefundedAt() : LocalDateTime.now())
+                .manageBookingUrl(frontendBaseUrl + "/bookings")
+                .build();
+
+        kafkaTemplate.send(bookingRefundedNotificationTopic, booking.getBookingReference(), event);
+        log.info("Published BookingRefundedNotificationEvent for booking={}", booking.getBookingReference());
+    }
+
+    public void sendFlightScheduleChanged(Booking booking,
+                                          com.triquang.message.FlightScheduleChangedEvent scheduleEvent,
+                                          Map<Long, FlightInstanceResponse> legFlightInstances,
+                                          FlightInstanceResponse primaryFlight,
+                                          UserDTO user) {
+        Contact contact = contact(booking);
+        FlightScheduleChangedNotificationEvent event = FlightScheduleChangedNotificationEvent.builder()
+                .eventId("flight-schedule-changed-" + booking.getBookingReference() + "-" + scheduleEvent.getFlightInstanceId())
+                .bookingId(booking.getId())
+                .bookingReference(booking.getBookingReference())
+                .userId(booking.getUserId())
+                .userName(user != null ? user.getFullName() : "Valued Customer")
+                .contactEmail(contact.email())
+                .contactPhone(contact.phone())
+                .flightInstanceId(scheduleEvent.getFlightInstanceId())
+                .flightNumber(scheduleEvent.getFlightNumber())
+                .tripType(booking.getTripType() != null ? booking.getTripType().name() : "ONE_WAY")
+                .legs(buildLegs(booking, legFlightInstances, primaryFlight, null))
+                .oldStatus(scheduleEvent.getOldStatus())
+                .newStatus(scheduleEvent.getNewStatus())
+                .oldDepartureDateTime(scheduleEvent.getOldDepartureDateTime())
+                .newDepartureDateTime(scheduleEvent.getNewDepartureDateTime())
+                .oldArrivalDateTime(scheduleEvent.getOldArrivalDateTime())
+                .newArrivalDateTime(scheduleEvent.getNewArrivalDateTime())
+                .oldGate(scheduleEvent.getOldGate())
+                .newGate(scheduleEvent.getNewGate())
+                .oldTerminal(scheduleEvent.getOldTerminal())
+                .newTerminal(scheduleEvent.getNewTerminal())
+                .changedAt(scheduleEvent.getChangedAt())
+                .manageBookingUrl(frontendBaseUrl + "/bookings")
+                .build();
+
+        kafkaTemplate.send(flightScheduleChangedNotificationTopic, booking.getBookingReference(), event);
+        log.info("Published FlightScheduleChangedNotificationEvent for booking={}", booking.getBookingReference());
+    }
+
+    private void sendTicketIssued(BookingConfirmedEvent confirmedEvent) {
+        if (confirmedEvent.getContactEmail() == null || confirmedEvent.getContactEmail().isBlank()) {
+            return;
+        }
+
+        TicketIssuedEvent event = TicketIssuedEvent.builder()
+                .eventId("ticket-issued-" + confirmedEvent.getBookingReference())
+                .bookingId(confirmedEvent.getBookingId())
+                .bookingReference(confirmedEvent.getBookingReference())
+                .userId(confirmedEvent.getUserId())
+                .userName(confirmedEvent.getUserName())
+                .contactEmail(confirmedEvent.getContactEmail())
+                .contactPhone(confirmedEvent.getContactPhone())
+                .tripType(confirmedEvent.getTripType())
+                .cabinClass(confirmedEvent.getCabinClass())
+                .legs(confirmedEvent.getLegs())
+                .passengers(confirmedEvent.getPassengers())
+                .issuedAt(LocalDateTime.now())
+                .viewTicketUrl(frontendBaseUrl + "/view-ticket/" + confirmedEvent.getBookingId())
+                .manageBookingUrl(frontendBaseUrl + "/bookings")
+                .build();
+
+        kafkaTemplate.send(ticketIssuedTopic, confirmedEvent.getBookingReference(), event);
+        log.info("Published TicketIssuedEvent for booking={}", confirmedEvent.getBookingReference());
+    }
+
+    private Contact contact(Booking booking) {
+        String contactEmail = booking.getContactInfo() != null
+                ? booking.getContactInfo().getEmail() : null;
+        String contactPhone = booking.getContactInfo() != null
+                ? booking.getContactInfo().getPhone() : null;
+
+        if (contactEmail == null || contactEmail.isBlank()) {
+            contactEmail = booking.getPassengers().stream()
+                    .map(Passenger::getEmail)
+                    .filter(e -> e != null && !e.isBlank())
+                    .findFirst().orElse(null);
+        }
+        if (contactPhone == null || contactPhone.isBlank()) {
+            contactPhone = booking.getPassengers().stream()
+                    .map(Passenger::getPhone)
+                    .filter(p -> p != null && !p.isBlank())
+                    .findFirst().orElse(null);
+        }
+
+        return new Contact(contactEmail, contactPhone);
+    }
+
+    private record Contact(String email, String phone) {}
 
     private List<BookingLegNotificationData> buildLegs(
             Booking booking,

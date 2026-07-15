@@ -31,6 +31,9 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
   cloud:
     openfeign:
       circuitbreaker:
@@ -136,3 +139,8 @@ info:
     description: Manages flight schedules, instances, and real-time flight operations
     version: 1.0.0
     environment: development
+
+kafka:
+  topics:
+    flight-instance-created: ${KAFKA_TOPIC_FLIGHT_INSTANCE_CREATED:flight-instance-created}
+    flight-schedule-changed: ${KAFKA_TOPIC_FLIGHT_SCHEDULE_CHANGED:flight.schedule-changed}

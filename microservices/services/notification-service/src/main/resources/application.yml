@@ -145,6 +145,13 @@ kafka:
   topics:
     booking-confirmed: ${KAFKA_TOPIC_BOOKING_CONFIRMED:booking.confirmed}
     booking-confirmed-dlq: ${KAFKA_TOPIC_BOOKING_CONFIRMED_DLQ:booking.confirmed.DLQ}
+    payment-failed-notification: ${KAFKA_TOPIC_PAYMENT_FAILED_NOTIFICATION:payment.failed.notification}
+    booking-refunded-notification: ${KAFKA_TOPIC_BOOKING_REFUNDED_NOTIFICATION:booking.refunded.notification}
+    ticket-issued: ${KAFKA_TOPIC_TICKET_ISSUED:booking.ticket-issued}
+    flight-schedule-changed-notification: ${KAFKA_TOPIC_FLIGHT_SCHEDULE_CHANGED_NOTIFICATION:flight.schedule-changed.notification}
+    airline-onboarding-decision: ${KAFKA_TOPIC_AIRLINE_ONBOARDING_DECISION:airline.onboarding-decision}
+    admin-user-provisioned: ${KAFKA_TOPIC_ADMIN_USER_PROVISIONED:user.admin-provisioned}
+    notification-failure-alert: ${KAFKA_TOPIC_NOTIFICATION_FAILURE_ALERT:notification.failure-alert}
     password-reset-requested: ${KAFKA_TOPIC_PASSWORD_RESET_REQUESTED:user.password-reset-requested}
     password-reset-requested-dlq: ${KAFKA_TOPIC_PASSWORD_RESET_REQUESTED_DLQ:user.password-reset-requested.DLQ}
     suspicious-login: ${KAFKA_TOPIC_SUSPICIOUS_LOGIN:security.suspicious-login}

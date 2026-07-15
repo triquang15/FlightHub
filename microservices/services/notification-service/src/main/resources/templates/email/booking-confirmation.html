@@ -135,12 +135,30 @@
               <tr style="background:#f8fafc;">
                 <th align="left" style="padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#64748b;">Name</th>
                 <th align="left" style="padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#64748b;">Type</th>
+                <th align="left" style="padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#64748b;">Seat</th>
                 <th align="left" style="padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#64748b;">Ticket</th>
               </tr>
               <tr th:each="pax : ${event.passengers}">
                 <td style="padding:12px;border-top:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="${pax.getFullName()}">Passenger Name</td>
                 <td style="padding:12px;border-top:1px solid #e2e8f0;font-size:13px;color:#475569;" th:text="${pax.adult ? 'Adult' : 'Child'}">Adult</td>
+                <td style="padding:12px;border-top:1px solid #e2e8f0;font-size:13px;font-family:Consolas,monospace;color:#475569;" th:text="${pax.seatNumber != null ? pax.seatNumber : 'Auto-assigned'}">12A</td>
                 <td style="padding:12px;border-top:1px solid #e2e8f0;font-size:13px;font-family:Consolas,monospace;color:#2563eb;" th:text="${pax.ticketNumber != null ? pax.ticketNumber : 'Pending'}">Pending</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr th:if="${hasBaggage}">
+          <td style="padding:0 34px 28px;">
+            <h2 style="margin:0 0 14px;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0f172a;">Baggage allowance</h2>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+              <tr>
+                <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;background:#f8fafc;">Cabin baggage</td>
+                <td align="right" style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;background:#f8fafc;" th:text="${cabinBaggage}">1 x 7 kg</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 16px;font-size:14px;font-weight:700;color:#0f172a;">Checked baggage</td>
+                <td align="right" style="padding:14px 16px;font-size:14px;color:#475569;" th:text="${checkinBaggage}">1 x 20 kg</td>
               </tr>
             </table>
           </td>
@@ -152,23 +170,31 @@
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
               <tr th:if="${event.baseFare != null}">
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">Base fare</td>
-                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="${currency} + ' ' + ${baseFareTotal}">USD 0.00</td>
+                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="|${currency} ${baseFareTotal}|">USD 0.00</td>
               </tr>
               <tr th:if="${event.taxesAndFees != null and event.taxesAndFees > 0}">
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">Taxes and fees</td>
-                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="${currency} + ' ' + ${taxes}">USD 0.00</td>
+                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="|${currency} ${taxes}|">USD 0.00</td>
               </tr>
-              <tr th:if="${event.seatFees != null and event.seatFees > 0}">
+              <tr th:if="${hasSeatFees}">
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">Seat selection</td>
-                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="${currency} + ' ' + ${seatFees}">USD 0.00</td>
+                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="|${currency} ${seatFees}|">USD 0.00</td>
+              </tr>
+              <tr th:if="${hasAncillaryFees}">
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">Baggage and extras</td>
+                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="|${currency} ${ancillaryFees}|">USD 0.00</td>
+              </tr>
+              <tr th:if="${hasMealFees}">
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;color:#475569;">Meals</td>
+                <td align="right" style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;" th:text="|${currency} ${mealFees}|">USD 0.00</td>
               </tr>
               <tr>
                 <td style="padding:16px;font-size:16px;font-weight:800;color:#0f172a;background:#f8fafc;">Total paid</td>
-                <td align="right" style="padding:16px;font-size:18px;font-weight:800;color:#0f172a;background:#f8fafc;" th:text="${currency} + ' ' + ${totalAmount}">USD 0.00</td>
+                <td align="right" style="padding:16px;font-size:18px;font-weight:800;color:#0f172a;background:#f8fafc;" th:text="|${currency} ${totalAmount}|">USD 0.00</td>
               </tr>
             </table>
             <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#64748b;">
-              Paid via <strong th:text="${event.paymentGateway != null ? event.paymentGateway : 'Payment gateway'}">STRIPE</strong>
+              Paid via <strong th:text="${paymentGatewayDisplay}">STRIPE</strong>
               <span th:if="${event.transactionId != null}"> · Transaction <span th:text="${event.transactionId}">TXN</span></span>
             </p>
           </td>
@@ -196,7 +222,7 @@
           <td style="padding:24px 34px;background:#0f172a;text-align:center;">
             <p style="margin:0;font-size:15px;font-weight:800;color:#ffffff;">FlightHub</p>
             <p style="margin:8px 0 0;font-size:12px;line-height:1.6;color:#94a3b8;">
-              Need help? Contact <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}" style="color:#93c5fd;text-decoration:none;">support@flighthub.local</a>.
+              Need help? Contact <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}" style="color:#93c5fd;text-decoration:none;">support@flighthub.local</a>.
             </p>
             <p style="margin:14px 0 0;font-size:11px;line-height:1.6;color:#64748b;">
               This is an automated confirmation email. Please do not reply directly to this message.

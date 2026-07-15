@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -26,6 +27,7 @@ import com.triquang.event.FlightInstanceEventProducer;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.FlightInstanceMapper;
 import com.triquang.message.FlightInstanceCreatedEvent;
+import com.triquang.message.FlightScheduleChangedEvent;
 import com.triquang.model.Flight;
 import com.triquang.model.FlightInstance;
 import com.triquang.payload.request.FlightInstanceRequest;
@@ -163,9 +165,12 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
 		requireOwnership(existing.getFlight(), getAirlineForUser(userId));
 		validateInstance(request, existing.getFlight());
+		FlightScheduleChangedEvent before = scheduleSnapshot(existing);
 
 		FlightInstanceMapper.updateEntity(request, existing);
-		return getFlightInstance(flightInstanceRepository.save(existing));
+		FlightInstance saved = flightInstanceRepository.save(existing);
+		flightInstanceEventProducer.sendFlightScheduleChanged(scheduleChangedEvent(saved, before));
+		return getFlightInstance(saved);
 	}
 
 	@Override
@@ -175,11 +180,14 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 				.orElseThrow(() -> new BaseException(ErrorCode.FLIGHT_INSTANCE_NOT_FOUND));
 		requireOwnership(instance.getFlight(), getAirlineForUser(userId));
 		statusTransitionPolicy.validate(instance.getStatus(), status);
+		FlightScheduleChangedEvent before = scheduleSnapshot(instance);
 		instance.setStatus(status);
 		if (status == FlightStatus.CANCELLED || status == FlightStatus.ARRIVED) {
 			instance.setIsActive(false);
 		}
-		return getFlightInstance(flightInstanceRepository.save(instance));
+		FlightInstance saved = flightInstanceRepository.save(instance);
+		flightInstanceEventProducer.sendFlightScheduleChanged(scheduleChangedEvent(saved, before));
+		return getFlightInstance(saved);
 	}
 
 	@Override
@@ -292,6 +300,41 @@ public class FlightInstanceServiceImpl implements FlightInstanceService {
 					fi.getArrivalAirportId(), referenceDataService::getAirport);
 			return FlightInstanceMapper.toResponse(fi, aircraft, airline, departure, arrival);
 		}).toList();
+	}
+
+	private FlightScheduleChangedEvent scheduleSnapshot(FlightInstance instance) {
+		return FlightScheduleChangedEvent.builder()
+				.flightInstanceId(instance.getId())
+				.flightId(instance.getFlight() != null ? instance.getFlight().getId() : null)
+				.airlineId(instance.getAirlineId())
+				.flightNumber(instance.getFlight() != null ? instance.getFlight().getFlightNumber() : null)
+				.oldStatus(instance.getStatus() != null ? instance.getStatus().name() : null)
+				.oldDepartureDateTime(instance.getDepartureDateTime())
+				.oldArrivalDateTime(instance.getArrivalDateTime())
+				.oldGate(instance.getGate())
+				.oldTerminal(instance.getTerminal())
+				.build();
+	}
+
+	private FlightScheduleChangedEvent scheduleChangedEvent(FlightInstance instance, FlightScheduleChangedEvent before) {
+		return FlightScheduleChangedEvent.builder()
+				.eventId(UUID.randomUUID().toString())
+				.flightInstanceId(instance.getId())
+				.flightId(instance.getFlight() != null ? instance.getFlight().getId() : null)
+				.airlineId(instance.getAirlineId())
+				.flightNumber(instance.getFlight() != null ? instance.getFlight().getFlightNumber() : null)
+				.oldStatus(before.getOldStatus())
+				.newStatus(instance.getStatus() != null ? instance.getStatus().name() : null)
+				.oldDepartureDateTime(before.getOldDepartureDateTime())
+				.newDepartureDateTime(instance.getDepartureDateTime())
+				.oldArrivalDateTime(before.getOldArrivalDateTime())
+				.newArrivalDateTime(instance.getArrivalDateTime())
+				.oldGate(before.getOldGate())
+				.newGate(instance.getGate())
+				.oldTerminal(before.getOldTerminal())
+				.newTerminal(instance.getTerminal())
+				.changedAt(LocalDateTime.now())
+				.build();
 	}
 
 	private void requireOwnership(Flight flight, Long airlineId) {

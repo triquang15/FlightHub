@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body style="margin:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:28px 12px;">
+  <tr><td align="center"><table role="presentation" width="640" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+    <tr><td style="padding:28px 32px;background:#0f172a;color:#ffffff;"><p style="margin:0 0 8px;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#fdba74;">Airline onboarding</p><h1 style="margin:0;font-size:26px;">Application <span th:text="${decision}">updated</span></h1></td></tr>
+    <tr><td style="padding:28px 32px;"><p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hi <strong th:text="${ownerName}">Owner</strong>, your airline profile <strong th:text="${airlineName}">Airline</strong> is now <strong th:text="${status}">ACTIVE</strong>.</p><p style="margin:0 0 16px;color:#64748b;" th:text="${reason}">Decision details</p><p style="margin:0 0 22px;color:#64748b;">Decision time: <strong th:text="${decidedAt}">N/A</strong></p><a th:href="${workspaceUrl}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;padding:13px 18px;border-radius:12px;font-weight:800;">Open workspace</a></td></tr>
+    <tr><td style="padding:20px 32px;background:#0f172a;color:#94a3b8;font-size:12px;line-height:1.6;">Need help? Contact <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}" style="color:#93c5fd;">support</a>.</td></tr>
+  </table></td></tr>
+</table>
+</body>
+</html>

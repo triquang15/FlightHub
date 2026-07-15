@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body style="margin:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:28px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+      <tr><td style="padding:28px 32px;background:#0f172a;color:#ffffff;">
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#fdba74;">Ticket issued</p>
+        <h1 style="margin:0;font-size:28px;">Your FlightHub ticket is ready</h1>
+      </td></tr>
+      <tr><td style="padding:28px 32px;">
+        <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">Hi <strong th:text="${userName}">Traveller</strong>, tickets for booking <strong th:text="${bookingReference}">BK123</strong> have been issued.</p>
+        <p style="margin:0 0 16px;color:#64748b;">Trip type: <strong th:text="${tripTypeDisplay}">One-way</strong> · Cabin: <strong th:text="${cabinClassDisplay}">Economy</strong> · Issued: <strong th:text="${issuedAt}">N/A</strong></p>
+        <table role="presentation" width="100%" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+          <tr style="background:#f8fafc;"><th align="left" style="padding:12px;">Passenger</th><th align="left" style="padding:12px;">Seat</th><th align="left" style="padding:12px;">Ticket</th></tr>
+          <tr th:each="pax : ${event.passengers}">
+            <td style="padding:12px;border-top:1px solid #e2e8f0;" th:text="${pax.getFullName()}">Passenger</td>
+            <td style="padding:12px;border-top:1px solid #e2e8f0;" th:text="${pax.seatNumber != null ? pax.seatNumber : 'Auto-assigned'}">12A</td>
+            <td style="padding:12px;border-top:1px solid #e2e8f0;font-family:Consolas,monospace;" th:text="${pax.ticketNumber != null ? pax.ticketNumber : 'Pending'}">TKT</td>
+          </tr>
+        </table>
+        <p style="margin:22px 0 0;"><a th:href="${viewTicketUrl}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;padding:13px 18px;border-radius:12px;font-weight:800;">View ticket</a></p>
+      </td></tr>
+      <tr><td style="padding:20px 32px;background:#0f172a;color:#94a3b8;font-size:12px;line-height:1.6;">Need help? Contact <a th:href="${'mailto:' + supportEmail}" th:text="${supportEmail}" style="color:#93c5fd;">support</a>.</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

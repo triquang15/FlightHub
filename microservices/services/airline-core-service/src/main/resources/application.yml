@@ -22,6 +22,9 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -71,8 +74,13 @@ management:
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   media-service:
     base-url: ${MEDIA_SERVICE_BASE_URL:http://localhost:8089}
   storage:
     airline-logo:
       local-dir: ${AIRLINE_LOGO_STORAGE_DIR:${java.io.tmpdir}/flighthub/airline-logos}
+
+kafka:
+  topics:
+    airline-onboarding-decision: ${KAFKA_TOPIC_AIRLINE_ONBOARDING_DECISION:airline.onboarding-decision}

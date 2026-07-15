@@ -114,7 +114,9 @@ public class PaymentEventListener {
 		releaseSeats(booking);
 
 		booking.setStatus(BookingStatus.CANCELLED);
-		bookingRepository.save(booking);
+		booking = bookingRepository.save(booking);
+		UserDTO userDTO = fetchUser(booking.getUserId());
+		bookingEventProducer.sendPaymentFailed(booking, event, userDTO);
 		log.warn("Booking {} cancelled due to payment failure: {}", booking.getBookingReference(),
 				event.getFailureReason());
 	}
@@ -135,11 +137,25 @@ public class PaymentEventListener {
 		}
 		releaseSeats(booking);
 		booking.setStatus(BookingStatus.CANCELLED);
-		bookingRepository.save(booking);
+		booking = bookingRepository.save(booking);
+		UserDTO userDTO = fetchUser(booking.getUserId());
+		bookingEventProducer.sendBookingRefunded(booking, event, userDTO);
 		log.info("Booking {} cancelled after refund {}", booking.getBookingReference(), event.getRefundId());
 	}
 
 	// ── Private Helpers ───────────────────────────────────────────────────────
+
+	public FlightInstanceResponse fetchFlightInstanceForNotification(Long flightInstanceId) {
+		return fetchFlightInstance(flightInstanceId);
+	}
+
+	public Map<Long, FlightInstanceResponse> fetchLegFlightInstancesForNotification(Booking booking) {
+		return fetchLegFlightInstances(booking);
+	}
+
+	public UserDTO fetchUserForNotification(Long userId) {
+		return fetchUser(userId);
+	}
 
 	private FlightInstanceResponse fetchFlightInstance(Long flightInstanceId) {
 		if (flightInstanceId == null)

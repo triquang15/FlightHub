@@ -224,6 +224,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, Booking
             "WHERE b.id = :id")
     Optional<Booking> findByIdWithDetails(@Param("id") Long id);
 
+    @Query("""
+            SELECT DISTINCT b FROM Booking b
+            LEFT JOIN FETCH b.passengers
+            LEFT JOIN FETCH b.legs l
+            WHERE b.status = :status
+              AND (b.flightInstanceId = :flightInstanceId OR l.flightInstanceId = :flightInstanceId)
+            """)
+    List<Booking> findAffectedBookingsForFlightInstance(
+            @Param("flightInstanceId") Long flightInstanceId,
+            @Param("status") BookingStatus status);
+
 
     @Query("SELECT DISTINCT b FROM Booking b " +
             "LEFT JOIN FETCH b.passengers p " +

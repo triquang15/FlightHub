@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.message.SuspiciousLoginEvent;
+import com.triquang.message.AdminUserProvisionedEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,9 @@ public class SecurityEventProducer {
 
     @Value("${kafka.topics.password-reset-requested}")
     private String passwordResetTopic;
+
+    @Value("${kafka.topics.admin-user-provisioned:user.admin-provisioned}")
+    private String adminUserProvisionedTopic;
 
     public void sendSuspiciousLoginEvent(SuspiciousLoginEvent event) {
 
@@ -55,6 +59,19 @@ public class SecurityEventProducer {
                                 metadata.topic(),
                                 metadata.partition(),
                                 metadata.offset());
+                    }
+                });
+    }
+
+    public void sendAdminUserProvisionedEvent(AdminUserProvisionedEvent event) {
+        kafkaTemplate.send(adminUserProvisionedTopic, event.getEmail(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Kafka admin user provisioned send FAILED key={}", event.getEmail(), ex);
+                    } else {
+                        var metadata = result.getRecordMetadata();
+                        log.info("Kafka admin user provisioned send OK key={}, topic={}, partition={}, offset={}",
+                                event.getEmail(), metadata.topic(), metadata.partition(), metadata.offset());
                     }
                 });
     }

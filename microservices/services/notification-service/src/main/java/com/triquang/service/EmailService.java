@@ -13,11 +13,19 @@ import org.thymeleaf.context.Context;
 
 import com.triquang.message.BookingConfirmedEvent;
 import com.triquang.message.BookingLegNotificationData;
+import com.triquang.message.AdminUserProvisionedEvent;
+import com.triquang.message.AirlineOnboardingDecisionEvent;
+import com.triquang.message.BookingRefundedNotificationEvent;
+import com.triquang.message.FlightScheduleChangedNotificationEvent;
+import com.triquang.message.NotificationFailureAlertEvent;
+import com.triquang.message.PaymentFailedNotificationEvent;
 import java.math.BigDecimal;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.message.SuspiciousLoginEvent;
+import com.triquang.message.TicketIssuedEvent;
 
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -85,6 +93,7 @@ public class EmailService {
         ctx.setVariable("viewTicketUrl", event.getBookingId() != null
                 ? frontendBaseUrl + "/view-ticket/" + event.getBookingId()
                 : frontendBaseUrl + "/bookings");
+        ctx.setVariable("paymentGatewayDisplay", valueOrUnknown(event.getPaymentGateway()));
 
         // Formatted dates / times
         ctx.setVariable("depDate",
@@ -114,6 +123,9 @@ public class EmailService {
         ctx.setVariable("ancillaryFees",  fmt(ancillary));
         ctx.setVariable("mealFees",       fmt(meals));
         ctx.setVariable("totalAmount",    fmt(total));
+        ctx.setVariable("hasSeatFees", seats > 0);
+        ctx.setVariable("hasAncillaryFees", ancillary > 0);
+        ctx.setVariable("hasMealFees", meals > 0);
 
         // Baggage helpers
         ctx.setVariable("hasBaggage",
@@ -260,5 +272,196 @@ public class EmailService {
 
         String separator = baseUrl.contains("?") ? "&" : "?";
         return baseUrl + separator + "token=" + token;
+    }
+
+    public void sendPaymentFailed(PaymentFailedNotificationEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        sendHtml(
+                event.getContactEmail(),
+                "Payment could not be completed | " + valueOrUnknown(event.getBookingReference()),
+                "email/payment-failed",
+                basePaymentContext(event)
+        );
+    }
+
+    public void sendBookingRefunded(BookingRefundedNotificationEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("userName", valueOrUnknown(event.getUserName()));
+        ctx.setVariable("bookingReference", valueOrUnknown(event.getBookingReference()));
+        ctx.setVariable("amountDisplay", money(event.getCurrency(), event.getAmount()));
+        ctx.setVariable("paymentGateway", valueOrUnknown(event.getPaymentGateway()));
+        ctx.setVariable("refundId", valueOrUnknown(event.getRefundId()));
+        ctx.setVariable("refundedAt", fmtDateTime(event.getRefundedAt()));
+        ctx.setVariable("manageBookingUrl", defaultUrl(event.getManageBookingUrl(), "/bookings"));
+
+        sendHtml(
+                event.getContactEmail(),
+                "Refund initiated | " + valueOrUnknown(event.getBookingReference()),
+                "email/booking-refunded",
+                ctx
+        );
+    }
+
+    public void sendTicketIssued(TicketIssuedEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("userName", valueOrUnknown(event.getUserName()));
+        ctx.setVariable("bookingReference", valueOrUnknown(event.getBookingReference()));
+        ctx.setVariable("tripTypeDisplay", tripTypeDisplay(event.getTripType()));
+        ctx.setVariable("cabinClassDisplay", cabinDisplayName(event.getCabinClass()));
+        ctx.setVariable("issuedAt", fmtDateTime(event.getIssuedAt()));
+        ctx.setVariable("viewTicketUrl", defaultUrl(event.getViewTicketUrl(), "/view-ticket/" + event.getBookingId()));
+        ctx.setVariable("manageBookingUrl", defaultUrl(event.getManageBookingUrl(), "/bookings"));
+
+        sendHtml(
+                event.getContactEmail(),
+                "Your ticket is ready | " + valueOrUnknown(event.getBookingReference()),
+                "email/ticket-issued",
+                ctx
+        );
+    }
+
+    public void sendFlightScheduleChanged(FlightScheduleChangedNotificationEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("userName", valueOrUnknown(event.getUserName()));
+        ctx.setVariable("bookingReference", valueOrUnknown(event.getBookingReference()));
+        ctx.setVariable("flightNumber", valueOrUnknown(event.getFlightNumber()));
+        ctx.setVariable("oldDeparture", fmtDateTime(event.getOldDepartureDateTime()));
+        ctx.setVariable("newDeparture", fmtDateTime(event.getNewDepartureDateTime()));
+        ctx.setVariable("oldArrival", fmtDateTime(event.getOldArrivalDateTime()));
+        ctx.setVariable("newArrival", fmtDateTime(event.getNewArrivalDateTime()));
+        ctx.setVariable("oldStatus", valueOrUnknown(event.getOldStatus()));
+        ctx.setVariable("newStatus", valueOrUnknown(event.getNewStatus()));
+        ctx.setVariable("oldGate", valueOrUnknown(event.getOldGate()));
+        ctx.setVariable("newGate", valueOrUnknown(event.getNewGate()));
+        ctx.setVariable("oldTerminal", valueOrUnknown(event.getOldTerminal()));
+        ctx.setVariable("newTerminal", valueOrUnknown(event.getNewTerminal()));
+        ctx.setVariable("changedAt", fmtDateTime(event.getChangedAt()));
+        ctx.setVariable("manageBookingUrl", defaultUrl(event.getManageBookingUrl(), "/bookings"));
+
+        sendHtml(
+                event.getContactEmail(),
+                "Flight schedule updated | " + valueOrUnknown(event.getBookingReference()),
+                "email/flight-schedule-changed",
+                ctx
+        );
+    }
+
+    public void sendAirlineOnboardingDecision(AirlineOnboardingDecisionEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("ownerName", valueOrUnknown(event.getOwnerName()));
+        ctx.setVariable("airlineName", valueOrUnknown(event.getAirlineName()));
+        ctx.setVariable("decision", valueOrUnknown(event.getDecision()));
+        ctx.setVariable("status", valueOrUnknown(event.getStatus()));
+        ctx.setVariable("reason", valueOrUnknown(event.getReason()));
+        ctx.setVariable("decidedAt", fmtDateTime(event.getDecidedAt()));
+        ctx.setVariable("workspaceUrl", defaultUrl(event.getWorkspaceUrl(), "/airline"));
+
+        sendHtml(
+                event.getOwnerEmail(),
+                "Airline onboarding update | " + valueOrUnknown(event.getAirlineName()),
+                "email/airline-onboarding-decision",
+                ctx
+        );
+    }
+
+    public void sendAdminUserProvisioned(AdminUserProvisionedEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("fullName", valueOrUnknown(event.getFullName()));
+        ctx.setVariable("email", valueOrUnknown(event.getEmail()));
+        ctx.setVariable("role", event.getRole() != null ? event.getRole().name().replace("ROLE_", "").replace('_', ' ') : "Admin");
+        ctx.setVariable("createdAt", fmtDateTime(event.getCreatedAt()));
+        ctx.setVariable("loginUrl", defaultUrl(event.getLoginUrl(), "/login"));
+
+        sendHtml(
+                event.getEmail(),
+                "Your FlightHub admin account is ready",
+                "email/admin-user-provisioned",
+                ctx
+        );
+    }
+
+    public void sendNotificationFailureAlert(NotificationFailureAlertEvent event)
+            throws MessagingException, UnsupportedEncodingException {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("severity", valueOrUnknown(event.getSeverity()));
+        ctx.setVariable("serviceName", valueOrUnknown(event.getServiceName()));
+        ctx.setVariable("summary", valueOrUnknown(event.getSummary()));
+        ctx.setVariable("details", valueOrUnknown(event.getDetails()));
+        ctx.setVariable("failedCount", event.getFailedCount() != null ? event.getFailedCount() : 0);
+        ctx.setVariable("detectedAt", fmtDateTime(event.getDetectedAt()));
+        ctx.setVariable("dashboardUrl", defaultUrl(event.getDashboardUrl(), "/super-admin/notifications"));
+
+        sendHtml(
+                event.getRecipientEmail(),
+                "Notification delivery alert | " + valueOrUnknown(event.getSeverity()),
+                "email/notification-failure-alert",
+                ctx
+        );
+    }
+
+    private Context basePaymentContext(PaymentFailedNotificationEvent event) {
+        Context ctx = baseContext();
+        ctx.setVariable("event", event);
+        ctx.setVariable("userName", valueOrUnknown(event.getUserName()));
+        ctx.setVariable("bookingReference", valueOrUnknown(event.getBookingReference()));
+        ctx.setVariable("amountDisplay", money(event.getCurrency(), event.getAmount()));
+        ctx.setVariable("paymentGateway", valueOrUnknown(event.getPaymentGateway()));
+        ctx.setVariable("failureReason", valueOrUnknown(event.getFailureReason()));
+        ctx.setVariable("failedAt", fmtDateTime(event.getFailedAt()));
+        ctx.setVariable("manageBookingUrl", defaultUrl(event.getManageBookingUrl(), "/bookings"));
+        return ctx;
+    }
+
+    private void sendHtml(String to, String subject, String template, Context ctx)
+            throws MessagingException, UnsupportedEncodingException {
+        if (to == null || to.isBlank()) {
+            log.warn("Skipping email without recipient | subject={}", subject);
+            return;
+        }
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(templateEngine.process(template, ctx), true);
+
+        mailSender.send(message);
+    }
+
+    private Context baseContext() {
+        Context ctx = new Context(Locale.ENGLISH);
+        ctx.setVariable("supportEmail", supportEmail);
+        ctx.setVariable("frontendBaseUrl", frontendBaseUrl);
+        return ctx;
+    }
+
+    private String fmtDateTime(LocalDateTime value) {
+        return value != null ? value.format(DT_FMT) : "N/A";
+    }
+
+    private String money(String currency, BigDecimal amount) {
+        String safeCurrency = currency != null && !currency.isBlank() ? currency : "USD";
+        return safeCurrency + " " + fmt(orZero(amount));
+    }
+
+    private String defaultUrl(String value, String fallbackPath) {
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+        String path = fallbackPath != null && fallbackPath.startsWith("/") ? fallbackPath : "/" + fallbackPath;
+        return frontendBaseUrl + path;
     }
 }

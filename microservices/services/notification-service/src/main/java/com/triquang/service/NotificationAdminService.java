@@ -25,9 +25,16 @@ import com.triquang.dto.NotificationRetryResponse;
 import com.triquang.enums.DeliveryChannel;
 import com.triquang.enums.DeliveryStatus;
 import com.triquang.enums.NotificationType;
+import com.triquang.message.AdminUserProvisionedEvent;
+import com.triquang.message.AirlineOnboardingDecisionEvent;
 import com.triquang.message.BookingConfirmedEvent;
+import com.triquang.message.BookingRefundedNotificationEvent;
+import com.triquang.message.FlightScheduleChangedNotificationEvent;
+import com.triquang.message.NotificationFailureAlertEvent;
 import com.triquang.message.PasswordResetRequestedEvent;
+import com.triquang.message.PaymentFailedNotificationEvent;
 import com.triquang.message.SuspiciousLoginEvent;
+import com.triquang.message.TicketIssuedEvent;
 import com.triquang.model.NotificationDelivery;
 import com.triquang.model.NotificationEvent;
 import com.triquang.repository.NotificationDeliveryRepository;
@@ -292,6 +299,34 @@ public class NotificationAdminService {
                     ensureSmsEnabled();
                     smsService.sendBookingConfirmation(payload);
                 }
+            }
+            case PAYMENT_FAILED -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendPaymentFailed(readPayload(event, PaymentFailedNotificationEvent.class));
+            }
+            case BOOKING_REFUNDED -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendBookingRefunded(readPayload(event, BookingRefundedNotificationEvent.class));
+            }
+            case TICKET_ISSUED -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendTicketIssued(readPayload(event, TicketIssuedEvent.class));
+            }
+            case FLIGHT_SCHEDULE_CHANGED -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendFlightScheduleChanged(readPayload(event, FlightScheduleChangedNotificationEvent.class));
+            }
+            case AIRLINE_ONBOARDING_DECISION -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendAirlineOnboardingDecision(readPayload(event, AirlineOnboardingDecisionEvent.class));
+            }
+            case ADMIN_USER_PROVISIONED -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendAdminUserProvisioned(readPayload(event, AdminUserProvisionedEvent.class));
+            }
+            case NOTIFICATION_FAILURE_ALERT -> {
+                ensureEmailDelivery(delivery);
+                emailService.sendNotificationFailureAlert(readPayload(event, NotificationFailureAlertEvent.class));
             }
         }
     }

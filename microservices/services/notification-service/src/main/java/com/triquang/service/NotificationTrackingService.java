@@ -142,8 +142,11 @@ public class NotificationTrackingService {
 
     private String sourceService(NotificationType type) {
         return switch (type) {
-            case BOOKING_CONFIRMED -> "booking-service";
-            case PASSWORD_RESET_REQUESTED, SUSPICIOUS_LOGIN -> "user-service";
+            case BOOKING_CONFIRMED, PAYMENT_FAILED, BOOKING_REFUNDED, TICKET_ISSUED, FLIGHT_SCHEDULE_CHANGED ->
+                    "booking-service";
+            case PASSWORD_RESET_REQUESTED, SUSPICIOUS_LOGIN, ADMIN_USER_PROVISIONED -> "user-service";
+            case AIRLINE_ONBOARDING_DECISION -> "airline-core-service";
+            case NOTIFICATION_FAILURE_ALERT -> "notification-service";
         };
     }
 

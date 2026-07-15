@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,6 +24,7 @@ import com.triquang.client.MediaServiceClient;
 import com.triquang.client.MediaServiceClient.MediaFileResponse;
 import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.mapper.UserMapper;
+import com.triquang.message.AdminUserProvisionedEvent;
 import com.triquang.message.PasswordResetRequestedEvent;
 import com.triquang.model.User;
 import com.triquang.model.UserIdentity;
@@ -62,6 +64,9 @@ public class UserServiceImpl implements UserService {
     private final SecurityEventProducer securityEventProducer;
     private final AvatarStorageService avatarStorageService;
     private final MediaServiceClient mediaServiceClient;
+
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     // ================= PROFILE =================
     @Override
@@ -287,6 +292,21 @@ public class UserServiceImpl implements UserService {
                 .displayName(saved.getFullName())
                 .lastLoginAt(null)
                 .build());
+
+        try {
+            securityEventProducer.sendAdminUserProvisionedEvent(AdminUserProvisionedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .userId(saved.getId())
+                    .email(saved.getEmail())
+                    .fullName(saved.getFullName())
+                    .role(saved.getRole())
+                    .createdBy("SYSTEM_ADMIN")
+                    .createdAt(LocalDateTime.now())
+                    .loginUrl(frontendBaseUrl + "/login")
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Could not publish admin user provisioned event userId={}: {}", saved.getId(), ex.getMessage());
+        }
 
         return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
     }

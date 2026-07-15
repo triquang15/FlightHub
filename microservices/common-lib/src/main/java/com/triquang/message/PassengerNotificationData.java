@@ -24,7 +24,10 @@ public class PassengerNotificationData {
 	private String dietaryPreferences;
 
 	public String getFullName() {
-		return firstName + " " + lastName;
+		String givenName = firstName != null && !firstName.isBlank() ? firstName.trim() : "";
+		String familyName = lastName != null && !lastName.isBlank() ? lastName.trim() : "";
+		String fullName = (givenName + " " + familyName).trim();
+		return !fullName.isBlank() ? fullName : "Passenger";
 	}
 
 	public String getPassengerType() {

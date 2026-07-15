@@ -28,7 +28,11 @@ It does not own:
 Current producers:
 
 - `user-service`: password reset and suspicious login events.
-- `booking-service`: booking confirmation/ticket events after payment success.
+- `user-service`: admin-created account onboarding emails.
+- `booking-service`: booking confirmation, ticket issued, payment failed,
+  refund, and schedule-change notification events.
+- `airline-core-service`: airline onboarding approval/rejection decisions.
+- `notification-service`: internal delivery failure alert events for operators.
 - Future producers can add their own event types if they provide stable
   idempotency keys and safe payloads.
 
@@ -63,6 +67,9 @@ the required channel.
   data.
 - Notification Service should not block the booking transaction; Booking emits
   events after state changes.
+- Optional operator/customer emails should be treated as side effects. A Kafka
+  or SMTP failure must be captured in notification tracking, not used to roll
+  back user creation, airline decision, booking, or payment state.
 
 ## Main API contracts
 
@@ -82,11 +89,46 @@ Admin APIs:
 Important templates:
 
 - Booking confirmation email.
+- Ticket issued email.
+- Payment failed email.
+- Booking refunded email.
+- Flight schedule changed email.
 - Password reset email.
 - Suspicious login alert email.
+- Admin user provisioned email.
+- Airline onboarding decision email.
+- Notification failure alert email.
 
 Templates should be business-readable, include the minimal required next action,
 and work in common email clients without relying on external scripts.
+
+Current template expectations:
+
+- Booking confirmation supports one-way, round-trip, and future multi-leg
+  display through the `legs` payload.
+- Booking confirmation shows passenger, seat, ticket, baggage allowance, base
+  fare, taxes, seats, extras, meals, total paid, and payment provider when data
+  is present.
+- Ticket issued email is the lightweight post-payment ticket handoff and should
+  link directly to the ticket view.
+- Payment failed email must explain that the booking is not completed and send
+  the traveler back to manage/retry checkout.
+- Booking refunded email must include amount, currency, provider, refund ID when
+  available, and the manage-booking link.
+- Flight schedule changed email must show old and new schedule/status/gate data
+  when present and support multi-leg bookings.
+- Airline onboarding decision email must tell the owner whether the airline was
+  approved, rejected, or updated and link to the workspace when applicable.
+- Admin user provisioned email must direct the new user to sign in without
+  leaking any password or secret.
+- Notification failure alert email is for operators and should summarize failed
+  delivery severity, source service, and dashboard link.
+- Password reset email must include the reset action, expiry time, request time,
+  account email, and support contact.
+- Suspicious login email must include detected time, device, IP address, and a
+  clear remediation path.
+- Templates must be covered by render tests so malformed Thymeleaf expressions
+  fail during CI instead of failing during live email delivery.
 
 ## Operations and observability
 
