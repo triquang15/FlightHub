@@ -35,7 +35,17 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Notification Admin", description = "Inspect notification events, delivery attempts, failed messages, and retry/delete delivery operations.")
 public class NotificationAdminController {
 
-    private static final java.util.Set<String> ALLOWED_SORT_FIELDS = java.util.Set.of(
+    private static final java.util.Set<String> EVENT_SORT_FIELDS = java.util.Set.of(
+            "id",
+            "createdAt",
+            "updatedAt",
+            "eventKey",
+            "businessKey",
+            "type",
+            "sourceService"
+    );
+
+    private static final java.util.Set<String> DELIVERY_SORT_FIELDS = java.util.Set.of(
             "id",
             "createdAt",
             "updatedAt",
@@ -72,7 +82,7 @@ public class NotificationAdminController {
         return ResponseUtil.ok(notificationAdminService.getEvents(
                 type,
                 search,
-                pageable(page, size, sortBy, direction)
+                pageable(page, size, sortBy, direction, EVENT_SORT_FIELDS, "createdAt")
         ));
     }
 
@@ -97,7 +107,7 @@ public class NotificationAdminController {
                 channel,
                 type,
                 search,
-                pageable(page, size, sortBy, direction)
+                pageable(page, size, sortBy, direction, DELIVERY_SORT_FIELDS, "updatedAt")
         ));
     }
 
@@ -133,14 +143,21 @@ public class NotificationAdminController {
         return ResponseUtil.ok("Notification delivery deleted");
     }
 
-    private PageRequest pageable(int page, int size, String sortBy, String direction) {
+    private PageRequest pageable(
+            int page,
+            int size,
+            String sortBy,
+            String direction,
+            java.util.Set<String> allowedSortFields,
+            String defaultSort
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
         Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
 
-        String safeSortBy = ALLOWED_SORT_FIELDS.contains(sortBy) ? sortBy : "updatedAt";
+        String safeSortBy = allowedSortFields.contains(sortBy) ? sortBy : defaultSort;
 
         return PageRequest.of(safePage, safeSize, Sort.by(sortDirection, safeSortBy));
     }

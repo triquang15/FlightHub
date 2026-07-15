@@ -15,6 +15,7 @@ import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -34,38 +35,30 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.listener.concurrency:3}")
     private Integer listenerConcurrency;
 
-    // ================= CONSUMER FACTORY =================
+    @Value("${notification.kafka.listener.auto-startup:true}")
+    private Boolean listenerAutoStartup;
+
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
-
-        JsonDeserializer<Object> deserializer = new JsonDeserializer<>();
-        deserializer.addTrustedPackages("com.triquang.message");
-        deserializer.setUseTypeMapperForKey(false);
-
         Map<String, Object> props = new HashMap<>();
 
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
-
-        // 🔥 QUAN TRỌNG
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.triquang.message");
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000);
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 15000);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
-        return new DefaultKafkaConsumerFactory<>(
-                props,
-                new StringDeserializer(),
-                deserializer
-        );
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    // ================= ERROR HANDLER (RETRY + DLQ) =================
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
-
-        // retry 3 lần, mỗi lần 2s
         FixedBackOff backOff = new FixedBackOff(2000L, 3);
 
         DeadLetterPublishingRecoverer recoverer =
@@ -80,7 +73,6 @@ public class KafkaConsumerConfig {
         return new DefaultErrorHandler(recoverer, backOff);
     }
 
-    // ================= LISTENER FACTORY =================
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
             ConsumerFactory<String, Object> consumerFactory,
@@ -93,6 +85,7 @@ public class KafkaConsumerConfig {
         factory.setCommonErrorHandler(errorHandler);
 
         factory.setConcurrency(listenerConcurrency);
+        factory.setAutoStartup(listenerAutoStartup);
 
         return factory;
     }

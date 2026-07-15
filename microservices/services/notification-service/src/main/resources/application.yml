@@ -19,6 +19,7 @@ spring:
     locations: classpath:db/migration
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
 
@@ -46,16 +47,30 @@ spring:
       enable-auto-commit: false
 
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
 
       properties:
         # MULTI-EVENT SUPPORT
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "com.triquang.message"
         spring.json.use.type.headers: true
 
         # STABILITY
         max.poll.interval.ms: 300000
         session.timeout.ms: 15000
+
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+        request.timeout.ms: 30000
+        linger.ms: 5
+        batch.size: 16384
 
     listener:
       ack-mode: record
@@ -113,12 +128,15 @@ notification:
   from-name: "Flight Hub Notifications"
   support-email: ${MAIL_FROM:flight_hub@gmail.com}
   support-phone: "1800-123-5678"
+  kafka:
+    listener:
+      auto-startup: ${NOTIFICATION_KAFKA_LISTENER_AUTO_STARTUP:true}
   idempotency:
     retention-seconds: ${NOTIFICATION_IDEMPOTENCY_RETENTION_SECONDS:86400}
     processing-lock-seconds: ${NOTIFICATION_IDEMPOTENCY_LOCK_SECONDS:300}
   password-reset-url: ${PASSWORD_RESET_URL:${notification.frontend-base-url}/reset-password}
 
-  frontend-base-url: http://localhost:3000
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   checkin-url: ${notification.frontend-base-url}/checkin
   manage-booking-url: ${notification.frontend-base-url}/booking
 

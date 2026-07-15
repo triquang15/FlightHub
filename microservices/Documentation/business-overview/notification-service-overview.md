@@ -14,6 +14,7 @@ It owns:
 - Idempotency locks for repeated Kafka delivery attempts.
 - Failed delivery visibility and manual retry.
 - DLQ event capture.
+- Kafka consumer retry and deserialization protection.
 
 It does not own:
 
@@ -46,6 +47,14 @@ the required channel.
 
 - Consumers must be idempotent. Replayed Kafka events should not duplicate
   outbound email/SMS when the idempotency key already exists.
+- Kafka consumers use `ErrorHandlingDeserializer`, record-level acking, and
+  retry-to-DLQ behavior so malformed or failing messages are visible instead of
+  silently committing offsets.
+- Kafka listener startup can be disabled with
+  `NOTIFICATION_KAFKA_LISTENER_AUTO_STARTUP=false` for maintenance and isolated
+  tests.
+- Notification delivery retry runs in a transaction and should never bypass the
+  delivery audit state machine.
 - Failed delivery attempts are stored for admin inspection.
 - DLQ messages are stored separately for diagnostics.
 - Retry is an admin operation and should update delivery status consistently.

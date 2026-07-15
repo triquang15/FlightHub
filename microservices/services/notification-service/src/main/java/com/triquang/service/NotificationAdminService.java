@@ -111,6 +111,7 @@ public class NotificationAdminService {
         ));
     }
 
+    @Transactional
     public NotificationRetryResponse retryDelivery(Long deliveryId) {
         NotificationDelivery delivery = deliveryRepository.findWithEventById(deliveryId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification delivery not found: " + deliveryId));
