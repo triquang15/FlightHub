@@ -326,8 +326,10 @@ MEDIA_MAX_FILE_SIZE_BYTES=8388608
 
 # Reserved for the S3 adapter. Keep empty while MEDIA_STORAGE_PROVIDER=LOCAL.
 MEDIA_S3_BUCKET=
-MEDIA_S3_REGION=
+MEDIA_S3_REGION=us-east-1
 MEDIA_S3_PUBLIC_BASE_URL=
+MEDIA_S3_ENDPOINT=
+MEDIA_S3_PATH_STYLE_ACCESS=false
 MEDIA_S3_ACCESS_KEY_ID=
 MEDIA_S3_SECRET_ACCESS_KEY=
 ```
@@ -355,6 +357,26 @@ Production upload policy:
 Admin delete by media id requires `force=true` for linked business assets.
 Service-to-service cleanup should use delete by `storageKey` after the owning
 business record has been updated.
+
+To test S3-compatible storage later, set `MEDIA_STORAGE_PROVIDER=S3` and fill:
+
+```bash
+MEDIA_S3_BUCKET=flighthub-media-dev
+MEDIA_S3_REGION=us-east-1
+MEDIA_S3_PUBLIC_BASE_URL=https://cdn.example.com
+MEDIA_S3_ACCESS_KEY_ID=...
+MEDIA_S3_SECRET_ACCESS_KEY=...
+```
+
+For MinIO or another S3-compatible endpoint, also set:
+
+```bash
+MEDIA_S3_ENDPOINT=http://localhost:9000
+MEDIA_S3_PATH_STYLE_ACCESS=true
+```
+
+If `MEDIA_S3_ACCESS_KEY_ID` and `MEDIA_S3_SECRET_ACCESS_KEY` are empty, the
+service uses the AWS default credentials provider chain.
 
 Existing avatar, airport, airline, and ancillary upload endpoints remain
 supported for backward compatibility, while new avatar, airline logo, meal

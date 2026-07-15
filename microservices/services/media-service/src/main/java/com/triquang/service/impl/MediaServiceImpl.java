@@ -11,9 +11,7 @@ import com.triquang.service.MediaService;
 import com.triquang.service.MediaStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,9 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -42,9 +37,6 @@ public class MediaServiceImpl implements MediaService {
 
     private final MediaFileRepository mediaFileRepository;
     private final MediaStorageService mediaStorageService;
-
-    @Value("${app.media.storage-path:uploads/media}")
-    private String storagePath;
 
     @Override
     @Transactional
@@ -162,21 +154,7 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     public Resource getFile(String storageKey) {
-        String normalizedStorageKey = requireStorageKey(storageKey);
-        try {
-            Path root = Path.of(storagePath).toAbsolutePath().normalize();
-            Path file = root.resolve(normalizedStorageKey).normalize();
-            if (!file.startsWith(root)) {
-                throw new IllegalArgumentException("Invalid media file path");
-            }
-            Resource resource = new UrlResource(file.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                throw new IllegalArgumentException("Media file not found");
-            }
-            return resource;
-        } catch (MalformedURLException ex) {
-            throw new IllegalArgumentException("Invalid media file path", ex);
-        }
+        return mediaStorageService.loadAsResource(requireStorageKey(storageKey));
     }
 
     @Override
@@ -187,7 +165,7 @@ public class MediaServiceImpl implements MediaService {
         if (!force && isLinkedBusinessAsset(mediaFile)) {
             throw new IllegalArgumentException("Linked media requires force=true to delete");
         }
-        deletePhysicalFile(mediaFile.getStorageKey());
+        deleteStoredObject(mediaFile.getStorageKey());
         mediaFileRepository.delete(mediaFile);
         log.info(
                 "Media deleted id={} force={} entityType={} entityId={} purpose={} storageKey={}",
@@ -205,7 +183,7 @@ public class MediaServiceImpl implements MediaService {
     public void deleteByStorageKey(String storageKey) {
         MediaFile mediaFile = mediaFileRepository.findByStorageKey(requireStorageKey(storageKey))
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
-        deletePhysicalFile(mediaFile.getStorageKey());
+        deleteStoredObject(mediaFile.getStorageKey());
         mediaFileRepository.delete(mediaFile);
         log.info(
                 "Media deleted by storageKey entityType={} entityId={} purpose={} storageKey={}",
@@ -216,15 +194,12 @@ public class MediaServiceImpl implements MediaService {
         );
     }
 
-    private void deletePhysicalFile(String storageKey) {
-        Path root = Path.of(storagePath).toAbsolutePath().normalize();
-        Path file = root.resolve(storageKey).normalize();
+    private void deleteStoredObject(String storageKey) {
         try {
-            if (file.startsWith(root)) {
-                Files.deleteIfExists(file);
-            }
-        } catch (Exception ignored) {
+            mediaStorageService.delete(storageKey);
+        } catch (Exception ex) {
             // Metadata deletion should still succeed; storage cleanup can be retried from logs/jobs later.
+            log.warn("Failed to delete stored media object storageKey={}", storageKey, ex);
         }
     }
 

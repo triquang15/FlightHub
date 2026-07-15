@@ -53,8 +53,12 @@ This keeps UI and other services independent from the physical storage provider.
 
 ## Migration path to S3
 
-1. Add an S3 implementation of `MediaStorageService`.
-2. Switch `app.media.storage-provider` from `LOCAL` to `S3`.
+1. Set `app.media.storage-provider` from `LOCAL` to `S3`.
+2. Configure bucket, region, optional CDN base URL, and credentials through
+   `MEDIA_S3_*` environment variables.
 3. Keep `storageKey`, metadata APIs, and frontend contracts unchanged.
 4. Migrate existing local files by copying them to the same key path in S3 and
    updating `storageProvider` if needed.
+
+The S3 adapter also supports S3-compatible storage such as MinIO by setting
+`MEDIA_S3_ENDPOINT` and `MEDIA_S3_PATH_STYLE_ACCESS=true`.
