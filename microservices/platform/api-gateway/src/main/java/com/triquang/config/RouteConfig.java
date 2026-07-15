@@ -1,6 +1,7 @@
 package com.triquang.config;
 
 import java.net.URI;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions;
@@ -30,6 +31,26 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 @Slf4j
 public class RouteConfig {
+
+    static final Set<String> SYSTEM_ADMIN_BOOKING_ROUTES = Set.of(
+            "/api/bookings/statistics/super-admin",
+            "/api/bookings/dashboard-stats/super-admin",
+            "/api/bookings/airline-performance/super-admin",
+            "/api/bookings/airport-performance/super-admin",
+            "/api/bookings/route-performance/super-admin"
+    );
+
+    static final Set<String> AIRLINE_OWNER_BOOKING_ROUTES = Set.of(
+            "/api/bookings/airline",
+            "/api/bookings/statistics/airline",
+            "/api/bookings/route-performance/airline",
+            "/api/bookings/airport-performance/airline"
+    );
+
+    static final Set<String> SYSTEM_ADMIN_MEDIA_ROUTES = Set.of(
+            "/api/media",
+            "/api/media/entity/{entityType}/{entityId}/{purpose}"
+    );
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService blacklistService;
@@ -306,12 +327,9 @@ public class RouteConfig {
     @Bean
     @Order(0)
     public RouterFunction<ServerResponse> bookingSuperAdminRoutes() {
-        return routeWithoutCB("booking-super-admin", "booking-service")
-                .route(RequestPredicates.GET("/api/bookings/statistics/super-admin"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/dashboard-stats/super-admin"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/airline-performance/super-admin"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/airport-performance/super-admin"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/route-performance/super-admin"), HandlerFunctions.http())
+        RouterFunctions.Builder builder = routeWithoutCB("booking-super-admin", "booking-service");
+        SYSTEM_ADMIN_BOOKING_ROUTES.forEach(path -> builder.route(RequestPredicates.GET(path), HandlerFunctions.http()));
+        return builder
                 .before(this::jwtAuthFilter)
                 .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                 .filter(redisRateLimitFilter)
@@ -321,11 +339,9 @@ public class RouteConfig {
     @Bean
     @Order(1)
     public RouterFunction<ServerResponse> bookingAirlineOwnerRoutes() {
-        return routeWithoutCB("booking-airline-owner", "booking-service")
-                .route(RequestPredicates.GET("/api/bookings/airline"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/statistics/airline"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/route-performance/airline"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/bookings/airport-performance/airline"), HandlerFunctions.http())
+        RouterFunctions.Builder builder = routeWithoutCB("booking-airline-owner", "booking-service");
+        AIRLINE_OWNER_BOOKING_ROUTES.forEach(path -> builder.route(RequestPredicates.GET(path), HandlerFunctions.http()));
+        return builder
                 .before(this::jwtAuthFilter)
                 .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
                 .filter(redisRateLimitFilter)
@@ -535,9 +551,9 @@ public class RouteConfig {
     @Bean
     @Order(2)
     public RouterFunction<ServerResponse> mediaAdminRoutes() {
-        return routeWithoutCB("media-admin", "media-service")
-                .route(RequestPredicates.GET("/api/media"), HandlerFunctions.http())
-                .route(RequestPredicates.GET("/api/media/entity/{entityType}/{entityId}/{purpose}"), HandlerFunctions.http())
+        RouterFunctions.Builder builder = routeWithoutCB("media-admin", "media-service");
+        SYSTEM_ADMIN_MEDIA_ROUTES.forEach(path -> builder.route(RequestPredicates.GET(path), HandlerFunctions.http()));
+        return builder
                 .route(RequestPredicates.DELETE("/api/media/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
