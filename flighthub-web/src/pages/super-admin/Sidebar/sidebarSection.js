@@ -22,6 +22,7 @@ import {
   ServerCog,
   Smartphone,
   PlugZap,
+  Images,
 } from "lucide-react";
 
 export const sidebarSections = [
@@ -231,6 +232,12 @@ export const sidebarSections = [
         label: "Integrations",
         icon: PlugZap,
         path: "/super-admin/configuration/integrations",
+      },
+      {
+        id: "configuration-media",
+        label: "Media Library",
+        icon: Images,
+        path: "/super-admin/configuration/media",
       },
     ],
   },

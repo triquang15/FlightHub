@@ -247,9 +247,9 @@ VITE_FACEBOOK_APP_ID=your-facebook-app-id
 If these values are empty, the Facebook button stays visible but reports that
 Facebook login is not configured.
 
-Profile photos are stored locally in development while keeping the backend
-contract ready for S3 later. User Service saves only metadata on the `users`
-record:
+Profile photos now use `media-service` for new uploads while keeping the
+backend contract ready for S3 later. User Service saves only media metadata on
+the `users` record:
 
 ```text
 avatar_url
@@ -260,26 +260,32 @@ avatar_updated_at
 Local avatar settings:
 
 ```bash
-# Public URL used when User Service returns avatar_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Media Service endpoint used by User Service for avatar uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for uploaded profile photos
-USER_AVATAR_LOCAL_DIR=/tmp/flighthub/avatars
+# Public URL returned by Media Service through API Gateway
+MEDIA_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for shared media files
+MEDIA_STORAGE_PATH=uploads/media
 
 # Optional upload limits
 USER_AVATAR_MAX_FILE_SIZE=5MB
 USER_AVATAR_MAX_REQUEST_SIZE=6MB
+MEDIA_MAX_FILE_SIZE_BYTES=5242880
 ```
 
-Supported formats are JPG, PNG, and WEBP up to 5MB. When moving to S3, keep the
-controller and database fields unchanged and replace the local
-`AvatarStorageService` implementation with an S3-backed implementation that
-returns the object key and public or signed URL.
+Supported avatar formats are JPG, PNG, and WEBP up to 5MB. Existing legacy
+avatar URLs under `/api/users/profile/avatar/file/**` still work for older data,
+but new uploads return `/api/media/file/{storageKey}`. When moving to S3, keep
+the User Service controller and database fields unchanged and replace
+`MediaStorageService` with an S3-backed implementation.
 
 ### Airport route images
 
-Airport destination images use the same local-first, S3-ready pattern. Location
-Service stores only media metadata on the `airports` record:
+New airport destination image uploads are routed from Location Service to
+`media-service`. Location Service stores only media metadata on the `airports`
+record:
 
 ```text
 hero_image_url
@@ -289,18 +295,18 @@ hero_image_object_key
 Local airport media settings:
 
 ```bash
-# Public URL used when Location Service returns hero_image_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Location Service calls media-service directly for new airport hero uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for airport route/traveler images
+# Legacy fallback for old object keys that were stored before media-service
 AIRPORT_MEDIA_STORAGE_DIR=/tmp/flighthub/airport-media
 ```
 
 System Admins can upload or remove airport hero images from Airport Management.
 Traveler Trending routes prefer `airport.heroImageUrl` and fall back to bundled
 route imagery when no custom image exists. For S3 migration, keep the airport
-DTO/API contract unchanged and replace `AirportMediaStorageService` with an
-S3-backed implementation.
+DTO/API contract unchanged and switch `MediaStorageService` in `media-service`
+from LOCAL to S3.
 
 ### Shared Media Service
 
@@ -315,7 +321,7 @@ Local media settings:
 MEDIA_DATASOURCE_URL=jdbc:postgresql://localhost:5441/media_service_db
 MEDIA_STORAGE_PATH=uploads/media
 MEDIA_PUBLIC_BASE_URL=http://localhost:8080
-MEDIA_MAX_FILE_SIZE_BYTES=5242880
+MEDIA_MAX_FILE_SIZE_BYTES=8388608
 ```
 
 Use entity metadata to attach files without coupling storage to a service:
@@ -327,14 +333,16 @@ purpose=AVATAR | LOGO | HERO | ICON | DOCUMENT
 ```
 
 Existing avatar, airport, airline, and ancillary upload endpoints remain
-supported for backward compatibility. Future work should migrate those callers
-to `media-service`, then switch the `MediaStorageService` implementation from
-LOCAL to S3.
+supported for backward compatibility, while new avatar, airline logo, meal
+image, ancillary icon, and airport hero uploads are routed through
+`media-service`.
 
 ### Airline logo uploads
 
-Airline logos also use local-first storage with the same S3 migration boundary.
-Airline Core Service stores only media metadata on the `airlines` record:
+New airline logo uploads are routed from Airline Core Service to
+`media-service`. Airline Core Service keeps only the public URL and storage key
+on the `airlines` record, while `media-service` owns file metadata and physical
+storage:
 
 ```text
 logo_url
@@ -344,10 +352,10 @@ logo_object_key
 Local airline logo settings:
 
 ```bash
-# Public URL used when Airline Core Service returns logo_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Airline Core Service calls media-service directly for new logo uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for airline logos
+# Legacy fallback for old object keys that were stored before media-service
 AIRLINE_LOGO_STORAGE_DIR=/tmp/flighthub/airline-logos
 ```
 
@@ -355,12 +363,14 @@ Airline owners can upload or remove logos from the airline profile page after
 the airline profile exists. Onboarding accepts a hosted logo URL only; local file
 upload happens after profile creation because the storage object key is scoped to
 an airline ID. For S3 migration, keep the controller/DTO contract unchanged and
-replace `AirlineLogoStorageService` with an S3-backed implementation.
+switch the `MediaStorageService` implementation in `media-service` from LOCAL to
+S3.
 
 ### Meal catalog images
 
-Meal images use the same local-first storage pattern. Ancillary Service keeps
-display URL and object key metadata on the `meals` record:
+New meal catalog image uploads are routed from Ancillary Service to
+`media-service`. Ancillary Service keeps display URL and object key metadata on
+the `meals` record:
 
 ```text
 image_url
@@ -370,10 +380,10 @@ image_object_key
 Local meal image settings:
 
 ```bash
-# Public URL used when Ancillary Service returns image_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Ancillary Service calls media-service directly for new meal image uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for uploaded meal catalog images
+# Legacy fallback for old object keys that were stored before media-service
 MEAL_IMAGE_STORAGE_DIR=/tmp/flighthub/meal-images
 
 # Optional upload limits
@@ -384,13 +394,12 @@ MEAL_IMAGE_MAX_REQUEST_SIZE=9MB
 Airline owners can upload or remove JPG, PNG, or WEBP meal images from the meal
 catalog edit page after the meal exists. Hosted image URLs still work for seed
 data or external CDN images. For S3 migration, keep the controller/DTO contract
-unchanged and replace `MealImageStorageService` with an S3-backed
-implementation.
+unchanged and switch `MediaStorageService` in `media-service` from LOCAL to S3.
 
 ### Ancillary catalog icons
 
-Master ancillary icons/images use the same Ancillary Service local-first
-storage boundary. The `ancillaries` record stores:
+New master ancillary icon/image uploads are routed from Ancillary Service to
+`media-service`. The `ancillaries` record stores:
 
 ```text
 icon_url
@@ -400,10 +409,10 @@ icon_object_key
 Local ancillary icon settings:
 
 ```bash
-# Public URL used when Ancillary Service returns icon_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Ancillary Service calls media-service directly for new ancillary icon uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for uploaded ancillary icons
+# Legacy fallback for old object keys that were stored before media-service
 ANCILLARY_ICON_STORAGE_DIR=/tmp/flighthub/ancillary-icons
 
 # Optional shared upload limits for ancillary media
@@ -413,8 +422,8 @@ ANCILLARY_MEDIA_MAX_REQUEST_SIZE=9MB
 
 Airline owners can upload or remove JPG, PNG, WEBP, or SVG visuals from the
 Master Ancillaries edit page after the catalog item exists. For S3 migration,
-keep the API/DTO contract unchanged and replace `AncillaryIconStorageService`
-with an S3-backed implementation.
+keep the API/DTO contract unchanged and switch `MediaStorageService` in
+`media-service` from LOCAL to S3.
 
 Open:
 

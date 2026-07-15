@@ -12,8 +12,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.MalformedURLException;
@@ -75,6 +79,46 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<MediaFileResponse> search(
+            String entityType,
+            String purpose,
+            Long ownerUserId,
+            String keyword,
+            Pageable pageable
+    ) {
+        Specification<MediaFile> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (StringUtils.hasText(entityType)) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("entityType"), entityType.trim().toUpperCase(Locale.ROOT)));
+        }
+
+        if (StringUtils.hasText(purpose)) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("purpose"), purpose.trim().toUpperCase(Locale.ROOT)));
+        }
+
+        if (ownerUserId != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("ownerUserId"), ownerUserId));
+        }
+
+        if (StringUtils.hasText(keyword)) {
+            String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.or(
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("originalFileName")), pattern),
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("storageKey")), pattern),
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("contentType")), pattern)
+                    ));
+        }
+
+        return mediaFileRepository.findAll(specification, pageable)
+                .map(MediaFileMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose) {
         return mediaFileRepository
                 .findByEntityTypeAndEntityIdAndPurposeOrderByCreatedAtDesc(
@@ -89,9 +133,10 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     public Resource getFile(String storageKey) {
+        String normalizedStorageKey = requireStorageKey(storageKey);
         try {
             Path root = Path.of(storagePath).toAbsolutePath().normalize();
-            Path file = root.resolve(storageKey).normalize();
+            Path file = root.resolve(normalizedStorageKey).normalize();
             if (!file.startsWith(root)) {
                 throw new IllegalArgumentException("Invalid media file path");
             }
@@ -110,8 +155,22 @@ public class MediaServiceImpl implements MediaService {
     public void delete(Long id) {
         MediaFile mediaFile = mediaFileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        deletePhysicalFile(mediaFile.getStorageKey());
+        mediaFileRepository.delete(mediaFile);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByStorageKey(String storageKey) {
+        MediaFile mediaFile = mediaFileRepository.findByStorageKey(requireStorageKey(storageKey))
+                .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        deletePhysicalFile(mediaFile.getStorageKey());
+        mediaFileRepository.delete(mediaFile);
+    }
+
+    private void deletePhysicalFile(String storageKey) {
         Path root = Path.of(storagePath).toAbsolutePath().normalize();
-        Path file = root.resolve(mediaFile.getStorageKey()).normalize();
+        Path file = root.resolve(storageKey).normalize();
         try {
             if (file.startsWith(root)) {
                 Files.deleteIfExists(file);
@@ -119,7 +178,6 @@ public class MediaServiceImpl implements MediaService {
         } catch (Exception ignored) {
             // Metadata deletion should still succeed; storage cleanup can be retried from logs/jobs later.
         }
-        mediaFileRepository.delete(mediaFile);
     }
 
     private String normalizeRequired(String value, String fieldName) {
@@ -127,5 +185,12 @@ public class MediaServiceImpl implements MediaService {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String requireStorageKey(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new IllegalArgumentException("storageKey is required");
+        }
+        return storageKey.trim();
     }
 }

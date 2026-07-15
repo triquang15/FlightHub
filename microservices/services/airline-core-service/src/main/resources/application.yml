@@ -71,6 +71,8 @@ management:
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  media-service:
+    base-url: ${MEDIA_SERVICE_BASE_URL:http://localhost:8089}
   storage:
     airline-logo:
       local-dir: ${AIRLINE_LOGO_STORAGE_DIR:${java.io.tmpdir}/flighthub/airline-logos}

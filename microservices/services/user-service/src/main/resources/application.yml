@@ -83,6 +83,8 @@ app:
   storage:
     avatar:
       local-dir: ${USER_AVATAR_LOCAL_DIR:${java.io.tmpdir}/flighthub/avatars}
+  media-service:
+    base-url: ${MEDIA_SERVICE_BASE_URL:http://localhost:8089}
 
 # ================= OPENAPI / SWAGGER =================
 springdoc:
