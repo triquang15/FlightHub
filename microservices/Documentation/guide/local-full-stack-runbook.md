@@ -580,6 +580,37 @@ Expected top-level result:
 {"status":"UP"}
 ```
 
+### API Gateway Route Policy
+
+All browser and external API traffic should enter through API Gateway. The
+gateway removes spoofed identity headers and injects trusted `X-User-Id`,
+`X-User-Email`, `X-User-Roles`, and `X-Trace-Id`.
+
+Public routes:
+
+- Payment webhooks: `/api/payments/webhooks/stripe`,
+  `/api/payments/webhooks/paypal`
+- Auth and recovery: `/api/auth/**`, forgot/reset password
+- Public search/reference reads: airports, cities, flight search, airline
+  dropdown, public fare lookup, public coupons
+- Public media file rendering: `/api/media/file/**`
+
+Protected route groups:
+
+- `ROLE_SYSTEM_ADMIN`: OpenAPI docs proxies, platform booking analytics,
+  payment list/refund, notification operations, media search/entity/delete,
+  city and airport mutations.
+- `ROLE_AIRLINE_OWNER`: airline/aircraft mutations, flight/schedule/instance
+  mutations, seat map/cabin/inventory mutations, ancillary/pricing mutations,
+  airline booking and owner analytics, ticket mark-as-used.
+- Authenticated traveler/customer: booking create/update/read/cancel/history,
+  payment initiate/verify/cancel, seat hold flows, profile/preferences/session
+  management, own avatar upload through media policy.
+
+If a route appears in both a specific protected group and a broader fallback,
+the specific route must have a lower `@Order` value so its role check runs
+first.
+
 ### Authentication
 
 ```bash

@@ -162,56 +162,78 @@ public class RouteConfig {
     public RouterFunction<ServerResponse> openApiDocsRoutes() {
         return GatewayRouterFunctions.route("openapi-docs")
                 .route(RequestPredicates.path("/docs/user-service/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                 .before(BeforeFilterFunctions.rewritePath("/docs/user-service/(?<segment>.*)", "/${segment}"))
                 .filter(LoadBalancerFilterFunctions.lb("user-service"))
                 .build()
                 .and(GatewayRouterFunctions.route("notification-openapi-docs")
                         .route(RequestPredicates.path("/docs/notification-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/notification-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("notification-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("location-openapi-docs")
                         .route(RequestPredicates.path("/docs/location-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/location-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("location-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("airline-core-openapi-docs")
                         .route(RequestPredicates.path("/docs/airline-core-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/airline-core-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("airline-core-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("booking-openapi-docs")
                         .route(RequestPredicates.path("/docs/booking-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/booking-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("booking-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("flight-ops-openapi-docs")
                         .route(RequestPredicates.path("/docs/flight-ops-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/flight-ops-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("flight-ops-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("seat-openapi-docs")
                         .route(RequestPredicates.path("/docs/seat-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/seat-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("seat-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("pricing-openapi-docs")
                         .route(RequestPredicates.path("/docs/pricing-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/pricing-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("pricing-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("ancillary-openapi-docs")
                         .route(RequestPredicates.path("/docs/ancillary-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/ancillary-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("ancillary-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("payment-openapi-docs")
                         .route(RequestPredicates.path("/docs/payment-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/payment-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("payment-service"))
                         .build())
                 .and(GatewayRouterFunctions.route("media-openapi-docs")
                         .route(RequestPredicates.path("/docs/media-service/**"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                         .before(BeforeFilterFunctions.rewritePath("/docs/media-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("media-service"))
                         .build());
@@ -277,6 +299,35 @@ public class RouteConfig {
                 .route(RequestPredicates.path("/api/tickets/**"), HandlerFunctions.http())
                 .route(RequestPredicates.path("/api/passengers/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
+    public RouterFunction<ServerResponse> bookingSuperAdminRoutes() {
+        return routeWithoutCB("booking-super-admin", "booking-service")
+                .route(RequestPredicates.GET("/api/bookings/statistics/super-admin"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/dashboard-stats/super-admin"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/airline-performance/super-admin"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/airport-performance/super-admin"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/route-performance/super-admin"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(1)
+    public RouterFunction<ServerResponse> bookingAirlineOwnerRoutes() {
+        return routeWithoutCB("booking-airline-owner", "booking-service")
+                .route(RequestPredicates.GET("/api/bookings/airline"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/statistics/airline"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/route-performance/airline"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/bookings/airport-performance/airline"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
                 .filter(redisRateLimitFilter)
                 .build();
     }
@@ -454,6 +505,7 @@ public class RouteConfig {
     public RouterFunction<ServerResponse> paymentAdminRoutes() {
         return routeWithCB("payment-admin", "payment-service", "payment-service-cb", "forward:/fallback/payment")
                 .route(RequestPredicates.POST("/api/payments/{paymentId}/refund"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/payments"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
                 .filter(redisRateLimitFilter)
@@ -478,6 +530,36 @@ public class RouteConfig {
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter)
                 .build();
+    }
+
+    @Bean
+    @Order(2)
+    public RouterFunction<ServerResponse> mediaAdminRoutes() {
+        return routeWithoutCB("media-admin", "media-service")
+                .route(RequestPredicates.GET("/api/media"), HandlerFunctions.http())
+                .route(RequestPredicates.GET("/api/media/entity/{entityType}/{entityId}/{purpose}"), HandlerFunctions.http())
+                .route(RequestPredicates.DELETE("/api/media/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(2)
+    public RouterFunction<ServerResponse> ticketStaffRoutes() {
+        return routeWithoutCB("ticket-staff", "booking-service")
+                .route(RequestPredicates.PUT("/api/tickets/{ticketId}/use"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .before(req -> requireRole(req, UserRole.ROLE_AIRLINE_OWNER.name()))
+                .filter(redisRateLimitFilter)
+                .build()
+                .and(routeWithoutCB("ticket-refund-admin", "booking-service")
+                        .route(RequestPredicates.PUT("/api/tickets/{ticketId}/refund"), HandlerFunctions.http())
+                        .before(this::jwtAuthFilter)
+                        .before(req -> requireRole(req, UserRole.ROLE_SYSTEM_ADMIN.name()))
+                        .filter(redisRateLimitFilter)
+                        .build());
     }
 
     @Bean
