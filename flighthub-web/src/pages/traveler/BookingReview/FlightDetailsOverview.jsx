@@ -28,7 +28,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
         <div className="flex h-40 items-center justify-center">
           <div className="text-center">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-300"></div>
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
             <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading itinerary...</p>
           </div>
         </div>
@@ -44,7 +44,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
           <div className="flex h-40 items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-300"></div>
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading itinerary...</p>
             </div>
           </div>
@@ -109,7 +109,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
       <div className="border-b border-slate-200 bg-slate-50/80 p-6 dark:border-white/10 dark:bg-slate-950/40">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-bold text-indigo-700 dark:border-white/10 dark:bg-slate-900 dark:text-indigo-200">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-bold text-blue-700 dark:border-white/10 dark:bg-slate-900 dark:text-blue-200">
               {flightInstance?.airlineLogo ? (
                 <img
                   src={flightInstance.airlineLogo}
@@ -125,7 +125,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
               )}
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
                 {legLabel || "Selected itinerary"}
               </p>
               <h2 className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">
@@ -142,7 +142,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
               <ShieldCheck className="h-3.5 w-3.5" />
               {stops === 0 ? "Non-stop" : `${stops} stop${stops > 1 ? "s" : ""}`}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-200">
               <Ticket className="h-3.5 w-3.5" />
               {cabinClass}
             </span>
@@ -159,7 +159,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
             </div>
             <p className="text-3xl font-bold text-slate-950 dark:text-white">{departure.time}</p>
             <div className="mt-3 flex min-w-0 items-start gap-3">
-              <span className="shrink-0 rounded-md bg-indigo-50 px-2.5 py-1 text-sm font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
+              <span className="shrink-0 rounded-md bg-blue-50 px-2.5 py-1 text-sm font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-200">
                 {departureCode}
               </span>
               <div className="min-w-0">
@@ -174,7 +174,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
 
           <div className="flex min-w-0 items-center justify-center">
             <div className="flex w-full min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-slate-950/40 xl:flex-col">
-              <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-300" />
               <div className="min-w-0 flex-1 text-left xl:text-center">
                 <p className="text-sm font-semibold text-slate-950 dark:text-white">{duration}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{stops === 0 ? "Direct flight" : "Connection required"}</p>
@@ -196,7 +196,7 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
                   {arrivalAirport.terminal ? `Terminal ${arrivalAirport.terminal}` : "Arrival terminal may change"}
                 </p>
               </div>
-              <span className="shrink-0 rounded-md bg-indigo-50 px-2.5 py-1 text-sm font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
+              <span className="shrink-0 rounded-md bg-blue-50 px-2.5 py-1 text-sm font-bold text-blue-700 dark:bg-blue-500/10 dark:text-blue-200">
                 {arrivalCode}
               </span>
             </div>
@@ -205,15 +205,15 @@ const FlightDetailsOverview = ({ flightData, legLabel }) => {
 
         <div className="mt-4 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-slate-950/40">
           <span className="inline-flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            <Plane className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-300" />
+            <Plane className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" />
             {aircraftName}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            <MapPin className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-300" />
+            <MapPin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" />
             {flightNumber}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            <Ticket className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-300" />
+            <Ticket className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" />
             {cabinClass}
           </span>
         </div>

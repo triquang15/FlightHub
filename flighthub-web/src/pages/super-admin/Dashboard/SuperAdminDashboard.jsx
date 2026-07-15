@@ -209,9 +209,9 @@ const SuperAdminDashboard = () => {
           title={getSectionTitle(activeSection)}
           description={getSectionDescription(activeSection)}
           badge="System Admin"
-          badgeClassName="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300"
+          badgeClassName="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
           icon={Shield}
-          iconClassName="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+          iconClassName="bg-primary/10 text-primary"
           onOpenNavigation={() => setIsMobileNavigationOpen(true)}
           actions={
             <HeaderNotificationCenter

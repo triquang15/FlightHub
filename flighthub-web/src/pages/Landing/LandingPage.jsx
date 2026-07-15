@@ -452,13 +452,13 @@ const LandingPage = () => {
               alt=""
               className="h-full w-full object-cover opacity-45 dark:opacity-38"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.9)_44%,rgba(255,255,255,0.48)_100%)] dark:bg-[linear-gradient(90deg,rgba(18,9,40,0.98)_0%,rgba(18,9,40,0.88)_48%,rgba(49,46,129,0.42)_100%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(103,61,229,0.18),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_42%)] dark:bg-[radial-gradient(circle_at_82%_18%,rgba(103,61,229,0.38),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_44%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,0.9)_44%,rgba(224,242,254,0.5)_100%)] dark:bg-[linear-gradient(90deg,rgba(8,13,26,0.98)_0%,rgba(8,13,26,0.88)_48%,rgba(8,47,73,0.42)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(14,165,233,0.18),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_42%)] dark:bg-[radial-gradient(circle_at_82%_18%,rgba(56,189,248,0.3),transparent_28rem),linear-gradient(0deg,rgb(var(--background))_0%,transparent_44%)]" />
           </div>
 
           <div className="pointer-events-none absolute inset-0 -z-10">
             <motion.div
-              className="absolute left-[8%] top-[28%] hidden h-2 w-2 rounded-full bg-primary/70 shadow-[0_0_28px_rgba(103,61,229,0.8)] sm:block"
+              className="absolute left-[8%] top-[28%] hidden h-2 w-2 rounded-full bg-primary/70 shadow-[0_0_28px_rgba(56,189,248,0.72)] sm:block"
               animate={{ x: ["0vw", "74vw"], y: [0, -70, -12], opacity: [0.2, 1, 0.2] }}
               transition={{ duration: 9.5, repeat: Infinity, ease: "easeInOut" }}
             />
@@ -534,10 +534,10 @@ const LandingPage = () => {
 
                   <div className="grid gap-4 p-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
                     <div className="relative min-h-[360px] rounded-[1.5rem] border bg-muted/35 p-5">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(103,61,229,0.18),transparent_14rem)]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(14,165,233,0.16),transparent_14rem)]" />
                       <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-border to-transparent" />
                       <motion.div
-                        className="absolute left-[20%] top-[48%] h-2 w-2 rounded-full bg-primary shadow-[0_0_30px_rgba(103,61,229,0.85)]"
+                        className="absolute left-[20%] top-[48%] h-2 w-2 rounded-full bg-primary shadow-[0_0_30px_rgba(56,189,248,0.78)]"
                         animate={{ x: ["0%", "760%"], y: [0, -54, 0], opacity: [0.2, 1, 0.2] }}
                         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
                       />
@@ -653,7 +653,7 @@ const LandingPage = () => {
                   key={promo.id}
                   type="button"
                   onClick={() => navigate("/traveler")}
-                  className="group rounded-3xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl"
+                  className="group rounded-3xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-xl hover:shadow-amber-500/10"
                   initial={{ opacity: 0, y: 18 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-80px" }}
@@ -661,17 +661,17 @@ const LandingPage = () => {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Active offer</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Active offer</p>
                       <h3 className="mt-3 text-xl font-semibold">{promo.title}</h3>
                     </div>
-                    <span className="rounded-full bg-primary/10 px-3 py-1.5 font-mono text-xs font-bold text-primary">
+                    <span className="rounded-full bg-amber-500/10 px-3 py-1.5 font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
                       {promo.code}
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">{promo.description}</p>
                   <div className="mt-5 flex items-center justify-between border-t pt-4">
                     <span className="text-xs font-semibold text-muted-foreground">{promo.discount}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-amber-500" />
                   </div>
                 </motion.button>
               ))}

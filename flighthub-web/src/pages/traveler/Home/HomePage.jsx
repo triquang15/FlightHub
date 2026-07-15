@@ -38,7 +38,7 @@ const deals = [
     title: "Save more when signed in",
     description: "Access account-aware booking, saved travelers, and faster trip management.",
     code: "MEMBER15",
-    accent: "from-violet-500 to-fuchsia-400",
+    accent: "from-amber-500 to-orange-400",
   },
   {
     eyebrow: "Weekend escape",
@@ -74,7 +74,7 @@ const formatCouponValidity = (value) => {
 
 const createDealCard = (coupon, index = 0) => {
   if (!coupon) return deals[index % deals.length]
-  const accents = ["from-violet-500 to-fuchsia-400", "from-sky-500 to-cyan-400", "from-emerald-500 to-teal-400"]
+  const accents = ["from-amber-500 to-orange-400", "from-sky-500 to-cyan-400", "from-emerald-500 to-teal-400"]
   return {
     eyebrow: "Active promo",
     title: formatCouponDiscount(coupon),

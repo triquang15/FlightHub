@@ -58,7 +58,7 @@ jobs:
             services/ancillary-service
             services/booking-service
             services/payment-service
-            services/subscription-service
+            services/media-service
             services/notification-service
           )
 
@@ -120,9 +120,9 @@ jobs:
           - image: gds-payment
             jar: services/payment-service/target/payment-service-0.0.1-SNAPSHOT.jar
             service: payment-service
-          - image: gds-subscription
-            jar: services/subscription-service/target/subscription-service-0.0.1-SNAPSHOT.jar
-            service: subscription-service
+          - image: gds-media
+            jar: services/media-service/target/media-service-0.0.1-SNAPSHOT.jar
+            service: media-service
           - image: gds-notification
             jar: services/notification-service/target/notification-service-0.0.1-SNAPSHOT.jar
             service: notification-service

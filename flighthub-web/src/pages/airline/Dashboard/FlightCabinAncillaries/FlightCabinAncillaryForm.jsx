@@ -158,7 +158,7 @@ const FlightCabinAncillaryForm = () => {
               {/* Cabin Class Selection */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                  <Armchair className="h-4 w-4 text-purple-600" />
+                  <Armchair className="h-4 w-4 text-cyan-600" />
                   Select Cabin Class *
                 </Label>
                 <Select
@@ -312,7 +312,7 @@ const FlightCabinAncillaryForm = () => {
           <Button
             type="submit"
             disabled={loading || !formik.isValid}
-            className="bg-gradient-to-r from-blue-600 to-purple-600"
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
           >
             {loading ? (
               <>

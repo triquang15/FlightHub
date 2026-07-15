@@ -119,7 +119,7 @@ const SuperAdminSidebar = ({
           <div className={cn("flex items-center", sidebarCollapsed ? "justify-center" : "justify-between gap-3")}>
             {!sidebarCollapsed && (
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500 text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
@@ -146,7 +146,7 @@ const SuperAdminSidebar = ({
                 <ShieldCheck className="h-4 w-4 shrink-0 text-slate-500" />
                 <span className="truncate text-xs text-slate-500 dark:text-slate-400">Platform administration</span>
               </div>
-              <span className="shrink-0 rounded border border-violet-300 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-400/30 dark:bg-violet-400/10 dark:text-violet-300">
+              <span className="shrink-0 rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
                 SYSTEM ADMIN
               </span>
             </div>
@@ -183,7 +183,7 @@ const SuperAdminSidebar = ({
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <SectionIcon className={cn("h-4 w-4 shrink-0", hasActiveItem && "text-violet-400")} />
+                      <SectionIcon className={cn("h-4 w-4 shrink-0", hasActiveItem && "text-primary")} />
                       {!sidebarCollapsed && <span className="truncate font-medium">{section.title}</span>}
                     </span>
                     {!sidebarCollapsed && (
@@ -207,7 +207,7 @@ const SuperAdminSidebar = ({
                             className={cn(
                               "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors",
                               isActive
-                                ? "bg-violet-500/12 font-medium text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                                ? "bg-primary/10 font-medium text-primary dark:bg-primary/15 dark:text-primary"
                                 : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                             )}
                           >
@@ -236,7 +236,7 @@ const SuperAdminSidebar = ({
               onClick={() => navigate("/super-admin/profile")}
               className="mb-2 flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-900"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-violet-100 text-xs font-semibold text-violet-700 dark:bg-slate-800 dark:text-slate-200">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary dark:bg-slate-800 dark:text-slate-200">
                 {getInitials(adminName)}
               </div>
               <div className="min-w-0">

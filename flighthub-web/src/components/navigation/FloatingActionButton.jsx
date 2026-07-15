@@ -33,7 +33,7 @@ const FloatingActionButton = ({
         onClick={item.onClick}
         className={cn(
           'h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50',
-          'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
+          'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700',
           positionClasses[position],
           className
         )}
@@ -51,7 +51,7 @@ const FloatingActionButton = ({
           <Button
             className={cn(
               'h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200',
-              'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
+              'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700',
               isOpen && 'rotate-45'
             )}
             size="lg"

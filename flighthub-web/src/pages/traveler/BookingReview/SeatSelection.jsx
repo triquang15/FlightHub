@@ -95,7 +95,7 @@ const SeatSelection = ({
     const availability = getSeatAvailability(seat);
 
     if (isSelectedByAnyPassenger) {
-      return 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-500/25';
+      return 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-500/25 dark:border-cyan-400 dark:bg-cyan-500 dark:text-slate-950';
     }
     if (!availability.available) {
       return 'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400 dark:border-white/10 dark:bg-slate-800 dark:text-slate-600';
@@ -104,9 +104,9 @@ const SeatSelection = ({
       return 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-400/60 dark:bg-emerald-500/15 dark:text-emerald-100 dark:hover:bg-emerald-500/25';
     }
     if (seat.seatType === 'WINDOW') {
-      return 'border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-400/50 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:bg-violet-500/25';
+      return 'border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-400/50 dark:bg-cyan-500/15 dark:text-cyan-100 dark:hover:bg-cyan-500/25';
     }
-    return 'border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-400/60 dark:hover:bg-indigo-500/15';
+    return 'border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400/60 dark:hover:bg-cyan-500/15';
   };
 
   const getSeatPrice = (seat) => {
@@ -279,7 +279,7 @@ const SeatSelection = ({
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900/90">
         <div className="flex h-40 items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600 dark:border-indigo-300"></div>
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
       </div>
     );
@@ -294,8 +294,8 @@ const SeatSelection = ({
         className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/90"
       >
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-500/10">
-            <Armchair className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+            <Armchair className="h-6 w-6 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Seat Selection</h2>
@@ -314,7 +314,7 @@ const SeatSelection = ({
           {flightInstanceId && (
             <button
               onClick={() => dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId))}
-              className="mt-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
             >
               <RefreshCw className="h-4 w-4" />
               Reload seat map
@@ -336,8 +336,8 @@ const SeatSelection = ({
     >
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-500/10">
-            <Armchair className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+            <Armchair className="h-6 w-6 text-blue-600 dark:text-blue-300" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Seat Selection</h2>
@@ -349,7 +349,7 @@ const SeatSelection = ({
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
             <p className="text-xs text-slate-500 dark:text-slate-400">Available Seats</p>
-            <p className="text-lg font-bold text-indigo-600 dark:text-indigo-300">
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-300">
               {visibleSeats.filter(isSeatAvailable).length}
             </p>
           </div>
@@ -425,7 +425,7 @@ const SeatSelection = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => openSeatMapForPassenger(index)}
-                        className="rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
+                        className="rounded-md bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25"
                       >
                         Change
                       </button>
@@ -440,7 +440,7 @@ const SeatSelection = ({
                   ) : (
                     <button
                       onClick={() => openSeatMapForPassenger(index)}
-                      className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Select Seat
                       <ChevronRight className="h-4 w-4" />
@@ -472,7 +472,7 @@ const SeatSelection = ({
               <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-950 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
                       <Armchair className="h-5 w-5" />
                     </div>
                     <div>
@@ -501,7 +501,7 @@ const SeatSelection = ({
                         onClick={() => setCurrentPassengerIndex(index)}
                         className={`inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
                           currentPassengerIndex === index
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/20 dark:text-indigo-100'
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/20 dark:text-blue-100'
                             : selectedSeats[index]
                             ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100'
                             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-white/10'
@@ -524,7 +524,7 @@ const SeatSelection = ({
                 <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_auto]">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-900/70">
                     <div className="flex items-center gap-3">
-                      <Plane className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
+                      <Plane className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                       <div>
                         <p className="text-sm font-semibold text-slate-950 dark:text-white">
                           {routeLabel} · {flightInstance?.flightName || flightInstance?.flightNumber || 'Aircraft layout'}
@@ -549,8 +549,8 @@ const SeatSelection = ({
                 <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/70">
                   {[
                     ['border-slate-300 bg-white dark:border-white/10 dark:bg-slate-900', 'Available'],
-                    ['border-indigo-600 bg-indigo-600', 'Selected'],
-                    ['border-violet-300 bg-violet-50 dark:border-violet-400/50 dark:bg-violet-500/15', 'Window'],
+                    ['border-blue-600 bg-blue-600 dark:border-cyan-400 dark:bg-cyan-500', 'Selected'],
+                    ['border-cyan-300 bg-cyan-50 dark:border-cyan-400/50 dark:bg-cyan-500/15', 'Window'],
                     ['border-emerald-400 bg-emerald-50 dark:border-emerald-400/60 dark:bg-emerald-500/15', 'Extra legroom'],
                     ['border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-slate-800', 'Booked / unavailable'],
                   ].map(([boxClass, label]) => (
@@ -620,7 +620,7 @@ const SeatSelection = ({
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-0.5">
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-blue-600 p-0.5">
                                     <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
@@ -678,7 +678,7 @@ const SeatSelection = ({
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-0.5">
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-blue-600 p-0.5">
                                     <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
@@ -696,10 +696,10 @@ const SeatSelection = ({
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 dark:border-indigo-400/20 dark:bg-indigo-500/10">
+                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-400/20 dark:bg-blue-500/10">
                   <div className="flex items-start gap-2">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300" />
-                    <p className="text-xs leading-5 text-indigo-900 dark:text-indigo-100">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-300" />
+                    <p className="text-xs leading-5 text-blue-900 dark:text-blue-100">
                       Selected seats are held for 10 minutes while you finish checkout.
                     </p>
                   </div>
@@ -728,14 +728,14 @@ const SeatSelection = ({
                   {currentPassengerIndex < passengerCount - 1 ? (
                   <button
                     onClick={() => setCurrentPassengerIndex(currentPassengerIndex + 1)}
-                    className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Next passenger
                   </button>
                   ) : (
                     <button
                       onClick={() => setShowSeatMap(false)}
-                      className="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Confirm seats
                     </button>

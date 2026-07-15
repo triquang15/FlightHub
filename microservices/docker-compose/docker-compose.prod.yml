@@ -125,14 +125,14 @@ services:
       <<: *postgres-env
       POSTGRES_DB: airline_payment_db
 
-  subscriptiondb:
+  mediadb:
     <<: *db-defaults
-    container_name: subscriptiondb
+    container_name: mediadb
     ports:
       - "127.0.0.1:5441:5432"
     environment:
       <<: *postgres-env
-      POSTGRES_DB: airline_subscription_db
+      POSTGRES_DB: media_service_db
 
   notificationdb:
     <<: *db-defaults
@@ -508,10 +508,10 @@ services:
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
       PAYMENT_RECONCILIATION_ENABLED: ${PAYMENT_RECONCILIATION_ENABLED:-true}
 
-  subscription-service:
+  media-service:
     <<: *service-defaults
-    image: triquang15/gds-subscription:${FLIGHTHUB_IMAGE_TAG:-latest}
-    container_name: gds-subscription-service
+    image: triquang15/gds-media:${FLIGHTHUB_IMAGE_TAG:-latest}
+    container_name: gds-media-service
     mem_limit: 512m
     mem_reservation: 256m
     cpus: 0.5
@@ -520,15 +520,20 @@ services:
         condition: service_started
       service-registry:
         condition: service_started
-      subscriptiondb:
+      mediadb:
         condition: service_healthy
     environment:
       <<: *common-env
-      SPRING_APPLICATION_NAME: subscription-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://subscriptiondb:5432/airline_subscription_db
+      SPRING_APPLICATION_NAME: media-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://mediadb:5432/media_service_db
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      MEDIA_STORAGE_PATH: /data/media
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:8080}
+      MEDIA_MAX_FILE_SIZE_BYTES: ${MEDIA_MAX_FILE_SIZE_BYTES:-5242880}
+    volumes:
+      - media-uploads:/data/media
 
   notification-service:
     <<: *service-defaults
@@ -651,3 +656,6 @@ services:
 networks:
   triquang15:
     driver: bridge
+
+volumes:
+  media-uploads:

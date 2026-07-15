@@ -10,7 +10,7 @@ const FloatingElements = () => {
       </div>
       
       <div className="absolute top-40 right-20 animate-float opacity-30" style={{animationDelay: '2s'}}>
-        <Plane className="h-6 w-6 text-purple-400 transform -rotate-12" />
+        <Plane className="h-6 w-6 text-cyan-400 transform -rotate-12" />
       </div>
       
       <div className="absolute bottom-32 left-32 animate-float opacity-25" style={{animationDelay: '4s'}}>
@@ -45,8 +45,8 @@ const FloatingElements = () => {
       </div>
 
       {/* Gradient orbs */}
-      <div className="absolute top-16 right-16 w-24 h-24 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-xl animate-pulse"></div>
-      <div className="absolute bottom-20 left-20 w-32 h-32 bg-gradient-to-r from-pink-400/15 to-orange-400/15 rounded-full blur-2xl animate-float" style={{animationDelay: '2.2s'}}></div>
+      <div className="absolute top-16 right-16 w-24 h-24 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-full blur-xl animate-pulse"></div>
+      <div className="absolute bottom-20 left-20 w-32 h-32 bg-gradient-to-r from-amber-400/15 to-orange-400/15 rounded-full blur-2xl animate-float" style={{animationDelay: '2.2s'}}></div>
       <div className="absolute top-1/2 right-10 w-20 h-20 bg-gradient-to-r from-cyan-400/25 to-blue-400/25 rounded-full blur-lg animate-pulse" style={{animationDelay: '3.5s'}}></div>
     </div>
   )

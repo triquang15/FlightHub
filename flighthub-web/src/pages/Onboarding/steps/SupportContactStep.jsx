@@ -196,7 +196,7 @@ const SupportContactStep = ({ data, onDataChange, onNext, onPrevious }) => {
               {/* Support Hours Section */}
               <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
                 <div className="mb-5 flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-400/10 dark:text-purple-300">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">
                     <Clock className="h-5 w-5" />
                   </div>
                   <div>

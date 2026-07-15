@@ -67,6 +67,11 @@ scrape_configs:
           service: seat-service
           tier: service
       - targets:
+          - host.docker.internal:8089
+        labels:
+          service: media-service
+          tier: service
+      - targets:
           - host.docker.internal:8090
         labels:
           service: user-service

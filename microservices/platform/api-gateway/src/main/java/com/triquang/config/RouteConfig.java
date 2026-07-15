@@ -137,6 +137,15 @@ public class RouteConfig {
 
     @Bean
     @Order(0)
+    public RouterFunction<ServerResponse> publicMediaRoutes() {
+        return routeWithoutCB("public-media", "media-service")
+                .route(RequestPredicates.GET("/api/media/file/**"), HandlerFunctions.http())
+                .filter(redisRateLimitFilter)
+                .build();
+    }
+
+    @Bean
+    @Order(0)
     public RouterFunction<ServerResponse> publicPricingRoutes() {
         return routeWithCB("public-pricing", "pricing-service", "pricing-service-cb", "forward:/fallback/pricing")
                 .route(RequestPredicates.GET("/api/fares/flight/{flightId}/cabin-class/{cabinClassId}"), HandlerFunctions.http())
@@ -200,6 +209,11 @@ public class RouteConfig {
                         .route(RequestPredicates.path("/docs/payment-service/**"), HandlerFunctions.http())
                         .before(BeforeFilterFunctions.rewritePath("/docs/payment-service/(?<segment>.*)", "/${segment}"))
                         .filter(LoadBalancerFilterFunctions.lb("payment-service"))
+                        .build())
+                .and(GatewayRouterFunctions.route("media-openapi-docs")
+                        .route(RequestPredicates.path("/docs/media-service/**"), HandlerFunctions.http())
+                        .before(BeforeFilterFunctions.rewritePath("/docs/media-service/(?<segment>.*)", "/${segment}"))
+                        .filter(LoadBalancerFilterFunctions.lb("media-service"))
                         .build());
     }
 
@@ -453,6 +467,16 @@ public class RouteConfig {
                 .route(RequestPredicates.path("/api/payments/**"), HandlerFunctions.http())
                 .before(this::jwtAuthFilter)
                 .filter(redisRateLimitFilter) 
+                .build();
+    }
+
+    @Bean
+    @Order(3)
+    public RouterFunction<ServerResponse> mediaRoutes() {
+        return routeWithoutCB("media", "media-service")
+                .route(RequestPredicates.path("/api/media/**"), HandlerFunctions.http())
+                .before(this::jwtAuthFilter)
+                .filter(redisRateLimitFilter)
                 .build();
     }
 

@@ -43,77 +43,77 @@
 :root {
   --radius: 0.65rem;
 
-  /* Light theme - white background */
-  --background: 255 255 255; /* white */
-  --foreground: 18 18 18; /* near black for contrast */
+  /* Light theme - calm aviation surface */
+  --background: 248 250 252;
+  --foreground: 15 23 42;
   --card: 255 255 255;
-  --card-foreground: 18 18 18;
+  --card-foreground: 15 23 42;
   --popover: 255 255 255;
-  --popover-foreground: 18 18 18;
+  --popover-foreground: 15 23 42;
   
-  /* Primary - #673de5 */
-  --primary: 103 61 229; /* #673de5 */
+  /* Primary - operational blue */
+  --primary: 37 99 235;
   --primary-foreground: 255 255 255;
 
-  /* Light theme UI colors - minimalist */
-  --secondary: 240 240 240;
-  --secondary-foreground: 18 18 18;
-  --muted: 240 240 240;
-  --muted-foreground: 100 100 100;
-  --accent: 240 240 240;
-  --accent-foreground: 18 18 18;
+  /* Light theme UI colors */
+  --secondary: 241 245 249;
+  --secondary-foreground: 15 23 42;
+  --muted: 241 245 249;
+  --muted-foreground: 100 116 139;
+  --accent: 254 243 199;
+  --accent-foreground: 146 64 14;
   --destructive: 239 68 68;
   --destructive-foreground: 255 255 255;
-  --border: 220 220 220;
-  --input: 220 220 220;
-  --ring: 103 61 229; /* #673de5 */
+  --border: 226 232 240;
+  --input: 203 213 225;
+  --ring: 14 165 233;
 
   /* Sidebar */
   --sidebar: 255 255 255;
-  --sidebar-foreground: 18 18 18;
-  --sidebar-primary: 103 61 229;
+  --sidebar-foreground: 15 23 42;
+  --sidebar-primary: 37 99 235;
   --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 240 240 240;
-  --sidebar-accent-foreground: 18 18 18;
-  --sidebar-border: 220 220 220;
-  --sidebar-ring: 103 61 229;
+  --sidebar-accent: 255 247 237;
+  --sidebar-accent-foreground: 124 45 18;
+  --sidebar-border: 226 232 240;
+  --sidebar-ring: 14 165 233;
 }
 
 /* Dark theme */
 .dark {
-  --background: 18 9 40; /* #120928 */
-  --foreground: 250 250 250;
-  --card: 18 9 40;
-  --card-foreground: 250 250 250;
-  --popover: 18 9 40;
-  --popover-foreground: 250 250 250;
+  --background: 8 13 26;
+  --foreground: 248 250 252;
+  --card: 15 23 42;
+  --card-foreground: 248 250 252;
+  --popover: 15 23 42;
+  --popover-foreground: 248 250 252;
 
-  /* Primary - #673de5 (same as light theme) */
-  --primary: 103 61 229; /* #673de5 */
-  --primary-foreground: 255 255 255;
+  /* Primary - luminous sky for dark mode */
+  --primary: 56 189 248;
+  --primary-foreground: 2 6 23;
 
   /* Dark theme UI colors */
-  --secondary: 30 30 40;
-  --secondary-foreground: 250 250 250;
-  --muted: 30 30 40;
-  --muted-foreground: 160 160 170;
-  --accent: 30 30 40;
-  --accent-foreground: 250 250 250;
+  --secondary: 30 41 59;
+  --secondary-foreground: 248 250 252;
+  --muted: 30 41 59;
+  --muted-foreground: 148 163 184;
+  --accent: 120 53 15;
+  --accent-foreground: 255 251 235;
   --destructive: 239 68 68;
   --destructive-foreground: 255 255 255;
-  --border: 40 40 50;
-  --input: 40 40 50;
-  --ring: 103 61 229; /* #673de5 */
+  --border: 51 65 85;
+  --input: 71 85 105;
+  --ring: 56 189 248;
 
   /* Sidebar dark */
-  --sidebar: 18 9 40;
-  --sidebar-foreground: 250 250 250;
-  --sidebar-primary: 103 61 229;
-  --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 30 30 40;
-  --sidebar-accent-foreground: 250 250 250;
-  --sidebar-border: 40 40 50;
-  --sidebar-ring: 103 61 229;
+  --sidebar: 10 18 32;
+  --sidebar-foreground: 248 250 252;
+  --sidebar-primary: 56 189 248;
+  --sidebar-primary-foreground: 2 6 23;
+  --sidebar-accent: 67 38 18;
+  --sidebar-accent-foreground: 255 251 235;
+  --sidebar-border: 51 65 85;
+  --sidebar-ring: 56 189 248;
 }
 
 @layer base {
@@ -124,39 +124,42 @@
     @apply bg-background text-foreground;
   }
 
-  /* Optional: subtle gradient for dark theme */
   .dark body {
-    background: linear-gradient(135deg, rgb(18 9 40), rgb(25 16 47));
+    background: linear-gradient(135deg, rgb(8 13 26), rgb(12 29 48) 54%, rgb(4 28 38));
     background-attachment: fixed;
   }
 }
 
 .flight-system-bg {
   background:
-    radial-gradient(circle at 12% 8%, rgba(103, 61, 229, 0.1), transparent 30rem),
-    radial-gradient(circle at 90% 0%, rgba(14, 165, 233, 0.08), transparent 28rem),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgb(var(--background)) 34rem);
+    radial-gradient(circle at 12% 8%, rgba(14, 165, 233, 0.14), transparent 30rem),
+    radial-gradient(circle at 88% 0%, rgba(16, 185, 129, 0.08), transparent 28rem),
+    radial-gradient(circle at 76% 28%, rgba(245, 158, 11, 0.08), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgb(var(--background)) 34rem);
 }
 
 .dark .flight-system-bg {
   background:
-    radial-gradient(circle at 12% 8%, rgba(103, 61, 229, 0.26), transparent 30rem),
-    radial-gradient(circle at 90% 0%, rgba(34, 211, 238, 0.1), transparent 28rem),
-    linear-gradient(135deg, rgb(18 9 40), rgb(25 16 47));
+    radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.22), transparent 30rem),
+    radial-gradient(circle at 90% 0%, rgba(16, 185, 129, 0.1), transparent 28rem),
+    radial-gradient(circle at 76% 28%, rgba(251, 146, 60, 0.12), transparent 24rem),
+    linear-gradient(135deg, rgb(8 13 26), rgb(12 29 48) 54%, rgb(4 28 38));
 }
 
 .auth-scene-bg {
   background:
-    radial-gradient(circle at 14% 18%, rgba(103, 61, 229, 0.18), transparent 28rem),
-    radial-gradient(circle at 84% 16%, rgba(14, 165, 233, 0.16), transparent 30rem),
-    linear-gradient(135deg, #f8fbff 0%, #eef5ff 48%, #f6f0ff 100%);
+    radial-gradient(circle at 14% 18%, rgba(37, 99, 235, 0.14), transparent 28rem),
+    radial-gradient(circle at 84% 16%, rgba(20, 184, 166, 0.16), transparent 30rem),
+    radial-gradient(circle at 76% 78%, rgba(245, 158, 11, 0.1), transparent 26rem),
+    linear-gradient(135deg, #f8fbff 0%, #edf7ff 48%, #f8fafc 100%);
 }
 
 .dark .auth-scene-bg {
   background:
-    radial-gradient(circle at 16% 18%, rgba(103, 61, 229, 0.4), transparent 30rem),
-    radial-gradient(circle at 80% 12%, rgba(14, 165, 233, 0.16), transparent 32rem),
-    linear-gradient(135deg, #080515 0%, #120928 48%, #07111f 100%);
+    radial-gradient(circle at 16% 18%, rgba(56, 189, 248, 0.24), transparent 30rem),
+    radial-gradient(circle at 80% 12%, rgba(20, 184, 166, 0.14), transparent 32rem),
+    radial-gradient(circle at 76% 78%, rgba(251, 146, 60, 0.12), transparent 26rem),
+    linear-gradient(135deg, #020617 0%, #08111f 50%, #042f3c 100%);
 }
 
 .auth-glass-card {
@@ -166,22 +169,24 @@
 }
 
 .dark .auth-glass-card {
-  background: rgba(12, 8, 28, 0.82);
+  background: rgba(8, 13, 26, 0.84);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 }
 
 .workspace-shell {
   background:
-    radial-gradient(circle at 16% 0%, rgba(103, 61, 229, 0.08), transparent 24rem),
-    radial-gradient(circle at 88% 4%, rgba(14, 165, 233, 0.07), transparent 26rem),
+    radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.08), transparent 24rem),
+    radial-gradient(circle at 88% 4%, rgba(20, 184, 166, 0.07), transparent 26rem),
+    radial-gradient(circle at 72% 14%, rgba(245, 158, 11, 0.07), transparent 22rem),
     rgba(var(--background), 0.62);
 }
 
 .dark .workspace-shell {
   background:
-    radial-gradient(circle at 16% 0%, rgba(103, 61, 229, 0.2), transparent 26rem),
-    radial-gradient(circle at 90% 2%, rgba(34, 211, 238, 0.08), transparent 28rem),
-    rgba(18, 9, 40, 0.7);
+    radial-gradient(circle at 16% 0%, rgba(56, 189, 248, 0.18), transparent 26rem),
+    radial-gradient(circle at 90% 2%, rgba(16, 185, 129, 0.08), transparent 28rem),
+    radial-gradient(circle at 72% 14%, rgba(251, 146, 60, 0.1), transparent 22rem),
+    rgba(8, 13, 26, 0.72);
 }
 
 .workspace-header-surface {
@@ -190,34 +195,36 @@
 }
 
 .dark .workspace-header-surface {
-  background: rgba(18, 9, 40, 0.78);
+  background: rgba(8, 13, 26, 0.82);
 }
 
 .workspace-sidebar-surface {
   background:
-    radial-gradient(circle at 0% 0%, rgba(103, 61, 229, 0.08), transparent 18rem),
+    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.08), transparent 18rem),
     rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(20px);
 }
 
 .dark .workspace-sidebar-surface {
   background:
-    radial-gradient(circle at 0% 0%, rgba(103, 61, 229, 0.24), transparent 22rem),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(7, 10, 24, 0.98));
+    radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.16), transparent 22rem),
+    linear-gradient(180deg, rgba(10, 18, 32, 0.98), rgba(2, 6, 23, 0.98));
 }
 
 .app-page-surface {
   background:
-    radial-gradient(circle at 12% 0%, rgba(103, 61, 229, 0.07), transparent 24rem),
-    radial-gradient(circle at 88% 4%, rgba(14, 165, 233, 0.06), transparent 26rem),
+    radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.07), transparent 24rem),
+    radial-gradient(circle at 88% 4%, rgba(20, 184, 166, 0.06), transparent 26rem),
+    radial-gradient(circle at 76% 16%, rgba(245, 158, 11, 0.06), transparent 24rem),
     rgba(var(--background), 0.64);
 }
 
 .dark .app-page-surface {
   background:
-    radial-gradient(circle at 12% 0%, rgba(103, 61, 229, 0.18), transparent 24rem),
-    radial-gradient(circle at 88% 4%, rgba(14, 165, 233, 0.07), transparent 26rem),
-    rgba(18, 9, 40, 0.68);
+    radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.16), transparent 24rem),
+    radial-gradient(circle at 88% 4%, rgba(16, 185, 129, 0.07), transparent 26rem),
+    radial-gradient(circle at 76% 16%, rgba(251, 146, 60, 0.1), transparent 24rem),
+    rgba(8, 13, 26, 0.72);
 }
 
 @keyframes loading-bar {

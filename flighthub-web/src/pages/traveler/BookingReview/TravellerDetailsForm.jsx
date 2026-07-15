@@ -45,7 +45,7 @@ const COUNTRY_CODES = [
 const inputBaseClass =
   'w-full rounded-md border bg-white px-4 py-2.5 text-slate-950 outline-none transition placeholder:text-slate-400 dark:bg-slate-900 dark:text-white';
 const validInputClass =
-  'border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10';
+  'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10';
 const invalidInputClass =
   '!border-rose-400 bg-rose-50/60 focus:!border-rose-500 focus:ring-2 focus:ring-rose-500/20 dark:!border-rose-400/60 dark:bg-rose-500/10';
 const fieldErrorText = 'mt-1 text-xs font-medium text-rose-600 dark:text-rose-300';
@@ -226,7 +226,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
       <div className="border-b border-slate-200 bg-slate-50/80 p-6 dark:border-white/10 dark:bg-slate-950/40">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-indigo-600 text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-blue-600 text-white">
             <User className="h-5 w-5" />
           </div>
           <div>
@@ -323,14 +323,14 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
                   className="border-t border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-slate-950/50 sm:p-6"
                 >
                   <div className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                    <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                     Travel document name
                   </div>
                   {(savedPassengersLoading || savedPassengers.length > 0) && (
                     <div className="mb-5 rounded-md border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
                             <UserRoundCheck className="h-4 w-4" />
                           </div>
                           <div>
@@ -502,8 +502,8 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
       <div className="m-6 rounded-lg border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/40 sm:p-6">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-500/10">
-              <Mail className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
+              <Mail className="h-4 w-4 text-blue-600 dark:text-blue-300" />
             </div>
             <div>
               <h3 className="text-base font-semibold text-slate-950 dark:text-white">Booking contact</h3>
@@ -551,7 +551,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
                 className={`w-32 rounded-md border bg-white px-2 py-2.5 text-slate-950 outline-none transition focus:ring-2 dark:bg-slate-900 dark:text-white ${
                   isMissing(contactInfo.phone)
                     ? '!border-rose-400 focus:!border-rose-500 focus:ring-rose-500/20 dark:!border-rose-400/60'
-                    : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/20 dark:border-white/10'
+                    : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/20 dark:border-white/10'
                 }`}
               >
                 {COUNTRY_CODES.map((country) => (

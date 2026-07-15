@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards, Loader2, X } from 'lucide-react';
+import { Receipt, ChevronDown, ChevronUp, CreditCard, Tag, Info, WalletCards, Loader2, X, ShieldCheck, Zap, BadgeCheck } from 'lucide-react';
 
 const formatCurrency = (amount = 0, currency = 'USD') => new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -47,7 +47,7 @@ const PAYMENT_OPTIONS = [
     label: 'Stripe',
     description: 'Credit or debit card',
     icon: CreditCard,
-    badgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200',
+    badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200',
   },
   {
     value: 'PAYPAL',
@@ -126,10 +126,11 @@ const FareSummaryCard = ({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4 }}
-      className="sticky top-24 rounded-lg border border-slate-200 bg-white text-slate-950 shadow-lg dark:border-white/10 dark:bg-slate-900/90 dark:text-white dark:shadow-black/30"
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-950/5 dark:border-white/10 dark:bg-slate-900/90 dark:text-white dark:shadow-black/30"
     >
+      <div className="h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-amber-400" />
       {/* Header */}
-      <div className="border-b border-slate-200 p-6 dark:border-white/10">
+      <div className="border-b border-slate-200 bg-gradient-to-br from-blue-50/70 via-white to-amber-50/60 p-6 dark:border-white/10 dark:from-blue-500/10 dark:via-slate-900 dark:to-amber-500/10">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-500/10">
             <Receipt className="h-6 w-6 text-blue-600 dark:text-blue-300" />
@@ -141,11 +142,11 @@ const FareSummaryCard = ({
         </div>
 
         {/* Quick Total */}
-        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 dark:border-blue-400/20 dark:bg-blue-500/10">
+        <div className="rounded-lg border border-blue-100 bg-white/80 p-4 shadow-sm dark:border-blue-400/20 dark:bg-slate-950/40">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm text-slate-600 dark:text-slate-300">Total Amount</span>
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Checkout total</span>
             <div className="text-right">
-              <p className="text-2xl font-bold text-slate-950 dark:text-white">
+              <p className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
                 {formatCurrency(grandTotal, currency)}
               </p>
               {savings > 0 && (
@@ -160,7 +161,7 @@ const FareSummaryCard = ({
       <div className="p-6">
         <button
           onClick={() => setShowBreakdown(!showBreakdown)}
-          className="mb-4 flex w-full items-center justify-between text-sm font-semibold text-slate-800 transition-colors hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-300"
+          className="mb-4 flex w-full items-center justify-between rounded-md text-sm font-semibold text-slate-800 transition-colors hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-300"
         >
           <span>Fare Breakdown</span>
           {showBreakdown ? (
@@ -211,7 +212,7 @@ const FareSummaryCard = ({
               {/* Add-ons */}
               {(seatCharges > 0 || mealCharges > 0 || baggageCharges > 0 || travelProtectionCharge > 0 || includedBaggageCount > 0 || hasIncludedTravelProtection) && (
                 <div className="border-b border-slate-200 py-3 dark:border-white/10">
-                  <p className="mb-2 text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400">
                     Add-ons
                   </p>
                   {seatCharges > 0 && (
@@ -316,7 +317,7 @@ const FareSummaryCard = ({
       {/* CTA Button */}
       <div className="p-6 pt-0">
         <div className="mb-4">
-          <p className="mb-2 text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">Payment method</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400">Payment method</p>
           <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Payment method">
             {PAYMENT_OPTIONS.map(({ value, label, description, icon: Icon, badgeClass }) => (
               <button
@@ -327,7 +328,7 @@ const FareSummaryCard = ({
                 onClick={() => onPaymentGatewayChange(value)}
                 className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${
                   paymentGateway === value
-                    ? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-400/70 dark:bg-blue-500/10'
+                    ? 'border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-200 dark:border-cyan-400/70 dark:bg-cyan-500/10 dark:ring-cyan-400/20'
                     : 'border-slate-200 bg-white hover:border-blue-300 dark:border-white/10 dark:bg-slate-950/40 dark:hover:border-blue-400/50'
                 }`}
               >
@@ -347,7 +348,7 @@ const FareSummaryCard = ({
                 <span
                   className={`h-4 w-4 rounded-full border ${
                     paymentGateway === value
-                      ? 'border-blue-600 bg-blue-600 ring-2 ring-blue-200 dark:ring-blue-500/30'
+                      ? 'border-blue-600 bg-blue-600 ring-2 ring-blue-200 dark:border-cyan-400 dark:bg-cyan-400 dark:ring-cyan-500/30'
                       : 'border-slate-300 dark:border-white/20'
                   }`}
                 />
@@ -360,7 +361,7 @@ const FareSummaryCard = ({
           whileTap={{ scale: isLoading ? 1 : 0.98 }}
           onClick={onProceedToPayment}
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 py-4 font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-950"
         >
           {isLoading ? (
             <>
@@ -380,12 +381,15 @@ const FareSummaryCard = ({
       <div className="px-6 pb-6">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-md bg-slate-50 p-2 dark:bg-white/5">
+            <ShieldCheck className="mx-auto mb-1 h-4 w-4 text-emerald-500" />
             <p className="text-xs text-slate-600 dark:text-slate-300">Secure</p>
           </div>
           <div className="rounded-md bg-slate-50 p-2 dark:bg-white/5">
+            <Zap className="mx-auto mb-1 h-4 w-4 text-amber-500" />
             <p className="text-xs text-slate-600 dark:text-slate-300">Instant</p>
           </div>
           <div className="rounded-md bg-slate-50 p-2 dark:bg-white/5">
+            <BadgeCheck className="mx-auto mb-1 h-4 w-4 text-blue-500 dark:text-cyan-300" />
             <p className="text-xs text-slate-600 dark:text-slate-300">Verified</p>
           </div>
         </div>

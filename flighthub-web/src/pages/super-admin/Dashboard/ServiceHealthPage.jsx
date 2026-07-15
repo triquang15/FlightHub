@@ -51,6 +51,7 @@ const serviceGroups = [
       { name: "Location Service", port: 8085, endpoint: "/actuator/health" },
       { name: "Ancillary Service", port: 8082, endpoint: "/actuator/health" },
       { name: "Seat Service", port: 8088, endpoint: "/actuator/health" },
+      { name: "Media Service", port: 8089, endpoint: "/actuator/health" },
     ],
   },
 ];

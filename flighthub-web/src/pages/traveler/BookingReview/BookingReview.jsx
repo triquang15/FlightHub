@@ -941,10 +941,12 @@ const BookingReview = () => {
           transition={{ duration: 0.5 }}
         >
           {/* Page Title */}
-          <div className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-amber-400" />
+            <div className="p-5">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase text-blue-600 dark:text-blue-300">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">
                   Secure checkout
                 </p>
                 <h1 className="mb-2 text-2xl font-bold text-slate-950 dark:text-white md:text-3xl">
@@ -955,17 +957,30 @@ const BookingReview = () => {
                 </p>
               </div>
               <div className="grid gap-2 text-left sm:grid-cols-3">
-                {checkoutSteps.map(({ label, value, icon: Icon, complete }) => (
+                {checkoutSteps.map(({ label, value, icon: Icon, complete }, index) => (
                   <div
                     key={label}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900/70"
+                    className="relative overflow-hidden rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors dark:border-white/10 dark:bg-slate-900/70"
                   >
+                    {index < checkoutSteps.length - 1 && (
+                      <span className="absolute right-0 top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-blue-200 to-transparent sm:block dark:via-cyan-400/30" />
+                    )}
                     <div className="mb-1 flex items-center justify-between gap-2">
-                      <Icon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                            complete
+                              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
+                              : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                      </span>
                       {complete ? (
                         <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-300" />
                       ) : (
-                        <span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        <span className="h-2 w-2 rounded-full bg-amber-400 dark:bg-amber-300" />
                       )}
                     </div>
                     <p className="text-xs font-semibold text-slate-950 dark:text-white">{label}</p>
@@ -973,6 +988,7 @@ const BookingReview = () => {
                   </div>
                 ))}
               </div>
+            </div>
             </div>
           </div>
 

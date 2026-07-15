@@ -160,7 +160,7 @@ const InsuranceCoverageTable = ({ onEdit }) => {
       return "bg-yellow-100 text-yellow-800 border-yellow-200";
     if (type?.includes("DATE") || type?.includes("CANCELLATION"))
       return "bg-green-100 text-green-800 border-green-200";
-    return "bg-purple-100 text-purple-800 border-purple-200";
+    return "bg-cyan-100 text-cyan-800 border-cyan-200";
   };
 
   // Filter ancillaries to show only TRAVEL_PROTECTION
@@ -227,7 +227,7 @@ const InsuranceCoverageTable = ({ onEdit }) => {
                   Manage coverage details for travel protection
                 </p>
               </div>
-              <Button onClick={() => onEdit && onEdit(null)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <Button onClick={() => onEdit && onEdit(null)} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Coverage
               </Button>
@@ -490,7 +490,7 @@ const InsuranceCoverageTable = ({ onEdit }) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Shield className="h-4 w-4 text-purple-600" />
+              <Shield className="h-4 w-4 text-cyan-600" />
               <div className="text-sm">
                 <div className="font-medium">{ancillaries.filter(a => a.type === "TRAVEL_PROTECTION").length} Insurance</div>
                 <div className="text-gray-500">Products</div>

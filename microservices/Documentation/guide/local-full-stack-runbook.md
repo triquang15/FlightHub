@@ -148,6 +148,7 @@ bash microservices/scripts/run-local-service.sh flight-ops-service
 bash microservices/scripts/run-local-service.sh seat-service
 bash microservices/scripts/run-local-service.sh pricing-service
 bash microservices/scripts/run-local-service.sh ancillary-service
+bash microservices/scripts/run-local-service.sh media-service
 bash microservices/scripts/run-local-service.sh booking-service
 bash microservices/scripts/run-local-service.sh payment-service
 bash microservices/scripts/run-local-service.sh notification-service
@@ -161,10 +162,10 @@ until each service has a full baseline schema migration. Keep the default
 `microservices/Documentation/guide/flyway-migration-guide.md` before enabling
 Flyway with `FLYWAY_ENABLED=true`.
 
-`subscription-service` is currently an implementation scaffold and is not part
-of the supported API surface. Start it only while developing the billing and
-entitlement contract described in
-`Documentation/business-overview/subscription-service-overview.md`.
+`media-service` is the shared upload and media metadata service. It stores files
+locally under `MEDIA_STORAGE_PATH` for development and keeps S3-ready storage
+keys so the implementation can migrate to object storage later without changing
+frontend contracts.
 
 ### Start Frontend
 
@@ -300,6 +301,35 @@ Traveler Trending routes prefer `airport.heroImageUrl` and fall back to bundled
 route imagery when no custom image exists. For S3 migration, keep the airport
 DTO/API contract unchanged and replace `AirportMediaStorageService` with an
 S3-backed implementation.
+
+### Shared Media Service
+
+New cross-module uploads should prefer `media-service` instead of adding more
+file storage code to each business service. It stores metadata in
+`media_files`, saves local files under `MEDIA_STORAGE_PATH`, and returns a
+public URL from `/api/media/file/{storageKey}`.
+
+Local media settings:
+
+```bash
+MEDIA_DATASOURCE_URL=jdbc:postgresql://localhost:5441/media_service_db
+MEDIA_STORAGE_PATH=uploads/media
+MEDIA_PUBLIC_BASE_URL=http://localhost:8080
+MEDIA_MAX_FILE_SIZE_BYTES=5242880
+```
+
+Use entity metadata to attach files without coupling storage to a service:
+
+```text
+entityType=USER_PROFILE | AIRLINE | AIRPORT | ROUTE | MEAL | ANCILLARY
+entityId=<business id>
+purpose=AVATAR | LOGO | HERO | ICON | DOCUMENT
+```
+
+Existing avatar, airport, airline, and ancillary upload endpoints remain
+supported for backward compatibility. Future work should migrate those callers
+to `media-service`, then switch the `MediaStorageService` implementation from
+LOCAL to S3.
 
 ### Airline logo uploads
 
@@ -668,7 +698,7 @@ triquang15/gds-pricing
 triquang15/gds-ancillary
 triquang15/gds-booking
 triquang15/gds-payment
-triquang15/gds-subscription
+triquang15/gds-media
 triquang15/gds-notification
 ```
 

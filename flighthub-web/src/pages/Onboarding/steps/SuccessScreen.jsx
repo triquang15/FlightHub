@@ -55,7 +55,7 @@ const SuccessScreen = ({ airlineData }) => {
         <Card className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-950 shadow-2xl shadow-slate-950/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 dark:text-white dark:shadow-black/30">
           <CardContent className="p-0">
             <div className="relative overflow-hidden border-b border-slate-200 bg-slate-50/80 px-5 py-10 text-center dark:border-white/10 dark:bg-white/[0.03] sm:px-10">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-violet-500" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-sky-500 to-cyan-400" />
               <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-400/10 dark:text-emerald-300">
                 <div className="absolute inset-0 animate-[success-ping_2.4s_ease-out_infinite] rounded-2xl border border-emerald-400/40" />
                 <CheckCircle className="h-11 w-11 animate-[success-pop_700ms_ease-out_both]" />
@@ -103,7 +103,7 @@ const SuccessScreen = ({ airlineData }) => {
                           </Badge>
                         )}
                         {airlineData?.icaoCode && (
-                          <Badge variant="outline" className="border-violet-200 bg-violet-50 font-mono text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-200">
+                          <Badge variant="outline" className="border-cyan-200 bg-cyan-50 font-mono text-cyan-800 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
                             {airlineData.icaoCode}
                           </Badge>
                         )}

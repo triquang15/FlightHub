@@ -127,7 +127,7 @@ const AirlineDetailsStep = ({ data, onDataChange, onNext, onPrevious }) => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="space-y-4 text-center">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/20 sm:h-16 sm:w-16">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-500 shadow-lg shadow-blue-500/20 sm:h-16 sm:w-16">
           <Sparkles className="h-8 w-8 text-white" />
         </div>
         <div>
