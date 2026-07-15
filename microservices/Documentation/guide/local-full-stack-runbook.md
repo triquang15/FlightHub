@@ -247,9 +247,9 @@ VITE_FACEBOOK_APP_ID=your-facebook-app-id
 If these values are empty, the Facebook button stays visible but reports that
 Facebook login is not configured.
 
-Profile photos are stored locally in development while keeping the backend
-contract ready for S3 later. User Service saves only metadata on the `users`
-record:
+Profile photos now use `media-service` for new uploads while keeping the
+backend contract ready for S3 later. User Service saves only media metadata on
+the `users` record:
 
 ```text
 avatar_url
@@ -260,21 +260,26 @@ avatar_updated_at
 Local avatar settings:
 
 ```bash
-# Public URL used when User Service returns avatar_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Media Service endpoint used by User Service for avatar uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for uploaded profile photos
-USER_AVATAR_LOCAL_DIR=/tmp/flighthub/avatars
+# Public URL returned by Media Service through API Gateway
+MEDIA_PUBLIC_BASE_URL=http://localhost:8080
+
+# Local filesystem storage for shared media files
+MEDIA_STORAGE_PATH=uploads/media
 
 # Optional upload limits
 USER_AVATAR_MAX_FILE_SIZE=5MB
 USER_AVATAR_MAX_REQUEST_SIZE=6MB
+MEDIA_MAX_FILE_SIZE_BYTES=5242880
 ```
 
-Supported formats are JPG, PNG, and WEBP up to 5MB. When moving to S3, keep the
-controller and database fields unchanged and replace the local
-`AvatarStorageService` implementation with an S3-backed implementation that
-returns the object key and public or signed URL.
+Supported avatar formats are JPG, PNG, and WEBP up to 5MB. Existing legacy
+avatar URLs under `/api/users/profile/avatar/file/**` still work for older data,
+but new uploads return `/api/media/file/{storageKey}`. When moving to S3, keep
+the User Service controller and database fields unchanged and replace
+`MediaStorageService` with an S3-backed implementation.
 
 ### Airport route images
 

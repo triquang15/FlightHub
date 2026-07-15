@@ -89,9 +89,10 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     public Resource getFile(String storageKey) {
+        String normalizedStorageKey = requireStorageKey(storageKey);
         try {
             Path root = Path.of(storagePath).toAbsolutePath().normalize();
-            Path file = root.resolve(storageKey).normalize();
+            Path file = root.resolve(normalizedStorageKey).normalize();
             if (!file.startsWith(root)) {
                 throw new IllegalArgumentException("Invalid media file path");
             }
@@ -110,8 +111,22 @@ public class MediaServiceImpl implements MediaService {
     public void delete(Long id) {
         MediaFile mediaFile = mediaFileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        deletePhysicalFile(mediaFile.getStorageKey());
+        mediaFileRepository.delete(mediaFile);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByStorageKey(String storageKey) {
+        MediaFile mediaFile = mediaFileRepository.findByStorageKey(requireStorageKey(storageKey))
+                .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        deletePhysicalFile(mediaFile.getStorageKey());
+        mediaFileRepository.delete(mediaFile);
+    }
+
+    private void deletePhysicalFile(String storageKey) {
         Path root = Path.of(storagePath).toAbsolutePath().normalize();
-        Path file = root.resolve(mediaFile.getStorageKey()).normalize();
+        Path file = root.resolve(storageKey).normalize();
         try {
             if (file.startsWith(root)) {
                 Files.deleteIfExists(file);
@@ -119,7 +134,6 @@ public class MediaServiceImpl implements MediaService {
         } catch (Exception ignored) {
             // Metadata deletion should still succeed; storage cleanup can be retried from logs/jobs later.
         }
-        mediaFileRepository.delete(mediaFile);
     }
 
     private String normalizeRequired(String value, String fieldName) {
@@ -127,5 +141,12 @@ public class MediaServiceImpl implements MediaService {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String requireStorageKey(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new IllegalArgumentException("storageKey is required");
+        }
+        return storageKey.trim();
     }
 }

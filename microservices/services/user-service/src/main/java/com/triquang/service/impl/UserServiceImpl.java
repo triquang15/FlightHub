@@ -19,6 +19,8 @@ import com.triquang.dto.UserDTO;
 import com.triquang.enums.ErrorCode;
 import com.triquang.enums.UserRole;
 import com.triquang.exception.BaseException;
+import com.triquang.client.MediaServiceClient;
+import com.triquang.client.MediaServiceClient.MediaFileResponse;
 import com.triquang.kafka.SecurityEventProducer;
 import com.triquang.mapper.UserMapper;
 import com.triquang.message.PasswordResetRequestedEvent;
@@ -37,7 +39,6 @@ import com.triquang.repository.KnownDeviceRepository;
 import com.triquang.repository.UserIdentityRepository;
 import com.triquang.service.UserService;
 import com.triquang.service.storage.AvatarStorageService;
-import com.triquang.service.storage.AvatarStorageService.StoredAvatar;
 import com.triquang.utils.TokenHashUtil;
 
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,7 @@ public class UserServiceImpl implements UserService {
     private final TokenHashUtil tokenHashUtil;
     private final SecurityEventProducer securityEventProducer;
     private final AvatarStorageService avatarStorageService;
+    private final MediaServiceClient mediaServiceClient;
 
     // ================= PROFILE =================
     @Override
@@ -97,15 +99,15 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
         String previousObjectKey = user.getAvatarObjectKey();
-        StoredAvatar storedAvatar = avatarStorageService.store(userId, file);
+        MediaFileResponse storedAvatar = mediaServiceClient.uploadAvatar(userId, file);
 
         user.setAvatarUrl(storedAvatar.publicUrl());
-        user.setAvatarObjectKey(storedAvatar.objectKey());
+        user.setAvatarObjectKey(storedAvatar.storageKey());
         user.setAvatarUpdatedAt(LocalDateTime.now());
 
         User saved = userRepository.save(user);
-        if (previousObjectKey != null && !previousObjectKey.equals(storedAvatar.objectKey())) {
-            avatarStorageService.delete(previousObjectKey);
+        if (previousObjectKey != null && !previousObjectKey.equals(storedAvatar.storageKey())) {
+            deleteAvatarObject(previousObjectKey);
         }
 
         return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
@@ -122,9 +124,22 @@ public class UserServiceImpl implements UserService {
         user.setAvatarUpdatedAt(null);
 
         User saved = userRepository.save(user);
-        avatarStorageService.delete(previousObjectKey);
+        deleteAvatarObject(previousObjectKey);
 
         return enrichLoginInfo(UserMapper.toDTO(saved), userIdentityRepository.findByUserId(saved.getId()));
+    }
+
+    private void deleteAvatarObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        if (objectKey.startsWith("users/")) {
+            avatarStorageService.delete(objectKey);
+            return;
+        }
+
+        mediaServiceClient.deleteByStorageKey(objectKey);
     }
 
     // ================= CHANGE PASSWORD =================

@@ -287,6 +287,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      media-service:
+        condition: service_started
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: user-service
@@ -295,6 +297,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MEDIA_SERVICE_BASE_URL: http://media-service:8089
 
   airline-core-service:
     <<: *service-defaults

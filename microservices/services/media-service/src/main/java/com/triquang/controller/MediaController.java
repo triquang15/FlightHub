@@ -79,4 +79,10 @@ public class MediaController {
         mediaService.delete(id);
         return ResponseUtil.noContent();
     }
+
+    @DeleteMapping("/storage-key")
+    public ResponseEntity<ApiResponse<Void>> deleteByStorageKey(@RequestParam String storageKey) {
+        mediaService.deleteByStorageKey(storageKey);
+        return ResponseUtil.noContent();
+    }
 }
