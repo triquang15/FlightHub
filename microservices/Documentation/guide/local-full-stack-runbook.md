@@ -338,8 +338,10 @@ LOCAL to S3.
 
 ### Airline logo uploads
 
-Airline logos also use local-first storage with the same S3 migration boundary.
-Airline Core Service stores only media metadata on the `airlines` record:
+New airline logo uploads are routed from Airline Core Service to
+`media-service`. Airline Core Service keeps only the public URL and storage key
+on the `airlines` record, while `media-service` owns file metadata and physical
+storage:
 
 ```text
 logo_url
@@ -349,10 +351,10 @@ logo_object_key
 Local airline logo settings:
 
 ```bash
-# Public URL used when Airline Core Service returns logo_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Airline Core Service calls media-service directly for new logo uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for airline logos
+# Legacy fallback for old object keys that were stored before media-service
 AIRLINE_LOGO_STORAGE_DIR=/tmp/flighthub/airline-logos
 ```
 
@@ -360,7 +362,8 @@ Airline owners can upload or remove logos from the airline profile page after
 the airline profile exists. Onboarding accepts a hosted logo URL only; local file
 upload happens after profile creation because the storage object key is scoped to
 an airline ID. For S3 migration, keep the controller/DTO contract unchanged and
-replace `AirlineLogoStorageService` with an S3-backed implementation.
+switch the `MediaStorageService` implementation in `media-service` from LOCAL to
+S3.
 
 ### Meal catalog images
 

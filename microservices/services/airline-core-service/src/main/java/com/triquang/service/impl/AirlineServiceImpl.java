@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.triquang.client.CityClient;
+import com.triquang.client.MediaServiceClient;
 import com.triquang.enums.AirlineStatus;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
@@ -26,7 +27,6 @@ import com.triquang.payload.response.CityResponse;
 import com.triquang.repository.AirlineRepository;
 import com.triquang.service.AirlineService;
 import com.triquang.service.storage.AirlineLogoStorageService;
-import com.triquang.service.storage.AirlineLogoStorageService.StoredAirlineLogo;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +41,7 @@ public class AirlineServiceImpl implements AirlineService {
     private final AirlineRepository airlineRepository;
     private final CityClient cityClient;
     private final AirlineLogoStorageService airlineLogoStorageService;
+    private final MediaServiceClient mediaServiceClient;
 
     // ================= CREATE =================
     @Override
@@ -186,10 +187,10 @@ public class AirlineServiceImpl implements AirlineService {
     public AirlineResponse updateLogo(Long id, Long ownerId, MultipartFile file) {
 
         Airline airline = requireOwnedAirline(id, ownerId);
-        StoredAirlineLogo logo = airlineLogoStorageService.store(id, file);
+        MediaServiceClient.MediaFileResponse logo = mediaServiceClient.uploadAirlineLogo(ownerId, id, file);
 
-        airlineLogoStorageService.delete(airline.getLogoObjectKey());
-        airline.setLogoObjectKey(logo.objectKey());
+        deleteLogoObject(airline.getLogoObjectKey());
+        airline.setLogoObjectKey(logo.storageKey());
         airline.setLogoUrl(logo.publicUrl());
 
         return mapWithCity(airlineRepository.save(airline));
@@ -204,7 +205,7 @@ public class AirlineServiceImpl implements AirlineService {
     public AirlineResponse deleteLogo(Long id, Long ownerId) {
 
         Airline airline = requireOwnedAirline(id, ownerId);
-        airlineLogoStorageService.delete(airline.getLogoObjectKey());
+        deleteLogoObject(airline.getLogoObjectKey());
         airline.setLogoObjectKey(null);
         airline.setLogoUrl(null);
 
@@ -227,7 +228,7 @@ public class AirlineServiceImpl implements AirlineService {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
 
-        airlineLogoStorageService.delete(airline.getLogoObjectKey());
+        deleteLogoObject(airline.getLogoObjectKey());
         airlineRepository.delete(airline);
     }
 
@@ -297,6 +298,19 @@ public class AirlineServiceImpl implements AirlineService {
         }
 
         return airline;
+    }
+
+    private void deleteLogoObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        if (objectKey.startsWith("airlines/")) {
+            airlineLogoStorageService.delete(objectKey);
+            return;
+        }
+
+        mediaServiceClient.deleteByStorageKey(objectKey);
     }
 
     // SINGLE entity

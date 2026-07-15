@@ -315,6 +315,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      media-service:
+        condition: service_started
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: airline-core-service
@@ -324,6 +326,7 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      MEDIA_SERVICE_BASE_URL: http://media-service:8089
 
   flight-ops-service:
     <<: *service-defaults

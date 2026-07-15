@@ -28,6 +28,7 @@ public class LocalMediaStorageService implements MediaStorageService {
             "image/png",
             "image/webp",
             "image/gif",
+            "image/svg+xml",
             "application/pdf"
     );
 
