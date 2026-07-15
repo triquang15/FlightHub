@@ -27,14 +27,19 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: ${MEDIA_MAX_FILE_SIZE:5MB}
-      max-request-size: ${MEDIA_MAX_REQUEST_SIZE:6MB}
+      max-file-size: ${MEDIA_MAX_FILE_SIZE:8MB}
+      max-request-size: ${MEDIA_MAX_REQUEST_SIZE:9MB}
 
 app:
   media:
     storage-path: ${MEDIA_STORAGE_PATH:uploads/media}
+    storage-provider: ${MEDIA_STORAGE_PROVIDER:LOCAL}
     public-base-url: ${MEDIA_PUBLIC_BASE_URL:http://localhost:8080}
-    max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:5242880}
+    max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:8388608}
+    s3:
+      bucket: ${MEDIA_S3_BUCKET:}
+      region: ${MEDIA_S3_REGION:}
+      public-base-url: ${MEDIA_S3_PUBLIC_BASE_URL:}
 
 info:
   app:

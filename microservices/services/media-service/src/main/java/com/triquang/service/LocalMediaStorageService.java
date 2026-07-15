@@ -1,5 +1,6 @@
 package com.triquang.service;
 
+import com.triquang.model.StorageProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,11 @@ public class LocalMediaStorageService implements MediaStorageService {
     private long maxFileSizeBytes;
 
     @Override
+    public StorageProvider provider() {
+        return StorageProvider.LOCAL;
+    }
+
+    @Override
     public StoredMedia store(MultipartFile file, String entityType, String purpose) {
         validate(file);
 
@@ -70,7 +76,7 @@ public class LocalMediaStorageService implements MediaStorageService {
                     publicUrl,
                     checksum,
                     file.getSize(),
-                    file.getContentType(),
+                    normalizeContentType(file.getContentType()),
                     originalName
             );
         } catch (IOException ex) {
@@ -85,7 +91,7 @@ public class LocalMediaStorageService implements MediaStorageService {
         if (file.getSize() > maxFileSizeBytes) {
             throw new IllegalArgumentException("File exceeds max upload size");
         }
-        String contentType = file.getContentType();
+        String contentType = normalizeContentType(file.getContentType());
         if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new IllegalArgumentException("Unsupported file type");
         }
@@ -116,6 +122,10 @@ public class LocalMediaStorageService implements MediaStorageService {
             return "";
         }
         return fileName.substring(dot).toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeContentType(String contentType) {
+        return contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeSegment(String value) {

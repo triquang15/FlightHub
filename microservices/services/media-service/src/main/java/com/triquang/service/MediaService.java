@@ -28,7 +28,7 @@ public interface MediaService {
 
     Resource getFile(String storageKey);
 
-    void delete(Long id);
+    void delete(Long id, boolean force);
 
     void deleteByStorageKey(String storageKey);
 }

@@ -101,8 +101,11 @@ public class MediaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        mediaService.delete(id);
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean force
+    ) {
+        mediaService.delete(id, force);
         return ResponseUtil.noContent();
     }
 

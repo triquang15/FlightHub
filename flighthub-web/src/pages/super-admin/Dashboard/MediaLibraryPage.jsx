@@ -105,7 +105,7 @@ const MediaLibraryPage = () => {
 
     setDeletingId(media.id);
     try {
-      await api.delete(`/api/media/${media.id}`);
+      await api.delete(`/api/media/${media.id}`, { params: { force: true } });
       toast.success("Media file deleted");
       await loadMedia();
     } catch (error) {

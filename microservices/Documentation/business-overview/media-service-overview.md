@@ -10,7 +10,8 @@ Typical consumers:
 - User profile photos and identity media.
 - Airline logos and onboarding brand assets.
 - Airport, route, meal, ancillary, and landing-page imagery.
-- Operational documents such as PDF attachments when needed.
+- Future operational documents can be added through a dedicated purpose policy
+  when the owning workflow is ready.
 
 ## Current production contract
 
@@ -19,7 +20,10 @@ Typical consumers:
 - `GET /api/media/entity/{entityType}/{entityId}/{purpose}` lists files attached
   to a business entity.
 - `GET /api/media/file/{storageKey}` serves public local files.
-- `DELETE /api/media/{id}` removes metadata and best-effort local storage.
+- `DELETE /api/media/{id}?force=true` removes metadata and best-effort local
+  storage. Linked business assets require the explicit `force=true` flag.
+- `DELETE /api/media/storage-key?storageKey=...` is reserved for service
+  cleanup after an owning business record has been updated.
 
 ## Storage model
 
@@ -34,7 +38,14 @@ This keeps UI and other services independent from the physical storage provider.
 
 ## Validation and safety
 
-- Allowed content types are images and PDF.
+- Uploads are restricted by `entityType` and `purpose`; arbitrary strings are
+  rejected before metadata is stored.
+- User avatars accept JPG, PNG, and WEBP up to 5MB.
+- Airline logos and ancillary icons accept JPG, PNG, WEBP, and SVG up to 5MB.
+- Meal, airport hero, route hero, and landing hero images accept JPG, PNG, and
+  WEBP up to 8MB.
+- Business-linked uploads require an `entityId`; landing hero assets are the
+  only current public asset type that can be uploaded without one.
 - Local file serving rejects path traversal.
 - Upload size is controlled by `MEDIA_MAX_FILE_SIZE_BYTES`.
 - Public file serving is intentionally separate from authenticated metadata

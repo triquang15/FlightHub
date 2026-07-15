@@ -272,7 +272,7 @@ MEDIA_STORAGE_PATH=uploads/media
 # Optional upload limits
 USER_AVATAR_MAX_FILE_SIZE=5MB
 USER_AVATAR_MAX_REQUEST_SIZE=6MB
-MEDIA_MAX_FILE_SIZE_BYTES=5242880
+MEDIA_MAX_FILE_SIZE_BYTES=8388608
 ```
 
 Supported avatar formats are JPG, PNG, and WEBP up to 5MB. Existing legacy
@@ -320,17 +320,41 @@ Local media settings:
 ```bash
 MEDIA_DATASOURCE_URL=jdbc:postgresql://localhost:5441/media_service_db
 MEDIA_STORAGE_PATH=uploads/media
+MEDIA_STORAGE_PROVIDER=LOCAL
 MEDIA_PUBLIC_BASE_URL=http://localhost:8080
 MEDIA_MAX_FILE_SIZE_BYTES=8388608
+
+# Reserved for the S3 adapter. Keep empty while MEDIA_STORAGE_PROVIDER=LOCAL.
+MEDIA_S3_BUCKET=
+MEDIA_S3_REGION=
+MEDIA_S3_PUBLIC_BASE_URL=
+MEDIA_S3_ACCESS_KEY_ID=
+MEDIA_S3_SECRET_ACCESS_KEY=
 ```
 
 Use entity metadata to attach files without coupling storage to a service:
 
 ```text
-entityType=USER_PROFILE | AIRLINE | AIRPORT | ROUTE | MEAL | ANCILLARY
+entityType=USER_PROFILE | AIRLINE | AIRPORT | ROUTE | MEAL | ANCILLARY | LANDING
 entityId=<business id>
-purpose=AVATAR | LOGO | HERO | ICON | DOCUMENT
+purpose=AVATAR | LOGO | HERO | IMAGE | ICON
 ```
+
+Production upload policy:
+
+| Entity | Purpose | Types | Limit | Notes |
+| --- | --- | --- | --- | --- |
+| USER_PROFILE | AVATAR | JPG, PNG, WEBP | 5MB | Requires `entityId` |
+| AIRLINE | LOGO | JPG, PNG, WEBP, SVG | 5MB | Requires `entityId` |
+| MEAL | IMAGE | JPG, PNG, WEBP | 8MB | Requires `entityId` |
+| ANCILLARY | ICON | JPG, PNG, WEBP, SVG | 5MB | Requires `entityId` |
+| AIRPORT | HERO | JPG, PNG, WEBP | 8MB | Requires `entityId` |
+| ROUTE | HERO | JPG, PNG, WEBP | 8MB | Requires `entityId` |
+| LANDING | HERO | JPG, PNG, WEBP | 8MB | Does not require `entityId` |
+
+Admin delete by media id requires `force=true` for linked business assets.
+Service-to-service cleanup should use delete by `storageKey` after the owning
+business record has been updated.
 
 Existing avatar, airport, airline, and ancillary upload endpoints remain
 supported for backward compatibility, while new avatar, airline logo, meal

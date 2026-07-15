@@ -1,14 +1,16 @@
 package com.triquang.service.impl;
 
 import com.triquang.mapper.MediaFileMapper;
+import com.triquang.model.MediaEntityType;
 import com.triquang.model.MediaFile;
+import com.triquang.model.MediaPurpose;
 import com.triquang.model.MediaVisibility;
-import com.triquang.model.StorageProvider;
 import com.triquang.payload.MediaFileResponse;
 import com.triquang.repository.MediaFileRepository;
 import com.triquang.service.MediaService;
 import com.triquang.service.MediaStorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -25,10 +27,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MediaServiceImpl implements MediaService {
+
+    private static final long MB = 1024L * 1024L;
+    private static final long SMALL_IMAGE_MAX_BYTES = 5L * MB;
+    private static final long LARGE_IMAGE_MAX_BYTES = 8L * MB;
+    private static final Set<String> STANDARD_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> BRAND_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/svg+xml");
 
     private final MediaFileRepository mediaFileRepository;
     private final MediaStorageService mediaStorageService;
@@ -46,27 +56,44 @@ public class MediaServiceImpl implements MediaService {
             String purpose,
             MediaVisibility visibility
     ) {
-        String normalizedEntityType = normalizeRequired(entityType, "entityType");
-        String normalizedPurpose = normalizeRequired(purpose, "purpose");
+        MediaEntityType normalizedEntityType = MediaEntityType.from(entityType);
+        MediaPurpose normalizedPurpose = MediaPurpose.from(purpose);
+        validateUploadPolicy(file, normalizedEntityType, normalizedPurpose, entityId);
         MediaVisibility resolvedVisibility = visibility == null ? MediaVisibility.PUBLIC : visibility;
-        MediaStorageService.StoredMedia stored = mediaStorageService.store(file, normalizedEntityType, normalizedPurpose);
+        MediaStorageService.StoredMedia stored = mediaStorageService.store(
+                file,
+                normalizedEntityType.name(),
+                normalizedPurpose.name()
+        );
 
         MediaFile mediaFile = MediaFile.builder()
                 .ownerUserId(ownerUserId)
-                .entityType(normalizedEntityType)
+                .entityType(normalizedEntityType.name())
                 .entityId(entityId)
-                .purpose(normalizedPurpose)
+                .purpose(normalizedPurpose.name())
                 .originalFileName(stored.originalFileName())
                 .contentType(stored.contentType())
                 .sizeBytes(stored.sizeBytes())
-                .storageProvider(StorageProvider.LOCAL)
+                .storageProvider(mediaStorageService.provider())
                 .storageKey(stored.storageKey())
                 .publicUrl(stored.publicUrl())
                 .visibility(resolvedVisibility)
                 .checksumSha256(stored.checksumSha256())
                 .build();
 
-        return MediaFileMapper.toResponse(mediaFileRepository.save(mediaFile));
+        MediaFile saved = mediaFileRepository.save(mediaFile);
+        log.info(
+                "Media uploaded id={} entityType={} entityId={} purpose={} ownerUserId={} sizeBytes={} provider={} storageKey={}",
+                saved.getId(),
+                saved.getEntityType(),
+                saved.getEntityId(),
+                saved.getPurpose(),
+                saved.getOwnerUserId(),
+                saved.getSizeBytes(),
+                saved.getStorageProvider(),
+                saved.getStorageKey()
+        );
+        return MediaFileMapper.toResponse(saved);
     }
 
     @Override
@@ -87,15 +114,17 @@ public class MediaServiceImpl implements MediaService {
             Pageable pageable
     ) {
         Specification<MediaFile> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+        String normalizedEntityType = StringUtils.hasText(entityType) ? MediaEntityType.from(entityType).name() : null;
+        String normalizedPurpose = StringUtils.hasText(purpose) ? MediaPurpose.from(purpose).name() : null;
 
-        if (StringUtils.hasText(entityType)) {
+        if (normalizedEntityType != null) {
             specification = specification.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.equal(root.get("entityType"), entityType.trim().toUpperCase(Locale.ROOT)));
+                    criteriaBuilder.equal(root.get("entityType"), normalizedEntityType));
         }
 
-        if (StringUtils.hasText(purpose)) {
+        if (normalizedPurpose != null) {
             specification = specification.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.equal(root.get("purpose"), purpose.trim().toUpperCase(Locale.ROOT)));
+                    criteriaBuilder.equal(root.get("purpose"), normalizedPurpose));
         }
 
         if (ownerUserId != null) {
@@ -122,9 +151,9 @@ public class MediaServiceImpl implements MediaService {
     public List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose) {
         return mediaFileRepository
                 .findByEntityTypeAndEntityIdAndPurposeOrderByCreatedAtDesc(
-                        normalizeRequired(entityType, "entityType"),
+                        MediaEntityType.from(entityType).name(),
                         entityId,
-                        normalizeRequired(purpose, "purpose")
+                        MediaPurpose.from(purpose).name()
                 )
                 .stream()
                 .map(MediaFileMapper::toResponse)
@@ -152,11 +181,23 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, boolean force) {
         MediaFile mediaFile = mediaFileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        if (!force && isLinkedBusinessAsset(mediaFile)) {
+            throw new IllegalArgumentException("Linked media requires force=true to delete");
+        }
         deletePhysicalFile(mediaFile.getStorageKey());
         mediaFileRepository.delete(mediaFile);
+        log.info(
+                "Media deleted id={} force={} entityType={} entityId={} purpose={} storageKey={}",
+                id,
+                force,
+                mediaFile.getEntityType(),
+                mediaFile.getEntityId(),
+                mediaFile.getPurpose(),
+                mediaFile.getStorageKey()
+        );
     }
 
     @Override
@@ -166,6 +207,13 @@ public class MediaServiceImpl implements MediaService {
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
         deletePhysicalFile(mediaFile.getStorageKey());
         mediaFileRepository.delete(mediaFile);
+        log.info(
+                "Media deleted by storageKey entityType={} entityId={} purpose={} storageKey={}",
+                mediaFile.getEntityType(),
+                mediaFile.getEntityId(),
+                mediaFile.getPurpose(),
+                mediaFile.getStorageKey()
+        );
     }
 
     private void deletePhysicalFile(String storageKey) {
@@ -180,11 +228,60 @@ public class MediaServiceImpl implements MediaService {
         }
     }
 
-    private String normalizeRequired(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + " is required");
+    private void validateUploadPolicy(
+            MultipartFile file,
+            MediaEntityType entityType,
+            MediaPurpose purpose,
+            Long entityId
+    ) {
+        UploadPolicy policy = resolvePolicy(entityType, purpose);
+        if (policy.entityIdRequired() && entityId == null) {
+            throw new IllegalArgumentException("entityId is required for " + entityType + " " + purpose);
         }
-        return value.trim().toUpperCase(Locale.ROOT);
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required");
+        }
+        if (file.getSize() > policy.maxBytes()) {
+            throw new IllegalArgumentException("File exceeds " + policy.maxBytes() / MB + "MB limit for " + purpose);
+        }
+        String contentType = normalizeContentType(file.getContentType());
+        if (!policy.contentTypes().contains(contentType)) {
+            throw new IllegalArgumentException("Unsupported file type for " + entityType + " " + purpose);
+        }
+    }
+
+    private UploadPolicy resolvePolicy(MediaEntityType entityType, MediaPurpose purpose) {
+        return switch (entityType) {
+            case USER_PROFILE -> requirePolicy(entityType, purpose, MediaPurpose.AVATAR, SMALL_IMAGE_MAX_BYTES, STANDARD_IMAGE_TYPES, true);
+            case AIRLINE -> requirePolicy(entityType, purpose, MediaPurpose.LOGO, SMALL_IMAGE_MAX_BYTES, BRAND_IMAGE_TYPES, true);
+            case MEAL -> requirePolicy(entityType, purpose, MediaPurpose.IMAGE, LARGE_IMAGE_MAX_BYTES, STANDARD_IMAGE_TYPES, true);
+            case ANCILLARY -> requirePolicy(entityType, purpose, MediaPurpose.ICON, SMALL_IMAGE_MAX_BYTES, BRAND_IMAGE_TYPES, true);
+            case AIRPORT -> requirePolicy(entityType, purpose, MediaPurpose.HERO, LARGE_IMAGE_MAX_BYTES, STANDARD_IMAGE_TYPES, true);
+            case ROUTE -> requirePolicy(entityType, purpose, MediaPurpose.HERO, LARGE_IMAGE_MAX_BYTES, STANDARD_IMAGE_TYPES, true);
+            case LANDING -> requirePolicy(entityType, purpose, MediaPurpose.HERO, LARGE_IMAGE_MAX_BYTES, STANDARD_IMAGE_TYPES, false);
+        };
+    }
+
+    private UploadPolicy requirePolicy(
+            MediaEntityType entityType,
+            MediaPurpose actualPurpose,
+            MediaPurpose expectedPurpose,
+            long maxBytes,
+            Set<String> contentTypes,
+            boolean entityIdRequired
+    ) {
+        if (actualPurpose != expectedPurpose) {
+            throw new IllegalArgumentException(entityType + " media only supports purpose " + expectedPurpose);
+        }
+        return new UploadPolicy(maxBytes, contentTypes, entityIdRequired);
+    }
+
+    private boolean isLinkedBusinessAsset(MediaFile mediaFile) {
+        return mediaFile.getEntityId() != null && StringUtils.hasText(mediaFile.getEntityType());
+    }
+
+    private String normalizeContentType(String contentType) {
+        return contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
     }
 
     private String requireStorageKey(String storageKey) {
@@ -192,5 +289,8 @@ public class MediaServiceImpl implements MediaService {
             throw new IllegalArgumentException("storageKey is required");
         }
         return storageKey.trim();
+    }
+
+    private record UploadPolicy(long maxBytes, Set<String> contentTypes, boolean entityIdRequired) {
     }
 }
