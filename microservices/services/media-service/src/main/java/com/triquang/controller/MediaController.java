@@ -8,6 +8,10 @@ import com.triquang.utils.ResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -30,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class MediaController {
 
     private static final String FILE_ROUTE_PREFIX = "/api/media/file/";
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("id", "createdAt", "updatedAt", "entityType", "purpose", "sizeBytes");
 
     private final MediaService mediaService;
 
@@ -48,6 +54,26 @@ public class MediaController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MediaFileResponse>> getById(@PathVariable Long id) {
         return ResponseUtil.ok(mediaService.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<MediaFileResponse>>> search(
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String purpose,
+            @RequestParam(required = false) Long ownerUserId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection
+    ) {
+        return ResponseUtil.ok(mediaService.search(
+                entityType,
+                purpose,
+                ownerUserId,
+                keyword,
+                pageable(page, size, sortBy, sortDirection)
+        ));
     }
 
     @GetMapping("/entity/{entityType}/{entityId}/{purpose}")
@@ -84,5 +110,13 @@ public class MediaController {
     public ResponseEntity<ApiResponse<Void>> deleteByStorageKey(@RequestParam String storageKey) {
         mediaService.deleteByStorageKey(storageKey);
         return ResponseUtil.noContent();
+    }
+
+    private Pageable pageable(int page, int size, String sortBy, String sortDirection) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        String safeSort = ALLOWED_SORT_FIELDS.contains(sortBy) ? sortBy : "createdAt";
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return PageRequest.of(safePage, safeSize, Sort.by(direction, safeSort));
     }
 }

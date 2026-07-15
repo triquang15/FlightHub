@@ -12,8 +12,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.MalformedURLException;
@@ -71,6 +75,46 @@ public class MediaServiceImpl implements MediaService {
         return mediaFileRepository.findById(id)
                 .map(MediaFileMapper::toResponse)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MediaFileResponse> search(
+            String entityType,
+            String purpose,
+            Long ownerUserId,
+            String keyword,
+            Pageable pageable
+    ) {
+        Specification<MediaFile> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (StringUtils.hasText(entityType)) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("entityType"), entityType.trim().toUpperCase(Locale.ROOT)));
+        }
+
+        if (StringUtils.hasText(purpose)) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("purpose"), purpose.trim().toUpperCase(Locale.ROOT)));
+        }
+
+        if (ownerUserId != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("ownerUserId"), ownerUserId));
+        }
+
+        if (StringUtils.hasText(keyword)) {
+            String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.or(
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("originalFileName")), pattern),
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("storageKey")), pattern),
+                            criteriaBuilder.like(criteriaBuilder.lower(root.get("contentType")), pattern)
+                    ));
+        }
+
+        return mediaFileRepository.findAll(specification, pageable)
+                .map(MediaFileMapper::toResponse);
     }
 
     @Override

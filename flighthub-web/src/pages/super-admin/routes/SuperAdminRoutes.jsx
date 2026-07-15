@@ -11,6 +11,7 @@ import NotificationsManagement from '../Dashboard/NotificationsManagement';
 import ObservabilityPage from '../Dashboard/ObservabilityPage';
 import ServiceHealthPage from '../Dashboard/ServiceHealthPage';
 import IntegrationManagementPage from '../Dashboard/IntegrationManagementPage';
+import MediaLibraryPage from '../Dashboard/MediaLibraryPage';
 import AirportPerformancePage from "../Dashboard/AirportPerformancePage";
 import RoutePerformancePage from "../Dashboard/RoutePerformancePage";
 import AirlinePerformancePage from "../Dashboard/Airport Anlitics/AirlinePerformancePage";
@@ -92,6 +93,7 @@ const SuperAdminRoutes = ({ platformStats }) => {
       <Route path="/operations/incidents" element={<PlatformModulePlaceholder module="incidents" />} />
       <Route path="/configuration/settings" element={<PlatformModulePlaceholder module="settings" />} />
       <Route path="/configuration/integrations" element={<IntegrationManagementPage />} />
+      <Route path="/configuration/media" element={<MediaLibraryPage />} />
 
       {/* Security & Compliance */}
       <Route path="/security" element={<PlatformModulePlaceholder module="audit" />} />

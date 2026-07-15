@@ -283,8 +283,9 @@ the User Service controller and database fields unchanged and replace
 
 ### Airport route images
 
-Airport destination images use the same local-first, S3-ready pattern. Location
-Service stores only media metadata on the `airports` record:
+New airport destination image uploads are routed from Location Service to
+`media-service`. Location Service stores only media metadata on the `airports`
+record:
 
 ```text
 hero_image_url
@@ -294,18 +295,18 @@ hero_image_object_key
 Local airport media settings:
 
 ```bash
-# Public URL used when Location Service returns hero_image_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Location Service calls media-service directly for new airport hero uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for airport route/traveler images
+# Legacy fallback for old object keys that were stored before media-service
 AIRPORT_MEDIA_STORAGE_DIR=/tmp/flighthub/airport-media
 ```
 
 System Admins can upload or remove airport hero images from Airport Management.
 Traveler Trending routes prefer `airport.heroImageUrl` and fall back to bundled
 route imagery when no custom image exists. For S3 migration, keep the airport
-DTO/API contract unchanged and replace `AirportMediaStorageService` with an
-S3-backed implementation.
+DTO/API contract unchanged and switch `MediaStorageService` in `media-service`
+from LOCAL to S3.
 
 ### Shared Media Service
 
@@ -320,7 +321,7 @@ Local media settings:
 MEDIA_DATASOURCE_URL=jdbc:postgresql://localhost:5441/media_service_db
 MEDIA_STORAGE_PATH=uploads/media
 MEDIA_PUBLIC_BASE_URL=http://localhost:8080
-MEDIA_MAX_FILE_SIZE_BYTES=5242880
+MEDIA_MAX_FILE_SIZE_BYTES=8388608
 ```
 
 Use entity metadata to attach files without coupling storage to a service:
@@ -332,9 +333,9 @@ purpose=AVATAR | LOGO | HERO | ICON | DOCUMENT
 ```
 
 Existing avatar, airport, airline, and ancillary upload endpoints remain
-supported for backward compatibility. Future work should migrate those callers
-to `media-service`, then switch the `MediaStorageService` implementation from
-LOCAL to S3.
+supported for backward compatibility, while new avatar, airline logo, meal
+image, ancillary icon, and airport hero uploads are routed through
+`media-service`.
 
 ### Airline logo uploads
 
@@ -397,8 +398,8 @@ unchanged and switch `MediaStorageService` in `media-service` from LOCAL to S3.
 
 ### Ancillary catalog icons
 
-Master ancillary icons/images use the same Ancillary Service local-first
-storage boundary. The `ancillaries` record stores:
+New master ancillary icon/image uploads are routed from Ancillary Service to
+`media-service`. The `ancillaries` record stores:
 
 ```text
 icon_url
@@ -408,10 +409,10 @@ icon_object_key
 Local ancillary icon settings:
 
 ```bash
-# Public URL used when Ancillary Service returns icon_url through API Gateway
-APP_PUBLIC_BASE_URL=http://localhost:8080
+# Ancillary Service calls media-service directly for new ancillary icon uploads
+MEDIA_SERVICE_BASE_URL=http://localhost:8089
 
-# Local filesystem storage for uploaded ancillary icons
+# Legacy fallback for old object keys that were stored before media-service
 ANCILLARY_ICON_STORAGE_DIR=/tmp/flighthub/ancillary-icons
 
 # Optional shared upload limits for ancillary media
@@ -421,8 +422,8 @@ ANCILLARY_MEDIA_MAX_REQUEST_SIZE=9MB
 
 Airline owners can upload or remove JPG, PNG, WEBP, or SVG visuals from the
 Master Ancillaries edit page after the catalog item exists. For S3 migration,
-keep the API/DTO contract unchanged and replace `AncillaryIconStorageService`
-with an S3-backed implementation.
+keep the API/DTO contract unchanged and switch `MediaStorageService` in
+`media-service` from LOCAL to S3.
 
 Open:
 

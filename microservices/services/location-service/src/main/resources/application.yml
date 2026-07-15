@@ -63,6 +63,8 @@ management:
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  media-service:
+    base-url: ${MEDIA_SERVICE_BASE_URL:http://localhost:8089}
   storage:
     airport-media:
       local-dir: ${AIRPORT_MEDIA_STORAGE_DIR:${java.io.tmpdir}/flighthub/airport-media}

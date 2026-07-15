@@ -1,6 +1,7 @@
 package com.triquang.service.impl;
 
 import com.triquang.exception.BaseException;
+import com.triquang.client.MediaServiceClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.mapper.AirportMapper;
 import com.triquang.model.Airport;
@@ -12,7 +13,6 @@ import com.triquang.repository.CityRepository;
 import com.triquang.service.AirportService;
 import com.triquang.service.GeoTimezoneService;
 import com.triquang.service.storage.AirportMediaStorageService;
-import com.triquang.service.storage.AirportMediaStorageService.StoredAirportMedia;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +36,7 @@ public class AirportServiceImpl implements AirportService {
     private final CityRepository cityRepository;
     private final GeoTimezoneService geoTimezoneService;
     private final AirportMediaStorageService airportMediaStorageService;
+    private final MediaServiceClient mediaServiceClient;
 
     // ================= SEARCH =================
     @Override
@@ -209,9 +210,9 @@ public class AirportServiceImpl implements AirportService {
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
 
-        StoredAirportMedia media = airportMediaStorageService.storeHeroImage(id, file);
-        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
-        airport.setHeroImageObjectKey(media.objectKey());
+        MediaServiceClient.MediaFileResponse media = mediaServiceClient.uploadAirportHeroImage(id, file);
+        deleteHeroImageObject(airport.getHeroImageObjectKey());
+        airport.setHeroImageObjectKey(media.storageKey());
         airport.setHeroImageUrl(media.publicUrl());
 
         return AirportMapper.toResponse(airportRepository.save(airport));
@@ -228,7 +229,7 @@ public class AirportServiceImpl implements AirportService {
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
 
-        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
+        deleteHeroImageObject(airport.getHeroImageObjectKey());
         airport.setHeroImageObjectKey(null);
         airport.setHeroImageUrl(null);
 
@@ -247,11 +248,24 @@ public class AirportServiceImpl implements AirportService {
         Airport airport = airportRepository.findById(id)
                 .orElseThrow(() -> new BaseException(ErrorCode.AIRPORT_NOT_FOUND));
 
-        airportMediaStorageService.delete(airport.getHeroImageObjectKey());
+        deleteHeroImageObject(airport.getHeroImageObjectKey());
         airportRepository.delete(airport);
     }
 
     // ================= HELPER =================
+    private void deleteHeroImageObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        if (objectKey.startsWith("airports/")) {
+            airportMediaStorageService.delete(objectKey);
+            return;
+        }
+
+        mediaServiceClient.deleteByStorageKey(objectKey);
+    }
+
     private void applyTimezone(AirportRequest request) {
 
         if (request.getTimeZone() != null) return;

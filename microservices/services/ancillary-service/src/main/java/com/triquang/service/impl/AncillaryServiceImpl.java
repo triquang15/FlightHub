@@ -3,6 +3,7 @@ package com.triquang.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.triquang.client.MediaServiceClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.AncillaryMapper;
@@ -35,6 +36,7 @@ public class AncillaryServiceImpl implements AncillaryService {
     private final AncillaryOwnershipService ownershipService;
     private final FlightCabinAncillaryRepository flightCabinAncillaryRepository;
     private final AncillaryIconStorageService ancillaryIconStorageService;
+    private final MediaServiceClient mediaServiceClient;
 
     @Override
     @Transactional
@@ -116,12 +118,12 @@ public class AncillaryServiceImpl implements AncillaryService {
         var ancillary = ownershipService.requireOwnedAncillary(userId, id);
         String previousObjectKey = ancillary.getIconObjectKey();
 
-        AncillaryIconStorageService.StoredAncillaryIcon storedIcon = ancillaryIconStorageService.store(id, file);
+        MediaServiceClient.MediaFileResponse storedIcon = mediaServiceClient.uploadAncillaryIcon(userId, id, file);
         ancillary.setIconUrl(storedIcon.publicUrl());
-        ancillary.setIconObjectKey(storedIcon.objectKey());
+        ancillary.setIconObjectKey(storedIcon.storageKey());
 
         Ancillary updated = ancillaryRepository.save(ancillary);
-        ancillaryIconStorageService.delete(previousObjectKey);
+        deleteIconObject(previousObjectKey);
 
         List<InsuranceCoverageResponse> coverages = insuranceCoverageRepository.findByAncillary(updated)
                 .stream()
@@ -135,7 +137,7 @@ public class AncillaryServiceImpl implements AncillaryService {
     @Transactional
     public AncillaryResponse deleteIcon(Long userId, Long id) {
         var ancillary = ownershipService.requireOwnedAncillary(userId, id);
-        ancillaryIconStorageService.delete(ancillary.getIconObjectKey());
+        deleteIconObject(ancillary.getIconObjectKey());
         ancillary.setIconUrl(null);
         ancillary.setIconObjectKey(null);
 
@@ -156,7 +158,20 @@ public class AncillaryServiceImpl implements AncillaryService {
                 || insuranceCoverageRepository.existsByAncillaryId(id)) {
             throw new BaseException(ErrorCode.ANCILLARY_IN_USE);
         }
-        ancillaryIconStorageService.delete(ancillary.getIconObjectKey());
+        deleteIconObject(ancillary.getIconObjectKey());
         ancillaryRepository.delete(ancillary);
+    }
+
+    private void deleteIconObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        if (objectKey.startsWith("ancillaries/")) {
+            ancillaryIconStorageService.delete(objectKey);
+            return;
+        }
+
+        mediaServiceClient.deleteByStorageKey(objectKey);
     }
 }

@@ -21,18 +21,11 @@ import java.util.Set;
 @Slf4j
 public class MediaServiceClient {
 
-    private static final long MAX_MEAL_IMAGE_BYTES = 8L * 1024L * 1024L;
-    private static final Set<String> ALLOWED_MEAL_IMAGE_CONTENT_TYPES = Set.of(
+    private static final long MAX_AIRPORT_HERO_BYTES = 8L * 1024L * 1024L;
+    private static final Set<String> ALLOWED_AIRPORT_HERO_CONTENT_TYPES = Set.of(
             "image/jpeg",
             "image/png",
             "image/webp"
-    );
-    private static final long MAX_ANCILLARY_ICON_BYTES = 5L * 1024L * 1024L;
-    private static final Set<String> ALLOWED_ANCILLARY_ICON_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/svg+xml"
     );
 
     private final RestClient restClient;
@@ -46,19 +39,18 @@ public class MediaServiceClient {
                 .build();
     }
 
-    public MediaFileResponse uploadMealImage(Long ownerUserId, Long mealId, MultipartFile file) {
-        validateMealImage(file);
+    public MediaFileResponse uploadAirportHeroImage(Long airportId, MultipartFile file) {
+        validateAirportHero(file);
 
         try {
             String contentType = normalizeContentType(file.getContentType());
             MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
             bodyBuilder.part("file", file.getResource())
-                    .filename(StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "meal-image")
+                    .filename(StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "airport-hero")
                     .contentType(MediaType.parseMediaType(contentType));
-            bodyBuilder.part("ownerUserId", ownerUserId);
-            bodyBuilder.part("entityType", "MEAL");
-            bodyBuilder.part("entityId", mealId);
-            bodyBuilder.part("purpose", "IMAGE");
+            bodyBuilder.part("entityType", "AIRPORT");
+            bodyBuilder.part("entityId", airportId);
+            bodyBuilder.part("purpose", "HERO");
             bodyBuilder.part("visibility", "PUBLIC");
 
             ApiResponse<MediaFileResponse> response = restClient.post()
@@ -76,42 +68,7 @@ public class MediaServiceClient {
         } catch (BaseException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error("Failed to upload meal image to media-service | mealId={}", mealId, ex);
-            throw new BaseException(ErrorCode.INTERNAL_ERROR);
-        }
-    }
-
-    public MediaFileResponse uploadAncillaryIcon(Long ownerUserId, Long ancillaryId, MultipartFile file) {
-        validateAncillaryIcon(file);
-
-        try {
-            String contentType = normalizeContentType(file.getContentType());
-            MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
-            bodyBuilder.part("file", file.getResource())
-                    .filename(StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "ancillary-icon")
-                    .contentType(MediaType.parseMediaType(contentType));
-            bodyBuilder.part("ownerUserId", ownerUserId);
-            bodyBuilder.part("entityType", "ANCILLARY");
-            bodyBuilder.part("entityId", ancillaryId);
-            bodyBuilder.part("purpose", "ICON");
-            bodyBuilder.part("visibility", "PUBLIC");
-
-            ApiResponse<MediaFileResponse> response = restClient.post()
-                    .uri("/api/media/upload")
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(bodyBuilder.build())
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<>() {});
-
-            if (response == null || response.data() == null || !StringUtils.hasText(response.data().publicUrl())) {
-                throw new BaseException(ErrorCode.INTERNAL_ERROR);
-            }
-
-            return response.data();
-        } catch (BaseException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            log.error("Failed to upload ancillary icon to media-service | ancillaryId={}", ancillaryId, ex);
+            log.error("Failed to upload airport hero image to media-service | airportId={}", airportId, ex);
             throw new BaseException(ErrorCode.INTERNAL_ERROR);
         }
     }
@@ -134,26 +91,14 @@ public class MediaServiceClient {
         }
     }
 
-    private void validateMealImage(MultipartFile file) {
+    private void validateAirportHero(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
-        if (file.getSize() > MAX_MEAL_IMAGE_BYTES) {
+        if (file.getSize() > MAX_AIRPORT_HERO_BYTES) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
-        if (!ALLOWED_MEAL_IMAGE_CONTENT_TYPES.contains(normalizeContentType(file.getContentType()))) {
-            throw new BaseException(ErrorCode.INVALID_INPUT);
-        }
-    }
-
-    private void validateAncillaryIcon(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BaseException(ErrorCode.INVALID_INPUT);
-        }
-        if (file.getSize() > MAX_ANCILLARY_ICON_BYTES) {
-            throw new BaseException(ErrorCode.INVALID_INPUT);
-        }
-        if (!ALLOWED_ANCILLARY_ICON_CONTENT_TYPES.contains(normalizeContentType(file.getContentType()))) {
+        if (!ALLOWED_AIRPORT_HERO_CONTENT_TYPES.contains(normalizeContentType(file.getContentType()))) {
             throw new BaseException(ErrorCode.INVALID_INPUT);
         }
     }

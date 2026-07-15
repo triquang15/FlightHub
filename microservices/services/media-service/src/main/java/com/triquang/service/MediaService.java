@@ -3,6 +3,8 @@ package com.triquang.service;
 import com.triquang.model.MediaVisibility;
 import com.triquang.payload.MediaFileResponse;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -19,6 +21,8 @@ public interface MediaService {
     );
 
     MediaFileResponse getById(Long id);
+
+    Page<MediaFileResponse> search(String entityType, String purpose, Long ownerUserId, String keyword, Pageable pageable);
 
     List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose);
 

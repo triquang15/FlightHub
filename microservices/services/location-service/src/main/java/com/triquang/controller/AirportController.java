@@ -144,7 +144,7 @@ public class AirportController {
 
     @Operation(
             summary = "Upload airport hero image",
-            description = "Uploads an airport destination image used by traveler landing pages and route cards. Development stores files locally; the storage service is S3-ready for later migration."
+            description = "Uploads an airport destination image used by traveler landing pages and route cards through Media Service."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Airport hero image updated")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid or unsupported image file")

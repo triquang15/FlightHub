@@ -113,7 +113,7 @@ public class AncillaryController {
 	}
 
 	@PostMapping(value = "/{id:\\d+}/icon", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "Upload ancillary icon", description = "Uploads or replaces the visual icon/image for an owned ancillary catalog item.")
+	@Operation(summary = "Upload ancillary icon", description = "Uploads or replaces the visual icon/image for an owned ancillary catalog item through Media Service.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "Ancillary icon updated"),
 			@ApiResponse(responseCode = "400", description = "Unsupported image or file too large"),
