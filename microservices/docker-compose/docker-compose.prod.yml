@@ -448,6 +448,8 @@ services:
         condition: service_started
       ancillarydb:
         condition: service_healthy
+      media-service:
+        condition: service_started
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: ancillary-service
@@ -455,6 +457,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      MEDIA_SERVICE_BASE_URL: http://media-service:8089
 
   booking-service:
     <<: *service-defaults
@@ -537,7 +540,7 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       MEDIA_STORAGE_PATH: /data/media
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:8080}
-      MEDIA_MAX_FILE_SIZE_BYTES: ${MEDIA_MAX_FILE_SIZE_BYTES:-5242880}
+      MEDIA_MAX_FILE_SIZE_BYTES: ${MEDIA_MAX_FILE_SIZE_BYTES:-8388608}
     volumes:
       - media-uploads:/data/media
 

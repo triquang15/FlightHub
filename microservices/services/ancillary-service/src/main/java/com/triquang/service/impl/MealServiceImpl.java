@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.triquang.client.MediaServiceClient;
 import com.triquang.enums.ErrorCode;
 import com.triquang.exception.BaseException;
 import com.triquang.mapper.MealMapper;
@@ -36,6 +37,7 @@ public class MealServiceImpl implements MealService {
     private final AncillaryOwnershipService ownershipService;
     private final FlightMealRepository flightMealRepository;
     private final MealImageStorageService mealImageStorageService;
+    private final MediaServiceClient mediaServiceClient;
 
     @Override
     @Transactional
@@ -176,7 +178,7 @@ public class MealServiceImpl implements MealService {
         if (flightMealRepository.existsByMealId(id)) {
             throw new BaseException(ErrorCode.MEAL_IN_USE);
         }
-        mealImageStorageService.delete(meal.getImageObjectKey());
+        deleteImageObject(meal.getImageObjectKey());
         mealRepository.delete(meal);
         log.info("Meal deleted successfully with id: {}", id);
     }
@@ -200,12 +202,12 @@ public class MealServiceImpl implements MealService {
         Meal meal = ownershipService.requireOwnedMeal(userId, id);
         String previousObjectKey = meal.getImageObjectKey();
 
-        MealImageStorageService.StoredMealImage storedImage = mealImageStorageService.store(id, file);
+        MediaServiceClient.MediaFileResponse storedImage = mediaServiceClient.uploadMealImage(userId, id, file);
         meal.setImageUrl(storedImage.publicUrl());
-        meal.setImageObjectKey(storedImage.objectKey());
+        meal.setImageObjectKey(storedImage.storageKey());
 
         Meal updatedMeal = mealRepository.save(meal);
-        mealImageStorageService.delete(previousObjectKey);
+        deleteImageObject(previousObjectKey);
 
         log.info("Meal image updated successfully for id: {}", updatedMeal.getId());
         return MealMapper.toResponse(updatedMeal);
@@ -215,13 +217,26 @@ public class MealServiceImpl implements MealService {
     @Transactional
     public MealResponse deleteImage(Long userId, Long id) {
         Meal meal = ownershipService.requireOwnedMeal(userId, id);
-        mealImageStorageService.delete(meal.getImageObjectKey());
+        deleteImageObject(meal.getImageObjectKey());
         meal.setImageUrl(null);
         meal.setImageObjectKey(null);
 
         Meal updatedMeal = mealRepository.save(meal);
         log.info("Meal image removed successfully for id: {}", updatedMeal.getId());
         return MealMapper.toResponse(updatedMeal);
+    }
+
+    private void deleteImageObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        if (objectKey.startsWith("meals/")) {
+            mealImageStorageService.delete(objectKey);
+            return;
+        }
+
+        mediaServiceClient.deleteByStorageKey(objectKey);
     }
 
     private Integer normalizeAdvanceBookingHours(MealRequest request) {

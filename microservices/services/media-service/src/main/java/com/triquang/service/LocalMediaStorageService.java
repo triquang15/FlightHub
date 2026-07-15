@@ -38,7 +38,7 @@ public class LocalMediaStorageService implements MediaStorageService {
     @Value("${app.media.public-base-url:http://localhost:8080}")
     private String publicBaseUrl;
 
-    @Value("${app.media.max-file-size-bytes:5242880}")
+    @Value("${app.media.max-file-size-bytes:8388608}")
     private long maxFileSizeBytes;
 
     @Override

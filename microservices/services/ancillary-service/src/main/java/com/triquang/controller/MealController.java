@@ -120,7 +120,7 @@ public class MealController {
 	}
 
 	@PostMapping(value = "/{id:\\d+}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "Upload meal image", description = "Uploads or replaces the display image for an owned meal catalog item. Local storage is S3-ready via object key.")
+	@Operation(summary = "Upload meal image", description = "Uploads or replaces the display image for an owned meal catalog item through Media Service.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "Meal image updated"),
 			@ApiResponse(responseCode = "400", description = "Unsupported image or file too large"),
