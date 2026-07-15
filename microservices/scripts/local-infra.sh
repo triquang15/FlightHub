@@ -11,7 +11,7 @@ PROD_COMPOSE_FILE="${FLIGHTHUB_PROD_COMPOSE_FILE:-$MICROSERVICES_DIR/docker-comp
 
 INFRA_SERVICES=(
   userdb airlinecoredb flightopsdb locationdb seatdb pricingdb ancillarydb
-  bookingdb paymentdb subscriptiondb notificationdb redis kafka kafka-ui
+  bookingdb paymentdb mediadb notificationdb redis kafka kafka-ui
 )
 
 OBSERVABILITY_SERVICES=(

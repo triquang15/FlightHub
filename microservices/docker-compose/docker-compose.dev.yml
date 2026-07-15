@@ -122,14 +122,14 @@ services:
       <<: *postgres-env
       POSTGRES_DB: airline_payment_db
 
-  subscriptiondb:
+  mediadb:
     <<: *db-defaults
-    container_name: subscriptiondb
+    container_name: mediadb
     ports:
       - "127.0.0.1:5441:5432"
     environment:
       <<: *postgres-env
-      POSTGRES_DB: airline_subscription_db
+      POSTGRES_DB: media_service_db
 
   notificationdb:
     <<: *db-defaults

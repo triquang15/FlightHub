@@ -18,7 +18,7 @@ Platform services:
 Business services:
   user-service, airline-core-service, flight-ops-service, location-service,
   seat-service, pricing-service, ancillary-service, booking-service,
-  payment-service, subscription-service, notification-service
+  payment-service, media-service, notification-service
 
 Examples:
   bash microservices/scripts/run-local-service.sh user-service
@@ -150,8 +150,8 @@ case "$SERVICE" in
     configure_business_service "PAYMENT"
     POM_FILE="$MICROSERVICES_DIR/services/$SERVICE/pom.xml"
     ;;
-  subscription-service)
-    configure_business_service "SUBSCRIPTION"
+  media-service)
+    configure_business_service "MEDIA"
     POM_FILE="$MICROSERVICES_DIR/services/$SERVICE/pom.xml"
     ;;
   notification-service)
