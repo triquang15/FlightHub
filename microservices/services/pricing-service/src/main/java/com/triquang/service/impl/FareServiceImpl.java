@@ -42,6 +42,7 @@ public class FareServiceImpl implements FareService {
 	private final SeatClient seatClient;
 
 	@Override
+	@CacheEvict(cacheNames = "faresByFlight", allEntries = true)
 	public FareResponse createFare(Long userId, FareRequest request) {
 		Long airlineId = getAirlineForUser(userId);
 		FlightResponse flight = requireOwnedFlight(request.getFlightId(), airlineId);
@@ -59,6 +60,7 @@ public class FareServiceImpl implements FareService {
 	}
 
 	@Override
+	@CacheEvict(cacheNames = "faresByFlight", allEntries = true)
 	public List<FareResponse> createFares(Long userId, List<FareRequest> requests) {
 		Long airlineId = getAirlineForUser(userId);
 		Map<Long, FlightResponse> flightById = requests.stream().map(FareRequest::getFlightId).distinct()

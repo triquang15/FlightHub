@@ -559,6 +559,9 @@ Expected Redis response:
 PONG
 ```
 
+Redis production boundaries and troubleshooting keys are documented in
+`microservices/Documentation/guide/redis-production-usage.md`.
+
 ### Platform
 
 Open Eureka and confirm the services you started are registered:

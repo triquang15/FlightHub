@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  DatabaseZap,
   ExternalLink,
   Gauge,
   RefreshCw,
@@ -59,6 +60,8 @@ const serviceGroups = [
 const commands = [
   "microservices/scripts/local-infra.sh status",
   "microservices/scripts/local-infra.sh observability-status",
+  "docker exec gds-redis redis-cli ping",
+  "docker exec gds-redis redis-cli info memory",
   "curl http://localhost:8761/actuator/health",
   "curl http://localhost:8080/actuator/health",
   "curl http://localhost:8080/actuator/prometheus",
@@ -126,6 +129,13 @@ const ServiceHealthPage = () => {
         tone: "muted",
       },
       {
+        label: "Redis",
+        value: "Exporter",
+        detail: "Metrics through redis-exporter and Grafana",
+        icon: DatabaseZap,
+        tone: "healthy",
+      },
+      {
         label: "Last check",
         value: lastChecked ? lastChecked.toLocaleTimeString() : "-",
         detail: "Manual refresh supported",
@@ -161,7 +171,7 @@ const ServiceHealthPage = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {summary.map((item) => (
           <SummaryCard key={item.label} {...item} />
         ))}

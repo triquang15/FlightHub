@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   BarChart3,
   Clock,
+  DatabaseZap,
   ExternalLink,
   FileSearch,
   Gauge,
@@ -140,6 +141,9 @@ const commands = [
   "microservices/scripts/local-infra.sh observability-up",
   "microservices/scripts/local-infra.sh observability-status",
   "microservices/scripts/local-infra.sh status",
+  "docker exec gds-redis redis-cli ping",
+  "docker exec gds-redis redis-cli --scan --pattern 'jwt:blacklist:*' | head",
+  "docker exec gds-redis redis-cli --scan --pattern 'notification:*' | head",
   "curl http://localhost:9090/api/v1/targets?state=active",
   "curl http://localhost:3100/loki/api/v1/status/buildinfo",
   "curl http://localhost:9200/_cluster/health?pretty",
@@ -209,6 +213,13 @@ const ObservabilityPage = () => {
         tone: configuredTools > 0 ? "healthy" : "muted",
       },
       {
+        label: "Redis policy",
+        value: "Fail-closed",
+        detail: "Gateway rate limit and token blacklist use Redis with production-safe defaults",
+        icon: DatabaseZap,
+        tone: "healthy",
+      },
+      {
         label: "Last check",
         value: lastChecked ? lastChecked.toLocaleTimeString() : "-",
         detail: "Manual refresh supported",
@@ -246,7 +257,7 @@ const ObservabilityPage = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {stackSummary.map((item) => (
           <SummaryCard key={item.label} {...item} />
         ))}
@@ -307,6 +318,36 @@ const ObservabilityPage = () => {
           <WorkflowCard key={workflow.title} workflow={workflow} />
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="border-b border-border">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <DatabaseZap className="h-4 w-4 text-emerald-600" />
+            Redis operating boundary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          {[
+            {
+              title: "Gateway security",
+              detail: "Rate limits and JWT blacklist are Redis-backed and fail closed by default.",
+            },
+            {
+              title: "Read caches",
+              detail: "Airline, Location, Pricing, and Flight Ops caches are disposable and TTL-bound.",
+            },
+            {
+              title: "Notification idempotency",
+              detail: "Processing and sent keys suppress duplicate Kafka delivery attempts.",
+            },
+          ].map((item) => (
+            <div key={item.title} className="rounded-md border border-border p-3">
+              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b border-border">

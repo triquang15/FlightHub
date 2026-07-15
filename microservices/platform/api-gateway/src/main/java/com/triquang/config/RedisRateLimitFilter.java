@@ -47,9 +47,11 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
 
         // 1. Key
         String userId = request.headers().firstHeader("X-User-Id");
-        String ip = request.servletRequest().getRemoteAddr();
+        String ip = resolveClientIp(request);
 
-        String key = "rl:" + (userId != null ? userId : ip) + ":" + normalizePath(path);
+        String key = "rl:" + (userId != null ? "user:" + userId : "ip:" + ip)
+                + ":" + request.method().name()
+                + ":" + normalizePath(path);
         int routeCapacity = isAuthSensitivePath(path) ? authCapacity : capacity;
         long routeWindowSeconds = isAuthSensitivePath(path) ? authWindowSeconds : windowSeconds;
 
@@ -104,6 +106,20 @@ public class RedisRateLimitFilter implements HandlerFilterFunction<ServerRespons
                 || path.equals("/api/auth/refresh")
                 || path.equals("/api/users/forgot-password")
                 || path.equals("/api/users/reset-password");
+    }
+
+    private String resolveClientIp(ServerRequest request) {
+        String forwardedFor = request.headers().firstHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+
+        String realIp = request.headers().firstHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+
+        return request.servletRequest().getRemoteAddr();
     }
 
     private String traceId() {

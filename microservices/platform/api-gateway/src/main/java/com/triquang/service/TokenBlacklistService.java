@@ -1,7 +1,7 @@
 package com.triquang.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -11,13 +11,21 @@ import java.time.Duration;
 import java.util.Base64;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TokenBlacklistService {
 
     private static final String PREFIX = "jwt:blacklist:";
 
     private final StringRedisTemplate redisTemplate;
+    private final boolean failOpen;
+
+    public TokenBlacklistService(
+            StringRedisTemplate redisTemplate,
+            @Value("${app.token-blacklist.fail-open:false}") boolean failOpen
+    ) {
+        this.redisTemplate = redisTemplate;
+        this.failOpen = failOpen;
+    }
 
     // =========================
     // PUBLIC API
@@ -45,7 +53,11 @@ public class TokenBlacklistService {
             return redisTemplate.opsForValue().get(key) != null;
         } catch (Exception e) {
             log.error("Redis error during blacklist check", e);
-            return false;
+            if (failOpen) {
+                log.warn("Token blacklist check failed open because app.token-blacklist.fail-open=true");
+                return false;
+            }
+            throw new IllegalStateException("Token blacklist store unavailable", e);
         }
     }
 

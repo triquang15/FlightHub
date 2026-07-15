@@ -633,8 +633,13 @@ public class RouteConfig {
         // =========================
         // CHECK BLACKLIST
         // =========================
-        if (blacklistService.isBlacklisted(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token revoked");
+        try {
+            if (blacklistService.isBlacklisted(token)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token revoked");
+            }
+        } catch (IllegalStateException ex) {
+            log.error("Token blacklist is unavailable", ex);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Token revocation store unavailable");
         }
 
         // =========================
