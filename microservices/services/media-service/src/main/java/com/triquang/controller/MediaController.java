@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,26 +43,43 @@ public class MediaController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<MediaFileResponse>> upload(
             @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) Long gatewayUserId,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles,
             @RequestParam(required = false) Long ownerUserId,
             @RequestParam String entityType,
             @RequestParam(required = false) Long entityId,
             @RequestParam String purpose,
             @RequestParam(defaultValue = "PUBLIC") MediaVisibility visibility
     ) {
-        return ResponseUtil.created(mediaService.upload(file, ownerUserId, entityType, entityId, purpose, visibility));
+        return ResponseUtil.created(mediaService.upload(
+                file,
+                gatewayUserId,
+                gatewayRoles,
+                ownerUserId,
+                entityType,
+                entityId,
+                purpose,
+                visibility
+        ));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MediaFileResponse>> getById(@PathVariable Long id) {
-        return ResponseUtil.ok(mediaService.getById(id));
+    public ResponseEntity<ApiResponse<MediaFileResponse>> getById(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long gatewayUserId,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles
+    ) {
+        return ResponseUtil.ok(mediaService.getById(id, gatewayUserId, gatewayRoles));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<MediaFileResponse>>> search(
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String purpose,
+            @RequestParam(required = false) String provider,
             @RequestParam(required = false) Long ownerUserId,
             @RequestParam(required = false) String keyword,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -70,8 +88,10 @@ public class MediaController {
         return ResponseUtil.ok(mediaService.search(
                 entityType,
                 purpose,
+                provider,
                 ownerUserId,
                 keyword,
+                gatewayRoles,
                 pageable(page, size, sortBy, sortDirection)
         ));
     }
@@ -80,9 +100,10 @@ public class MediaController {
     public ResponseEntity<ApiResponse<List<MediaFileResponse>>> getByEntity(
             @PathVariable String entityType,
             @PathVariable Long entityId,
-            @PathVariable String purpose
+            @PathVariable String purpose,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles
     ) {
-        return ResponseUtil.ok(mediaService.getByEntity(entityType, entityId, purpose));
+        return ResponseUtil.ok(mediaService.getByEntity(entityType, entityId, purpose, gatewayRoles));
     }
 
     @GetMapping("/file/**")
@@ -103,15 +124,19 @@ public class MediaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long id,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles,
             @RequestParam(defaultValue = "false") boolean force
     ) {
-        mediaService.delete(id, force);
+        mediaService.delete(id, force, gatewayRoles);
         return ResponseUtil.noContent();
     }
 
     @DeleteMapping("/storage-key")
-    public ResponseEntity<ApiResponse<Void>> deleteByStorageKey(@RequestParam String storageKey) {
-        mediaService.deleteByStorageKey(storageKey);
+    public ResponseEntity<ApiResponse<Void>> deleteByStorageKey(
+            @RequestParam String storageKey,
+            @RequestHeader(value = "X-User-Roles", required = false) String gatewayRoles
+    ) {
+        mediaService.deleteByStorageKey(storageKey, gatewayRoles);
         return ResponseUtil.noContent();
     }
 

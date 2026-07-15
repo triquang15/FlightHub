@@ -5,8 +5,10 @@ import com.triquang.model.MediaEntityType;
 import com.triquang.model.MediaFile;
 import com.triquang.model.MediaPurpose;
 import com.triquang.model.MediaVisibility;
+import com.triquang.model.StorageProvider;
 import com.triquang.payload.MediaFileResponse;
 import com.triquang.repository.MediaFileRepository;
+import com.triquang.service.MediaAccessPolicy;
 import com.triquang.service.MediaService;
 import com.triquang.service.MediaStorageService;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +39,14 @@ public class MediaServiceImpl implements MediaService {
 
     private final MediaFileRepository mediaFileRepository;
     private final MediaStorageService mediaStorageService;
+    private final MediaAccessPolicy mediaAccessPolicy;
 
     @Override
     @Transactional
     public MediaFileResponse upload(
             MultipartFile file,
+            Long gatewayUserId,
+            String gatewayRoles,
             Long ownerUserId,
             String entityType,
             Long entityId,
@@ -51,6 +56,14 @@ public class MediaServiceImpl implements MediaService {
         MediaEntityType normalizedEntityType = MediaEntityType.from(entityType);
         MediaPurpose normalizedPurpose = MediaPurpose.from(purpose);
         validateUploadPolicy(file, normalizedEntityType, normalizedPurpose, entityId);
+        mediaAccessPolicy.authorizeUpload(
+                gatewayUserId,
+                gatewayRoles,
+                ownerUserId,
+                entityId,
+                normalizedEntityType,
+                normalizedPurpose
+        );
         MediaVisibility resolvedVisibility = visibility == null ? MediaVisibility.PUBLIC : visibility;
         MediaStorageService.StoredMedia stored = mediaStorageService.store(
                 file,
@@ -90,10 +103,11 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional(readOnly = true)
-    public MediaFileResponse getById(Long id) {
-        return mediaFileRepository.findById(id)
-                .map(MediaFileMapper::toResponse)
+    public MediaFileResponse getById(Long id, Long gatewayUserId, String gatewayRoles) {
+        MediaFile mediaFile = mediaFileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
+        mediaAccessPolicy.authorizeRead(gatewayUserId, gatewayRoles, mediaFile);
+        return MediaFileMapper.toResponse(mediaFile);
     }
 
     @Override
@@ -101,13 +115,19 @@ public class MediaServiceImpl implements MediaService {
     public Page<MediaFileResponse> search(
             String entityType,
             String purpose,
+            String provider,
             Long ownerUserId,
             String keyword,
+            String gatewayRoles,
             Pageable pageable
     ) {
+        mediaAccessPolicy.requireAdminIfGatewayRequest(gatewayRoles);
         Specification<MediaFile> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
         String normalizedEntityType = StringUtils.hasText(entityType) ? MediaEntityType.from(entityType).name() : null;
         String normalizedPurpose = StringUtils.hasText(purpose) ? MediaPurpose.from(purpose).name() : null;
+        StorageProvider normalizedProvider = StringUtils.hasText(provider)
+                ? StorageProvider.valueOf(provider.trim().toUpperCase(Locale.ROOT))
+                : null;
 
         if (normalizedEntityType != null) {
             specification = specification.and((root, query, criteriaBuilder) ->
@@ -122,6 +142,11 @@ public class MediaServiceImpl implements MediaService {
         if (ownerUserId != null) {
             specification = specification.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.equal(root.get("ownerUserId"), ownerUserId));
+        }
+
+        if (normalizedProvider != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("storageProvider"), normalizedProvider));
         }
 
         if (StringUtils.hasText(keyword)) {
@@ -140,7 +165,8 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose) {
+    public List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose, String gatewayRoles) {
+        mediaAccessPolicy.requireAdminIfGatewayRequest(gatewayRoles);
         return mediaFileRepository
                 .findByEntityTypeAndEntityIdAndPurposeOrderByCreatedAtDesc(
                         MediaEntityType.from(entityType).name(),
@@ -159,7 +185,8 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional
-    public void delete(Long id, boolean force) {
+    public void delete(Long id, boolean force, String gatewayRoles) {
+        mediaAccessPolicy.requireAdminIfGatewayRequest(gatewayRoles);
         MediaFile mediaFile = mediaFileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
         if (!force && isLinkedBusinessAsset(mediaFile)) {
@@ -180,7 +207,8 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional
-    public void deleteByStorageKey(String storageKey) {
+    public void deleteByStorageKey(String storageKey, String gatewayRoles) {
+        mediaAccessPolicy.requireAdminIfGatewayRequest(gatewayRoles);
         MediaFile mediaFile = mediaFileRepository.findByStorageKey(requireStorageKey(storageKey))
                 .orElseThrow(() -> new IllegalArgumentException("Media file not found"));
         deleteStoredObject(mediaFile.getStorageKey());

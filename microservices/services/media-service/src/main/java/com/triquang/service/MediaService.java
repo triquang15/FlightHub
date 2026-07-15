@@ -13,6 +13,8 @@ public interface MediaService {
 
     MediaFileResponse upload(
             MultipartFile file,
+            Long gatewayUserId,
+            String gatewayRoles,
             Long ownerUserId,
             String entityType,
             Long entityId,
@@ -20,15 +22,15 @@ public interface MediaService {
             MediaVisibility visibility
     );
 
-    MediaFileResponse getById(Long id);
+    MediaFileResponse getById(Long id, Long gatewayUserId, String gatewayRoles);
 
-    Page<MediaFileResponse> search(String entityType, String purpose, Long ownerUserId, String keyword, Pageable pageable);
+    Page<MediaFileResponse> search(String entityType, String purpose, String provider, Long ownerUserId, String keyword, String gatewayRoles, Pageable pageable);
 
-    List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose);
+    List<MediaFileResponse> getByEntity(String entityType, Long entityId, String purpose, String gatewayRoles);
 
     Resource getFile(String storageKey);
 
-    void delete(Long id, boolean force);
+    void delete(Long id, boolean force, String gatewayRoles);
 
-    void deleteByStorageKey(String storageKey);
+    void deleteByStorageKey(String storageKey, String gatewayRoles);
 }

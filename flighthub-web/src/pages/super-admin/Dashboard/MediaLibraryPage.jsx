@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
+  Clipboard,
   Database,
   Download,
   FileImage,
   Image,
+  Maximize2,
   RefreshCw,
   Search,
   Trash2,
@@ -13,11 +16,30 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import api from "@/utils/api";
 
-const ENTITY_FILTERS = ["ALL", "USER_PROFILE", "AIRLINE", "MEAL", "ANCILLARY", "AIRPORT"];
+const ENTITY_FILTERS = ["ALL", "USER_PROFILE", "AIRLINE", "MEAL", "ANCILLARY", "AIRPORT", "ROUTE", "LANDING"];
 const PURPOSE_FILTERS = ["ALL", "AVATAR", "LOGO", "IMAGE", "ICON", "HERO"];
+const PROVIDER_FILTERS = ["ALL", "LOCAL", "S3"];
 
 const formatBytes = (bytes) => {
   const value = Number(bytes) || 0;
@@ -43,6 +65,12 @@ const formatDate = (value) => {
 
 const normalizePage = (payload) => payload?.data ?? payload ?? {};
 
+const entityLabel = (item) => {
+  if (!item?.entityType) return "Unlinked";
+  const type = String(item.entityType).replaceAll("_", " ");
+  return item.entityId ? `${type} #${item.entityId}` : type;
+};
+
 const MediaLibraryPage = () => {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
@@ -50,10 +78,13 @@ const MediaLibraryPage = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [previewMedia, setPreviewMedia] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [filters, setFilters] = useState({
     keyword: "",
     entityType: "ALL",
     purpose: "ALL",
+    provider: "ALL",
   });
 
   const params = useMemo(
@@ -65,8 +96,9 @@ const MediaLibraryPage = () => {
       keyword: filters.keyword || undefined,
       entityType: filters.entityType === "ALL" ? undefined : filters.entityType,
       purpose: filters.purpose === "ALL" ? undefined : filters.purpose,
+      provider: filters.provider === "ALL" ? undefined : filters.provider,
     }),
-    [filters.entityType, filters.keyword, filters.purpose, page]
+    [filters.entityType, filters.keyword, filters.provider, filters.purpose, page]
   );
 
   const loadMedia = useCallback(async () => {
@@ -96,17 +128,24 @@ const MediaLibraryPage = () => {
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
+  const copyValue = async (value, label) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}`);
+    }
+  };
+
   const deleteMedia = async (media) => {
     if (!media?.id) return;
-    const confirmed = window.confirm(
-      "Delete this media file? This removes the stored asset but does not automatically clear references on airline, airport, meal, or ancillary records."
-    );
-    if (!confirmed) return;
 
     setDeletingId(media.id);
     try {
       await api.delete(`/api/media/${media.id}`, { params: { force: true } });
       toast.success("Media file deleted");
+      setPendingDelete(null);
       await loadMedia();
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not delete media file");
@@ -117,6 +156,7 @@ const MediaLibraryPage = () => {
 
   const imageCount = items.filter((item) => String(item.contentType || "").startsWith("image/")).length;
   const totalSize = items.reduce((sum, item) => sum + (Number(item.sizeBytes) || 0), 0);
+  const s3Count = items.filter((item) => item.storageProvider === "S3").length;
 
   return (
     <div className="min-w-0 space-y-6">
@@ -145,12 +185,12 @@ const MediaLibraryPage = () => {
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard label="Files loaded" value={totalElements} detail="Matching current filters" icon={FileImage} />
         <SummaryCard label="Image previews" value={imageCount} detail="Visible on this page" icon={Image} />
-        <SummaryCard label="Page footprint" value={formatBytes(totalSize)} detail="Current page total size" icon={Database} />
+        <SummaryCard label="Storage mix" value={`${s3Count} S3`} detail={`${formatBytes(totalSize)} on this page`} icon={Database} />
       </div>
 
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 xl:grid-cols-[1fr_180px_180px_auto]">
+          <div className="grid gap-3 xl:grid-cols-[1fr_180px_180px_150px_auto]">
             <div className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -182,11 +222,22 @@ const MediaLibraryPage = () => {
                 </option>
               ))}
             </select>
+            <select
+              value={filters.provider}
+              onChange={(event) => updateFilter("provider", event.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+            >
+              {PROVIDER_FILTERS.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL" ? "All storage" : option}
+                </option>
+              ))}
+            </select>
             <Button
               variant="ghost"
               onClick={() => {
                 setPage(0);
-                setFilters({ keyword: "", entityType: "ALL", purpose: "ALL" });
+                setFilters({ keyword: "", entityType: "ALL", purpose: "ALL", provider: "ALL" });
               }}
             >
               Reset
@@ -208,7 +259,10 @@ const MediaLibraryPage = () => {
               key={item.id}
               item={item}
               deleting={deletingId === item.id}
-              onDelete={() => deleteMedia(item)}
+              onDelete={() => setPendingDelete(item)}
+              onPreview={() => setPreviewMedia(item)}
+              onCopyUrl={() => copyValue(item.publicUrl, "Public URL")}
+              onCopyKey={() => copyValue(item.storageKey, "Storage key")}
             />
           ))}
         </div>
@@ -243,6 +297,46 @@ const MediaLibraryPage = () => {
           </Button>
         </div>
       </div>
+
+      <MediaPreviewDialog
+        media={previewMedia}
+        onOpenChange={(open) => {
+          if (!open) setPreviewMedia(null);
+        }}
+        onCopyUrl={() => copyValue(previewMedia?.publicUrl, "Public URL")}
+        onCopyKey={() => copyValue(previewMedia?.storageKey, "Storage key")}
+      />
+
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Force delete media asset?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the stored file and media metadata. It does not automatically clear references on airline,
+              airport, meal, ancillary, or profile records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingDelete ? (
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">{pendingDelete.originalFileName}</p>
+              <p className="mt-1">{entityLabel(pendingDelete)} · {pendingDelete.purpose}</p>
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={Boolean(deletingId)}
+              onClick={() => deleteMedia(pendingDelete)}
+            >
+              {deletingId ? "Deleting..." : "Force delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -262,7 +356,7 @@ const SummaryCard = ({ label, value, detail, icon: Icon }) => (
   </Card>
 );
 
-const MediaCard = ({ item, deleting, onDelete }) => {
+const MediaCard = ({ item, deleting, onDelete, onPreview, onCopyUrl, onCopyKey }) => {
   const isImage = String(item.contentType || "").startsWith("image/");
 
   return (
@@ -304,8 +398,10 @@ const MediaCard = ({ item, deleting, onDelete }) => {
 
         <div className="grid gap-2 text-xs text-muted-foreground">
           <div className="flex justify-between gap-3">
-            <span>Entity ID</span>
-            <span className="font-medium text-foreground">{item.entityId || "N/A"}</span>
+            <span>Linked to</span>
+            <span className="truncate font-medium text-foreground" title={entityLabel(item)}>
+              {entityLabel(item)}
+            </span>
           </div>
           <div className="flex justify-between gap-3">
             <span>Owner</span>
@@ -317,12 +413,18 @@ const MediaCard = ({ item, deleting, onDelete }) => {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2">
           <Button variant="outline" className="flex-1" asChild>
             <a href={item.publicUrl} target="_blank" rel="noreferrer">
               <Download className="mr-2 h-4 w-4" />
               Open
             </a>
+          </Button>
+          <Button variant="outline" size="icon" onClick={onPreview} aria-label="Preview media file">
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={onCopyKey} aria-label="Copy storage key">
+            <Clipboard className="h-4 w-4" />
           </Button>
           <Button variant="destructive" size="icon" disabled={deleting} onClick={onDelete} aria-label="Delete media file">
             <Trash2 className="h-4 w-4" />
@@ -332,5 +434,58 @@ const MediaCard = ({ item, deleting, onDelete }) => {
     </Card>
   );
 };
+
+const MediaPreviewDialog = ({ media, onOpenChange, onCopyUrl, onCopyKey }) => {
+  const isImage = String(media?.contentType || "").startsWith("image/");
+
+  return (
+    <Dialog open={Boolean(media)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Media preview</DialogTitle>
+          <DialogDescription>
+            {media ? `${entityLabel(media)} · ${media.purpose} · ${media.storageProvider || "LOCAL"}` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {media ? (
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+              {isImage ? (
+                <img src={media.publicUrl} alt={media.originalFileName} className="max-h-[520px] w-full object-contain" />
+              ) : (
+                <FileImage className="h-12 w-12 text-muted-foreground" />
+              )}
+            </div>
+            <div className="space-y-3 rounded-md border border-border bg-card p-4">
+              <InfoRow label="File" value={media.originalFileName} />
+              <InfoRow label="Storage key" value={media.storageKey} />
+              <InfoRow label="Content type" value={media.contentType} />
+              <InfoRow label="Size" value={formatBytes(media.sizeBytes)} />
+              <InfoRow label="Owner" value={media.ownerUserId || "System"} />
+              <InfoRow label="Created" value={formatDate(media.createdAt)} />
+              <div className="grid gap-2 pt-2 sm:grid-cols-2">
+                <Button variant="outline" onClick={onCopyUrl}>
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  Copy URL
+                </Button>
+                <Button variant="outline" onClick={onCopyKey}>
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  Copy key
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const InfoRow = ({ label, value }) => (
+  <div className="min-w-0">
+    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <p className="mt-1 break-words text-sm font-medium text-foreground">{value || "N/A"}</p>
+  </div>
+);
 
 export default MediaLibraryPage;

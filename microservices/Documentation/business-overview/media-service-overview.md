@@ -51,6 +51,19 @@ This keeps UI and other services independent from the physical storage provider.
 - Public file serving is intentionally separate from authenticated metadata
   management so images can render directly in the browser.
 
+## Access governance
+
+- `/api/media/file/**` is public through API Gateway so images can render in
+  traveler, owner, and admin pages.
+- Metadata search, entity lookup, and force delete through API Gateway require
+  `ROLE_SYSTEM_ADMIN`.
+- Direct service-to-service calls without gateway role headers are allowed for
+  trusted backend workflows such as user avatar, airline logo, airport hero,
+  meal image, and ancillary icon cleanup.
+- Non-admin gateway uploads are limited to a user's own
+  `USER_PROFILE/AVATAR`; airline and operational media should be uploaded
+  through the owning business service so ownership checks stay centralized.
+
 ## Migration path to S3
 
 1. Set `app.media.storage-provider` from `LOCAL` to `S3`.

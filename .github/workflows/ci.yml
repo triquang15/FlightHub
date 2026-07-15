@@ -39,6 +39,9 @@ jobs:
       - name: Package backend modules
         run: mvn -B -ntp -DskipTests package
 
+      - name: Compile media service storage adapters
+        run: mvn -B -ntp -pl services/media-service -am -DskipTests compile
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
