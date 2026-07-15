@@ -41,7 +41,7 @@ public class PaymentEventProducer {
                 .paidAt(payment.getPaidAt())
                 .build();
 
-        kafkaTemplate.send(paymentCompletedTopic, event);
+        kafkaTemplate.send(paymentCompletedTopic, String.valueOf(payment.getBookingId()), event);
         log.info("Published PaymentCompletedEvent for payment ID: {}, booking ID: {}",
                 payment.getId(), payment.getBookingId());
     }
@@ -58,7 +58,7 @@ public class PaymentEventProducer {
                 .failedAt(LocalDateTime.now())
                 .build();
 
-        kafkaTemplate.send(paymentFailedTopic, event);
+        kafkaTemplate.send(paymentFailedTopic, String.valueOf(payment.getBookingId()), event);
         log.warn("Published PaymentFailedEvent for payment ID: {} - Reason: {}",
                 payment.getId(), payment.getFailureReason());
     }
@@ -75,7 +75,7 @@ public class PaymentEventProducer {
                 .refundId(payment.getRefundId())
                 .refundedAt(LocalDateTime.now())
                 .build();
-        kafkaTemplate.send(paymentRefundedTopic, event);
+        kafkaTemplate.send(paymentRefundedTopic, String.valueOf(payment.getBookingId()), event);
         log.info("Published PaymentRefundedEvent for payment ID: {}", payment.getId());
     }
 }

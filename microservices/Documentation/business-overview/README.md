@@ -26,6 +26,10 @@ rules matter for production behavior.
 | Service | Role |
 | --- | --- |
 | API Gateway | JWT validation, route authorization, Redis rate limiting, logout blacklist, Swagger aggregation |
+
+Kafka is the platform event bus for payment, booking, seat inventory, security,
+and notification workflows. Production topic ownership and DLQ rules are tracked
+in `../guide/kafka-production-usage.md`.
 | Config Server | Runtime config source for active services |
 | Service Registry | Eureka service discovery |
 | Observability stack | Prometheus, Grafana, Loki, Promtail, Alertmanager, Elasticsearch, Kibana for local diagnostics |

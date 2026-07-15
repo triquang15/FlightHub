@@ -38,6 +38,7 @@ public class BookingEventListener {
 		} catch (Exception e) {
 			log.error("Failed to confirm seat instances for booking {}: {}",
 					event.getBookingReference(), e.getMessage());
+			throw new IllegalStateException("Failed to confirm seats from booking event", e);
 		}
 	}
 }

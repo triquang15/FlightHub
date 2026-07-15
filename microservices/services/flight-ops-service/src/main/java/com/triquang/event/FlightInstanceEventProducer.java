@@ -22,7 +22,7 @@ public class FlightInstanceEventProducer {
 	public void sendFlightInstanceCreated(FlightInstanceCreatedEvent event) {
 
 		try {
-			kafkaTemplate.send(flightInstanceCreatedTopic, event);
+			kafkaTemplate.send(flightInstanceCreatedTopic, String.valueOf(event.getFlightInstanceId()), event);
 
 			log.info("Kafka event sent | topic={} | flightInstanceId={} | flightId={}",
 					flightInstanceCreatedTopic, event.getFlightInstanceId(), event.getFlightId());

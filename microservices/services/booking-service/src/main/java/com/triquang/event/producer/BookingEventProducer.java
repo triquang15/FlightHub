@@ -193,7 +193,7 @@ public class BookingEventProducer {
                 .seatInstanceIds(booking.getSeatInstanceIds())
                 .build();
 
-        kafkaTemplate.send(bookingConfirmedTopic, event);
+        kafkaTemplate.send(bookingConfirmedTopic, booking.getBookingReference(), event);
         log.info("Published enriched BookingConfirmedEvent for booking={}", booking.getBookingReference());
     }
 

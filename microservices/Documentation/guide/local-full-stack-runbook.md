@@ -562,6 +562,9 @@ PONG
 Redis production boundaries and troubleshooting keys are documented in
 `microservices/Documentation/guide/redis-production-usage.md`.
 
+Kafka topic ownership, retry/DLQ policy, and local recovery commands are
+documented in `microservices/Documentation/guide/kafka-production-usage.md`.
+
 ### Platform
 
 Open Eureka and confirm the services you started are registered:
