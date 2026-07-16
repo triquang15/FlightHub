@@ -227,7 +227,7 @@ const InsuranceCoverageTable = ({ onEdit }) => {
                   Manage coverage details for travel protection
                 </p>
               </div>
-              <Button onClick={() => onEdit && onEdit(null)} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
+              <Button onClick={() => onEdit && onEdit(null)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Coverage
               </Button>

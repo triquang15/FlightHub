@@ -523,16 +523,38 @@ seed script will fail because Hibernate has not recreated tables yet.
 Do not put demo seed SQL into Flyway migrations. Flyway is reserved for durable
 schema changes; demo data stays in `init-production-demo-data.sh`.
 
-Booking-ready demo searches after seeding:
+Booking-ready demo searches after seeding use a rolling future schedule. Pick any
+date from tomorrow through the next 90 days for these route pairs:
 
 ```text
-SGN -> HAN, tomorrow through the next 14 days, Economy or Premium Economy
-HAN -> SGN, tomorrow through the next 14 days, Economy
-SGN -> SIN, tomorrow through the next 14 days, Economy or Business
+SGN -> HAN, Economy or Premium Economy
+HAN -> SGN, Economy
+SGN -> SIN, Economy or Business
+SIN -> SGN, Economy
+SGN -> BKK, Economy
+BKK -> SGN, Economy
+SGN -> KUL, Economy
+KUL -> SGN, Economy
+SGN -> HKG, Economy
+HKG -> SGN, Economy
+SGN -> DXB, Economy
+DXB -> SGN, Economy
+SGN -> DOH, Economy
+DOH -> SGN, Economy
+SGN -> HND, Economy
+HND -> SGN, Economy
 ```
 
 These routes include fare data, cabin ancillaries, and per-flight seat
 inventory for seat selection in the booking review flow.
+
+To inspect exact future search dates after a reset, run:
+
+```bash
+docker compose -f microservices/docker-compose/docker-compose.dev.yml exec -T flightopsdb \
+  psql -U postgres -d airline_flight_db \
+  -c "SELECT f.flight_number, fi.departure_airport_id AS from_airport_id, fi.arrival_airport_id AS to_airport_id, fi.departure_date_time::date AS depart_date FROM flight_instances fi JOIN flights f ON f.id = fi.flight_id WHERE fi.departure_date_time >= CURRENT_DATE AND fi.status = 'SCHEDULED' ORDER BY fi.departure_date_time LIMIT 20;"
+```
 
 Seeded System Admin:
 

@@ -173,25 +173,25 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
           </div>
         </div>
 
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10 shadow-sm">
+        <div className="sticky top-0 z-10 border-b border-border bg-background p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-3 rounded-lg">
-                  <Shield className="h-6 w-6 text-white" />
+              <h2 className="flex items-center gap-3 text-3xl font-bold text-foreground">
+                <div className="rounded-lg bg-primary p-3 text-primary-foreground">
+                  <Shield className="h-6 w-6" />
                 </div>
                 {isEdit ? "Edit Insurance Coverage" : "Create New Insurance Coverage"}
               </h2>
-              <p className="text-gray-600 mt-2">
+              <p className="mt-2 text-muted-foreground">
                 Configure coverage details for your travel protection
               </p>
             </div>
             <div className="hidden md:block">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-blue-900">
-                  🛡️ Protection First
+              <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
+                <p className="text-sm font-medium text-foreground">
+                  Protection First
                 </p>
-                <p className="text-xs text-blue-700">
+                <p className="text-xs text-muted-foreground">
                   Define comprehensive coverage for travelers
                 </p>
               </div>
@@ -266,17 +266,17 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                     </div>
 
                     {selectedAncillary && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="rounded-lg border border-primary/20 bg-primary/10 p-4">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-blue-900">
+                            <span className="text-sm font-medium text-foreground">
                               Selected: {selectedAncillary.name}
                             </span>
-                            <Badge variant="default" className="bg-blue-600">
+                            <Badge variant="default" className="bg-primary text-primary-foreground">
                               {selectedAncillary.subType}
                             </Badge>
                           </div>
-                          <p className="text-xs text-blue-700">
+                          <p className="text-xs text-muted-foreground">
                             {selectedAncillary.description}
                           </p>
                         </div>
@@ -604,9 +604,9 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                 </Card>
 
                 {/* Coverage Summary */}
-                <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
+                <Card className="border-primary/20 bg-primary/10">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-900">
+                    <CardTitle className="flex items-center gap-2 text-foreground">
                       <Info className="h-5 w-5" />
                       Coverage Summary
                     </CardTitle>
@@ -723,7 +723,7 @@ const InsuranceCoverageForm = ({ coverage, onClose }) => {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 min-w-[140px] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                        className="flex min-w-[140px] items-center gap-2"
                       >
                         <Save className="h-4 w-4" />
                         {isSubmitting

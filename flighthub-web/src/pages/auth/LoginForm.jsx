@@ -17,8 +17,7 @@ const LoginForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
-  const googleButtonRef = React.useRef(null);
-  const [googleReady, setGoogleReady] = React.useState(false);
+  const googleRedirectHandledRef = React.useRef(false);
   const [googleLoading, setGoogleLoading] = React.useState(false);
   const [facebookReady, setFacebookReady] = React.useState(false);
   const [facebookLoading, setFacebookLoading] = React.useState(false);
@@ -77,80 +76,13 @@ const LoginForm = () => {
     navigate(getSafeRedirectForRole(role, redirectTarget), { replace: true });
   }, [navigate, getRedirectTarget]);
 
-  React.useEffect(() => {
-    if (!googleClientId || !googleButtonRef.current) {
-      setGoogleReady(false);
-      return;
+  const createGoogleNonce = React.useCallback(() => {
+    if (window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
     }
 
-    let cancelled = false;
-
-    const renderGoogleButton = () => {
-      if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
-
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          if (!response?.credential) {
-            toast.error("Google did not return a login credential");
-            return;
-          }
-
-          try {
-            setGoogleLoading(true);
-            const authResponse = await dispatch(googleLogin({
-              idToken: response.credential,
-              rememberMe: true,
-            })).unwrap();
-            redirectAfterAuth(authResponse);
-          } catch (err) {
-            console.error("Google sign-in failed:", err);
-          } finally {
-            setGoogleLoading(false);
-          }
-        },
-      });
-
-      googleButtonRef.current.innerHTML = "";
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
-        size: "large",
-        shape: "pill",
-        width: googleButtonRef.current.offsetWidth || 320,
-        text: "signin_with",
-      });
-      setGoogleReady(true);
-    };
-
-    if (window.google?.accounts?.id) {
-      renderGoogleButton();
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-    const script = existingScript || document.createElement("script");
-
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = renderGoogleButton;
-    script.onerror = () => {
-      if (!cancelled) {
-        setGoogleReady(false);
-        toast.error("Could not load Google Sign-In. Please try again later.");
-      }
-    };
-
-    if (!existingScript) {
-      document.head.appendChild(script);
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, googleClientId, redirectAfterAuth]);
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }, []);
 
   React.useEffect(() => {
     if (!facebookAppId) {
@@ -200,6 +132,77 @@ const LoginForm = () => {
       cancelled = true;
     };
   }, [facebookAppId]);
+
+  React.useEffect(() => {
+    if (!googleClientId) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const idToken = params.get("id_token");
+    const state = params.get("state");
+    const savedState = window.sessionStorage.getItem("flighthub_google_oauth_state");
+
+    if (!idToken) {
+      return;
+    }
+
+    if (googleRedirectHandledRef.current) {
+      return;
+    }
+
+    googleRedirectHandledRef.current = true;
+
+    if (!state || !savedState || state !== savedState) {
+      toast.error("Google login state could not be verified. Please try again.");
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      return;
+    }
+
+    const completeGoogleRedirectLogin = async () => {
+      try {
+        setGoogleLoading(true);
+        const authResponse = await dispatch(googleLogin({
+          idToken,
+          rememberMe: true,
+        })).unwrap();
+        window.sessionStorage.removeItem("flighthub_google_oauth_state");
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        redirectAfterAuth(authResponse);
+      } catch (err) {
+        console.error("Google redirect sign-in failed:", err);
+        window.sessionStorage.removeItem("flighthub_google_oauth_state");
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+
+    completeGoogleRedirectLogin();
+  }, [dispatch, googleClientId, redirectAfterAuth]);
+
+  const handleGoogleSignIn = () => {
+    if (!googleClientId) {
+      toast.warning("Google login is not configured. Add VITE_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID.");
+      return;
+    }
+
+    const state = createGoogleNonce();
+    const nonce = createGoogleNonce();
+    const redirectUri = `${window.location.origin}/login`;
+    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+
+    window.sessionStorage.setItem("flighthub_google_oauth_state", state);
+    authUrl.searchParams.set("client_id", googleClientId);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("response_type", "id_token");
+    authUrl.searchParams.set("scope", "openid email profile");
+    authUrl.searchParams.set("state", state);
+    authUrl.searchParams.set("nonce", nonce);
+    authUrl.searchParams.set("prompt", "select_account");
+
+    window.location.assign(authUrl.toString());
+  };
 
   const handleFacebookSignIn = async () => {
     if (!facebookAppId) {
@@ -332,27 +335,26 @@ const LoginForm = () => {
           <div className="grid gap-3">
 
             {/* Google */}
-            {googleClientId ? (
-              <div className="relative min-h-12 overflow-hidden rounded-xl border bg-background/60">
-                <div ref={googleButtonRef} className="flex min-h-12 w-full items-center justify-center" />
-                {(googleLoading || !googleReady) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 text-sm font-medium text-muted-foreground backdrop-blur-sm">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {googleLoading ? "Signing in with Google..." : "Loading Google..."}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-12 rounded-xl bg-background/60"
-                onClick={() => toast.warning("Google login is not configured. Add VITE_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID.")}
-              >
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 rounded-xl bg-background/60 font-semibold"
+              disabled={googleLoading}
+              onClick={handleGoogleSignIn}
+            >
+              {googleLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
                 <GoogleLogo />
-                <span className="ml-2 text-sm">Google unavailable</span>
-              </Button>
-            )}
+              )}
+              <span className="ml-2 text-sm">
+                {googleClientId
+                  ? googleLoading
+                    ? "Signing in with Google..."
+                    : "Continue with Google"
+                  : "Google unavailable"}
+              </span>
+            </Button>
 
             {/* Facebook */}
             <Button

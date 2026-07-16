@@ -61,7 +61,7 @@ export const googleLogin = createAsyncThunk(
   "auth/googleLogin",
   async ({ idToken, rememberMe = true }, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/auth/google", { idToken });
+      const res = await api.post("/api/auth/google", { idToken }, { timeout: 15000 });
       const authResponse = res.data.data;
 
       setAuthTokens(authResponse, rememberMe);

@@ -1,4 +1,5 @@
--- Seed booking-ready seat inventory for demo flight instances.
+-- Seed booking-ready seat inventory for demo flight instances in the rolling
+-- Flight Ops search window.
 --
 -- Seat maps are static aircraft layouts. Booking needs per-flight inventory:
 --   flight_instance_cabins + seat_instances.

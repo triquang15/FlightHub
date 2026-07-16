@@ -95,7 +95,7 @@ const SeatSelection = ({
     const availability = getSeatAvailability(seat);
 
     if (isSelectedByAnyPassenger) {
-      return 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-500/25 dark:border-cyan-400 dark:bg-cyan-500 dark:text-slate-950';
+      return 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25';
     }
     if (!availability.available) {
       return 'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400 dark:border-white/10 dark:bg-slate-800 dark:text-slate-600';
@@ -314,7 +314,7 @@ const SeatSelection = ({
           {flightInstanceId && (
             <button
               onClick={() => dispatch(fetchSeatInstancesByFlightInstance(flightInstanceId))}
-              className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <RefreshCw className="h-4 w-4" />
               Reload seat map
@@ -425,7 +425,7 @@ const SeatSelection = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => openSeatMapForPassenger(index)}
-                        className="rounded-md bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25"
+                        className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
                       >
                         Change
                       </button>
@@ -440,7 +440,7 @@ const SeatSelection = ({
                   ) : (
                     <button
                       onClick={() => openSeatMapForPassenger(index)}
-                      className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Select Seat
                       <ChevronRight className="h-4 w-4" />
@@ -472,7 +472,7 @@ const SeatSelection = ({
               <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4 dark:border-white/10 dark:bg-slate-950 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
                       <Armchair className="h-5 w-5" />
                     </div>
                     <div>
@@ -549,7 +549,7 @@ const SeatSelection = ({
                 <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/70">
                   {[
                     ['border-slate-300 bg-white dark:border-white/10 dark:bg-slate-900', 'Available'],
-                    ['border-blue-600 bg-blue-600 dark:border-cyan-400 dark:bg-cyan-500', 'Selected'],
+                    ['border-primary bg-primary', 'Selected'],
                     ['border-cyan-300 bg-cyan-50 dark:border-cyan-400/50 dark:bg-cyan-500/15', 'Window'],
                     ['border-emerald-400 bg-emerald-50 dark:border-emerald-400/60 dark:bg-emerald-500/15', 'Extra legroom'],
                     ['border-slate-200 bg-slate-200 dark:border-white/10 dark:bg-slate-800', 'Booked / unavailable'],
@@ -620,7 +620,7 @@ const SeatSelection = ({
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -right-1 -top-1 rounded-full bg-blue-600 p-0.5">
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-primary p-0.5">
                                     <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
@@ -678,7 +678,7 @@ const SeatSelection = ({
                                   </div>
                                 )}
                                 {isSelectedByAnyPassenger && (
-                                  <div className="absolute -right-1 -top-1 rounded-full bg-blue-600 p-0.5">
+                                  <div className="absolute -right-1 -top-1 rounded-full bg-primary p-0.5">
                                     <Check className="h-2.5 w-2.5 text-white" />
                                   </div>
                                 )}
@@ -728,14 +728,14 @@ const SeatSelection = ({
                   {currentPassengerIndex < passengerCount - 1 ? (
                   <button
                     onClick={() => setCurrentPassengerIndex(currentPassengerIndex + 1)}
-                    className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Next passenger
                   </button>
                   ) : (
                     <button
                       onClick={() => setShowSeatMap(false)}
-                      className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Confirm seats
                     </button>

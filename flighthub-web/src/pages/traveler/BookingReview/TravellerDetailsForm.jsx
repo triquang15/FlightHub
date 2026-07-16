@@ -226,7 +226,7 @@ const TravellerDetailsForm = ({ passengerCount = 1, onTravellerDataChange, valid
       <div className="border-b border-slate-200 bg-slate-50/80 p-6 dark:border-white/10 dark:bg-slate-950/40">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-blue-600 text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <User className="h-5 w-5" />
           </div>
           <div>

@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   changePassword,
@@ -18,10 +17,8 @@ import {
 } from "@/Redux/user/userThunks"
 
 import {
-  CalendarDays,
   Camera,
   CheckCircle2,
-  Clock3,
   Eye,
   EyeOff,
   Fingerprint,
@@ -32,7 +29,6 @@ import {
   Pencil,
   Phone,
   Save,
-  ShieldCheck,
   Trash2,
   Upload,
   User,
@@ -107,10 +103,10 @@ const getInitials = (name) => {
     .toUpperCase()
 }
 
-const DetailRow = ({ icon: Icon, label, value }) => (
-  <div className="flex items-start gap-3 rounded-md border bg-background px-4 py-3">
-    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
-      <Icon className="h-4 w-4 text-muted-foreground" />
+const DetailRow = ({ icon: Icon, label, value, compact = false }) => (
+  <div className={`flex items-start gap-3 rounded-lg border border-border/70 bg-background/70 ${compact ? "px-3 py-2.5" : "px-4 py-3"}`}>
+    <div className={`${compact ? "h-8 w-8" : "mt-0.5 h-9 w-9"} flex shrink-0 items-center justify-center rounded-md bg-primary/10`}>
+      <Icon className="h-4 w-4 text-primary" />
     </div>
     <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -313,48 +309,24 @@ const UserProfile = ({
 
   return (
     <main className={embedded ? "w-full" : "app-page-surface min-h-screen px-4 py-8 sm:px-6 lg:px-8"}>
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="border-b bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-7 text-white sm:px-7">
-            <p className="text-sm font-medium text-slate-300">{eyebrow}</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-300">{description}</p>
-          </div>
-          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-            <p className="text-sm text-muted-foreground">
-              Email and role are managed by the platform and cannot be edited here.
-            </p>
-            {!editMode ? (
-              <Button onClick={() => setEditMode(true)} disabled={loading}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit profile
-              </Button>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => setEditMode(false)}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel editing
-              </Button>
-            )}
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="space-y-6">
-            <Card className="rounded-lg">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24 border shadow-sm">
+      <div className="mx-auto max-w-[1380px] space-y-5">
+        <section className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-sm">
+          <div className="grid lg:grid-cols-[360px_minmax(0,1fr)]">
+            <aside className="border-b bg-gradient-to-br from-primary/10 via-card to-muted/40 p-6 text-foreground dark:from-primary/15 dark:via-card dark:to-muted/20 lg:border-b-0 lg:border-r">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-start gap-4">
+                  <div className="relative shrink-0">
+                    <Avatar className="h-24 w-24 border border-border shadow-lg">
                       <AvatarImage src={avatarSrc} />
-                    <AvatarFallback className="text-2xl font-semibold">
-                      {getInitials(user.fullName)}
-                    </AvatarFallback>
+                      <AvatarFallback className="bg-primary text-2xl font-semibold text-primary-foreground">
+                        {getInitials(user.fullName)}
+                      </AvatarFallback>
                     </Avatar>
                     <button
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
                       disabled={avatarUploading || loading}
-                      className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Upload profile photo"
                       title="Upload profile photo"
                     >
@@ -373,50 +345,76 @@ const UserProfile = ({
                     />
                   </div>
 
-                  <h2 className="mt-4 max-w-full truncate text-xl font-semibold">
-                    {user.fullName || "Unnamed user"}
-                  </h2>
-                  <p className="mt-1 max-w-full truncate text-sm text-muted-foreground">
-                    {user.email}
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Badge variant="secondary">{formatRole(user.role)}</Badge>
-                    <Badge variant={user.active === false ? "destructive" : "outline"}>
-                      {user.active === false ? "Inactive" : "Active"}
-                    </Badge>
-                    {user.verified && (
-                      <Badge variant="outline">
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                        Verified
+                  <div className="min-w-0 pt-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                      {eyebrow}
+                    </p>
+                    <h2 className="mt-2 truncate text-2xl font-semibold">
+                      {user.fullName || "Unnamed user"}
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">{user.email}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge className="border-border bg-background/70 text-foreground hover:bg-background/70">
+                        {formatRole(user.role)}
                       </Badge>
-                    )}
+                      <Badge className={user.active === false ? "bg-red-500 text-white" : "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-200"}>
+                        {user.active === false ? "Inactive" : "Active"}
+                      </Badge>
+                      {user.verified && (
+                        <Badge className="bg-sky-500/15 text-sky-700 hover:bg-sky-500/15 dark:text-sky-200">
+                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
                   </div>
+                </div>
 
-                  <div className="mt-5 flex w-full flex-col gap-2">
+                <div className="grid gap-3 rounded-xl border border-border/70 bg-background/60 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Member since</p>
+                      <p className="mt-1 text-sm font-medium">{formatDate(user.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last login</p>
+                      <p className="mt-1 text-sm font-medium">{formatDate(user.lastLogin)}</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-border/70 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sign-in methods</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {loginProviders.map((provider) => (
+                        <LoginMethodBadge key={provider} provider={provider} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarUploading || loading}
+                    className="justify-center"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {user.hasCustomAvatar ? "Change photo" : "Upload photo"}
+                  </Button>
+                  {user.hasCustomAvatar && (
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={() => avatarInputRef.current?.click()}
+                      variant="ghost"
+                      className="justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={handleRemoveAvatar}
                       disabled={avatarUploading || loading}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {user.hasCustomAvatar ? "Change photo" : "Upload photo"}
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove photo
                     </Button>
-                    {user.hasCustomAvatar && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={handleRemoveAvatar}
-                        disabled={avatarUploading || loading}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Remove photo
-                      </Button>
-                    )}
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  )}
+                  <p className="text-xs leading-5 text-muted-foreground">
                     {user.hasCustomAvatar
                       ? "Stored as your FlightHub profile photo."
                       : avatarSrc
@@ -424,172 +422,174 @@ const UserProfile = ({
                         : "JPG, PNG, or WEBP. Maximum 5MB."}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </aside>
 
-            <Card className="rounded-lg">
-              <CardContent className="space-y-3 p-6">
-                <DetailRow icon={ShieldCheck} label="Role" value={formatRole(user.role)} />
-                <DetailRow icon={CalendarDays} label="Member since" value={formatDate(user.createdAt)} />
-                <DetailRow icon={Clock3} label="Last login" value={formatDate(user.lastLogin)} />
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-lg">
-              <CardContent className="space-y-4 p-6">
-                <div>
-                  <h2 className="text-base font-semibold">Login methods</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Connected sign-in methods for this account.
+            <div className="min-w-0 p-5 sm:p-7">
+              <div className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h1>
+                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Email and role are managed by the platform and cannot be edited here.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {loginProviders.map((provider) => (
-                    <LoginMethodBadge key={provider} provider={provider} />
-                  ))}
-                </div>
-                <div className="grid gap-3">
-                  <DetailRow
-                    icon={Fingerprint}
-                    label="Last method"
-                    value={`${formatProvider(lastLoginProvider)} · ${formatDate(lastProviderLoginAt)}`}
-                  />
-                  <DetailRow
-                    icon={ImageIcon}
-                    label="Profile photo source"
-                    value={user.hasCustomAvatar ? "Uploaded profile photo" : avatarSrc ? "Connected account photo" : "Initials fallback"}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
+                {!editMode ? (
+                  <Button onClick={() => setEditMode(true)} disabled={loading} className="shrink-0">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit profile
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => setEditMode(false)} className="shrink-0">
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel editing
+                  </Button>
+                )}
+              </div>
 
-          <div className="space-y-6">
-            <Card className="rounded-lg">
-              <CardContent className="p-6">
-                <div className="flex flex-col gap-1 border-b pb-5">
-                  <h2 className="text-lg font-semibold">Personal information</h2>
-                  <p className="text-sm text-muted-foreground">
-                      Keep your contact details current for account recovery and operational communication.
-                  </p>
-                </div>
-
-                <Formik
-                  initialValues={{
-                    fullName: user.fullName || "",
-                    phone: user.phone || "",
-                  }}
-                  enableReinitialize
-                  validationSchema={profileSchema}
-                  onSubmit={handleProfileSubmit}
-                >
-                  {({ errors, touched, isSubmitting, dirty }) => (
-                    <Form className="mt-6 space-y-6">
-                      <div className="grid gap-5 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium" htmlFor="fullName">
-                            Full name
-                          </label>
-                          {editMode ? (
-                            <Field
-                              as={Input}
-                              id="fullName"
-                              name="fullName"
-                              autoComplete="name"
-                            />
-                          ) : (
-                            <div className="flex min-h-10 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span>{user.fullName || "Not provided"}</span>
-                            </div>
-                          )}
-                          {errors.fullName && touched.fullName && (
-                            <p className="text-sm text-destructive">{errors.fullName}</p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium" htmlFor="email">
-                            Email
-                          </label>
-                          <div className="flex min-h-10 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                            <span className="min-w-0 truncate">{user.email}</span>
+              <Formik
+                initialValues={{
+                  fullName: user.fullName || "",
+                  phone: user.phone || "",
+                }}
+                enableReinitialize
+                validationSchema={profileSchema}
+                onSubmit={handleProfileSubmit}
+              >
+                {({ errors, touched, isSubmitting, dirty }) => (
+                  <Form className="mt-6 space-y-6">
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium" htmlFor="fullName">
+                          Full name
+                        </label>
+                        {editMode ? (
+                          <Field
+                            as={Input}
+                            id="fullName"
+                            name="fullName"
+                            autoComplete="name"
+                          />
+                        ) : (
+                          <div className="flex min-h-10 items-center gap-2 rounded-lg border bg-muted/25 px-3 text-sm">
+                            <User className="h-4 w-4 text-primary" />
+                            <span className="min-w-0 truncate">{user.fullName || "Not provided"}</span>
                           </div>
-                        </div>
+                        )}
+                        {errors.fullName && touched.fullName && (
+                          <p className="text-sm text-destructive">{errors.fullName}</p>
+                        )}
+                      </div>
 
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="text-sm font-medium" htmlFor="phone">
-                            Phone number
-                          </label>
-                          {editMode ? (
-                            <Field
-                              as={Input}
-                              id="phone"
-                              name="phone"
-                              inputMode="tel"
-                              autoComplete="tel"
-                              placeholder="+14155552671"
-                            />
-                          ) : (
-                            <div className="flex min-h-10 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              <span>{user.phone || "Not provided"}</span>
-                            </div>
-                          )}
-                          {errors.phone && touched.phone && (
-                            <p className="text-sm text-destructive">{errors.phone}</p>
-                          )}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium" htmlFor="email">
+                          Email
+                        </label>
+                        <div className="flex min-h-10 items-center gap-2 rounded-lg border bg-muted/25 px-3 text-sm">
+                          <Mail className="h-4 w-4 text-primary" />
+                          <span className="min-w-0 truncate" title={user.email}>{user.email}</span>
                         </div>
                       </div>
 
-                      {editMode && (
-                        <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setEditMode(false)}
-                            disabled={isSubmitting}
-                          >
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={isSubmitting || !dirty}>
-                            <Save className="mr-2 h-4 w-4" />
-                            {isSubmitting ? "Saving..." : "Save changes"}
-                          </Button>
-                        </div>
-                      )}
-                    </Form>
-                  )}
-                </Formik>
-              </CardContent>
-            </Card>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium" htmlFor="phone">
+                          Phone number
+                        </label>
+                        {editMode ? (
+                          <Field
+                            as={Input}
+                            id="phone"
+                            name="phone"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            placeholder="+14155552671"
+                          />
+                        ) : (
+                          <div className="flex min-h-10 items-center gap-2 rounded-lg border bg-muted/25 px-3 text-sm">
+                            <Phone className="h-4 w-4 text-primary" />
+                            <span className="min-w-0 truncate">{user.phone || "Not provided"}</span>
+                          </div>
+                        )}
+                        {errors.phone && touched.phone && (
+                          <p className="text-sm text-destructive">{errors.phone}</p>
+                        )}
+                      </div>
+                    </div>
 
-            <Card className="rounded-lg">
-              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
-                    <Lock className="h-5 w-5 text-muted-foreground" />
+                    {editMode && (
+                      <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setEditMode(false)}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting || !dirty}>
+                          <Save className="mr-2 h-4 w-4" />
+                          {isSubmitting ? "Saving..." : "Save changes"}
+                        </Button>
+                      </div>
+                    )}
+                  </Form>
+                )}
+              </Formik>
+
+              <div className="mt-6 grid gap-4 xl:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Fingerprint className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold">Account access</h2>
+                      <p className="text-sm text-muted-foreground">Provider and profile source details.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold">Security</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Update your password if you suspect unusual activity.
-                    </p>
+                  <div className="grid gap-3">
+                    <DetailRow
+                      compact
+                      icon={KeyRound}
+                      label="Last method"
+                      value={`${formatProvider(lastLoginProvider)} · ${formatDate(lastProviderLoginAt)}`}
+                    />
+                    <DetailRow
+                      compact
+                      icon={ImageIcon}
+                      label="Profile photo source"
+                      value={user.hasCustomAvatar ? "Uploaded profile photo" : avatarSrc ? "Connected account photo" : "Initials fallback"}
+                    />
                   </div>
                 </div>
 
-                {hasPasswordLogin ? (
-                  <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
-                    Change password
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="w-fit">
-                    Social sign-in account
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div className="flex h-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:flex-col xl:items-start 2xl:flex-row 2xl:items-center">
+                    <div className="flex gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <Lock className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold">Security</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Update your password if you suspect unusual activity.
+                        </p>
+                      </div>
+                    </div>
+
+                    {hasPasswordLogin ? (
+                      <Button variant="outline" onClick={() => setShowPasswordModal(true)} className="shrink-0">
+                        Change password
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary" className="w-fit">
+                        Social sign-in account
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>

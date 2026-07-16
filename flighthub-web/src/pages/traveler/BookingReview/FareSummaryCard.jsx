@@ -348,7 +348,7 @@ const FareSummaryCard = ({
                 <span
                   className={`h-4 w-4 rounded-full border ${
                     paymentGateway === value
-                      ? 'border-blue-600 bg-blue-600 ring-2 ring-blue-200 dark:border-cyan-400 dark:bg-cyan-400 dark:ring-cyan-500/30'
+                      ? 'border-primary bg-primary ring-2 ring-primary/20'
                       : 'border-slate-300 dark:border-white/20'
                   }`}
                 />
@@ -361,7 +361,7 @@ const FareSummaryCard = ({
           whileTap={{ scale: isLoading ? 1 : 0.98 }}
           onClick={onProceedToPayment}
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 py-4 font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-950"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-4 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (
             <>

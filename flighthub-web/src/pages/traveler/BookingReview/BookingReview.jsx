@@ -1100,7 +1100,7 @@ const BookingReview = () => {
               <button
                 onClick={handleProceedToPayment}
                 disabled={bookingLoading}
-                className="flex max-w-xs flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex max-w-xs flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {bookingLoading ? (
                   <>

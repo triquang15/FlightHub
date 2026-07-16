@@ -62,32 +62,32 @@ const InsuranceCoverageManagement = () => {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
+          <div className="rounded-xl border border-primary/20 bg-primary/10 p-6 text-foreground shadow-sm">
             <div className="flex items-center gap-3">
-              <Shield className="h-10 w-10 opacity-90" />
+              <Shield className="h-10 w-10 text-primary" />
               <div>
-                <div className="text-sm opacity-90">Total Coverages</div>
+                <div className="text-sm text-muted-foreground">Total Coverages</div>
                 <div className="text-2xl font-bold">
                   {loading ? "..." : totalCoverages}
                 </div>
               </div>
             </div>
-            <p className="mt-3 text-sm opacity-90">
+            <p className="mt-3 text-sm text-muted-foreground">
               {activeCoverages} active, {totalCoverages - activeCoverages} inactive
             </p>
           </div>
 
-          <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
+          <div className="rounded-xl border border-primary/20 bg-card p-6 text-card-foreground shadow-sm">
             <div className="flex items-center gap-3">
-              <Layers className="h-10 w-10 opacity-90" />
+              <Layers className="h-10 w-10 text-primary" />
               <div>
-                <div className="text-sm opacity-90">Coverage Types</div>
+                <div className="text-sm text-muted-foreground">Coverage Types</div>
                 <div className="text-2xl font-bold">
                   {loading ? "..." : uniqueCoverageTypes}
                 </div>
               </div>
             </div>
-            <p className="mt-3 text-sm opacity-90">
+            <p className="mt-3 text-sm text-muted-foreground">
               Different types of protection available
             </p>
           </div>

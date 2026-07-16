@@ -257,7 +257,7 @@ The production-style demo seed creates:
 - seat map zones with row ranges and partial final rows
 - generated physical seats for each map
 - hold lifecycle columns and natural uniqueness constraints if missing
-- booking-ready seat instances for the generated Flight Ops schedule window
+- booking-ready seat instances for the generated rolling Flight Ops search window
 - inventory for the added one-way and round-trip demo routes used by customer
   search and super admin analytics
 
@@ -282,7 +282,8 @@ microservices/scripts/init-production-demo-data.sh
 Expected local demo characteristics after a full reset and seed:
 
 - Seat maps exist for all aircraft/cabin classes used by seeded flights.
-- Upcoming flight instances have corresponding seat inventory.
+- Upcoming flight instances in the rolling search window have corresponding
+  cabin inventory and selectable seat instances.
 - Customer search results can open seat selection for seeded routes.
 - Already booked seats remain unavailable after successful checkout.
 

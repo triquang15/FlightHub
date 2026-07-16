@@ -118,14 +118,17 @@ Run production demo seed through `scripts/init-production-demo-data.sh`, then ru
 
 The demo dataset provides 38 flight definitions across 9 airlines and 29 route
 pairs. Schedules generate a rolling 90-day set of future instances and the seed
-is safe to re-run without duplicating flights, schedules, or instances.
+is safe to re-run without duplicating flights, schedules, or instances. The
+main seed runner also provisions matching fare data and seat inventory for the
+rolling search window.
 
-Useful search examples after seeding:
+Useful search URL shapes after seeding. Replace `<future-date>` with any
+available date from tomorrow through the next 90 days:
 
 ```text
-/search?from=1&to=2&depart=2026-07-10&passengers=1&cabinClass=ECONOMY&trip=oneway
-/search?from=1&to=2&depart=2026-07-10&return=2026-07-13&passengers=1&cabinClass=ECONOMY&trip=round
-/search?from=1&to=7&depart=2026-07-10&return=2026-07-12&passengers=1&cabinClass=ECONOMY&trip=round
+/search?from=1&to=2&depart=<future-date>&passengers=1&cabinClass=ECONOMY&trip=oneway
+/search?from=1&to=2&depart=<future-date>&return=<later-future-date>&passengers=1&cabinClass=ECONOMY&trip=round
+/search?from=1&to=7&depart=<future-date>&return=<later-future-date>&passengers=1&cabinClass=ECONOMY&trip=round
 ```
 
 ```bash

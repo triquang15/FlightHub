@@ -568,7 +568,7 @@ const UserManagement = () => {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             Create user
@@ -576,7 +576,7 @@ const UserManagement = () => {
           <button
             onClick={handleRefresh}
             disabled={usersLoading || refreshSpinning}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${usersLoading || refreshSpinning ? "animate-spin" : ""}`} />
             Refresh

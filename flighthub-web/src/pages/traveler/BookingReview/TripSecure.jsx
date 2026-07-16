@@ -209,7 +209,7 @@ const TripSecure = ({ selectedTravelProtection, onSelectTravelProtection }) => {
                     onClick={() => handleSelection("yes")}
                     className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                       isSelected
-                        ? "bg-blue-600 text-white shadow-sm"
+                        ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                     }`}
                   >

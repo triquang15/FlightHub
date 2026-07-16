@@ -190,7 +190,7 @@ const SearchDataInspector = () => {
           params: { page: 0, size: 200, sortBy: "iataCode", sortDirection: "asc" },
         }),
         api.get("/api/flight-instances/list", {
-          params: { page: 0, size: 300, sort: "departureDateTime,asc" },
+          params: { page: 0, size: 100, sort: "departureDateTime,desc" },
         }),
         api.get("/api/flight-instances/inventory-summary"),
       ]);

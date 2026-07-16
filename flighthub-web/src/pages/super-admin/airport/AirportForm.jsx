@@ -784,7 +784,7 @@ const AirportForm = ({ airport, cities = [], onSubmit, isLoading = false }) => {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 min-w-[140px] bg-primary hover:bg-primary/90"
+                        className="flex min-w-[140px] items-center gap-2"
                       >
                         <Save className="h-4 w-4" />
                         {isSubmitting

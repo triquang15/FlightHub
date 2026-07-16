@@ -55,13 +55,13 @@ const EditAirport = () => {
     return (
       <div className="flex min-h-screen items-center justify-center app-page-surface text-foreground">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-2">Airport Not Found</h2>
-          <p className="text-gray-300 mb-4">
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Airport Not Found</h2>
+          <p className="mb-4 text-muted-foreground">
             The airport you're trying to edit doesn't exist.
           </p>
           <button
             onClick={() => navigate("/super-admin/airports")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Back to Airports
           </button>

@@ -99,6 +99,8 @@ api.interceptors.response.use(
     // the protected-route session-expired flow.
     const isPublicAuthEndpoint =
       originalRequest?.url?.includes("/api/auth/login") ||
+      originalRequest?.url?.includes("/api/auth/google") ||
+      originalRequest?.url?.includes("/api/auth/facebook") ||
       originalRequest?.url?.includes("/api/auth/signup") ||
       originalRequest?.url?.includes("/api/users/forgot-password") ||
       originalRequest?.url?.includes("/api/users/reset-password");

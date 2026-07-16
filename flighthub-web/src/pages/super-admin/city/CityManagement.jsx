@@ -220,10 +220,7 @@ const CityManagement = () => {
         <div />
 
         {/* RIGHT */}
-        <Button
-          onClick={() => setShowAddModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-        >
+        <Button onClick={() => setShowAddModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New City
         </Button>

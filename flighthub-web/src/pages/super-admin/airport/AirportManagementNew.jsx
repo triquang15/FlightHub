@@ -258,10 +258,7 @@ const AirportManagementNew = () => {
             Import
           </Button>
 
-          <Button
-            onClick={openAddModal}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-          >
+          <Button onClick={openAddModal}>
             <Plus className="w-4 h-4 mr-2" />
             Add Airport
           </Button>

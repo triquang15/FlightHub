@@ -278,7 +278,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
               onClick={() => setActiveCategory(category.value)}
               className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 activeCategory === category.value
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               }`}
             >
@@ -419,7 +419,7 @@ const BaggageSelection = ({ selectedBaggage = [], onSelectBaggage }) => {
                           type="button"
                           onClick={() => handleQuantityChange(baggage, 1)}
                           disabled={quantity >= baggage.maxQuantity}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label={`Add ${baggage.name}`}
                         >
                           <Plus className="h-4 w-4" />
