@@ -19,7 +19,8 @@ public class RestClientConfig {
         requestFactory.setConnectTimeout(Duration.ofSeconds(3));
         requestFactory.setReadTimeout(Duration.ofSeconds(8));
 
-        return RestClient.builder()
-                .requestFactory(requestFactory);
+        return TraceRestClientCustomizer.withTracePropagation(
+                RestClient.builder().requestFactory(requestFactory)
+        );
     }
 }

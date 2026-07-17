@@ -78,6 +78,7 @@ public class RouteConfig {
             String fallbackUri
     ) {
         return GatewayRouterFunctions.route(routeName)
+                .before(this::traceHeaderFilter)
                 .filter(LoadBalancerFilterFunctions.lb(serviceName))
                 .filter(CircuitBreakerFilterFunctions.circuitBreaker(
                         cbName,
@@ -90,6 +91,7 @@ public class RouteConfig {
             String serviceName
     ) {
         return GatewayRouterFunctions.route(routeName)
+                .before(this::traceHeaderFilter)
                 .filter(LoadBalancerFilterFunctions.lb(serviceName));
     }
 
@@ -726,6 +728,13 @@ public class RouteConfig {
         return java.util.Arrays.stream(roles.split(","))
                 .map(String::trim)
                 .anyMatch(requiredRole::equals);
+    }
+
+    private ServerRequest traceHeaderFilter(ServerRequest request) {
+        return ServerRequest.from(request)
+                .headers(headers -> headers.remove("X-Trace-Id"))
+                .header("X-Trace-Id", currentTraceId())
+                .build();
     }
 
     private String currentTraceId() {

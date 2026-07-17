@@ -99,6 +99,10 @@ service after pulling observability changes so the new Prometheus registry and
 actuator exposure are active. Targets for services that are not currently
 running will show as `down` in Prometheus until those services are started.
 
+For day-to-day debugging with Grafana, Prometheus, Loki, Kibana, and
+Elasticsearch, see
+`microservices/Documentation/guide/observability-usage-guide.md`.
+
 ### Start Platform Services
 
 Run each command in a separate terminal, in this order:
@@ -478,6 +482,26 @@ http://localhost:5173
 ```
 
 ### Test Payment Webhooks
+
+Use only sandbox/test credentials in local and demo environments.
+
+Stripe test card:
+
+```text
+Card number: 4242 4242 4242 4242
+Expiry:      Any future MM/YY
+CVC:         Any 3 digits
+ZIP:         Any valid ZIP/postal code
+```
+
+PayPal Sandbox test accounts:
+
+| Account | Password | Notes |
+| --- | --- | --- |
+| `flight-01@business.com` | `Admin@123` | Sandbox business account |
+| `flight-02@business.com` | `Admin@123` | Sandbox business account |
+| `flight-03@business.com` | `Admin@123` | Sandbox business account |
+| `admin@business.flighthub.com` | `Admin@123` | FlightHub sandbox business/admin account |
 
 For Stripe local testing, start the Payment Service and API Gateway, then run:
 

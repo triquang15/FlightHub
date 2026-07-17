@@ -12,6 +12,6 @@ public class RestClientConfig {
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public RestClient.Builder restClientBuilder() {
-        return RestClient.builder();
+        return TraceRestClientCustomizer.withTracePropagation(RestClient.builder());
     }
 }
