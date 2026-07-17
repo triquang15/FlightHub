@@ -1,14 +1,17 @@
 name: Publish Docker Images
 
-run-name: Publish Docker Images from ${{ github.ref_name }} as ${{ inputs.image_tag || 'latest' }}
+run-name: Publish Docker Images from ${{ github.ref_name }} as ${{ inputs.image_tag || github.sha }}
 
 on:
+  push:
+    branches:
+      - master
   workflow_dispatch:
     inputs:
       image_tag:
         description: Docker image tag to publish
-        required: true
-        default: latest
+        required: false
+        default: ""
       push_latest:
         description: Also tag images as latest
         required: true
@@ -20,6 +23,8 @@ permissions:
 
 env:
   DOCKERHUB_NAMESPACE: triquang15
+  DEFAULT_IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+  PUSH_LATEST: ${{ github.event_name == 'push' || inputs.push_latest }}
 
 jobs:
   backend-package:
@@ -152,8 +157,10 @@ jobs:
         with:
           images: ${{ env.DOCKERHUB_NAMESPACE }}/${{ matrix.image }}
           tags: |
-            type=raw,value=${{ inputs.image_tag }}
-            type=raw,value=latest,enable=${{ inputs.push_latest }}
+            type=raw,value=${{ env.DEFAULT_IMAGE_TAG }}
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ env.PUSH_LATEST }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -190,8 +197,10 @@ jobs:
         with:
           images: ${{ env.DOCKERHUB_NAMESPACE }}/flighthub-web
           tags: |
-            type=raw,value=${{ inputs.image_tag }}
-            type=raw,value=latest,enable=${{ inputs.push_latest }}
+            type=raw,value=${{ env.DEFAULT_IMAGE_TAG }}
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ env.PUSH_LATEST }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
