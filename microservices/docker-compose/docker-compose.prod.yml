@@ -8,10 +8,13 @@
 x-common-env: &common-env
   SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
-  JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m -XX:+UseG1GC
+  JAVA_TOOL_OPTIONS: ${FLIGHTHUB_JAVA_TOOL_OPTIONS:--Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75}
   JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
   FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
   FLYWAY_BASELINE_ON_MIGRATE: ${FLYWAY_BASELINE_ON_MIGRATE:-true}
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: ${FLIGHTHUB_DATASOURCE_POOL_MAXIMUM_SIZE:-5}
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: ${FLIGHTHUB_DATASOURCE_POOL_MINIMUM_IDLE:-1}
+  SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: ${FLIGHTHUB_DATASOURCE_POOL_CONNECTION_TIMEOUT_MS:-30000}
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: postgres
@@ -26,11 +29,16 @@ x-postgres-healthcheck: &postgres-healthcheck
 
 x-service-defaults: &service-defaults
   restart: unless-stopped
+  platform: ${FLIGHTHUB_IMAGE_PLATFORM:-linux/amd64}
+  mem_limit: ${FLIGHTHUB_APP_MEM_LIMIT:-1g}
+  mem_reservation: ${FLIGHTHUB_APP_MEM_RESERVATION:-512m}
+  cpus: ${FLIGHTHUB_APP_CPUS:-1.0}
   networks:
     - triquang15
 
 x-db-defaults: &db-defaults
   image: postgres:16-alpine
+  profiles: ["local-db"]
   restart: unless-stopped
   mem_limit: 512m
   mem_reservation: 256m
@@ -226,39 +234,48 @@ services:
     <<: *service-defaults
     image: triquang15/gds-service-registry:${FLIGHTHUB_PLATFORM_IMAGE_TAG:-1.0.0}
     container_name: gds-eureka-server
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
+    ports:
+      - "127.0.0.1:${EUREKA_HOST_PORT:-8761}:8761"
+    environment:
+      JAVA_TOOL_OPTIONS: ${FLIGHTHUB_PLATFORM_JAVA_TOOL_OPTIONS:--Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8761/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
 
   config-server:
     <<: *service-defaults
     image: triquang15/gds-config-server:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-config-server
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
+    ports:
+      - "127.0.0.1:${CONFIG_SERVER_HOST_PORT:-8888}:8888"
     depends_on:
       service-registry:
-        condition: service_started
+        condition: service_healthy
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: https://github.com/triquang15/flight-hub-config-server
-      JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m -XX:+UseG1GC
+      JAVA_TOOL_OPTIONS: ${FLIGHTHUB_CONFIG_JAVA_TOOL_OPTIONS:--Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8888/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
 
   api-gateway:
     <<: *service-defaults
     image: triquang15/gds-api-gateway:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-api-gateway
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     ports:
       - "8080:8080"
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -275,16 +292,14 @@ services:
     <<: *service-defaults
     image: triquang15/gds-user:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-user-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       userdb:
         condition: service_healthy
+        required: false
       kafka:
         condition: service_healthy
       media-service:
@@ -292,7 +307,7 @@ services:
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: user-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://userdb:5432/airline_user
+      SPRING_DATASOURCE_URL: ${USER_DATABASE_URL:-jdbc:postgresql://userdb:5432/airline_user}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -303,16 +318,14 @@ services:
     <<: *service-defaults
     image: triquang15/gds-airline:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-airline-core-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       airlinecoredb:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
       media-service:
@@ -320,7 +333,7 @@ services:
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: airline-core-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://airlinecoredb:5432/airline_core_db
+      SPRING_DATASOURCE_URL: ${AIRLINE_CORE_DATABASE_URL:-jdbc:postgresql://airlinecoredb:5432/airline_core_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -332,16 +345,14 @@ services:
     <<: *service-defaults
     image: triquang15/gds-flight-ops:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-flight-ops-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       flightopsdb:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
       kafka:
@@ -349,7 +360,7 @@ services:
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: flight-ops-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://flightopsdb:5432/airline_flight_db
+      SPRING_DATASOURCE_URL: ${FLIGHT_OPS_DATABASE_URL:-jdbc:postgresql://flightopsdb:5432/airline_flight_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -361,16 +372,14 @@ services:
     <<: *service-defaults
     image: triquang15/gds-location:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-location-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       locationdb:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
       media-service:
@@ -378,7 +387,7 @@ services:
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: location-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://locationdb:5432/airline_location_db
+      SPRING_DATASOURCE_URL: ${LOCATION_DATABASE_URL:-jdbc:postgresql://locationdb:5432/airline_location_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -390,22 +399,20 @@ services:
     <<: *service-defaults
     image: triquang15/gds-seat:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-seat-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       seatdb:
         condition: service_healthy
+        required: false
       kafka:
         condition: service_healthy
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: seat-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://seatdb:5432/airline_seat_db
+      SPRING_DATASOURCE_URL: ${SEAT_DATABASE_URL:-jdbc:postgresql://seatdb:5432/airline_seat_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -415,22 +422,20 @@ services:
     <<: *service-defaults
     image: triquang15/gds-pricing:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-pricing-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       pricingdb:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: pricing-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://pricingdb:5432/airline_pricing_db
+      SPRING_DATASOURCE_URL: ${PRICING_DATABASE_URL:-jdbc:postgresql://pricingdb:5432/airline_pricing_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -441,22 +446,20 @@ services:
     <<: *service-defaults
     image: triquang15/gds-ancillary:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-ancillary-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       ancillarydb:
         condition: service_healthy
+        required: false
       media-service:
         condition: service_started
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: ancillary-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://ancillarydb:5432/airline_ancillary_db
+      SPRING_DATASOURCE_URL: ${ANCILLARY_DATABASE_URL:-jdbc:postgresql://ancillarydb:5432/airline_ancillary_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -466,22 +469,20 @@ services:
     <<: *service-defaults
     image: triquang15/gds-booking:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-booking-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       bookingdb:
         condition: service_healthy
+        required: false
       kafka:
         condition: service_healthy
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: booking-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://bookingdb:5432/airline_booking_db
+      SPRING_DATASOURCE_URL: ${BOOKING_DATABASE_URL:-jdbc:postgresql://bookingdb:5432/airline_booking_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -491,22 +492,20 @@ services:
     <<: *service-defaults
     image: triquang15/gds-payment:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-payment-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       paymentdb:
         condition: service_healthy
+        required: false
       kafka:
         condition: service_healthy
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: payment-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://paymentdb:5432/airline_payment_db
+      SPRING_DATASOURCE_URL: ${PAYMENT_DATABASE_URL:-jdbc:postgresql://paymentdb:5432/airline_payment_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -524,20 +523,18 @@ services:
     <<: *service-defaults
     image: triquang15/gds-media:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-media-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       mediadb:
         condition: service_healthy
+        required: false
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: media-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://mediadb:5432/media_service_db
+      SPRING_DATASOURCE_URL: ${MEDIA_DATABASE_URL:-jdbc:postgresql://mediadb:5432/media_service_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -559,16 +556,14 @@ services:
     <<: *service-defaults
     image: triquang15/gds-notification:${FLIGHTHUB_IMAGE_TAG:-latest}
     container_name: gds-notification-service
-    mem_limit: 512m
-    mem_reservation: 256m
-    cpus: 0.5
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
       service-registry:
-        condition: service_started
+        condition: service_healthy
       notificationdb:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
       kafka:
@@ -576,7 +571,7 @@ services:
     environment:
       <<: *common-env
       SPRING_APPLICATION_NAME: notification-service
-      SPRING_DATASOURCE_URL: jdbc:postgresql://notificationdb:5432/airline_notification_db
+      SPRING_DATASOURCE_URL: ${NOTIFICATION_DATABASE_URL:-jdbc:postgresql://notificationdb:5432/airline_notification_db}
       SPRING_DATASOURCE_USERNAME: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
@@ -616,25 +611,45 @@ services:
     depends_on:
       userdb:
         condition: service_healthy
+        required: false
       locationdb:
         condition: service_healthy
+        required: false
       airlinecoredb:
         condition: service_healthy
+        required: false
       flightopsdb:
         condition: service_healthy
+        required: false
       seatdb:
         condition: service_healthy
+        required: false
       pricingdb:
         condition: service_healthy
+        required: false
       ancillarydb:
         condition: service_healthy
+        required: false
       bookingdb:
         condition: service_healthy
+        required: false
       paymentdb:
         condition: service_healthy
+        required: false
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345678}
+      POSTGRES_USER: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
+      USER_DATABASE_URL: ${USER_DATABASE_URL:-}
+      AIRLINE_CORE_DATABASE_URL: ${AIRLINE_CORE_DATABASE_URL:-}
+      FLIGHT_OPS_DATABASE_URL: ${FLIGHT_OPS_DATABASE_URL:-}
+      LOCATION_DATABASE_URL: ${LOCATION_DATABASE_URL:-}
+      SEAT_DATABASE_URL: ${SEAT_DATABASE_URL:-}
+      PRICING_DATABASE_URL: ${PRICING_DATABASE_URL:-}
+      ANCILLARY_DATABASE_URL: ${ANCILLARY_DATABASE_URL:-}
+      BOOKING_DATABASE_URL: ${BOOKING_DATABASE_URL:-}
+      PAYMENT_DATABASE_URL: ${PAYMENT_DATABASE_URL:-}
+      MEDIA_DATABASE_URL: ${MEDIA_DATABASE_URL:-}
+      NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL:-}
       SEED_BASE_DATA: "true"
       SEED_SEAT: "true"
       SEED_FLIGHT_OPS: "true"
@@ -654,13 +669,19 @@ services:
     depends_on:
       userdb:
         condition: service_healthy
+        required: false
       locationdb:
         condition: service_healthy
+        required: false
       airlinecoredb:
         condition: service_healthy
+        required: false
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345678}
+      POSTGRES_USER: ${FLIGHTHUB_DATASOURCE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${FLIGHTHUB_DATASOURCE_PASSWORD:-12345678}
+      USER_DATABASE_URL: ${USER_DATABASE_URL:-}
+      AIRLINE_CORE_DATABASE_URL: ${AIRLINE_CORE_DATABASE_URL:-}
+      LOCATION_DATABASE_URL: ${LOCATION_DATABASE_URL:-}
       SEED_BASE_DATA: "false"
       SEED_SEAT: "false"
       SEED_FLIGHT_OPS: "false"

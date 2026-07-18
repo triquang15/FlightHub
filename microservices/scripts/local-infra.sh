@@ -8,6 +8,7 @@ REPO_ROOT="$(cd "$MICROSERVICES_DIR/.." && pwd)"
 ENV_FILE="${FLIGHTHUB_ENV_FILE:-$REPO_ROOT/.env.local}"
 DEV_COMPOSE_FILE="${FLIGHTHUB_DEV_COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.dev.yml}"
 PROD_COMPOSE_FILE="${FLIGHTHUB_PROD_COMPOSE_FILE:-$MICROSERVICES_DIR/docker-compose/docker-compose.prod.yml}"
+PROD_PROFILES="${FLIGHTHUB_PROD_PROFILES:-local-db}"
 
 INFRA_SERVICES=(
   userdb airlinecoredb flightopsdb locationdb seatdb pricingdb ancillarydb
@@ -27,7 +28,22 @@ compose() {
 }
 
 compose_prod() {
-  docker compose --env-file "$ENV_FILE" -f "$PROD_COMPOSE_FILE" "$@"
+  local args=(--env-file "$ENV_FILE" -f "$PROD_COMPOSE_FILE")
+
+  if [[ -n "$PROD_PROFILES" && "$PROD_PROFILES" != "none" ]]; then
+    local old_ifs="$IFS"
+    IFS=","
+    read -ra profiles <<< "$PROD_PROFILES"
+    IFS="$old_ifs"
+
+    for profile in "${profiles[@]}"; do
+      if [[ -n "$profile" ]]; then
+        args+=(--profile "$profile")
+      fi
+    done
+  fi
+
+  docker compose "${args[@]}" "$@"
 }
 
 case "${1:-}" in
@@ -77,6 +93,7 @@ case "${1:-}" in
     ;;
   *)
     echo "Usage: bash microservices/scripts/local-infra.sh {up|down|status|logs [service]|frontend-up|frontend-down|frontend-status|observability-up|observability-down|observability-status|stack-up|stack-stop|stack-status}" >&2
+    echo "Docker prod defaults to FLIGHTHUB_PROD_PROFILES=local-db. Use FLIGHTHUB_PROD_PROFILES=none for Neon/external Postgres." >&2
     exit 1
     ;;
 esac

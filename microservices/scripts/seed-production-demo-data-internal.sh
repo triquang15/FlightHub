@@ -39,7 +39,32 @@ psql_exec() {
   database="$2"
   shift 2
 
-  PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$host" -p 5432 -U "$POSTGRES_USER" -d "$database" "$@"
+  database_url="$(database_url_for "$database")"
+
+  if [ -n "$database_url" ]; then
+    # psql accepts postgresql:// URLs; service env uses jdbc:postgresql://.
+    psql_url="${database_url#jdbc:}"
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" "$psql_url" "$@"
+  else
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$host" -p 5432 -U "$POSTGRES_USER" -d "$database" "$@"
+  fi
+}
+
+database_url_for() {
+  case "$1" in
+    airline_user) printf "%s" "${USER_DATABASE_URL:-}" ;;
+    airline_core_db) printf "%s" "${AIRLINE_CORE_DATABASE_URL:-}" ;;
+    airline_flight_db) printf "%s" "${FLIGHT_OPS_DATABASE_URL:-}" ;;
+    airline_location_db) printf "%s" "${LOCATION_DATABASE_URL:-}" ;;
+    airline_seat_db) printf "%s" "${SEAT_DATABASE_URL:-}" ;;
+    airline_pricing_db) printf "%s" "${PRICING_DATABASE_URL:-}" ;;
+    airline_ancillary_db) printf "%s" "${ANCILLARY_DATABASE_URL:-}" ;;
+    airline_booking_db) printf "%s" "${BOOKING_DATABASE_URL:-}" ;;
+    airline_payment_db) printf "%s" "${PAYMENT_DATABASE_URL:-}" ;;
+    media_service_db) printf "%s" "${MEDIA_DATABASE_URL:-}" ;;
+    airline_notification_db) printf "%s" "${NOTIFICATION_DATABASE_URL:-}" ;;
+    *) printf "" ;;
+  esac
 }
 
 run_sql_file() {

@@ -137,6 +137,10 @@ Set the image tag you want to run:
 ```text
 FLIGHTHUB_IMAGE_TAG=latest
 FLIGHTHUB_PLATFORM_IMAGE_TAG=latest
+FLIGHTHUB_IMAGE_PLATFORM=linux/amd64
+FRONTEND_HOST_PORT=5173
+EUREKA_HOST_PORT=8761
+CONFIG_SERVER_HOST_PORT=8888
 ```
 
 For deterministic testing:
@@ -144,7 +148,33 @@ For deterministic testing:
 ```text
 FLIGHTHUB_IMAGE_TAG=sha-abc1234
 FLIGHTHUB_PLATFORM_IMAGE_TAG=sha-abc1234
+FLIGHTHUB_IMAGE_PLATFORM=linux/amd64
 ```
+
+On Apple Silicon, keep `FLIGHTHUB_IMAGE_PLATFORM=linux/amd64` unless the Docker
+Hub images were published as multi-architecture images. The publish workflow now
+builds both `linux/amd64` and `linux/arm64`, so future image tags can run native
+on either platform.
+
+For the full Java stack, keep these resource defaults unless your machine has
+very little RAM:
+
+```text
+FLIGHTHUB_JAVA_TOOL_OPTIONS=-Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75
+FLIGHTHUB_CONFIG_JAVA_TOOL_OPTIONS=-Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75
+FLIGHTHUB_PLATFORM_JAVA_TOOL_OPTIONS=-Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75
+FLIGHTHUB_APP_MEM_LIMIT=1g
+FLIGHTHUB_APP_MEM_RESERVATION=512m
+FLIGHTHUB_APP_CPUS=1.0
+FLIGHTHUB_DATASOURCE_POOL_MAXIMUM_SIZE=5
+FLIGHTHUB_DATASOURCE_POOL_MINIMUM_IDLE=1
+FLIGHTHUB_DATASOURCE_POOL_CONNECTION_TIMEOUT_MS=30000
+```
+
+If Docker Desktop has less than 8 GB memory assigned, increase Docker Desktop
+resources first. Running all databases, Kafka, config-server, Eureka, gateway,
+and all business services together is much heavier than the Maven one-service
+development flow.
 
 Fill only the credentials you need for the test:
 
@@ -163,6 +193,97 @@ MAIL_FROM=
 ```
 
 Keep `.env.docker.local` out of Git.
+
+### Optional: Use Neon Instead Of Local Docker Postgres
+
+This option is only for Docker production-style runs. Maven/local development
+can still use the local infrastructure from `local-full-stack-runbook.md`.
+
+Why use Neon:
+
+- avoids starting 11 local Postgres containers
+- lowers Docker Desktop memory pressure
+- makes the demo closer to a managed production database setup
+
+Recommended Neon shape:
+
+- one Neon project
+- one pooled connection endpoint
+- separate databases for each service
+- same Neon role/password for the demo, unless you want stricter service-level
+  isolation
+
+Create these databases in Neon:
+
+```text
+airline_user
+airline_core_db
+airline_flight_db
+airline_location_db
+airline_seat_db
+airline_pricing_db
+airline_ancillary_db
+airline_booking_db
+airline_payment_db
+media_service_db
+airline_notification_db
+```
+
+In `.env.docker.local`, switch Docker prod to external database mode:
+
+```text
+FLIGHTHUB_PROD_PROFILES=none
+```
+
+Then fill the JDBC URLs. Use Neon pooled URLs and keep `sslmode=require`:
+
+```text
+USER_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_user?sslmode=require
+AIRLINE_CORE_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_core_db?sslmode=require
+FLIGHT_OPS_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_flight_db?sslmode=require
+LOCATION_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_location_db?sslmode=require
+SEAT_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_seat_db?sslmode=require
+PRICING_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_pricing_db?sslmode=require
+ANCILLARY_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_ancillary_db?sslmode=require
+BOOKING_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_booking_db?sslmode=require
+PAYMENT_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_payment_db?sslmode=require
+MEDIA_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/media_service_db?sslmode=require
+NOTIFICATION_DATABASE_URL=jdbc:postgresql://<neon-pooler-host>/airline_notification_db?sslmode=require
+```
+
+Set the shared Neon user/password:
+
+```text
+FLIGHTHUB_DATASOURCE_USERNAME=<neon-role>
+FLIGHTHUB_DATASOURCE_PASSWORD=<neon-password>
+```
+
+For a demo environment, these schema settings are convenient:
+
+```text
+JPA_DDL_AUTO=update
+FLYWAY_ENABLED=false
+```
+
+For production, move to:
+
+```text
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+```
+
+Keep small connection pools because every service opens its own pool:
+
+```text
+FLIGHTHUB_DATASOURCE_POOL_MAXIMUM_SIZE=3
+FLIGHTHUB_DATASOURCE_POOL_MINIMUM_IDLE=1
+```
+
+To return to local Docker Postgres:
+
+```text
+FLIGHTHUB_PROD_PROFILES=local-db
+```
 
 ## 6. Pull Images From Docker Hub
 
@@ -186,6 +307,18 @@ Run the image-based stack:
 FLIGHTHUB_ENV_FILE=.env.docker.local bash microservices/scripts/local-infra.sh stack-up
 ```
 
+Run the same stack with Neon/managed Postgres instead of local DB containers:
+
+```bash
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+bash microservices/scripts/local-infra.sh stack-up
+```
+
+The first boot can take 2-4 minutes because Eureka and config-server start
+before the business services. The compose file uses health checks so application
+containers wait for config-server and service-registry to become ready.
+
 Check containers:
 
 ```bash
@@ -198,17 +331,32 @@ Open:
 Frontend:    http://localhost:5173
 API Gateway: http://localhost:8080
 Kafka UI:    http://localhost:8000
+Eureka:      http://localhost:8761
+Config:      http://localhost:8888
 ```
 
 ## 8. Seed Demo Data
 
-Seed the Docker databases:
+Seed the Docker databases when using local Postgres containers:
 
 ```bash
 FLIGHTHUB_ENV_FILE=.env.docker.local docker compose \
   --env-file .env.docker.local \
   -f microservices/docker-compose/docker-compose.prod.yml \
-  --profile tools run --rm seed-production-demo-data
+  --profile local-db \
+  --profile tools \
+  run --rm seed-production-demo-data
+```
+
+Seed Neon/managed Postgres when `FLIGHTHUB_PROD_PROFILES=none` and the
+`*_DATABASE_URL` values are filled:
+
+```bash
+FLIGHTHUB_ENV_FILE=.env.docker.local docker compose \
+  --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  --profile tools \
+  run --rm seed-production-demo-data
 ```
 
 Then test:
@@ -237,6 +385,13 @@ Eureka:
 
 ```bash
 curl -s http://localhost:8761/eureka/apps
+```
+
+Config-server:
+
+```bash
+curl -i http://localhost:8888/actuator/health
+curl -s http://localhost:8888/api-gateway/default
 ```
 
 Kafka UI:
