@@ -13,7 +13,7 @@ import org.springframework.cloud.config.server.EnableConfigServer;
  *   3. Supports environment-specific configs: /flight-service/dev, /flight-service/prod
  *
  * Microservices include spring-cloud-starter-config as a dependency and set:
- *   spring.config.import=configserver:http://localhost:8888
+ *   spring.config.import=configserver:${CONFIG_SERVER_URL:http://localhost:8888}
  * They'll fetch their config from this server at startup.
  * 
  * @author Tri Quang

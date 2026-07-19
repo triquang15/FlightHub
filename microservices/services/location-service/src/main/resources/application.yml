@@ -11,7 +11,7 @@ spring:
     name: location-service
 
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
   flyway:
     enabled: ${FLYWAY_ENABLED:false}

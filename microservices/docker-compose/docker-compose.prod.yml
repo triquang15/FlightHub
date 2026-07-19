@@ -6,7 +6,10 @@
 # =============================================================================
 
 x-common-env: &common-env
+  CONFIG_SERVER_URL: http://config-server:8888
+  SPRING_APPLICATION_JSON: '{"spring":{"config":{"import":"optional:configserver:http://config-server:8888/"}},"eureka":{"client":{"serviceUrl":{"defaultZone":"http://service-registry:8761/eureka/"}}}}'
   SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+  SPRING_CLOUD_CONFIG_URI: http://config-server:8888/
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka/
   JAVA_TOOL_OPTIONS: ${FLIGHTHUB_JAVA_TOOL_OPTIONS:--Xms192m -Xmx640m -XX:+UseG1GC -XX:MaxRAMPercentage=75}
   JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
