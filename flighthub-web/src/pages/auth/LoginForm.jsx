@@ -11,6 +11,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
 import { getSafeRedirectForRole } from '@/utils/roleRedirect';
+import { getRuntimeConfig } from '@/utils/runtimeConfig';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
@@ -21,8 +22,8 @@ const LoginForm = () => {
   const [googleLoading, setGoogleLoading] = React.useState(false);
   const [facebookReady, setFacebookReady] = React.useState(false);
   const [facebookLoading, setFacebookLoading] = React.useState(false);
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
+  const googleClientId = getRuntimeConfig("VITE_GOOGLE_CLIENT_ID");
+  const facebookAppId = getRuntimeConfig("VITE_FACEBOOK_APP_ID");
 
   const validationSchema = Yup.object().shape({
     email: Yup.string()

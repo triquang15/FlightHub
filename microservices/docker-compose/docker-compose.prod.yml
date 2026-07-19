@@ -316,6 +316,9 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MEDIA_SERVICE_BASE_URL: http://media-service:8089
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
 
   airline-core-service:
     <<: *service-defaults
@@ -600,6 +603,16 @@ services:
     depends_on:
       api-gateway:
         condition: service_started
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+      VITE_FACEBOOK_APP_ID: ${VITE_FACEBOOK_APP_ID:-}
+      VITE_GRAFANA_URL: ${VITE_GRAFANA_URL:-http://localhost:3001}
+      VITE_PROMETHEUS_URL: ${VITE_PROMETHEUS_URL:-http://localhost:9090}
+      VITE_LOKI_URL: ${VITE_LOKI_URL:-http://localhost:3100}
+      VITE_ALERTMANAGER_URL: ${VITE_ALERTMANAGER_URL:-http://localhost:9093}
+      VITE_ELASTICSEARCH_URL: ${VITE_ELASTICSEARCH_URL:-http://localhost:9200}
+      VITE_KIBANA_URL: ${VITE_KIBANA_URL:-http://localhost:5601}
     ports:
       - "${FRONTEND_HOST_PORT:-5173}:80"
 

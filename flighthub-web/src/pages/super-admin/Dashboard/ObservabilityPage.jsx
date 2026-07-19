@@ -22,13 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getRuntimeConfig } from "@/utils/runtimeConfig";
 
-const grafanaUrl = import.meta.env.VITE_GRAFANA_URL || "http://localhost:3001";
-const prometheusUrl = import.meta.env.VITE_PROMETHEUS_URL || "http://localhost:9090";
-const lokiUrl = import.meta.env.VITE_LOKI_URL || "http://localhost:3100";
-const alertmanagerUrl = import.meta.env.VITE_ALERTMANAGER_URL || "http://localhost:9093";
-const elasticsearchUrl = import.meta.env.VITE_ELASTICSEARCH_URL || "http://localhost:9200";
-const kibanaUrl = import.meta.env.VITE_KIBANA_URL || "http://localhost:5601";
+const grafanaUrl = getRuntimeConfig("VITE_GRAFANA_URL", "http://localhost:3001");
+const prometheusUrl = getRuntimeConfig("VITE_PROMETHEUS_URL", "http://localhost:9090");
+const lokiUrl = getRuntimeConfig("VITE_LOKI_URL", "http://localhost:3100");
+const alertmanagerUrl = getRuntimeConfig("VITE_ALERTMANAGER_URL", "http://localhost:9093");
+const elasticsearchUrl = getRuntimeConfig("VITE_ELASTICSEARCH_URL", "http://localhost:9200");
+const kibanaUrl = getRuntimeConfig("VITE_KIBANA_URL", "http://localhost:5601");
 
 const buildGrafanaExploreUrl = (datasourceUid, expr) => {
   const panes = {

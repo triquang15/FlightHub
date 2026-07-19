@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getRuntimeConfig } from "@/utils/runtimeConfig";
 
 const integrationGroups = [
   {
@@ -108,12 +109,12 @@ const operationalRules = [
 
 const IntegrationManagementPage = () => {
   const configuredFrontendLinks = [
-    import.meta.env.VITE_GRAFANA_URL,
-    import.meta.env.VITE_PROMETHEUS_URL,
-    import.meta.env.VITE_LOKI_URL,
-    import.meta.env.VITE_ALERTMANAGER_URL,
-    import.meta.env.VITE_ELASTICSEARCH_URL,
-    import.meta.env.VITE_KIBANA_URL,
+    getRuntimeConfig("VITE_GRAFANA_URL"),
+    getRuntimeConfig("VITE_PROMETHEUS_URL"),
+    getRuntimeConfig("VITE_LOKI_URL"),
+    getRuntimeConfig("VITE_ALERTMANAGER_URL"),
+    getRuntimeConfig("VITE_ELASTICSEARCH_URL"),
+    getRuntimeConfig("VITE_KIBANA_URL"),
   ].filter(Boolean).length;
 
   return (

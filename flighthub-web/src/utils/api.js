@@ -1,8 +1,9 @@
 import axios from "axios";
 import { getDeviceId } from "@/utils/device";
 import { clearAuthTokens, getAccessToken, getRefreshToken, updateAuthTokens } from "@/utils/authStorage";
+import { getRuntimeConfig } from "@/utils/runtimeConfig";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const BASE_URL = getRuntimeConfig("VITE_API_BASE_URL", "http://localhost:8080");
 
 const api = axios.create({
   baseURL: BASE_URL,
