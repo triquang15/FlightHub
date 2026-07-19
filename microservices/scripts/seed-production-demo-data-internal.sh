@@ -43,7 +43,7 @@ psql_exec() {
 
   if [ -n "$database_url" ]; then
     # psql accepts postgresql:// URLs; service env uses jdbc:postgresql://.
-    psql_url="${database_url#jdbc:}"
+    psql_url="$(normalize_psql_url "${database_url#jdbc:}")"
     PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" "$psql_url" "$@"
   else
     PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$host" -p 5432 -U "$POSTGRES_USER" -d "$database" "$@"
@@ -67,6 +67,12 @@ database_url_for() {
   esac
 }
 
+normalize_psql_url() {
+  # JDBC uses channelBinding, while libpq/psql expects channel_binding.
+  # Keeping the conversion here lets services use JDBC URLs unchanged.
+  printf "%s" "$1" | sed 's/channelBinding=/channel_binding=/g'
+}
+
 run_sql_file() {
   host="$1"
   database="$2"
@@ -80,8 +86,21 @@ query_scalar() {
   host="$1"
   database="$2"
   sql="$3"
+  attempt=1
 
-  psql_exec "$host" "$database" -At -v ON_ERROR_STOP=1 -c "$sql" | tr -d '[:space:]'
+  while [ "$attempt" -le 3 ]; do
+    if query_output="$(psql_exec "$host" "$database" -At -v ON_ERROR_STOP=1 -c "$sql")"; then
+      printf "%s" "$query_output" | tr -d '[:space:]'
+      return 0
+    fi
+
+    echo "Lookup failed for $database on attempt $attempt; retrying..." >&2
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+
+  echo "Lookup failed for $database after 3 attempts: $sql" >&2
+  return 1
 }
 
 require_value() {
@@ -268,7 +287,7 @@ if [ "$SEED_SEAT" = "true" ] || [ "$SEED_FLIGHT_OPS" = "true" ] || [ "$SEED_PRIC
       for name in airline_vn airline_vj airline_ak airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
         aircraft_vn_a359 aircraft_vn_b789 aircraft_vj_a321 aircraft_ak_a320 aircraft_sq_a359 aircraft_tg_b77w \
         aircraft_cx_a35k aircraft_jl_b789 aircraft_ek_a388 aircraft_qr_a359 \
-        apt_sgn apt_han apt_dad apt_sin apt_bkk apt_hkg apt_hnd apt_dxb apt_doh; do
+        apt_sgn apt_han apt_dad apt_sin apt_kul apt_bkk apt_hkg apt_hnd apt_dxb apt_doh; do
         eval "seed_value=\${$name}"
         set_seed_setting "$name" "$seed_value"
       done
@@ -279,22 +298,39 @@ if [ "$SEED_SEAT" = "true" ] || [ "$SEED_FLIGHT_OPS" = "true" ] || [ "$SEED_PRIC
 
   if [ "$SEED_PRICING" = "true" ] || [ "$SEED_ANCILLARY" = "true" ]; then
     echo "==> Resolving Flight and Cabin Class IDs for commercial services"
-    flight_vn210="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN210';")"
-    flight_vn211="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VN211';")"
-    flight_vj122="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'VJ122';")"
-    flight_sq185="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = 'SQ185';")"
+
+    commercial_flights="flight_vn210 flight_vn211 flight_vn218 flight_vn136 flight_vn135 flight_vn117 flight_vn651 flight_vn650 flight_vn652 \
+      flight_vj122 flight_vj123 flight_vj504 flight_vj505 flight_vj803 flight_vj804 \
+      flight_ak520 flight_ak521 flight_ak512 flight_ak513 \
+      flight_sq185 flight_sq186 flight_sq176 flight_sq175 \
+      flight_tg551 flight_tg550 flight_tg560 flight_tg561 \
+      flight_cx764 flight_cx765 flight_cx743 flight_cx742 \
+      flight_ek393 flight_ek392 flight_qr971 flight_qr970 flight_jl752 flight_jl751 flight_jl753"
+
+    for name in $commercial_flights; do
+      flight_number="$(printf "%s" "${name#flight_}" | tr '[:lower:]' '[:upper:]')"
+      flight_id="$(query_scalar flightopsdb airline_flight_db "SELECT id FROM flights WHERE flight_number = '$flight_number';")"
+      eval "$name=\$flight_id"
+    done
 
     cabin_vn_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'ECO';")"
     cabin_vn_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_a359 AND code = 'BUS';")"
     cabin_vn_b789_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vn_b789 AND code = 'ECO';")"
     cabin_vj_a321_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'ECO';")"
     cabin_vj_a321_pre="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_vj_a321 AND code = 'PRE';")"
+    cabin_ak_a320_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_ak_a320 AND code = 'ECO';")"
     cabin_sq_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'ECO';")"
     cabin_sq_a359_bus="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_sq_a359 AND code = 'BUS';")"
+    cabin_tg_b77w_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_tg_b77w AND code = 'ECO';")"
+    cabin_cx_a35k_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_cx_a35k AND code = 'ECO';")"
+    cabin_ek_a388_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_ek_a388 AND code = 'ECO';")"
+    cabin_qr_a359_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_qr_a359 AND code = 'ECO';")"
+    cabin_jl_b789_eco="$(query_scalar seatdb airline_seat_db "SELECT id FROM cabin_classes WHERE aircraft_id = $aircraft_jl_b789 AND code = 'ECO';")"
 
-    for required in flight_vn210 flight_vn211 flight_vj122 flight_sq185 \
+    for required in $commercial_flights \
       cabin_vn_a359_eco cabin_vn_a359_bus cabin_vn_b789_eco cabin_vj_a321_eco \
-      cabin_vj_a321_pre cabin_sq_a359_eco cabin_sq_a359_bus; do
+      cabin_vj_a321_pre cabin_ak_a320_eco cabin_sq_a359_eco cabin_sq_a359_bus \
+      cabin_tg_b77w_eco cabin_cx_a35k_eco cabin_ek_a388_eco cabin_qr_a359_eco cabin_jl_b789_eco; do
       eval "required_value=\${$required}"
       require_value "$required" "$required_value"
     done
@@ -302,9 +338,11 @@ if [ "$SEED_SEAT" = "true" ] || [ "$SEED_FLIGHT_OPS" = "true" ] || [ "$SEED_PRIC
     if [ "$SEED_PRICING" = "true" ]; then
       echo "==> Seeding airline_pricing_db with $(basename "$PRICING_SEED_SQL")"
       {
-        for name in airline_vn airline_vj airline_sq flight_vn210 flight_vn211 flight_vj122 flight_sq185 \
+        for name in airline_vn airline_vj airline_ak airline_sq airline_tg airline_cx airline_jl airline_ek airline_qr \
+          $commercial_flights \
           cabin_vn_a359_eco cabin_vn_a359_bus cabin_vn_b789_eco cabin_vj_a321_eco \
-          cabin_vj_a321_pre cabin_sq_a359_eco cabin_sq_a359_bus; do
+          cabin_vj_a321_pre cabin_ak_a320_eco cabin_sq_a359_eco cabin_sq_a359_bus \
+          cabin_tg_b77w_eco cabin_cx_a35k_eco cabin_ek_a388_eco cabin_qr_a359_eco cabin_jl_b789_eco; do
           eval "seed_value=\${$name}"
           set_seed_setting "$name" "$seed_value"
         done

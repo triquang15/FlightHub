@@ -87,6 +87,23 @@ FLIGHTHUB_PROD_PROFILES=none \
 bash microservices/scripts/local-infra.sh stack-stop
 ```
 
+`stack-stop` may return to the terminal without printing anything. That is OK.
+Confirm the stack state with:
+
+```bash
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+bash microservices/scripts/local-infra.sh stack-status
+```
+
+Or check compose directly:
+
+```bash
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml ps
+```
+
 Start the full Docker stack:
 
 ```bash
@@ -97,6 +114,29 @@ bash microservices/scripts/local-infra.sh stack-up
 
 The first boot can take 2-4 minutes because Eureka and config-server start
 before the business services.
+
+Full copy/paste start flow:
+
+```bash
+cd /Users/triquang/Project/FlightHub
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+bash microservices/scripts/local-infra.sh stack-stop
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml pull
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+bash microservices/scripts/local-infra.sh stack-up
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+bash microservices/scripts/local-infra.sh stack-status
+```
 
 ## 4. Seed Demo Data
 
@@ -113,6 +153,9 @@ docker compose --env-file .env.docker.local \
 
 Seed is idempotent for demo usage. Re-run it when Neon has been reset or when
 you need fresh future flight/search data.
+
+Neon JDBC URLs may contain `channelBinding=require`; the seed runner converts it
+to the `psql`-compatible `channel_binding=require` automatically.
 
 ## 5. Check Stack
 
