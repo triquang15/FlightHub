@@ -3,6 +3,7 @@ package com.triquang.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.iakovlev.timeshape.TimeZoneEngine;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,7 @@ import java.util.Optional;
 @Slf4j
 public class GeoTimezoneService {
 
-    private final TimeZoneEngine engine;
+    private final ObjectProvider<TimeZoneEngine> engineProvider;
 
     @Cacheable(
         cacheNames = "geoTimezone",
@@ -30,6 +31,7 @@ public class GeoTimezoneService {
         }
 
         try {
+            TimeZoneEngine engine = engineProvider.getObject();
             Optional<ZoneId> zone = engine.query(lat, lng);
 
             if (zone.isEmpty()) {

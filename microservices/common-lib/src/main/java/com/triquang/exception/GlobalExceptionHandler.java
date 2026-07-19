@@ -9,6 +9,7 @@ import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -104,6 +105,26 @@ public class GlobalExceptionHandler {
         }
 
         log.warn("HTTP error | status={} | path={} | traceId={}",
+                status,
+                path(request),
+                traceId());
+
+        return ResponseEntity
+                .status(status)
+                .body(ApiResponse.error(errorCode, traceId()));
+    }
+
+    @ExceptionHandler(HttpStatusCodeException.class)
+    public ResponseEntity<ApiResponse<?>> handleUpstreamHttpException(
+            HttpStatusCodeException ex,
+            HttpServletRequest request) {
+
+        int status = ex.getStatusCode().value();
+        ErrorCode errorCode = status == 503
+                ? ErrorCode.SERVICE_UNAVAILABLE
+                : ErrorCode.INTERNAL_ERROR;
+
+        log.warn("Upstream HTTP error | status={} | path={} | traceId={}",
                 status,
                 path(request),
                 traceId());
