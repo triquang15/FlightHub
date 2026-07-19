@@ -92,6 +92,10 @@ docker compose --env-file .env.docker.local \
   -f microservices/docker-compose/docker-compose.prod.yml pull
 ```
 
+Use this after code has been committed, pushed, and GitHub Actions has finished
+publishing new Docker Hub images. `pull` downloads images; it does not restart
+running containers.
+
 If Docker Hub image publish has just finished, use `latest`. For stable demos,
 set these in `.env.docker.local`:
 
@@ -135,6 +139,52 @@ FLIGHTHUB_PROD_PROFILES=none \
 bash microservices/scripts/local-infra.sh stack-up
 ```
 
+Force recreate every service after pulling new images or changing `.env.docker.local`:
+
+```bash
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  up -d --force-recreate
+```
+
+`up -d --force-recreate` does not pull images. It recreates containers from the
+images and environment already available on the machine.
+
+Typical update flow after fixing code:
+
+```bash
+# 1. Pull the images that GitHub Actions published to Docker Hub.
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml pull
+
+# 2. Recreate containers so they use the pulled images and current env file.
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  up -d --force-recreate
+```
+
+Update only one service when the change is scoped:
+
+```bash
+# Example: frontend-only fix.
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml pull flighthub-web
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  up -d --force-recreate flighthub-web
+```
+
 The first boot can take 2-4 minutes because Eureka and config-server start
 before the business services.
 
@@ -154,7 +204,9 @@ docker compose --env-file .env.docker.local \
 
 FLIGHTHUB_ENV_FILE=.env.docker.local \
 FLIGHTHUB_PROD_PROFILES=none \
-bash microservices/scripts/local-infra.sh stack-up
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  up -d --force-recreate
 
 FLIGHTHUB_ENV_FILE=.env.docker.local \
 FLIGHTHUB_PROD_PROFILES=none \

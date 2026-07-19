@@ -61,7 +61,7 @@ export const googleLogin = createAsyncThunk(
   "auth/googleLogin",
   async ({ idToken, rememberMe = true }, { rejectWithValue }) => {
     try {
-      const res = await api.post("/api/auth/google", { idToken }, { timeout: 15000 });
+      const res = await api.post("/api/auth/google", { idToken }, { timeout: 45000 });
       const authResponse = res.data.data;
 
       setAuthTokens(authResponse, rememberMe);
@@ -70,7 +70,10 @@ export const googleLogin = createAsyncThunk(
       return authResponse;
     } catch (err) {
       console.error("Google login error:", err);
-      const message = err.response?.data?.message || "Google login failed";
+      const message =
+        err.code === "ECONNABORTED"
+          ? "Google login is taking longer than expected. Please try again."
+          : err.response?.data?.message || "Google login failed";
       toast.error(message);
       return rejectWithValue(message);
     }
