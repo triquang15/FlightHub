@@ -93,8 +93,16 @@ docker compose --env-file .env.docker.local \
 ```
 
 Use this after code has been committed, pushed, and GitHub Actions has finished
-publishing new Docker Hub images. `pull` downloads images; it does not restart
-running containers.
+publishing new Docker Hub images.
+
+Important behavior:
+
+| Command | What it does | What it does not do |
+| --- | --- | --- |
+| `docker compose pull ...` | Downloads newer Docker Hub images to your machine. | Does not restart, recreate, or overwrite running containers. |
+| `docker compose up -d --force-recreate ...` | Recreates containers from images already available locally and applies current env values. | Does not download newer images by itself. |
+
+So after a code fix, run `pull` first, then `up -d --force-recreate`.
 
 If Docker Hub image publish has just finished, use `latest`. For stable demos,
 set these in `.env.docker.local`:
@@ -150,7 +158,8 @@ docker compose --env-file .env.docker.local \
 ```
 
 `up -d --force-recreate` does not pull images. It recreates containers from the
-images and environment already available on the machine.
+images and environment already available on the machine. It does not delete Neon
+data and does not rerun seed data.
 
 Typical update flow after fixing code:
 
@@ -183,6 +192,22 @@ FLIGHTHUB_PROD_PROFILES=none \
 docker compose --env-file .env.docker.local \
   -f microservices/docker-compose/docker-compose.prod.yml \
   up -d --force-recreate flighthub-web
+```
+
+Example for a gateway/location fix:
+
+```bash
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  pull api-gateway location-service flighthub-web
+
+FLIGHTHUB_ENV_FILE=.env.docker.local \
+FLIGHTHUB_PROD_PROFILES=none \
+docker compose --env-file .env.docker.local \
+  -f microservices/docker-compose/docker-compose.prod.yml \
+  up -d --force-recreate api-gateway location-service flighthub-web
 ```
 
 The first boot can take 2-4 minutes because Eureka and config-server start
@@ -248,6 +273,17 @@ Health checks:
 curl -i http://127.0.0.1:8080/actuator/health
 curl -i http://127.0.0.1:8888/actuator/health
 curl -s http://127.0.0.1:8761/eureka/apps
+```
+
+After `up -d --force-recreate`, wait until the gateway health is `UP` and the
+needed downstream services appear in Eureka before testing UI flows. Some
+services need a few minutes to finish Spring/Flyway/Kafka startup. If the UI
+returns a temporary service error immediately after recreate, check the target
+service log first:
+
+```bash
+docker logs gds-booking-service --tail=120
+docker logs gds-location-service --tail=120
 ```
 
 Open:

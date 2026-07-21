@@ -1,0 +1,216 @@
+<svg width="1600" height="1040" viewBox="0 0 1600 1040" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="1040" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111f"/>
+      <stop offset="0.52" stop-color="#0b1b2c"/>
+      <stop offset="1" stop-color="#101828"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fb923c"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <style>
+      .title { font: 800 42px Inter, Arial, sans-serif; fill: #f8fafc; }
+      .subtitle { font: 500 18px Inter, Arial, sans-serif; fill: #cbd5e1; }
+      .section { font: 800 20px Inter, Arial, sans-serif; fill: #f8fafc; letter-spacing: .5px; }
+      .label { font: 700 16px Inter, Arial, sans-serif; fill: #f8fafc; }
+      .small { font: 500 13px Inter, Arial, sans-serif; fill: #cbd5e1; }
+      .tiny { font: 500 12px Inter, Arial, sans-serif; fill: #94a3b8; }
+      .box { fill: #0f172a; stroke: #334155; stroke-width: 1.4; rx: 18; filter: url(#shadow); }
+      .mini { fill: #111827; stroke: #334155; stroke-width: 1.2; rx: 14; }
+      .pill { fill: #172033; stroke: #334155; stroke-width: 1.1; rx: 999; }
+      .arrow { stroke: #64748b; stroke-width: 2.2; marker-end: url(#arrow); }
+      .event { stroke: #22c55e; stroke-width: 2.2; stroke-dasharray: 8 7; marker-end: url(#arrowGreen); }
+      .deploy { stroke: #38bdf8; stroke-width: 2.2; stroke-dasharray: 7 6; marker-end: url(#arrowBlue); }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2 2L10 6L2 10" stroke="#64748b" stroke-width="2" fill="none"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2 2L10 6L2 10" stroke="#22c55e" stroke-width="2" fill="none"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2 2L10 6L2 10" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1040" fill="url(#bg)"/>
+  <circle cx="1300" cy="130" r="220" fill="#0ea5e9" opacity="0.08"/>
+  <circle cx="250" cy="820" r="260" fill="#fb923c" opacity="0.07"/>
+
+  <text x="70" y="70" class="title">FlightHub System Architecture</text>
+  <text x="72" y="105" class="subtitle">Airline commerce platform: traveler booking, airline operations, super-admin control, CI/CD, and observability</text>
+
+  <!-- Actors and frontend -->
+  <rect x="70" y="155" width="285" height="240" class="box"/>
+  <text x="95" y="190" class="section">Users</text>
+  <rect x="95" y="215" width="230" height="46" class="mini"/>
+  <text x="118" y="244" class="label">Traveler</text>
+  <text x="118" y="275" class="tiny">Search, book, pay, ticket</text>
+  <rect x="95" y="295" width="230" height="46" class="mini"/>
+  <text x="118" y="324" class="label">Airline Owner</text>
+  <text x="118" y="355" class="tiny">Inventory, fares, bookings</text>
+  <rect x="95" y="375" width="230" height="46" class="mini"/>
+  <text x="118" y="404" class="label">System Admin</text>
+  <text x="118" y="435" class="tiny">Platform operations</text>
+
+  <rect x="410" y="185" width="255" height="150" class="box"/>
+  <rect x="435" y="210" width="205" height="36" fill="url(#blue)" rx="18"/>
+  <text x="458" y="234" class="label">flighthub-web</text>
+  <text x="440" y="270" class="small">React + Vite SPA</text>
+  <text x="440" y="295" class="small">Nginx Docker runtime config</text>
+  <text x="440" y="320" class="small">Traveler / Owner / Super Admin UI</text>
+
+  <path d="M355 275H410" class="arrow"/>
+
+  <!-- Gateway and platform -->
+  <rect x="720" y="165" width="250" height="180" class="box"/>
+  <rect x="750" y="195" width="190" height="42" fill="url(#orange)" rx="21"/>
+  <text x="782" y="222" class="label">API Gateway</text>
+  <text x="748" y="270" class="small">Route authorization</text>
+  <text x="748" y="295" class="small">JWT identity propagation</text>
+  <text x="748" y="320" class="small">Redis rate limit + logout blacklist</text>
+
+  <path d="M665 260H720" class="arrow"/>
+
+  <rect x="1030" y="140" width="420" height="225" class="box"/>
+  <text x="1055" y="175" class="section">Platform Services</text>
+  <rect x="1055" y="205" width="165" height="58" class="mini"/>
+  <text x="1075" y="232" class="label">Config Server</text>
+  <text x="1075" y="252" class="tiny">Git-backed runtime config</text>
+  <rect x="1245" y="205" width="165" height="58" class="mini"/>
+  <text x="1265" y="232" class="label">Eureka Registry</text>
+  <text x="1265" y="252" class="tiny">Service discovery</text>
+  <rect x="1055" y="285" width="165" height="58" class="mini"/>
+  <text x="1075" y="312" class="label">Swagger Docs</text>
+  <text x="1075" y="332" class="tiny">Gateway aggregation</text>
+  <rect x="1245" y="285" width="165" height="58" class="mini"/>
+  <text x="1265" y="312" class="label">Trace IDs</text>
+  <text x="1265" y="332" class="tiny">Request correlation</text>
+
+  <path d="M970 230H1030" class="arrow"/>
+
+  <!-- Business services -->
+  <rect x="70" y="455" width="1025" height="330" class="box"/>
+  <text x="95" y="492" class="section">Business Microservices</text>
+  <text x="325" y="492" class="small">Database-per-service, explicit ownership, cross-service calls through gateway/discovery</text>
+
+  <g>
+    <rect x="95" y="525" width="170" height="70" class="mini"/>
+    <text x="116" y="552" class="label">user-service</text>
+    <text x="116" y="575" class="tiny">Auth, roles, OAuth, profile</text>
+
+    <rect x="285" y="525" width="170" height="70" class="mini"/>
+    <text x="306" y="552" class="label">airline-core</text>
+    <text x="306" y="575" class="tiny">Airlines, aircraft, owners</text>
+
+    <rect x="475" y="525" width="170" height="70" class="mini"/>
+    <text x="496" y="552" class="label">location</text>
+    <text x="496" y="575" class="tiny">Cities, airports, timezone</text>
+
+    <rect x="665" y="525" width="170" height="70" class="mini"/>
+    <text x="686" y="552" class="label">flight-ops</text>
+    <text x="686" y="575" class="tiny">Flights, schedules, instances</text>
+
+    <rect x="855" y="525" width="170" height="70" class="mini"/>
+    <text x="876" y="552" class="label">seat-service</text>
+    <text x="876" y="575" class="tiny">Seat maps, holds, inventory</text>
+
+    <rect x="95" y="625" width="170" height="70" class="mini"/>
+    <text x="116" y="652" class="label">pricing</text>
+    <text x="116" y="675" class="tiny">Fares, rules, coupons</text>
+
+    <rect x="285" y="625" width="170" height="70" class="mini"/>
+    <text x="306" y="652" class="label">ancillary</text>
+    <text x="306" y="675" class="tiny">Bags, meals, insurance</text>
+
+    <rect x="475" y="625" width="170" height="70" class="mini"/>
+    <text x="496" y="652" class="label">booking</text>
+    <text x="496" y="675" class="tiny">Bookings, passengers, tickets</text>
+
+    <rect x="665" y="625" width="170" height="70" class="mini"/>
+    <text x="686" y="652" class="label">payment</text>
+    <text x="686" y="675" class="tiny">Stripe, PayPal, events</text>
+
+    <rect x="855" y="625" width="170" height="70" class="mini"/>
+    <text x="876" y="652" class="label">notification</text>
+    <text x="876" y="675" class="tiny">Email, SMS, audit, DLQ</text>
+
+    <rect x="95" y="725" width="170" height="38" class="pill"/>
+    <text x="116" y="750" class="label">media-service</text>
+    <text x="286" y="750" class="small">Upload metadata, local disk now, S3/R2-ready adapter later</text>
+  </g>
+
+  <path d="M845 345V455" class="arrow"/>
+
+  <!-- Data and messaging -->
+  <rect x="1160" y="420" width="360" height="365" class="box"/>
+  <text x="1185" y="457" class="section">Data + Integration Layer</text>
+  <rect x="1185" y="490" width="300" height="58" class="mini"/>
+  <text x="1208" y="517" class="label">Neon / PostgreSQL</text>
+  <text x="1208" y="537" class="tiny">One database/schema per service</text>
+
+  <rect x="1185" y="570" width="300" height="58" class="mini"/>
+  <text x="1208" y="597" class="label">Redis</text>
+  <text x="1208" y="617" class="tiny">Rate limit, JWT blacklist, cache, idempotency</text>
+
+  <rect x="1185" y="650" width="300" height="58" class="mini"/>
+  <text x="1208" y="677" class="label">Kafka</text>
+  <text x="1208" y="697" class="tiny">Payment, booking, seat, security events</text>
+
+  <rect x="1185" y="730" width="300" height="38" fill="url(#green)" rx="19"/>
+  <text x="1210" y="755" class="label">External Providers</text>
+  <text x="1190" y="805" class="tiny">Google / Facebook / Stripe / PayPal / SMTP</text>
+
+  <path d="M1095 570H1160" class="arrow"/>
+  <path d="M1095 665H1160" class="event"/>
+  <path d="M1095 745H1160" class="arrow"/>
+
+  <!-- Observability -->
+  <rect x="70" y="845" width="545" height="135" class="box"/>
+  <text x="95" y="882" class="section">Observability</text>
+  <text x="95" y="915" class="small">Prometheus scrapes /actuator/prometheus, Grafana dashboards service health, Loki/Kibana search logs by traceId.</text>
+  <rect x="95" y="940" width="105" height="30" class="pill"/>
+  <text x="119" y="960" class="tiny">Grafana</text>
+  <rect x="215" y="940" width="120" height="30" class="pill"/>
+  <text x="236" y="960" class="tiny">Prometheus</text>
+  <rect x="350" y="940" width="85" height="30" class="pill"/>
+  <text x="379" y="960" class="tiny">Loki</text>
+  <rect x="450" y="940" width="130" height="30" class="pill"/>
+  <text x="472" y="960" class="tiny">Elasticsearch</text>
+
+  <!-- CI/CD -->
+  <rect x="675" y="845" width="845" height="135" class="box"/>
+  <text x="700" y="882" class="section">CI/CD + Deployment</text>
+  <rect x="700" y="915" width="125" height="42" class="mini"/>
+  <text x="724" y="941" class="label">GitHub</text>
+  <rect x="875" y="915" width="150" height="42" class="mini"/>
+  <text x="897" y="941" class="label">Actions CI</text>
+  <rect x="1075" y="915" width="150" height="42" class="mini"/>
+  <text x="1095" y="941" class="label">Docker Hub</text>
+  <rect x="1275" y="915" width="185" height="42" class="mini"/>
+  <text x="1297" y="941" class="label">Docker Compose</text>
+  <path d="M825 936H875" class="deploy"/>
+  <path d="M1025 936H1075" class="deploy"/>
+  <path d="M1225 936H1275" class="deploy"/>
+  <text x="700" y="972" class="tiny">Commit -> build/test -> publish triquang15/gds-* images -> pull/recreate local or VPS demo stack</text>
+
+  <!-- Legend -->
+  <rect x="1210" y="90" width="310" height="72" class="pill"/>
+  <line x1="1235" y1="115" x2="1285" y2="115" class="arrow"/>
+  <text x="1300" y="120" class="tiny">Synchronous HTTP</text>
+  <line x1="1235" y1="142" x2="1285" y2="142" class="event"/>
+  <text x="1300" y="147" class="tiny">Asynchronous Kafka event</text>
+</svg>
+

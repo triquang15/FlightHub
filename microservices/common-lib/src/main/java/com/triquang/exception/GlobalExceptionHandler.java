@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,17 @@ public class GlobalExceptionHandler {
 
     private String path(HttpServletRequest request) {
         return request != null ? request.getRequestURI() : "N/A";
+    }
+
+    private boolean hasCause(Throwable throwable, Class<? extends Throwable> causeType) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (causeType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     // =========================
@@ -101,6 +113,7 @@ public class GlobalExceptionHandler {
             case 403 -> errorCode = ErrorCode.FORBIDDEN;
             case 429 -> errorCode = ErrorCode.TOO_MANY_REQUESTS;
             case 404 -> errorCode = ErrorCode.NOT_FOUND;
+            case 503 -> errorCode = ErrorCode.SERVICE_UNAVAILABLE;
             default -> errorCode = ErrorCode.INTERNAL_ERROR;
         }
 
@@ -141,6 +154,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleSystemException(
             Exception ex,
             HttpServletRequest request) {
+
+        if (hasCause(ex, ResourceAccessException.class)) {
+            log.warn("Upstream service unavailable | path={} | traceId={} | message={}",
+                    path(request),
+                    traceId(),
+                    ex.getMessage());
+
+            return ResponseEntity
+                    .status(ErrorCode.SERVICE_UNAVAILABLE.getStatus())
+                    .body(ApiResponse.error(ErrorCode.SERVICE_UNAVAILABLE, traceId()));
+        }
 
         log.error("System exception | path={} | traceId={}",
                 path(request),
